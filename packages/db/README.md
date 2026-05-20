@@ -31,6 +31,12 @@ Veritabanı tablolarını tarayıcı üzerinden görüntülemek, yeni veri eklem
 pnpm --filter @vefacaglar/db db:studio
 ```
 
+### 5. Seeder (Veritabanı Başlangıç Verisi)
+`users` tablosuna varsayılan bir admin kullanıcısı (`admin@vefacaglar.com` / `123`) eklemek için:
+```bash
+pnpm --filter @vefacaglar/db db:seed
+```
+
 ---
 
 ## Klasör Yapısı
