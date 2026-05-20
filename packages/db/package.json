@@ -4,5 +4,8 @@
   "main": "./src/index.ts",
   "devDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
   }
 }

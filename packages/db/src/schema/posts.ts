@@ -1,0 +1,16 @@
+import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+
+export const posts = pgTable('posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  excerpt: text('excerpt'),
+  content: text('content').notNull(),
+  status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
+  coverImageUrl: text('cover_image_url'),
+  seoTitle: text('seo_title'),
+  seoDescription: text('seo_description'),
+  publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});

@@ -7,11 +7,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@vefacaglar/db": "workspace:*",
     "fastify": "^4.26.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.4.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.4.0"
   }
 }
