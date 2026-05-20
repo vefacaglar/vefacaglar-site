@@ -8,6 +8,8 @@ interface PageItem {
   slug: string;
   title: string;
   content: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 }
 
 interface PostItem {
@@ -19,6 +21,26 @@ interface PostItem {
 }
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata() {
+  let page: PageItem | null = null;
+
+  try {
+    const res = await fetch(`${API_URL}/api/pages/home`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      page = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch home page metadata:", error);
+  }
+
+  return {
+    title: page?.seoTitle || page?.title || "Vefa Çağlar",
+    description: page?.seoDescription || "Personal website of Vefa Çağlar",
+  };
+}
 
 export default async function Home() {
   let page: PageItem | null = null;
