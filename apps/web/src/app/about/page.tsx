@@ -1,13 +1,40 @@
 import Link from 'next/link';
+import { MDXRemote } from "next-mdx-remote/rsc";
 
-export default function About() {
+const API_URL = process.env.API_URL || "http://localhost:3001";
+
+interface PageItem {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+}
+
+export const dynamic = "force-dynamic";
+
+export default async function About() {
+  let page: PageItem | null = null;
+
+  try {
+    const pageRes = await fetch(`${API_URL}/api/pages/about`, {
+      cache: "no-store",
+    });
+    if (pageRes.ok) {
+      page = await pageRes.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch about page:", error);
+  }
+
   return (
     <div>
       <div style={{ marginBottom: "48px" }}>
-        <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>← back</Link>
+        <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>← Back</Link>
       </div>
-      <h1>About Me</h1>
-      <p>I'm a software engineer with a focus on backend architecture, microservices, and indie game dev.</p>
+      <h1>{page?.title || "About"}</h1>
+      {page?.content && (
+        <MDXRemote source={page.content} />
+      )}
     </div>
   );
 }
