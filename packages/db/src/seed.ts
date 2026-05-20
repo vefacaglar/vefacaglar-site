@@ -21,28 +21,63 @@ async function seed() {
     const { db } = await import('./index');
     const { users } = await import('./schema/users');
 
+    // Seed admin user
     const existingUsers = await db
       .select()
       .from(users)
       .where(eq(users.email, 'admin@vefacaglar.com'))
       .limit(1);
 
-    if (existingUsers.length > 0) {
+    if (existingUsers.length === 0) {
+      const passwordHash = hashPassword('123');
+
+      await db.insert(users).values({
+        email: 'admin@vefacaglar.com',
+        displayName: 'Admin Vefa',
+        passwordHash: passwordHash,
+        role: 'admin',
+        isActive: true,
+      });
+
+      console.log('✅ Admin user created successfully (email: admin@vefacaglar.com, password: 123)');
+    } else {
       console.log('⚠️ Admin user already exists. Skipping user seed.');
-      process.exit(0);
     }
 
-    const passwordHash = hashPassword('123');
+    // Seed pages
+    const { pages } = await import('./schema/pages');
 
-    await db.insert(users).values({
-      email: 'admin@vefacaglar.com',
-      displayName: 'Admin Vefa',
-      passwordHash: passwordHash,
-      role: 'admin',
-      isActive: true,
-    });
+    const pagesToSeed = [
+      {
+        slug: 'home',
+        title: 'Vefa Çağlar',
+        content: 'Software engineer and indie game developer.',
+        status: 'published' as const,
+        publishedAt: new Date(),
+      },
+      {
+        slug: 'about',
+        title: 'About',
+        content: 'Software engineer with a focus on backend architecture, microservices, and indie game dev.',
+        status: 'published' as const,
+        publishedAt: new Date(),
+      },
+    ];
 
-    console.log('✅ Admin user created successfully (email: admin@vefacaglar.com, password: 123)');
+    for (const page of pagesToSeed) {
+      const existingPages = await db
+        .select()
+        .from(pages)
+        .where(eq(pages.slug, page.slug))
+        .limit(1);
+
+      if (existingPages.length === 0) {
+        await db.insert(pages).values(page);
+        console.log(`✅ Page '${page.slug}' created successfully.`);
+      } else {
+        console.log(`⚠️ Page '${page.slug}' already exists. Skipping.`);
+      }
+    }
   } catch (error) {
     console.error('❌ Seeding failed:', error);
     process.exit(1);
