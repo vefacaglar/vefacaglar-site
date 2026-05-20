@@ -90,11 +90,11 @@ export default function PostForm({ initialData }: PostFormProps) {
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto" }}>
       <div style={{ marginBottom: "32px" }}>
-        <Link href="/admin" style={{ color: "var(--muted)", textDecoration: "none" }}>← admin paneline dön</Link>
+        <Link href="/admin" style={{ color: "var(--muted)", textDecoration: "none" }}>← back to admin panel</Link>
       </div>
 
       <h1 style={{ marginBottom: "32px" }}>
-        {initialData ? "Yazıyı Düzenle" : "Yeni Yazı Ekle"}
+        {initialData ? "Edit Post" : "Add New Post"}
       </h1>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -164,7 +164,7 @@ export default function PostForm({ initialData }: PostFormProps) {
         {/* Markdown Content Tabs */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: "14px", color: "var(--muted)" }}>İçerik (Markdown / MDX)</label>
+            <label style={{ fontSize: "14px", color: "var(--muted)" }}>Content (Markdown / MDX)</label>
             <div style={{ display: "flex", gap: "12px" }}>
               <button
                 type="button"
@@ -179,7 +179,7 @@ export default function PostForm({ initialData }: PostFormProps) {
                   cursor: "pointer",
                 }}
               >
-                Yaz
+                Write
               </button>
               <button
                 type="button"
@@ -194,7 +194,7 @@ export default function PostForm({ initialData }: PostFormProps) {
                   cursor: "pointer",
                 }}
               >
-                Önizleme
+                Preview
               </button>
             </div>
           </div>
@@ -205,7 +205,7 @@ export default function PostForm({ initialData }: PostFormProps) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={15}
-              placeholder="# Başlık&#10;&#10;MDX/Markdown formatında yazınızı yazın..."
+              placeholder="# Title&#10;&#10;Write your content in MDX/Markdown format..."
               style={{
                 padding: "10px",
                 background: "transparent",
@@ -354,7 +354,7 @@ export default function PostForm({ initialData }: PostFormProps) {
             marginTop: "16px",
           }}
         >
-          {loading ? "Kaydediliyor..." : initialData ? "Değişiklikleri Kaydet" : "Yazıyı Yayınla"}
+          {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Post"}
         </button>
       </form>
     </div>

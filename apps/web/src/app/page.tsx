@@ -1,6 +1,14 @@
 import Link from 'next/link';
+import { MDXRemote } from "next-mdx-remote/rsc";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
+
+interface PageItem {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+}
 
 interface PostItem {
   id: string;
@@ -13,7 +21,19 @@ interface PostItem {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  let page: PageItem | null = null;
   let posts: PostItem[] = [];
+
+  try {
+    const pageRes = await fetch(`${API_URL}/api/pages/home`, {
+      cache: "no-store",
+    });
+    if (pageRes.ok) {
+      page = await pageRes.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch home page:", error);
+  }
 
   try {
     const res = await fetch(`${API_URL}/api/posts`, {
@@ -31,23 +51,13 @@ export default async function Home() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "32px" }}>Vefa Çağlar</h1>
+      <h1 style={{ marginBottom: "32px" }}>{page?.title || "Vefa Çağlar"}</h1>
       
-      <p style={{ marginBottom: "32px" }}>
-        I'm a software engineer and indie game developer. I write about backend systems, game development, tools, and technical decisions from the projects I work on.
-      </p>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "48px" }}>
-        <Link href="/about">About</Link>
-        <a href="https://linkedin.com">LinkedIn</a>
-        <a href="https://x.com">X (Twitter)</a>
-        <a href="https://github.com">GitHub</a>
-      </div>
-
-      <h2 style={{ margin: "48px 0 16px 0" }}>Current Project</h2>
-      <p style={{ marginBottom: "48px" }}>
-        <strong>Wastecross:</strong> a post-apocalyptic top-down action RPG about reopening roads between fractured zones in Unity.
-      </p>
+      {page?.content && (
+        <div style={{ marginBottom: "32px" }}>
+          <MDXRemote source={page.content} />
+        </div>
+      )}
 
       <h2 style={{ margin: "48px 0 16px 0" }}>Writings</h2>
       {latestPosts.length === 0 ? (

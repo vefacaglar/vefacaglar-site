@@ -13,7 +13,7 @@ export default function DeleteButton({ id, type, title, onDelete }: DeleteButton
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    const message = `"${title}" başlıklı ${type === "post" ? "yazıyı" : "sayfayı"} silmek istediğinize emin misiniz?`;
+    const message = `Are you sure you want to delete the ${type === "post" ? "post" : "page"} "${title}"?`;
     if (!window.confirm(message)) return;
 
     setLoading(true);
@@ -40,7 +40,7 @@ export default function DeleteButton({ id, type, title, onDelete }: DeleteButton
         opacity: loading ? 0.6 : 1,
       }}
     >
-      {loading ? "Siliniyor..." : "Sil"}
+      {loading ? "Deleting..." : "Delete"}
     </button>
   );
 }

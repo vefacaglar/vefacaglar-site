@@ -51,7 +51,16 @@ async function seed() {
       {
         slug: 'home',
         title: 'Vefa Çağlar',
-        content: 'Software engineer and indie game developer.',
+        content: `I'm a software engineer and indie game developer. I write about backend systems, game development, tools, and technical decisions from the projects I work on.
+
+[About](/about)
+[LinkedIn](https://linkedin.com)
+[X (Twitter)](https://x.com)
+[GitHub](https://github.com)
+
+## Current Project
+
+**Wastecross:** a post-apocalyptic top-down action RPG about reopening roads between fractured zones in Unity.`,
         status: 'published' as const,
         publishedAt: new Date(),
       },

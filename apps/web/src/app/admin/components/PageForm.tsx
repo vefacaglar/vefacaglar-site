@@ -84,11 +84,11 @@ export default function PageForm({ initialData }: PageFormProps) {
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto" }}>
       <div style={{ marginBottom: "32px" }}>
-        <Link href="/admin" style={{ color: "var(--muted)", textDecoration: "none" }}>← admin paneline dön</Link>
+        <Link href="/admin" style={{ color: "var(--muted)", textDecoration: "none" }}>← back to admin panel</Link>
       </div>
 
       <h1 style={{ marginBottom: "32px" }}>
-        {initialData ? "Sayfayı Düzenle" : "Yeni Sayfa Ekle"}
+        {initialData ? "Edit Page" : "Add New Page"}
       </h1>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -139,7 +139,7 @@ export default function PageForm({ initialData }: PageFormProps) {
         {/* Markdown Content Tabs */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: "14px", color: "var(--muted)" }}>İçerik (Markdown / MDX)</label>
+            <label style={{ fontSize: "14px", color: "var(--muted)" }}>Content (Markdown / MDX)</label>
             <div style={{ display: "flex", gap: "12px" }}>
               <button
                 type="button"
@@ -154,7 +154,7 @@ export default function PageForm({ initialData }: PageFormProps) {
                   cursor: "pointer",
                 }}
               >
-                Yaz
+                Write
               </button>
               <button
                 type="button"
@@ -169,7 +169,7 @@ export default function PageForm({ initialData }: PageFormProps) {
                   cursor: "pointer",
                 }}
               >
-                Önizleme
+                Preview
               </button>
             </div>
           </div>
@@ -180,7 +180,7 @@ export default function PageForm({ initialData }: PageFormProps) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={15}
-              placeholder="# Sayfa Başlığı&#10;&#10;MDX/Markdown formatında sayfa içeriğini yazın..."
+              placeholder="# Page Title&#10;&#10;Write page content in MDX/Markdown format..."
               style={{
                 padding: "10px",
                 background: "transparent",
@@ -310,7 +310,7 @@ export default function PageForm({ initialData }: PageFormProps) {
             marginTop: "16px",
           }}
         >
-          {loading ? "Kaydediliyor..." : initialData ? "Değişiklikleri Kaydet" : "Sayfayı Yayınla"}
+          {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Page"}
         </button>
       </form>
     </div>
