@@ -2,7 +2,15 @@
   "name": "@vefacaglar/db",
   "version": "0.1.0",
   "main": "./src/index.ts",
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
   "devDependencies": {
+    "dotenv": "^16.4.5",
+    "drizzle-kit": "^0.30.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
