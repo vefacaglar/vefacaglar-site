@@ -51,7 +51,7 @@ export default async function Home() {
 
       <h2 style={{ margin: "48px 0 16px 0" }}>Writings</h2>
       {latestPosts.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>Henüz yazı yayınlanmadı.</p>
+        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>No posts published yet.</p>
       ) : (
         <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
           {latestPosts.map((post) => (

@@ -68,7 +68,7 @@ export default async function AdminDashboard() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "48px" }}>
-        <h1 style={{ margin: 0, fontSize: "20px" }}>Admin Paneli</h1>
+        <h1 style={{ margin: 0, fontSize: "20px" }}>Admin Panel</h1>
         <form action={logoutAction}>
           <button
             type="submit"
@@ -82,7 +82,7 @@ export default async function AdminDashboard() {
               cursor: "pointer",
             }}
           >
-            Çıkış Yap
+            Log Out
           </button>
         </form>
       </div>
@@ -90,7 +90,7 @@ export default async function AdminDashboard() {
       {/* Posts Section */}
       <section style={{ marginBottom: "64px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h2 style={{ margin: 0, fontSize: "16px" }}>Yazılar (Blog Posts)</h2>
+          <h2 style={{ margin: 0, fontSize: "16px" }}>Posts (Blog Posts)</h2>
           <Link
             href="/admin/posts/new"
             style={{
@@ -102,23 +102,23 @@ export default async function AdminDashboard() {
               borderRadius: "4px",
             }}
           >
-            + Yeni Yazı
+            + New Post
           </Link>
         </div>
 
         {posts.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Henüz yazı eklenmemiş.</p>
+          <p style={{ color: "var(--muted)" }}>No posts added yet.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Başlık</th>
-                <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Durum</th>
-                <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal", textAlign: "right" }}>Aksiyonlar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {posts.map((post) => (
+             <thead>
+               <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Title</th>
+                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Status</th>
+                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal", textAlign: "right" }}>Actions</th>
+               </tr>
+             </thead>
+             <tbody>
+               {posts.map((post) => (
                 <tr key={post.id} style={{ borderBottom: "1px solid var(--border)", fontSize: "14px" }}>
                   <td style={{ padding: "12px 0" }}>
                     <Link href={`/blog/${post.slug}`} target="_blank" style={{ textDecoration: "none" }}>
@@ -135,13 +135,13 @@ export default async function AdminDashboard() {
                         color: post.status === "published" ? "#4CAF50" : "#FFC107",
                       }}
                     >
-                      {post.status === "published" ? "Yayında" : "Taslak"}
+                      {post.status === "published" ? "Published" : "Draft"}
                     </span>
                   </td>
                   <td style={{ padding: "12px 0", textAlign: "right" }}>
                     <div style={{ display: "flex", gap: "16px", justifyContent: "flex-end" }}>
                       <Link href={`/admin/posts/edit/${post.id}`} style={{ textDecoration: "underline", color: "var(--text)" }}>
-                        Düzenle
+                        Edit
                       </Link>
                       <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
                     </div>
@@ -156,7 +156,7 @@ export default async function AdminDashboard() {
       {/* Pages Section */}
       <section>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h2 style={{ margin: 0, fontSize: "16px" }}>Sayfalar (Pages)</h2>
+          <h2 style={{ margin: 0, fontSize: "16px" }}>Pages</h2>
           <Link
             href="/admin/pages/new"
             style={{
@@ -168,23 +168,23 @@ export default async function AdminDashboard() {
               borderRadius: "4px",
             }}
           >
-            + Yeni Sayfa
+            + New Page
           </Link>
         </div>
 
         {pages.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>Henüz sayfa eklenmemiş.</p>
+          <p style={{ color: "var(--muted)" }}>No pages added yet.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Başlık</th>
-                <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Durum</th>
-                <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal", textAlign: "right" }}>Aksiyonlar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pages.map((page) => (
+             <thead>
+               <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Title</th>
+                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Status</th>
+                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal", textAlign: "right" }}>Actions</th>
+               </tr>
+             </thead>
+             <tbody>
+               {pages.map((page) => (
                 <tr key={page.id} style={{ borderBottom: "1px solid var(--border)", fontSize: "14px" }}>
                   <td style={{ padding: "12px 0" }}>{page.title} (/{page.slug})</td>
                   <td style={{ padding: "12px 0" }}>
@@ -197,13 +197,13 @@ export default async function AdminDashboard() {
                         color: page.status === "published" ? "#4CAF50" : "#FFC107",
                       }}
                     >
-                      {page.status === "published" ? "Yayında" : "Taslak"}
+                      {page.status === "published" ? "Published" : "Draft"}
                     </span>
                   </td>
                   <td style={{ padding: "12px 0", textAlign: "right" }}>
                     <div style={{ display: "flex", gap: "16px", justifyContent: "flex-end" }}>
                       <Link href={`/admin/pages/edit/${page.id}`} style={{ textDecoration: "underline", color: "var(--text)" }}>
-                        Düzenle
+                        Edit
                       </Link>
                       <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
                     </div>

@@ -28,11 +28,11 @@ export default function AdminLogin() {
         <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>← back to home</Link>
       </div>
 
-      <h1 style={{ marginBottom: "32px", fontSize: "20px" }}>Admin Girişi</h1>
+      <h1 style={{ marginBottom: "32px", fontSize: "20px" }}>Admin Login</h1>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label htmlFor="email" style={{ fontSize: "14px", color: "var(--muted)" }}>E-posta</label>
+          <label htmlFor="email" style={{ fontSize: "14px", color: "var(--muted)" }}>Email</label>
           <input
             id="email"
             name="email"
@@ -52,7 +52,7 @@ export default function AdminLogin() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label htmlFor="password" style={{ fontSize: "14px", color: "var(--muted)" }}>Şifre</label>
+          <label htmlFor="password" style={{ fontSize: "14px", color: "var(--muted)" }}>Password</label>
           <input
             id="password"
             name="password"
@@ -93,7 +93,7 @@ export default function AdminLogin() {
             transition: "opacity 0.2s",
           }}
         >
-          {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+          {loading ? "Signing in..." : "Sign In"}
         </button>
       </form>
     </div>

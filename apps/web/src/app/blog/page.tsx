@@ -30,7 +30,7 @@ export default async function Blog() {
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("tr-TR", {
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric"
@@ -46,7 +46,7 @@ export default async function Blog() {
       <p style={{ color: "var(--muted)", marginBottom: "32px" }}>Writing about technical decisions and game development.</p>
 
       {posts.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>Henüz yazı yayınlanmadı.</p>
+        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>No posts published yet.</p>
       ) : (
         <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
           {posts.map((post) => (
