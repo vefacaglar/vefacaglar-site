@@ -62,3 +62,11 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
   - `*.handler.ts`: Business/database logic inside a Handler class.
 - **Routes**: Define routing in a parent module file (e.g., `src/modules/<module>/<module>.routes.ts`). Route controllers must remain thin—only validating requests, invoking the handler, and mapping responses/errors.
 - **Swagger Documentation**: Always register schemas in route options to support automated, typed OpenAPI documentation at `/swagger`.
+
+## Language
+
+All visible UI text in `apps/web` must be in **English**.
+
+All git commit messages must be in **English**.
+
+Keep the codebase, comments, logs, and user-facing copy in English only.
