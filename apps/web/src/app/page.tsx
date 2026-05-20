@@ -1,6 +1,34 @@
 import Link from 'next/link';
 
-export default function Home() {
+const API_URL = process.env.API_URL || "http://localhost:3001";
+
+interface PostItem {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  createdAt: string;
+}
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  let posts: PostItem[] = [];
+
+  try {
+    const res = await fetch(`${API_URL}/api/posts`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      posts = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch homepage blog posts:", error);
+  }
+
+  // Get the 3 latest posts
+  const latestPosts = posts.slice(0, 3);
+
   return (
     <div>
       <h1 style={{ marginBottom: "32px" }}>Vefa Çağlar</h1>
@@ -22,19 +50,21 @@ export default function Home() {
       </p>
 
       <h2 style={{ margin: "48px 0 16px 0" }}>Writings</h2>
-      <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
-        <li style={{ marginBottom: "16px", paddingLeft: "20px", position: "relative" }}>
-          <span style={{ position: "absolute", left: 0, color: "var(--muted)" }}>—</span>
-          <Link href="/blog/backend-architecture-lessons">Backend Architecture Lessons Learned</Link>
-        </li>
-        <li style={{ marginBottom: "16px", paddingLeft: "20px", position: "relative" }}>
-          <span style={{ position: "absolute", left: 0, color: "var(--muted)" }}>—</span>
-          <Link href="/blog/indie-game-dev-log">Indie Game Dev Log: Movement Systems</Link>
-        </li>
-      </ul>
+      {latestPosts.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>Henüz yazı yayınlanmadı.</p>
+      ) : (
+        <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+          {latestPosts.map((post) => (
+            <li key={post.id} style={{ marginBottom: "16px", paddingLeft: "20px", position: "relative" }}>
+              <span style={{ position: "absolute", left: 0, color: "var(--muted)" }}>—</span>
+              <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+            </li>
+          ))}
+        </ul>
+      )}
       
       <div style={{ marginTop: "48px" }}>
-        <Link href="/projects">View all projects</Link>
+        <Link href="/blog">View all writings</Link>
       </div>
     </div>
   );

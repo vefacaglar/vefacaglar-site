@@ -2,6 +2,8 @@ import Fastify from "fastify";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { authRoutes } from "./modules/auth/auth.routes";
+import { postsRoutes } from "./modules/posts/posts.routes";
+import { pagesRoutes } from "./modules/pages/pages.routes";
 
 export const app = Fastify({ logger: true });
 
@@ -44,3 +46,5 @@ app.get("/health", async () => {
 });
 
 app.register(authRoutes, { prefix: "/api/auth" });
+app.register(postsRoutes, { prefix: "/api/posts" });
+app.register(pagesRoutes, { prefix: "/api/pages" });
