@@ -50,3 +50,15 @@ apps/
 packages/
   shared/
   db/
+```
+
+## API Architecture & Conventions
+
+For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to .NET's MediatR / CQRS approach):
+
+- **Schemas & DTOs**: Use `@sinclair/typebox` to define single-source-of-truth schemas. Infer TypeScript types using `Static<typeof Schema>`.
+- **Feature Folders**: Organize endpoints into separate feature folders (e.g., `src/modules/<module>/<feature>/`). Each feature should have:
+  - `*.schema.ts`: Request/Response schemas and types.
+  - `*.handler.ts`: Business/database logic inside a Handler class.
+- **Routes**: Define routing in a parent module file (e.g., `src/modules/<module>/<module>.routes.ts`). Route controllers must remain thin—only validating requests, invoking the handler, and mapping responses/errors.
+- **Swagger Documentation**: Always register schemas in route options to support automated, typed OpenAPI documentation at `/swagger`.
