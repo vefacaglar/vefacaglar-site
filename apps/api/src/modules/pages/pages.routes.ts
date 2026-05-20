@@ -38,10 +38,10 @@ export async function pagesRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Yetkisiz işlem. Admin girişi yapmalısınız." });
+          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Sayfa oluşturulurken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while creating the page." });
       }
     }
   );
@@ -84,10 +84,10 @@ export async function pagesRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "PageNotFound") {
-          return reply.status(404).send({ message: "Sayfa bulunamadı." });
+          return reply.status(404).send({ message: "Page not found." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Sayfa getirilirken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while fetching the page." });
       }
     }
   );
@@ -115,13 +115,13 @@ export async function pagesRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Yetkisiz işlem. Admin girişi yapmalısınız." });
+          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
         }
         if (error.message === "PageNotFound") {
-          return reply.status(404).send({ message: "Sayfa bulunamadı." });
+          return reply.status(404).send({ message: "Page not found." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Sayfa güncellenirken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while updating the page." });
       }
     }
   );
@@ -148,13 +148,13 @@ export async function pagesRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Yetkisiz işlem. Admin girişi yapmalısınız." });
+          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
         }
         if (error.message === "PageNotFound") {
-          return reply.status(404).send({ message: "Sayfa bulunamadı." });
+          return reply.status(404).send({ message: "Page not found." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Sayfa silinirken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while deleting the page." });
       }
     }
   );

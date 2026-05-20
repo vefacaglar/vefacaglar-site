@@ -38,10 +38,10 @@ export async function postsRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Yetkisiz işlem. Admin girişi yapmalısınız." });
+          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Post oluşturulurken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while creating the post." });
       }
     }
   );
@@ -84,10 +84,10 @@ export async function postsRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "PostNotFound") {
-          return reply.status(404).send({ message: "Yazı bulunamadı." });
+          return reply.status(404).send({ message: "Post not found." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Yazı getirilirken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while fetching the post." });
       }
     }
   );
@@ -115,13 +115,13 @@ export async function postsRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Yetkisiz işlem. Admin girişi yapmalısınız." });
+          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
         }
         if (error.message === "PostNotFound") {
-          return reply.status(404).send({ message: "Yazı bulunamadı." });
+          return reply.status(404).send({ message: "Post not found." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Yazı güncellenirken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while updating the post." });
       }
     }
   );
@@ -148,13 +148,13 @@ export async function postsRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Yetkisiz işlem. Admin girişi yapmalısınız." });
+          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
         }
         if (error.message === "PostNotFound") {
-          return reply.status(404).send({ message: "Yazı bulunamadı." });
+          return reply.status(404).send({ message: "Post not found." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Yazı silinirken hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred while deleting the post." });
       }
     }
   );
