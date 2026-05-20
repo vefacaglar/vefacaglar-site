@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About - Vefa Çağlar</title>
+    <style>
+        :root {
+            --bg: #F9F8F6;
+            --text: #27272A;
+            --text-heading: #18181B;
+            --muted: #71717A;
+            --border: #E4E4E1;
+            --accent: #D97757;
+            --max: 640px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1F1E1D;
+                --text: #EAE8E3;
+                --text-heading: #F9F8F6;
+                --muted: #A19F9A;
+                --border: #3A3936;
+                --accent: #E28B75;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            line-height: 1.6;
+            font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        ::-moz-selection { background: var(--border); }
+        ::selection { background: var(--border); }
+
+        .container {
+            width: min(var(--max), calc(100% - 48px));
+            margin: 0 auto;
+            padding: 96px 0;
+        }
+
+        h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-heading);
+            margin: 0 0 32px 0;
+        }
+
+        h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-heading);
+            margin: 48px 0 16px 0;
+        }
+
+        p {
+            margin: 0 0 24px 0;
+            line-height: 1.7;
+        }
+
+        .job-title {
+            font-weight: 600;
+            color: var(--text-heading);
+        }
+
+        .job-meta {
+            color: var(--muted);
+            font-size: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .job-entry {
+            margin-bottom: 32px;
+        }
+
+        ul {
+            margin: 0 0 24px 0;
+            padding-left: 0;
+            list-style-type: none;
+        }
+
+        ul li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        ul li::before {
+            content: "—";
+            position: absolute;
+            left: 0;
+            color: var(--muted);
+        }
+
+        a {
+            color: var(--text-heading);
+            text-decoration: underline;
+            text-decoration-color: var(--border);
+            text-decoration-thickness: 1px;
+            text-underline-offset: 3px;
+            transition: color 0.15s ease, text-decoration-color 0.15s ease;
+        }
+
+        a:hover {
+            color: var(--accent);
+            text-decoration-color: var(--accent);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 48px;
+            color: var(--muted);
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: var(--text-heading);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <a href="/" class="back-link">← back</a>
+
+        <h1>Vefa Çağlar Özcan</h1>
+        <p>I'm a Senior Software Engineer with a background in designing and developing large-scale backend architectures, microservices, and high-load APIs.</p>
+
+        <h2>Experience</h2>
+
+        <div class="job-entry">
+            <div class="job-title">Solo Indie Game Developer</div>
+            <div class="job-meta">
+                <span>Self Employed</span>
+                <span>Feb 2026 - Present</span>
+            </div>
+            <p>Developing a post-apocalyptic isometric 3D action RPG shooter in Unity. Responsible for gameplay systems, combat, AI behavior, quest/dialogue integration, level design, UI, and asset pipeline.</p>
+        </div>
+
+        <div class="job-entry">
+            <div class="job-title">Senior Software Engineer</div>
+            <div class="job-meta">
+                <span>Runibex Technology Group</span>
+                <span>May 2024 - Dec 2025</span>
+            </div>
+            <ul>
+                <li>Core team member developing a large-scale EV charging management platform from scratch using .NET 8 microservices.</li>
+                <li>Built event-driven architecture using RabbitMQ with Transactional Outbox and Inbox patterns for exactly-once effects.</li>
+                <li>Developed real-time WebSocket channels for Portal and Mobile clients with live session progress and calculations.</li>
+                <li>Applied clean architecture, BFF patterns (PortalBff, MobileBff, CoreBff), and implemented Duende Identity Server for OAuth2/OIDC.</li>
+            </ul>
+        </div>
+
+        <div class="job-entry">
+            <div class="job-title">Software Engineer</div>
+            <div class="job-meta">
+                <span>Koton</span>
+                <span>Jan 2024 - May 2024</span>
+            </div>
+            <ul>
+                <li>Maintained and enhanced existing .NET APIs, Windows services, and background processing components.</li>
+                <li>Worked with RabbitMQ, Redis, and MS SQL in high-load retail scenarios, significantly improving stability.</li>
+            </ul>
+        </div>
+
+        <div class="job-entry">
+            <div class="job-title">Senior Software Engineer</div>
+            <div class="job-meta">
+                <span>Bizigo</span>
+                <span>Apr 2020 - Jun 2023</span>
+            </div>
+            <ul>
+                <li>Core backend developer for TurkishAirlinesHolidays.com; built microservices, domain logic, and BFF APIs from scratch.</li>
+                <li>Developed end-to-end booking flows, package listing, payments, and back-office modules using .NET Core MVC and jQuery.</li>
+                <li>Led backend development during Bizigo's monolith-to-microservices migration and implemented ElasticSearch workflows.</li>
+            </ul>
+        </div>
+
+        <div class="job-entry">
+            <div class="job-title">Software Engineer</div>
+            <div class="job-meta">
+                <span>KoçSistem</span>
+                <span>Jan 2019 - Mar 2020</span>
+            </div>
+            <p>Developed in-house applications using .NET Core, React, and EF Core. Built authentication services with IdentityServer4 and REST APIs for workflow, feedback, and chatbot systems.</p>
+        </div>
+
+        <div class="job-entry">
+            <div class="job-title">Software Engineer</div>
+            <div class="job-meta">
+                <span>Ajans Press</span>
+                <span>Oct 2017 - Dec 2018</span>
+            </div>
+            <p>Developed and maintained internal applications using ASP.NET MVC, EF, MS SQL, MySQL, and MongoDB. Built data-processing services and optimized complex SQL queries.</p>
+        </div>
+
+        <div class="job-entry">
+            <div class="job-title">Full Stack Developer</div>
+            <div class="job-meta">
+                <span>Art Dada</span>
+                <span>Jan 2017 - Aug 2017</span>
+            </div>
+            <p>Developed customer websites from scratch as a full stack developer.</p>
+        </div>
+
+    </main>
+</body>
+</html>
