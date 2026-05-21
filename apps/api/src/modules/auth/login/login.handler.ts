@@ -3,6 +3,7 @@ import { LoginRequest, LoginResponse } from "./login.schema";
 import { hashToken, verifyPassword } from "../auth.utils";
 import { UsersRepository } from "../users.repository";
 import { SessionsRepository } from "../sessions.repository";
+import { UnauthorizedError } from "../../../shared/http-errors";
 
 export class LoginHandler {
   constructor(
@@ -14,12 +15,12 @@ export class LoginHandler {
     const user = await this.usersRepo.findByEmail(request.email);
 
     if (!user || !user.isActive) {
-      throw new Error("InvalidCredentials");
+      throw new UnauthorizedError("Invalid email or password.");
     }
 
     const isValid = verifyPassword(request.password, user.passwordHash);
     if (!isValid) {
-      throw new Error("InvalidCredentials");
+      throw new UnauthorizedError("Invalid email or password.");
     }
 
     const token = randomBytes(32).toString("hex");

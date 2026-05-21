@@ -2,6 +2,7 @@ import { FastifyRequest } from "fastify";
 import { GetAuthorParams, GetAuthorResponse } from "./detail.schema";
 import { UsersRepository } from "../../auth/users.repository";
 import { PostsRepository } from "../../posts/posts.repository";
+import { NotFoundError } from "../../../shared/http-errors";
 
 export class GetAuthorHandler {
   constructor(
@@ -15,7 +16,7 @@ export class GetAuthorHandler {
     const user = await this.usersRepo.findByUsername(username);
 
     if (!user) {
-      throw new Error("AuthorNotFound");
+      throw new NotFoundError("Author not found.");
     }
 
     const authorPosts = await this.postsRepo.listPublishedByAuthorId(user.id);

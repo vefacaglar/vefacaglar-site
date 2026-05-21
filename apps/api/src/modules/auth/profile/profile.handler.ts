@@ -1,6 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { hashPassword, verifyPassword } from "../auth.utils";
 import { UsersRepository } from "../users.repository";
+import { BadRequestError } from "../../../shared/http-errors";
 import {
   GetProfileResponse,
   UpdateProfileRequest,
@@ -52,10 +53,10 @@ export class ProfileHandler {
       if (error?.code === "23505") {
         const target = `${error.constraint_name ?? ""} ${error.detail ?? ""}`;
         if (target.includes("email")) {
-          throw new Error("EmailAlreadyExists");
+          throw new BadRequestError("This email address is already in use.");
         }
         if (target.includes("username")) {
-          throw new Error("UsernameAlreadyExists");
+          throw new BadRequestError("This username is already in use.");
         }
       }
       throw error;
@@ -71,7 +72,7 @@ export class ProfileHandler {
 
     const isValid = verifyPassword(body.currentPassword, user.passwordHash);
     if (!isValid) {
-      throw new Error("InvalidCurrentPassword");
+      throw new BadRequestError("Current password is incorrect.");
     }
 
     const newPasswordHash = hashPassword(body.newPassword);

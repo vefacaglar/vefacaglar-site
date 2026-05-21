@@ -1,6 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { UpdatePageParams, UpdatePageRequest, UpdatePageResponse } from "./update.schema";
 import { PagesRepository } from "../pages.repository";
+import { NotFoundError } from "../../../shared/http-errors";
 
 export class UpdatePageHandler {
   constructor(private readonly pagesRepo: PagesRepository) {}
@@ -14,7 +15,7 @@ export class UpdatePageHandler {
     const existingPage = await this.pagesRepo.findById(id);
 
     if (!existingPage) {
-      throw new Error("PageNotFound");
+      throw new NotFoundError("Page not found.");
     }
 
     let publishedAt = existingPage.publishedAt;

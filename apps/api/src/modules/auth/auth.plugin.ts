@@ -1,7 +1,8 @@
-import { FastifyInstance, FastifyRequest, FastifyReply, preHandlerHookHandler } from "fastify";
+import { FastifyInstance, FastifyRequest, preHandlerHookHandler } from "fastify";
 import { AuthService } from "./auth.service";
 import { UsersRepository, type User } from "./users.repository";
 import { SessionsRepository, type Session } from "./sessions.repository";
+import { UnauthorizedError } from "../../shared/http-errors";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -18,26 +19,27 @@ declare module "fastify" {
 export function registerAuthDecorators(app: FastifyInstance): void {
   const auth = new AuthService(new UsersRepository(), new SessionsRepository());
 
-  const requireAuth = async (request: FastifyRequest, reply: FastifyReply) => {
+  const requireAuth = async (request: FastifyRequest) => {
     try {
       const { user, session } = await auth.authenticate(request);
       request.user = user;
       request.session = session;
     } catch {
-      return reply.status(401).send({ message: "Unauthorized. Please log in." });
+      throw new UnauthorizedError("Unauthorized. Please log in.");
     }
   };
 
-  const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+  const requireAdmin = async (request: FastifyRequest) => {
     try {
       const { user, session } = await auth.authenticate(request);
       if (user.role !== "admin") {
-        return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
+        throw new UnauthorizedError("Unauthorized action. You must log in as admin.");
       }
       request.user = user;
       request.session = session;
-    } catch {
-      return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) throw err;
+      throw new UnauthorizedError("Unauthorized action. You must log in as admin.");
     }
   };
 

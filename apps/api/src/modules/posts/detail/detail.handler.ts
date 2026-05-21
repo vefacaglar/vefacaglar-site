@@ -1,6 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { GetPostParams, GetPostResponse } from "./detail.schema";
 import { PostsRepository } from "../posts.repository";
+import { NotFoundError } from "../../../shared/http-errors";
 
 export class GetPostHandler {
   constructor(private readonly postsRepo: PostsRepository) {}
@@ -11,12 +12,12 @@ export class GetPostHandler {
     const post = await this.postsRepo.findBySlugWithAuthor(slug);
 
     if (!post) {
-      throw new Error("PostNotFound");
+      throw new NotFoundError("Post not found.");
     }
 
     // Hide drafts from non-admins
     if (post.status === "draft" && request.user?.role !== "admin") {
-      throw new Error("PostNotFound");
+      throw new NotFoundError("Post not found.");
     }
 
     return {

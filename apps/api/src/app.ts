@@ -7,6 +7,7 @@ import { postsRoutes } from "./modules/posts/posts.routes";
 import { pagesRoutes } from "./modules/pages/pages.routes";
 import { authorsRoutes } from "./modules/authors/authors.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
+import { HttpError } from "./shared/http-errors";
 
 export const app = Fastify({ logger: true });
 
@@ -55,6 +56,18 @@ app.get("/health", async () => {
 });
 
 registerAuthDecorators(app);
+
+app.setErrorHandler((err, request, reply) => {
+  if (err instanceof HttpError) {
+    return reply.status(err.statusCode).send({ message: err.message });
+  }
+  const fastifyErr = err as { validation?: unknown; message?: string };
+  if (fastifyErr.validation) {
+    return reply.status(400).send({ message: fastifyErr.message ?? "Validation error." });
+  }
+  request.log.error(err);
+  return reply.status(500).send({ message: "Internal server error." });
+});
 
 app.register(authRoutes, { prefix: "/api/auth" });
 app.register(postsRoutes, { prefix: "/api/posts" });

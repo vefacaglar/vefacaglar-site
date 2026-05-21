@@ -1,6 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { GetPageParams, GetPageResponse } from "./detail.schema";
 import { PagesRepository } from "../pages.repository";
+import { NotFoundError } from "../../../shared/http-errors";
 
 export class GetPageHandler {
   constructor(private readonly pagesRepo: PagesRepository) {}
@@ -11,11 +12,11 @@ export class GetPageHandler {
     const page = await this.pagesRepo.findBySlug(slug);
 
     if (!page) {
-      throw new Error("PageNotFound");
+      throw new NotFoundError("Page not found.");
     }
 
     if (page.status === "draft" && request.user?.role !== "admin") {
-      throw new Error("PageNotFound");
+      throw new NotFoundError("Page not found.");
     }
 
     return {

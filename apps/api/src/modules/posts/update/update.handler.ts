@@ -1,6 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { UpdatePostParams, UpdatePostRequest, UpdatePostResponse } from "./update.schema";
 import { PostsRepository } from "../posts.repository";
+import { NotFoundError } from "../../../shared/http-errors";
 
 export class UpdatePostHandler {
   constructor(private readonly postsRepo: PostsRepository) {}
@@ -16,7 +17,7 @@ export class UpdatePostHandler {
     const existingPost = await this.postsRepo.findById(id);
 
     if (!existingPost) {
-      throw new Error("PostNotFound");
+      throw new NotFoundError("Post not found.");
     }
 
     let publishedAt = existingPost.publishedAt;
