@@ -24,6 +24,8 @@ All commands run from the repo root unless otherwise noted.
 - `pnpm lint` — currently only `apps/web` defines `lint` (Next lint).
 - API-only dev: `pnpm --filter api dev`. Web-only dev: `pnpm --filter web dev`.
 
+**Migration files must never be hand-written.** Always change `packages/db/src/schema/*.ts` and let `db:generate` produce the SQL under `packages/db/drizzle/`. Editing a generated file is only allowed to add a backfill/data step (e.g. `UPDATE` between `ADD COLUMN` and `SET NOT NULL`) — never to alter the DDL Drizzle emitted.
+
 Database (Drizzle, against the `DATABASE_URL` in root `.env`):
 - `pnpm --filter @vefacaglar/db db:push` — push schema directly (fast prototyping).
 - `pnpm --filter @vefacaglar/db db:generate` — generate SQL migrations into `packages/db/drizzle/`.

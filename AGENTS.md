@@ -63,6 +63,10 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
 - **Routes**: Define routing in a parent module file (e.g., `src/modules/<module>/<module>.routes.ts`). Route controllers must remain thin—only validating requests, invoking the handler, and mapping responses/errors.
 - **Swagger Documentation**: Always register schemas in route options to support automated, typed OpenAPI documentation at `/swagger`.
 
+## Database Migrations
+
+Never hand-write migration SQL files. Always edit the Drizzle schema in `packages/db/src/schema/` and generate the migration with `pnpm --filter @vefacaglar/db db:generate`. Editing a generated file is only allowed to insert a data/backfill step (e.g. `UPDATE` between `ADD COLUMN` and `SET NOT NULL`) — never to rewrite the DDL Drizzle produced.
+
 ## Language
 
 All visible UI text in `apps/web` must be in **English**.
