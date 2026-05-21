@@ -36,16 +36,12 @@ export default function ProgressBar() {
   }, [pathname, searchParams]);
 
   useEffect(() => {
-    console.log("[ProgressBar] mounted, listener attached");
     const handleClick = (event: MouseEvent) => {
-      console.log("[ProgressBar] click", event.target);
-      if (event.defaultPrevented) { console.log("[ProgressBar] skip: defaultPrevented"); return; }
-      if (event.button !== 0) { console.log("[ProgressBar] skip: button", event.button); return; }
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) { console.log("[ProgressBar] skip: modifier"); return; }
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
       const anchor = (event.target as HTMLElement | null)?.closest("a");
-      if (!anchor) { console.log("[ProgressBar] skip: no anchor"); return; }
-      console.log("[ProgressBar] anchor", anchor.getAttribute("href"));
+      if (!anchor) return;
 
       const href = anchor.getAttribute("href");
       if (!href) return;
@@ -67,14 +63,12 @@ export default function ProgressBar() {
         return;
       }
 
-      console.log("[ProgressBar] starting NProgress");
       startedAtRef.current = Date.now();
       NProgress.start();
-      console.log("[ProgressBar] #nprogress in DOM?", document.getElementById("nprogress"));
     };
 
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
   }, []);
 
   return null;
