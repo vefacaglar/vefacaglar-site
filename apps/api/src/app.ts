@@ -26,7 +26,6 @@ app.register(fastifySwagger, {
         bearerAuth: {
           type: "http",
           scheme: "bearer",
-          bearerFormat: "JWT",
         },
       },
     },

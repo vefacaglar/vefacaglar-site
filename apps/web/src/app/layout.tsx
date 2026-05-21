@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TopBar } from "../components/TopBar";
 import "./globals.css";
 import styles from "./layout.module.css";
 
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <TopBar />
         <main className={styles.main}>
           {children}
         </main>
