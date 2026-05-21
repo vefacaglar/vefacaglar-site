@@ -1,14 +1,18 @@
 import { FastifyRequest } from "fastify";
-import { db, posts, users } from "@vefacaglar/db";
-import { eq } from "drizzle-orm";
 import { UpdatePostParams, UpdatePostRequest, UpdatePostResponse } from "./update.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PostsRepository } from "../posts.repository";
 
 export class UpdatePostHandler {
+  constructor(
+    private readonly postsRepo: PostsRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(
     request: FastifyRequest<{ Params: UpdatePostParams; Body: UpdatePostRequest }>
   ): Promise<UpdatePostResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     if (user.role !== "admin") {
       throw new Error("Unauthorized");
@@ -17,11 +21,7 @@ export class UpdatePostHandler {
     const { id } = request.params;
     const { title, slug, excerpt, content, status, coverImageUrl, seoTitle, seoDescription } = request.body;
 
-    const [existingPost] = await db
-      .select()
-      .from(posts)
-      .where(eq(posts.id, id))
-      .limit(1);
+    const existingPost = await this.postsRepo.findById(id);
 
     if (!existingPost) {
       throw new Error("PostNotFound");
@@ -34,22 +34,18 @@ export class UpdatePostHandler {
       publishedAt = null;
     }
 
-    const [updatedPost] = await db
-      .update(posts)
-      .set({
-        title,
-        slug,
-        excerpt: excerpt || null,
-        content,
-        status,
-        coverImageUrl: coverImageUrl || null,
-        seoTitle: seoTitle || null,
-        seoDescription: seoDescription || null,
-        publishedAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(posts.id, id))
-      .returning();
+    const updatedPost = await this.postsRepo.update(id, {
+      title,
+      slug,
+      excerpt: excerpt || null,
+      content,
+      status,
+      coverImageUrl: coverImageUrl || null,
+      seoTitle: seoTitle || null,
+      seoDescription: seoDescription || null,
+      publishedAt,
+      updatedAt: new Date(),
+    });
 
     return {
       id: updatedPost.id,

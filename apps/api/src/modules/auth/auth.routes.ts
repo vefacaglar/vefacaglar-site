@@ -15,12 +15,19 @@ import {
   ChangePasswordResponseSchema,
 } from "./profile/profile.schema";
 import { ProfileHandler } from "./profile/profile.handler";
+import { UsersRepository } from "./users.repository";
+import { SessionsRepository } from "./sessions.repository";
+import { AuthService } from "./auth.service";
 
 export async function authRoutes(app: FastifyInstance) {
-  const loginHandler = new LoginHandler();
-  const meHandler = new MeHandler();
-  const logoutHandler = new LogoutHandler();
-  const profileHandler = new ProfileHandler();
+  const usersRepo = new UsersRepository();
+  const sessionsRepo = new SessionsRepository();
+  const auth = new AuthService(usersRepo, sessionsRepo);
+
+  const loginHandler = new LoginHandler(usersRepo, sessionsRepo);
+  const meHandler = new MeHandler(auth);
+  const logoutHandler = new LogoutHandler(sessionsRepo, auth);
+  const profileHandler = new ProfileHandler(usersRepo, auth);
 
   // POST /login
   app.post<{ Body: LoginRequest }>(

@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm --filter @vefacaglar/db db:generate)"
+      "Bash(pnpm --filter @vefacaglar/db db:generate)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm view *)",
+      "Bash(pnpm install *)",
+      "Bash(timeout 10 pnpm --filter api dev)"
     ]
   }
 }

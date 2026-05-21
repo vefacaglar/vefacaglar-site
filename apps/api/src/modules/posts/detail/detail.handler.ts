@@ -1,34 +1,18 @@
 import { FastifyRequest } from "fastify";
-import { db, posts, users } from "@vefacaglar/db";
-import { eq, sql } from "drizzle-orm";
 import { GetPostParams, GetPostResponse } from "./detail.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PostsRepository } from "../posts.repository";
 
 export class GetPostHandler {
+  constructor(
+    private readonly postsRepo: PostsRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Params: GetPostParams }>): Promise<GetPostResponse> {
     const { slug } = request.params;
 
-    const [post] = await db
-      .select({
-        id: posts.id,
-        slug: posts.slug,
-        title: posts.title,
-        excerpt: posts.excerpt,
-        content: posts.content,
-        status: posts.status,
-        coverImageUrl: posts.coverImageUrl,
-        seoTitle: posts.seoTitle,
-        seoDescription: posts.seoDescription,
-        publishedAt: posts.publishedAt,
-        createdAt: posts.createdAt,
-        updatedAt: posts.updatedAt,
-        authorUsername: users.username,
-        authorDisplayName: users.displayName,
-      })
-      .from(posts)
-      .leftJoin(users, sql`${posts.authorId} = ${users.id}`)
-      .where(eq(posts.slug, slug))
-      .limit(1);
+    const post = await this.postsRepo.findBySlugWithAuthor(slug);
 
     if (!post) {
       throw new Error("PostNotFound");
@@ -37,7 +21,7 @@ export class GetPostHandler {
     if (post.status === "draft") {
       let isAdmin = false;
       try {
-        const { user } = await authenticateRequest(request);
+        const { user } = await this.auth.authenticate(request);
         if (user.role === "admin") {
           isAdmin = true;
         }

@@ -1,12 +1,16 @@
 import { FastifyRequest } from "fastify";
-import { db, pages } from "@vefacaglar/db";
-import { eq } from "drizzle-orm";
 import { DeletePageParams, DeletePageResponse } from "./delete.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PagesRepository } from "../pages.repository";
 
 export class DeletePageHandler {
+  constructor(
+    private readonly pagesRepo: PagesRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Params: DeletePageParams }>): Promise<DeletePageResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     if (user.role !== "admin") {
       throw new Error("Unauthorized");
@@ -14,17 +18,13 @@ export class DeletePageHandler {
 
     const { id } = request.params;
 
-    const [existingPage] = await db
-      .select()
-      .from(pages)
-      .where(eq(pages.id, id))
-      .limit(1);
+    const existingPage = await this.pagesRepo.findById(id);
 
     if (!existingPage) {
       throw new Error("PageNotFound");
     }
 
-    await db.delete(pages).where(eq(pages.id, id));
+    await this.pagesRepo.delete(id);
 
     return {
       success: true,

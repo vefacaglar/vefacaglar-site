@@ -1,14 +1,18 @@
 import { FastifyRequest } from "fastify";
-import { db, pages } from "@vefacaglar/db";
-import { eq } from "drizzle-orm";
 import { UpdatePageParams, UpdatePageRequest, UpdatePageResponse } from "./update.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PagesRepository } from "../pages.repository";
 
 export class UpdatePageHandler {
+  constructor(
+    private readonly pagesRepo: PagesRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(
     request: FastifyRequest<{ Params: UpdatePageParams; Body: UpdatePageRequest }>
   ): Promise<UpdatePageResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     if (user.role !== "admin") {
       throw new Error("Unauthorized");
@@ -17,11 +21,7 @@ export class UpdatePageHandler {
     const { id } = request.params;
     const { title, slug, content, status, seoTitle, seoDescription } = request.body;
 
-    const [existingPage] = await db
-      .select()
-      .from(pages)
-      .where(eq(pages.id, id))
-      .limit(1);
+    const existingPage = await this.pagesRepo.findById(id);
 
     if (!existingPage) {
       throw new Error("PageNotFound");
@@ -34,20 +34,16 @@ export class UpdatePageHandler {
       publishedAt = null;
     }
 
-    const [updatedPage] = await db
-      .update(pages)
-      .set({
-        title,
-        slug,
-        content,
-        status,
-        seoTitle: seoTitle || null,
-        seoDescription: seoDescription || null,
-        publishedAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(pages.id, id))
-      .returning();
+    const updatedPage = await this.pagesRepo.update(id, {
+      title,
+      slug,
+      content,
+      status,
+      seoTitle: seoTitle || null,
+      seoDescription: seoDescription || null,
+      publishedAt,
+      updatedAt: new Date(),
+    });
 
     return {
       id: updatedPage.id,

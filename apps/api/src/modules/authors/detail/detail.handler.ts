@@ -1,38 +1,24 @@
 import { FastifyRequest } from "fastify";
-import { db, posts, users } from "@vefacaglar/db";
-import { eq, and, sql } from "drizzle-orm";
 import { GetAuthorParams, GetAuthorResponse } from "./detail.schema";
+import { UsersRepository } from "../../auth/users.repository";
+import { PostsRepository } from "../../posts/posts.repository";
 
 export class GetAuthorHandler {
+  constructor(
+    private readonly usersRepo: UsersRepository,
+    private readonly postsRepo: PostsRepository
+  ) {}
+
   async handle(request: FastifyRequest<{ Params: GetAuthorParams }>): Promise<GetAuthorResponse> {
     const { username } = request.params;
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1);
+    const user = await this.usersRepo.findByUsername(username);
 
     if (!user) {
       throw new Error("AuthorNotFound");
     }
 
-    const authorPosts = await db
-      .select({
-        id: posts.id,
-        slug: posts.slug,
-        title: posts.title,
-        excerpt: posts.excerpt,
-        publishedAt: posts.publishedAt,
-      })
-      .from(posts)
-      .where(
-        and(
-          sql`${posts.authorId} = ${user.id}`,
-          eq(posts.status, "published")
-        )
-      )
-      .orderBy(posts.publishedAt, posts.createdAt);
+    const authorPosts = await this.postsRepo.listPublishedByAuthorId(user.id);
 
     return {
       username: user.username,

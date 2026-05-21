@@ -1,12 +1,16 @@
 import { FastifyRequest } from "fastify";
-import { db, posts } from "@vefacaglar/db";
-import { eq } from "drizzle-orm";
 import { DeletePostParams, DeletePostResponse } from "./delete.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PostsRepository } from "../posts.repository";
 
 export class DeletePostHandler {
+  constructor(
+    private readonly postsRepo: PostsRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Params: DeletePostParams }>): Promise<DeletePostResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     if (user.role !== "admin") {
       throw new Error("Unauthorized");
@@ -14,17 +18,13 @@ export class DeletePostHandler {
 
     const { id } = request.params;
 
-    const [existingPost] = await db
-      .select()
-      .from(posts)
-      .where(eq(posts.id, id))
-      .limit(1);
+    const existingPost = await this.postsRepo.findById(id);
 
     if (!existingPost) {
       throw new Error("PostNotFound");
     }
 
-    await db.delete(posts).where(eq(posts.id, id));
+    await this.postsRepo.delete(id);
 
     return {
       success: true,

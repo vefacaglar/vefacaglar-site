@@ -1,15 +1,19 @@
 import { FastifyRequest } from "fastify";
-import { db, pages } from "@vefacaglar/db";
-import { eq, and, desc } from "drizzle-orm";
 import { ListPagesQuery, ListPagesResponse } from "./list.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PagesRepository } from "../pages.repository";
 
 export class ListPagesHandler {
+  constructor(
+    private readonly pagesRepo: PagesRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Querystring: ListPagesQuery }>): Promise<ListPagesResponse> {
     let isAdmin = false;
 
     try {
-      const { user } = await authenticateRequest(request);
+      const { user } = await this.auth.authenticate(request);
       if (user.role === "admin") {
         isAdmin = true;
       }
@@ -19,22 +23,13 @@ export class ListPagesHandler {
 
     const { status } = request.query;
 
-    let conditions = [];
+    const filter = !isAdmin
+      ? { status: "published" as const }
+      : status
+      ? { status }
+      : undefined;
 
-    if (!isAdmin) {
-      conditions.push(eq(pages.status, "published"));
-    } else if (status) {
-      conditions.push(eq(pages.status, status));
-    }
-
-    const query = db
-      .select()
-      .from(pages)
-      .orderBy(desc(pages.publishedAt), desc(pages.createdAt));
-
-    const result = conditions.length > 0
-      ? await query.where(and(...conditions))
-      : await query;
+    const result = await this.pagesRepo.list(filter);
 
     return result.map((page) => ({
       id: page.id,

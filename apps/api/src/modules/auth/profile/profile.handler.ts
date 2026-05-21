@@ -1,7 +1,7 @@
 import { FastifyRequest } from "fastify";
-import { db, users, sessions } from "@vefacaglar/db";
-import { eq, and, ne, isNull } from "drizzle-orm";
-import { authenticateRequest, verifyPassword, hashPassword } from "../auth.utils";
+import { hashPassword, verifyPassword } from "../auth.utils";
+import { AuthService } from "../auth.service";
+import { UsersRepository } from "../users.repository";
 import {
   GetProfileResponse,
   UpdateProfileRequest,
@@ -11,8 +11,13 @@ import {
 } from "./profile.schema";
 
 export class ProfileHandler {
+  constructor(
+    private readonly usersRepo: UsersRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async getProfile(request: FastifyRequest): Promise<GetProfileResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     return {
       user: {
@@ -29,42 +34,13 @@ export class ProfileHandler {
     request: FastifyRequest,
     body: UpdateProfileRequest
   ): Promise<UpdateProfileResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     try {
-      const updated = await db.transaction(async (tx) => {
-        const emailExists = await tx
-          .select({ id: users.id })
-          .from(users)
-          .where(and(eq(users.email, body.email), ne(users.id, user.id)))
-          .limit(1);
-
-        if (emailExists.length > 0) {
-          throw new Error("EmailAlreadyExists");
-        }
-
-        const usernameExists = await tx
-          .select({ id: users.id })
-          .from(users)
-          .where(and(eq(users.username, body.username), ne(users.id, user.id)))
-          .limit(1);
-
-        if (usernameExists.length > 0) {
-          throw new Error("UsernameAlreadyExists");
-        }
-
-        const [row] = await tx
-          .update(users)
-          .set({
-            email: body.email,
-            username: body.username,
-            displayName: body.displayName,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, user.id))
-          .returning();
-
-        return row;
+      const updated = await this.usersRepo.updateProfile(user.id, {
+        email: body.email,
+        username: body.username,
+        displayName: body.displayName,
       });
 
       return {
@@ -94,7 +70,7 @@ export class ProfileHandler {
     request: FastifyRequest,
     body: ChangePasswordRequest
   ): Promise<ChangePasswordResponse> {
-    const { user, session } = await authenticateRequest(request);
+    const { user, session } = await this.auth.authenticate(request);
 
     const isValid = verifyPassword(body.currentPassword, user.passwordHash);
     if (!isValid) {
@@ -102,28 +78,12 @@ export class ProfileHandler {
     }
 
     const newPasswordHash = hashPassword(body.newPassword);
-    const now = new Date();
 
-    await db.transaction(async (tx) => {
-      await tx
-        .update(users)
-        .set({
-          passwordHash: newPasswordHash,
-          updatedAt: now,
-        })
-        .where(eq(users.id, user.id));
-
-      await tx
-        .update(sessions)
-        .set({ revokedAt: now })
-        .where(
-          and(
-            eq(sessions.userId, user.id),
-            ne(sessions.id, session.id),
-            isNull(sessions.revokedAt)
-          )
-        );
-    });
+    await this.usersRepo.changePasswordAndRevokeOtherSessions(
+      user.id,
+      session.id,
+      newPasswordHash
+    );
 
     return { message: "Password updated successfully." };
   }

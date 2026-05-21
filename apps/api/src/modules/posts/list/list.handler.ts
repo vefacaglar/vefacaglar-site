@@ -1,15 +1,19 @@
 import { FastifyRequest } from "fastify";
-import { db, posts, users } from "@vefacaglar/db";
-import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 import { ListPostsQuery, ListPostsResponse } from "./list.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PostsRepository } from "../posts.repository";
 
 export class ListPostsHandler {
+  constructor(
+    private readonly postsRepo: PostsRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Querystring: ListPostsQuery }>): Promise<ListPostsResponse> {
     let isAdmin = false;
 
     try {
-      const { user } = await authenticateRequest(request);
+      const { user } = await this.auth.authenticate(request);
       if (user.role === "admin") {
         isAdmin = true;
       }
@@ -19,39 +23,15 @@ export class ListPostsHandler {
 
     const { status } = request.query;
 
-    let conditions = [];
+    const filter = !isAdmin
+      ? { status: "published" as const }
+      : status
+      ? { status }
+      : undefined;
 
-    if (!isAdmin) {
-      // Non-admins can only see published posts
-      conditions.push(eq(posts.status, "published"));
-    } else if (status) {
-      // Admins can filter by draft or published if query param is passed
-      conditions.push(eq(posts.status, status));
-    }
+    const rows = await this.postsRepo.listWithAuthor(filter);
 
-    const result = await db
-      .select({
-        id: posts.id,
-        slug: posts.slug,
-        title: posts.title,
-        excerpt: posts.excerpt,
-        content: posts.content,
-        status: posts.status,
-        coverImageUrl: posts.coverImageUrl,
-        seoTitle: posts.seoTitle,
-        seoDescription: posts.seoDescription,
-        publishedAt: posts.publishedAt,
-        createdAt: posts.createdAt,
-        updatedAt: posts.updatedAt,
-        authorUsername: users.username,
-        authorDisplayName: users.displayName,
-      })
-      .from(posts)
-      .leftJoin(users, sql`${posts.authorId} = ${users.id}`)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(posts.publishedAt), desc(posts.createdAt));
-
-    return result.map((row) => ({
+    return rows.map((row) => ({
       id: row.id,
       slug: row.slug,
       title: row.title,

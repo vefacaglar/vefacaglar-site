@@ -1,10 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { MeResponse } from "./me.schema";
-import { authenticateRequest } from "../auth.utils";
+import { AuthService } from "../auth.service";
 
 export class MeHandler {
+  constructor(private readonly auth: AuthService) {}
+
   async handle(request: FastifyRequest): Promise<MeResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     return {
       user: {

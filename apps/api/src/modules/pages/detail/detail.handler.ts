@@ -1,18 +1,18 @@
 import { FastifyRequest } from "fastify";
-import { db, pages } from "@vefacaglar/db";
-import { eq } from "drizzle-orm";
 import { GetPageParams, GetPageResponse } from "./detail.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PagesRepository } from "../pages.repository";
 
 export class GetPageHandler {
+  constructor(
+    private readonly pagesRepo: PagesRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Params: GetPageParams }>): Promise<GetPageResponse> {
     const { slug } = request.params;
 
-    const [page] = await db
-      .select()
-      .from(pages)
-      .where(eq(pages.slug, slug))
-      .limit(1);
+    const page = await this.pagesRepo.findBySlug(slug);
 
     if (!page) {
       throw new Error("PageNotFound");
@@ -21,7 +21,7 @@ export class GetPageHandler {
     if (page.status === "draft") {
       let isAdmin = false;
       try {
-        const { user } = await authenticateRequest(request);
+        const { user } = await this.auth.authenticate(request);
         if (user.role === "admin") {
           isAdmin = true;
         }

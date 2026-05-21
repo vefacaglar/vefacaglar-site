@@ -1,11 +1,16 @@
 import { FastifyRequest } from "fastify";
-import { db, pages } from "@vefacaglar/db";
 import { CreatePageRequest, PageResponse } from "./create.schema";
-import { authenticateRequest } from "../../auth/auth.utils";
+import { AuthService } from "../../auth/auth.service";
+import { PagesRepository } from "../pages.repository";
 
 export class CreatePageHandler {
+  constructor(
+    private readonly pagesRepo: PagesRepository,
+    private readonly auth: AuthService
+  ) {}
+
   async handle(request: FastifyRequest<{ Body: CreatePageRequest }>): Promise<PageResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user } = await this.auth.authenticate(request);
 
     if (user.role !== "admin") {
       throw new Error("Unauthorized");
@@ -15,18 +20,15 @@ export class CreatePageHandler {
 
     const publishedAt = status === "published" ? new Date() : null;
 
-    const [newPage] = await db
-      .insert(pages)
-      .values({
-        title,
-        slug,
-        content,
-        status,
-        seoTitle: seoTitle || null,
-        seoDescription: seoDescription || null,
-        publishedAt,
-      })
-      .returning();
+    const newPage = await this.pagesRepo.create({
+      title,
+      slug,
+      content,
+      status,
+      seoTitle: seoTitle || null,
+      seoDescription: seoDescription || null,
+      publishedAt,
+    });
 
     return {
       id: newPage.id,
