@@ -26,6 +26,12 @@ export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: LoginRequest }>(
     "/login",
     {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "15 minutes",
+        },
+      },
       schema: {
         description: "User login to retrieve a session token",
         tags: ["Auth"],
@@ -188,6 +194,12 @@ export async function authRoutes(app: FastifyInstance) {
   app.put<{ Body: ChangePasswordRequest }>(
     "/profile/password",
     {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "15 minutes",
+        },
+      },
       schema: {
         description: "Change current user's password",
         tags: ["Auth"],

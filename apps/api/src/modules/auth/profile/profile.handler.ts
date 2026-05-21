@@ -1,6 +1,6 @@
 import { FastifyRequest } from "fastify";
-import { db, users } from "@vefacaglar/db";
-import { eq, and, ne } from "drizzle-orm";
+import { db, users, sessions } from "@vefacaglar/db";
+import { eq, and, ne, isNull } from "drizzle-orm";
 import { authenticateRequest, verifyPassword, hashPassword } from "../auth.utils";
 import {
   GetProfileResponse,
@@ -94,7 +94,7 @@ export class ProfileHandler {
     request: FastifyRequest,
     body: ChangePasswordRequest
   ): Promise<ChangePasswordResponse> {
-    const { user } = await authenticateRequest(request);
+    const { user, session } = await authenticateRequest(request);
 
     const isValid = verifyPassword(body.currentPassword, user.passwordHash);
     if (!isValid) {
@@ -102,14 +102,28 @@ export class ProfileHandler {
     }
 
     const newPasswordHash = hashPassword(body.newPassword);
+    const now = new Date();
 
-    await db
-      .update(users)
-      .set({
-        passwordHash: newPasswordHash,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, user.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({
+          passwordHash: newPasswordHash,
+          updatedAt: now,
+        })
+        .where(eq(users.id, user.id));
+
+      await tx
+        .update(sessions)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(sessions.userId, user.id),
+            ne(sessions.id, session.id),
+            isNull(sessions.revokedAt)
+          )
+        );
+    });
 
     return { message: "Password updated successfully." };
   }
