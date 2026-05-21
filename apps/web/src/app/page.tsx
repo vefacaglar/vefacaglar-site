@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import MarkdownPreview from "./components/MarkdownPreview";
+import styles from "./home.module.css";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -73,29 +74,29 @@ export default async function Home() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "32px" }}>{page?.title || "Vefa Çağlar"}</h1>
+      <h1 className={styles.title}>{page?.title || "Vefa Çağlar"}</h1>
       
       {page?.content && (
-        <div style={{ marginBottom: "32px" }}>
+        <div className={styles.content}>
           <MarkdownPreview content={page.content} />
         </div>
       )}
 
-      <h2 style={{ margin: "48px 0 16px 0" }}>Writings</h2>
+      <h2 className={styles.writingsHeading}>Writings</h2>
       {latestPosts.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>No posts published yet.</p>
+        <p className={styles.empty}>No posts published yet.</p>
       ) : (
-        <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+        <ul className={styles.list}>
           {latestPosts.map((post) => (
-            <li key={post.id} style={{ marginBottom: "16px", paddingLeft: "20px", position: "relative" }}>
-              <span style={{ position: "absolute", left: 0, color: "var(--muted)" }}>—</span>
+            <li key={post.id} className={styles.listItem}>
+              <span className={styles.dash}>—</span>
               <Link href={`/blog/${post.slug}`}>{post.title}</Link>
             </li>
           ))}
         </ul>
       )}
       
-      <div style={{ marginTop: "48px" }}>
+      <div className={styles.viewAll}>
         <Link href="/blog">View all writings</Link>
       </div>
     </div>

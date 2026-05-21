@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { loginAction } from "../actions";
+import styles from "./login.module.css";
+import formStyles from "../components/form.module.css";
 
 export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
@@ -23,56 +25,40 @@ export default function AdminLogin() {
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "100px auto 0 auto" }}>
-      <div style={{ marginBottom: "48px" }}>
-        <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>← back to home</Link>
+    <div className={styles.wrapper}>
+      <div className={styles.back}>
+        <Link href="/" className="backLink">← back to home</Link>
       </div>
 
-      <h1 style={{ marginBottom: "32px", fontSize: "20px" }}>Admin Login</h1>
+      <h1 className={styles.title}>Admin Login</h1>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label htmlFor="email" style={{ fontSize: "14px", color: "var(--muted)" }}>Email</label>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <div className="field">
+          <label htmlFor="email" className="label">Email</label>
           <input
             id="email"
             name="email"
             type="email"
             required
             placeholder="admin@vefacaglar.com"
-            style={{
-              padding: "10px",
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              fontFamily: "inherit",
-              borderRadius: "4px",
-              outline: "none",
-            }}
+            className="input"
           />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label htmlFor="password" style={{ fontSize: "14px", color: "var(--muted)" }}>Password</label>
+        <div className="field">
+          <label htmlFor="password" className="label">Password</label>
           <input
             id="password"
             name="password"
             type="password"
             required
             placeholder="••••••"
-            style={{
-              padding: "10px",
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              fontFamily: "inherit",
-              borderRadius: "4px",
-              outline: "none",
-            }}
+            className="input"
           />
         </div>
 
         {error && (
-          <div style={{ color: "var(--accent)", fontSize: "14px" }}>
+          <div className={styles.error}>
             {error}
           </div>
         )}
@@ -80,18 +66,7 @@ export default function AdminLogin() {
         <button
           type="submit"
           disabled={loading}
-          style={{
-            padding: "12px",
-            background: "var(--text-heading)",
-            color: "var(--bg)",
-            border: "none",
-            fontFamily: "inherit",
-            fontWeight: "bold",
-            borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1,
-            transition: "opacity 0.2s",
-          }}
+          className={formStyles.submitSm}
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPageAction, updatePageAction } from "../actions";
 import MarkdownPreview from "../../components/MarkdownPreview";
+import styles from "./form.module.css";
 
 interface PageFormProps {
   initialData?: {
@@ -83,92 +84,59 @@ export default function PageForm({ initialData }: PageFormProps) {
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <Link href="/admin" style={{ color: "var(--muted)", textDecoration: "none" }}>← back to admin panel</Link>
+    <div className={styles.wrapper}>
+      <div className={styles.back}>
+        <Link href="/admin" className="backLink">← back to admin panel</Link>
       </div>
 
-      <h1 style={{ marginBottom: "32px" }}>
+      <h1>
         {initialData ? "Edit Page" : "Add New Page"}
       </h1>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <form onSubmit={handleSubmit} className={styles.form}>
         {error && (
-          <div style={{ color: "var(--accent)", padding: "12px", border: "1px solid var(--accent)", borderRadius: "4px" }}>
+          <div className="errorMsg">
             {error}
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ fontSize: "14px", color: "var(--muted)" }}>Başlık</label>
+        <div className="field">
+          <label className="label">Başlık</label>
           <input
             type="text"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            style={{
-              padding: "10px",
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              fontFamily: "inherit",
-              borderRadius: "4px",
-              outline: "none",
-            }}
+            className="input"
           />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ fontSize: "14px", color: "var(--muted)" }}>Slug (URL Yolu)</label>
+        <div className="field">
+          <label className="label">Slug (URL Yolu)</label>
           <input
             type="text"
             required
             value={slug}
             onChange={(e) => setSlug(slugify(e.target.value))}
-            style={{
-              padding: "10px",
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              fontFamily: "inherit",
-              borderRadius: "4px",
-              outline: "none",
-            }}
+            className="input"
           />
         </div>
 
-        {/* Markdown Content Tabs */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: "14px", color: "var(--muted)" }}>Content (Markdown / MDX)</label>
-            <div style={{ display: "flex", gap: "12px" }}>
+        <div className="field">
+          <div className={styles.tabBar}>
+            <label className="label">Content (Markdown / MDX)</label>
+            <div className={styles.tabs}>
               <button
                 type="button"
                 onClick={() => setActiveTab("edit")}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontFamily: "inherit",
-                  color: activeTab === "edit" ? "var(--text-heading)" : "var(--muted)",
-                  fontWeight: activeTab === "edit" ? "bold" : "normal",
-                  textDecoration: activeTab === "edit" ? "underline" : "none",
-                  cursor: "pointer",
-                }}
+                className={activeTab === "edit" ? styles.tabActive : styles.tabInactive}
               >
                 Write
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("preview")}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontFamily: "inherit",
-                  color: activeTab === "preview" ? "var(--text-heading)" : "var(--muted)",
-                  fontWeight: activeTab === "preview" ? "bold" : "normal",
-                  textDecoration: activeTab === "preview" ? "underline" : "none",
-                  cursor: "pointer",
-                }}
+                className={activeTab === "preview" ? styles.tabActive : styles.tabInactive}
               >
                 Preview
               </button>
@@ -182,95 +150,46 @@ export default function PageForm({ initialData }: PageFormProps) {
               onChange={(e) => setContent(e.target.value)}
               rows={15}
               placeholder="# Page Title&#10;&#10;Write page content in MDX/Markdown format..."
-              style={{
-                padding: "10px",
-                background: "transparent",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-                fontFamily: "inherit",
-                borderRadius: "4px",
-                outline: "none",
-                resize: "vertical",
-                lineHeight: "1.5",
-              }}
+              className={styles.textareaLarge}
             />
           ) : (
-            <div
-              style={{
-                minHeight: "330px",
-                padding: "12px",
-                border: "1px solid var(--border)",
-                borderRadius: "4px",
-                whiteSpace: "pre-wrap",
-                fontFamily: "inherit",
-                fontSize: "14px",
-                background: "var(--bg)",
-                overflowY: "auto",
-              }}
-            >
+            <div className={styles.preview}>
               <MarkdownPreview content={content} />
             </div>
           )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ fontSize: "14px", color: "var(--muted)" }}>Yayın Durumu</label>
+        <div className="field">
+          <label className="label">Yayın Durumu</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as "draft" | "published")}
-            style={{
-              padding: "10px",
-              background: "var(--bg)",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              fontFamily: "inherit",
-              borderRadius: "4px",
-              outline: "none",
-              cursor: "pointer",
-            }}
+            className={styles.select}
           >
             <option value="draft">Taslak (Draft)</option>
             <option value="published">Yayında (Published)</option>
           </select>
         </div>
 
-        {/* SEO Collapsible Section */}
-        <details style={{ border: "1px solid var(--border)", borderRadius: "4px", padding: "12px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "14px", color: "var(--muted)" }}>SEO Ayarları (Opsiyonel)</summary>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <label style={{ fontSize: "12px", color: "var(--muted)" }}>SEO Başlığı</label>
+        <details className={styles.seoDetails}>
+          <summary className={styles.seoSummary}>SEO Ayarları (Opsiyonel)</summary>
+          <div className={styles.seoFields}>
+            <div className="field">
+              <label className={styles.seoLabel}>SEO Başlığı</label>
               <input
                 type="text"
                 value={seoTitle}
                 onChange={(e) => setSeoTitle(e.target.value)}
-                style={{
-                  padding: "8px",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
-                  fontFamily: "inherit",
-                  borderRadius: "4px",
-                  outline: "none",
-                }}
+                className={styles.seoInput}
               />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <label style={{ fontSize: "12px", color: "var(--muted)" }}>SEO Açıklaması</label>
+            <div className="field">
+              <label className={styles.seoLabel}>SEO Açıklaması</label>
               <textarea
                 value={seoDescription}
                 onChange={(e) => setSeoDescription(e.target.value)}
                 rows={2}
-                style={{
-                  padding: "8px",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
-                  fontFamily: "inherit",
-                  borderRadius: "4px",
-                  outline: "none",
-                  resize: "vertical",
-                }}
+                className={styles.seoInput}
               />
             </div>
           </div>
@@ -279,19 +198,7 @@ export default function PageForm({ initialData }: PageFormProps) {
         <button
           type="submit"
           disabled={loading}
-          style={{
-            padding: "14px",
-            background: "var(--text-heading)",
-            color: "var(--bg)",
-            border: "none",
-            fontFamily: "inherit",
-            fontWeight: "bold",
-            borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1,
-            transition: "opacity 0.2s",
-            marginTop: "16px",
-          }}
+          className={styles.submit}
         >
           {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Page"}
         </button>

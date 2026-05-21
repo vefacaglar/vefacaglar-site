@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { updateProfileAction } from "../actions";
+import formStyles from "./form.module.css";
 
 interface ProfileFormProps {
   initialData: {
@@ -38,61 +39,45 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <form onSubmit={handleSubmit} className={formStyles.form}>
       {error && (
-        <div style={{ color: "var(--accent)", padding: "12px", border: "1px solid var(--accent)", borderRadius: "4px", fontSize: "14px" }}>
+        <div className="errorMsg">
           {error}
         </div>
       )}
 
       {success && (
-        <div style={{ color: "#4CAF50", padding: "12px", border: "1px solid #4CAF50", borderRadius: "4px", fontSize: "14px" }}>
+        <div className="successMsg">
           Profile updated successfully.
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        <label htmlFor="displayName" style={{ fontSize: "14px", color: "var(--muted)" }}>Display Name</label>
+      <div className="field">
+        <label htmlFor="displayName" className="label">Display Name</label>
         <input
           id="displayName"
           type="text"
           required
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          style={{
-            padding: "10px",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            color: "var(--text)",
-            fontFamily: "inherit",
-            borderRadius: "4px",
-            outline: "none",
-          }}
+          className="input"
         />
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        <label htmlFor="email" style={{ fontSize: "14px", color: "var(--muted)" }}>Email</label>
+      <div className="field">
+        <label htmlFor="email" className="label">Email</label>
         <input
           id="email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={{
-            padding: "10px",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            color: "var(--text)",
-            fontFamily: "inherit",
-            borderRadius: "4px",
-            outline: "none",
-          }}
+          className="input"
         />
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        <label htmlFor="username" style={{ fontSize: "14px", color: "var(--muted)" }}>Username</label>
+      <div className="field">
+        <label htmlFor="username" className="label">Username</label>
         <input
           id="username"
           type="text"
@@ -100,33 +85,14 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
           minLength={3}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          style={{
-            padding: "10px",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            color: "var(--text)",
-            fontFamily: "inherit",
-            borderRadius: "4px",
-            outline: "none",
-          }}
+          className="input"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        style={{
-          padding: "12px",
-          background: "var(--text-heading)",
-          color: "var(--bg)",
-          border: "none",
-          fontFamily: "inherit",
-          fontWeight: "bold",
-          borderRadius: "4px",
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.7 : 1,
-          transition: "opacity 0.2s",
-        }}
+        className={formStyles.submitSm}
       >
         {loading ? "Saving..." : "Save Profile"}
       </button>

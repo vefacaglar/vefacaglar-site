@@ -1,0 +1,150 @@
+.wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.back {
+  margin-bottom: 32px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.tabBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tabs {
+  display: flex;
+  gap: 12px;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tabActive {
+  composes: tab;
+  color: var(--text-heading);
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.tabInactive {
+  composes: tab;
+  color: var(--muted);
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.textareaLarge {
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.preview {
+  min-height: 330px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.select {
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.seoDetails {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.seoSummary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.seoFields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.seoLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.seoInput {
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
+}
+
+.submit {
+  padding: 14px;
+  background: var(--text-heading);
+  color: var(--bg);
+  border: none;
+  font-family: inherit;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  margin-top: 16px;
+}
+
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.submitSm {
+  padding: 12px;
+  background: var(--text-heading);
+  color: var(--bg);
+  border: none;
+  font-family: inherit;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.submitSm:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}

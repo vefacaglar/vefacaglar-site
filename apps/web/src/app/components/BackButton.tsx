@@ -1,28 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import styles from "./BackButton.module.css";
 
 interface BackButtonProps {
   label?: string;
-  style?: React.CSSProperties;
 }
 
-export default function BackButton({ label = "← back", style }: BackButtonProps) {
+export default function BackButton({ label = "← back" }: BackButtonProps) {
   const router = useRouter();
 
   return (
     <button
       onClick={() => router.back()}
-      style={{
-        background: "none",
-        border: "none",
-        padding: 0,
-        cursor: "pointer",
-        color: "var(--muted)",
-        textDecoration: "none",
-        fontSize: "inherit",
-        ...style,
-      }}
+      className={styles.backButton}
     >
       {label}
     </button>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import ProfileForm from "../components/ProfileForm";
 import PasswordForm from "../components/PasswordForm";
 import { getProfileAction } from "../actions";
+import styles from "./profile.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -21,20 +22,20 @@ export default async function ProfilePage() {
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <Link href="/admin" style={{ color: "var(--muted)", textDecoration: "none" }}>← back to admin panel</Link>
+    <div className={styles.wrapper}>
+      <div className={styles.back}>
+        <Link href="/admin" className="backLink">← back to admin panel</Link>
       </div>
 
-      <h1 style={{ marginBottom: "48px", fontSize: "20px" }}>Profile</h1>
+      <h1 className={styles.title}>Profile</h1>
 
-      <section style={{ marginBottom: "64px" }}>
-        <h2 style={{ marginBottom: "24px", fontSize: "16px" }}>Profile Information</h2>
+      <section className={styles.profileSection}>
+        <h2 className={styles.sectionTitle}>Profile Information</h2>
         <ProfileForm initialData={profile} />
       </section>
 
       <section>
-        <h2 style={{ marginBottom: "24px", fontSize: "16px" }}>Change Password</h2>
+        <h2 className={styles.sectionTitle}>Change Password</h2>
         <PasswordForm />
       </section>
     </div>

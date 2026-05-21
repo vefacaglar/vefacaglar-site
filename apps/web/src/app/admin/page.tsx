@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logoutAction, deletePostAction, deletePageAction } from "./actions";
 import DeleteButton from "./components/DeleteButton";
+import styles from "./admin.module.css";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -67,37 +68,14 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "48px" }}>
-        <h1 style={{ margin: 0, fontSize: "20px" }}>Admin Panel</h1>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <Link
-            href="/admin/profile"
-            style={{
-              background: "transparent",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              padding: "6px 12px",
-              fontFamily: "inherit",
-              borderRadius: "4px",
-              textDecoration: "none",
-              fontSize: "14px",
-            }}
-          >
+      <div className={styles.header}>
+        <h1 className={styles.title}>Admin Panel</h1>
+        <div className={styles.actions}>
+          <Link href="/admin/profile" className="btnGhost">
             Profile
           </Link>
           <form action={logoutAction}>
-            <button
-              type="submit"
-              style={{
-                background: "transparent",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-                padding: "6px 12px",
-                fontFamily: "inherit",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
+            <button type="submit" className="btnGhost">
               Log Out
             </button>
           </form>
@@ -105,59 +83,41 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Posts Section */}
-      <section style={{ marginBottom: "64px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h2 style={{ margin: 0, fontSize: "16px" }}>Posts (Blog Posts)</h2>
-          <Link
-            href="/admin/posts/new"
-            style={{
-              fontSize: "14px",
-              color: "var(--accent)",
-              textDecoration: "none",
-              border: "1px solid var(--accent)",
-              padding: "4px 8px",
-              borderRadius: "4px",
-            }}
-          >
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Posts (Blog Posts)</h2>
+          <Link href="/admin/posts/new" className="btnAccent">
             + New Post
           </Link>
         </div>
 
         {posts.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>No posts added yet.</p>
+          <p className={styles.empty}>No posts added yet.</p>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          <table className={styles.table}>
              <thead>
-               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Title</th>
-                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Status</th>
-                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal", textAlign: "right" }}>Actions</th>
+               <tr>
+                 <th className={styles.th}>Title</th>
+                 <th className={styles.th}>Status</th>
+                 <th className={styles.thRight}>Actions</th>
                </tr>
              </thead>
              <tbody>
                {posts.map((post) => (
-                <tr key={post.id} style={{ borderBottom: "1px solid var(--border)", fontSize: "14px" }}>
-                  <td style={{ padding: "12px 0" }}>
-                    <Link href={`/blog/${post.slug}`} target="_blank" style={{ textDecoration: "none" }}>
+                <tr key={post.id} className={styles.tr}>
+                  <td className={styles.td}>
+                    <Link href={`/blog/${post.slug}`} target="_blank" className={styles.postLink}>
                       {post.title}
                     </Link>
                   </td>
-                  <td style={{ padding: "12px 0" }}>
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        padding: "2px 6px",
-                        borderRadius: "3px",
-                        background: post.status === "published" ? "rgba(76, 175, 80, 0.15)" : "rgba(255, 193, 7, 0.15)",
-                        color: post.status === "published" ? "#4CAF50" : "#FFC107",
-                      }}
-                    >
+                  <td className={styles.td}>
+                    <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
                       {post.status === "published" ? "Published" : "Draft"}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 0", textAlign: "right" }}>
-                    <div style={{ display: "flex", gap: "16px", justifyContent: "flex-end" }}>
-                      <Link href={`/admin/posts/edit/${post.id}`} style={{ textDecoration: "underline", color: "var(--text)" }}>
+                  <td className={styles.tdRight}>
+                    <div className={styles.rowActions}>
+                      <Link href={`/admin/posts/edit/${post.id}`} className={styles.editLink}>
                         Edit
                       </Link>
                       <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
@@ -172,54 +132,36 @@ export default async function AdminDashboard() {
 
       {/* Pages Section */}
       <section>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h2 style={{ margin: 0, fontSize: "16px" }}>Pages</h2>
-          <Link
-            href="/admin/pages/new"
-            style={{
-              fontSize: "14px",
-              color: "var(--accent)",
-              textDecoration: "none",
-              border: "1px solid var(--accent)",
-              padding: "4px 8px",
-              borderRadius: "4px",
-            }}
-          >
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Pages</h2>
+          <Link href="/admin/pages/new" className="btnAccent">
             + New Page
           </Link>
         </div>
 
         {pages.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>No pages added yet.</p>
+          <p className={styles.empty}>No pages added yet.</p>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+          <table className={styles.table}>
              <thead>
-               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Title</th>
-                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal" }}>Status</th>
-                 <th style={{ padding: "8px 0", fontSize: "14px", color: "var(--muted)", fontWeight: "normal", textAlign: "right" }}>Actions</th>
+               <tr>
+                 <th className={styles.th}>Title</th>
+                 <th className={styles.th}>Status</th>
+                 <th className={styles.thRight}>Actions</th>
                </tr>
              </thead>
              <tbody>
                {pages.map((page) => (
-                <tr key={page.id} style={{ borderBottom: "1px solid var(--border)", fontSize: "14px" }}>
-                  <td style={{ padding: "12px 0" }}>{page.title} (/{page.slug})</td>
-                  <td style={{ padding: "12px 0" }}>
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        padding: "2px 6px",
-                        borderRadius: "3px",
-                        background: page.status === "published" ? "rgba(76, 175, 80, 0.15)" : "rgba(255, 193, 7, 0.15)",
-                        color: page.status === "published" ? "#4CAF50" : "#FFC107",
-                      }}
-                    >
+                <tr key={page.id} className={styles.tr}>
+                  <td className={styles.td}>{page.title} (/{page.slug})</td>
+                  <td className={styles.td}>
+                    <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
                       {page.status === "published" ? "Published" : "Draft"}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 0", textAlign: "right" }}>
-                    <div style={{ display: "flex", gap: "16px", justifyContent: "flex-end" }}>
-                      <Link href={`/admin/pages/edit/${page.id}`} style={{ textDecoration: "underline", color: "var(--text)" }}>
+                  <td className={styles.tdRight}>
+                    <div className={styles.rowActions}>
+                      <Link href={`/admin/pages/edit/${page.id}`} className={styles.editLink}>
                         Edit
                       </Link>
                       <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />

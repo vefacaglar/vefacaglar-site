@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import styles from "./DeleteButton.module.css";
 
 interface DeleteButtonProps {
   id: string;
@@ -28,17 +29,7 @@ export default function DeleteButton({ id, type, title, onDelete }: DeleteButton
     <button
       onClick={handleDelete}
       disabled={loading}
-      style={{
-        background: "transparent",
-        color: "var(--accent)",
-        border: "none",
-        fontFamily: "inherit",
-        textDecoration: "underline",
-        cursor: loading ? "not-allowed" : "pointer",
-        fontSize: "14px",
-        padding: 0,
-        opacity: loading ? 0.6 : 1,
-      }}
+      className={styles.delete}
     >
       {loading ? "Deleting..." : "Delete"}
     </button>

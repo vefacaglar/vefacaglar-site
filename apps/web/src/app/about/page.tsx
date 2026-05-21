@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from "../components/BackButton";
 import MarkdownPreview from "../components/MarkdownPreview";
+import styles from "./about.module.css";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -51,7 +52,7 @@ export default async function About() {
 
   return (
     <div>
-      <div style={{ marginBottom: "48px" }}>
+      <div className={styles.back}>
         <BackButton />
       </div>
       <h1>{page?.title || "About"}</h1>

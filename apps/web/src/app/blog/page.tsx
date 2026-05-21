@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import BackButton from "../components/BackButton";
+import styles from "./blog.module.css";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -40,24 +41,24 @@ export default async function Blog() {
 
   return (
     <div>
-      <div style={{ marginBottom: "48px" }}>
+      <div className={styles.back}>
         <BackButton />
       </div>
       <h1>Blog</h1>
-      <p style={{ color: "var(--muted)", marginBottom: "32px" }}>Writing about technical decisions and game development.</p>
+      <p className={styles.subtitle}>Writing about technical decisions and game development.</p>
 
       {posts.length === 0 ? (
-        <p style={{ color: "var(--muted)", fontStyle: "italic" }}>No posts published yet.</p>
+        <p className={styles.empty}>No posts published yet.</p>
       ) : (
-        <ul style={{ listStyleType: "none", padding: 0, margin: 0 }}>
+        <ul className={styles.list}>
           {posts.map((post) => (
-            <li key={post.id} style={{ marginBottom: "24px", paddingLeft: "20px", position: "relative" }}>
-              <span style={{ position: "absolute", left: 0, color: "var(--muted)" }}>—</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <li key={post.id} className={styles.listItem}>
+              <span className={styles.dash}>—</span>
+              <div className={styles.itemMeta}>
                 <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-                {post.excerpt && <p style={{ fontSize: "14px", margin: "4px 0", color: "var(--text)" }}>{post.excerpt}</p>}
+                {post.excerpt && <p className={styles.excerpt}>{post.excerpt}</p>}
                 {post.publishedAt && (
-                  <span style={{ fontSize: "12px", color: "var(--muted)" }}>
+                  <span className={styles.date}>
                     {formatDate(post.publishedAt)}
                   </span>
                 )}

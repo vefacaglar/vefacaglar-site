@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import styles from "./MarkdownPreview.module.css";
 
 interface MarkdownPreviewProps {
   content: string;
@@ -9,7 +10,7 @@ interface MarkdownPreviewProps {
 
 export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
   if (!content.trim()) {
-    return <span style={{ color: "var(--muted)" }}>No content written yet.</span>;
+    return <span className={styles.empty}>No content written yet.</span>;
   }
 
   const lines = content.split("\n");
@@ -20,7 +21,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
   const flushList = () => {
     if (listItems.length > 0) {
       elements.push(
-        <ul key={`list-${key++}`} style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
+        <ul key={`list-${key++}`} className={styles.list}>
           {listItems.map((item, i) => (
             <li key={i}>{renderInline(item)}</li>
           ))}
@@ -31,15 +32,11 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
   };
 
   const renderInline = (text: string): React.ReactNode => {
-    // Bold: **text**
     let parts = text.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return <strong key={i}>{part.slice(2, -2)}</strong>;
       }
-      // Italic: *text* (but not **)
-      let subParts = part.split(/(?<!\*)\*(?!\*).*?(?<!\*)\*(?!\*)/g);
-      // Actually simpler approach for italic
       return renderLinks(part, i);
     });
   };
@@ -64,7 +61,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: "var(--accent)", textDecoration: "underline" }}
+            className={styles.link}
           >
             {match[1]}
           </a>
@@ -72,7 +69,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
           <Link
             key={`${index}-${keyCounter++}`}
             href={href}
-            style={{ color: "var(--accent)", textDecoration: "underline" }}
+            className={styles.link}
           >
             {match[1]}
           </Link>
@@ -101,106 +98,72 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
       continue;
     }
 
-    // Heading 1
     if (trimmed.startsWith("# ")) {
       flushList();
       elements.push(
-        <h1 key={key++} style={{ margin: "16px 0 8px 0", fontSize: "24px" }}>
+        <h1 key={key++} className={styles.h1}>
           {renderInline(trimmed.slice(2))}
         </h1>
       );
       continue;
     }
 
-    // Heading 2
     if (trimmed.startsWith("## ")) {
       flushList();
       elements.push(
-        <h2 key={key++} style={{ margin: "16px 0 8px 0", fontSize: "20px" }}>
+        <h2 key={key++} className={styles.h2}>
           {renderInline(trimmed.slice(3))}
         </h2>
       );
       continue;
     }
 
-    // Heading 3
     if (trimmed.startsWith("### ")) {
       flushList();
       elements.push(
-        <h3 key={key++} style={{ margin: "12px 0 6px 0", fontSize: "18px" }}>
+        <h3 key={key++} className={styles.h3}>
           {renderInline(trimmed.slice(4))}
         </h3>
       );
       continue;
     }
 
-    // List items
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       listItems.push(trimmed.slice(2));
       continue;
     }
 
-    // Blockquote
     if (trimmed.startsWith("> ")) {
       flushList();
       elements.push(
-        <blockquote
-          key={key++}
-          style={{
-            margin: "0 0 12px 0",
-            paddingLeft: "16px",
-            borderLeft: "3px solid var(--muted)",
-            color: "var(--muted)",
-            fontStyle: "italic",
-          }}
-        >
+        <blockquote key={key++} className={styles.blockquote}>
           {renderInline(trimmed.slice(2))}
         </blockquote>
       );
       continue;
     }
 
-    // Code block
     if (trimmed.startsWith("```")) {
       flushList();
-      const lang = trimmed.slice(3).trim();
-      i++; // skip the ``` line
+      i++;
       const codeLines: string[] = [];
       while (i < lines.length && !lines[i].trim().startsWith("```")) {
         codeLines.push(lines[i]);
         i++;
       }
       elements.push(
-        <pre
-          key={key++}
-          style={{
-            background: "var(--border)",
-            padding: "12px",
-            borderRadius: "4px",
-            overflowX: "auto",
-            fontSize: "13px",
-            margin: "0 0 12px 0",
-          }}
-        >
+        <pre key={key++} className={styles.codeBlock}>
           <code>{codeLines.join("\n")}</code>
         </pre>
       );
       continue;
     }
 
-    // Inline code
     if (trimmed.startsWith("`") && trimmed.endsWith("`") && trimmed.length > 2) {
       flushList();
       elements.push(
-        <p key={key++} style={{ margin: "0 0 8px 0" }}>
-          <code
-            style={{
-              background: "var(--border)",
-              padding: "2px 4px",
-              borderRadius: "3px",
-              fontSize: "13px",
-            }}
-          >
+        <p key={key++} className={styles.paragraph}>
+          <code className={styles.inlineCode}>
             {trimmed.slice(1, -1)}
           </code>
         </p>
@@ -208,10 +171,9 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
       continue;
     }
 
-    // Regular paragraph
     flushList();
     elements.push(
-      <p key={key++} style={{ margin: "0 0 8px 0" }}>
+      <p key={key++} className={styles.paragraph}>
         {renderInline(trimmed)}
       </p>
     );
@@ -219,5 +181,5 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
 
   flushList();
 
-  return <div style={{ opacity: 0.9 }}>{elements}</div>;
+  return <div className={styles.wrapper}>{elements}</div>;
 }

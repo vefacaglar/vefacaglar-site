@@ -1,0 +1,33 @@
+.back {
+  margin-bottom: 48px;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.postTitle {
+  font-size: 24px;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.date {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.cover {
+  margin-bottom: 32px;
+}
+
+.coverImg {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.body {
+  line-height: 1.7;
+  font-size: 15px;
+}

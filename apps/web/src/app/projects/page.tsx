@@ -1,9 +1,10 @@
 import BackButton from '../components/BackButton';
+import styles from './projects.module.css';
 
 export default function Projects() {
   return (
     <div>
-      <div style={{ marginBottom: "48px" }}>
+      <div className={styles.back}>
         <BackButton />
       </div>
       <h1>Projects</h1>

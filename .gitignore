@@ -53,3 +53,4 @@ docker-compose.override.yml
 .cache/
 .temp/
 tmp/
+.commandcode/taste/taste.md

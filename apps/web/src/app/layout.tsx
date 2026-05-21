@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import styles from "./layout.module.css";
 
 export const metadata: Metadata = {
   title: "Vefa Çağlar",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <main style={{ width: "min(var(--max), calc(100% - 48px))", margin: "0 auto", padding: "96px 0" }}>
+        <main className={styles.main}>
           {children}
         </main>
       </body>

@@ -1,0 +1,97 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 48px;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.th {
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: normal;
+  border-bottom: 1px solid var(--border);
+}
+
+.thRight {
+  composes: th;
+  text-align: right;
+}
+
+.tr {
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.td {
+  padding: 12px 0;
+}
+
+.tdRight {
+  composes: td;
+  text-align: right;
+}
+
+.postLink {
+  text-decoration: none;
+}
+
+.editLink {
+  text-decoration: underline;
+  color: var(--text);
+}
+
+.rowActions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.statusPublished {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(76, 175, 80, 0.15);
+  color: #4CAF50;
+}
+
+.statusDraft {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 193, 7, 0.15);
+  color: #FFC107;
+}
+
+.empty {
+  color: var(--muted);
+}

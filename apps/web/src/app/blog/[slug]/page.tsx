@@ -2,6 +2,7 @@ import React from "react";
 import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
+import styles from "./post.module.css";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -65,31 +66,31 @@ export default async function BlogPost({ params }: { params: { slug: string } })
 
   return (
     <article>
-      <div style={{ marginBottom: "48px" }}>
+      <div className={styles.back}>
         <BackButton />
       </div>
 
-      <header style={{ marginBottom: "32px" }}>
-        <h1 style={{ fontSize: "24px", marginBottom: "8px", lineHeight: "1.3" }}>{post.title}</h1>
+      <header className={styles.header}>
+        <h1 className={styles.postTitle}>{post.title}</h1>
         {post.publishedAt && (
-          <div style={{ fontSize: "14px", color: "var(--muted)" }}>
+          <div className={styles.date}>
             {formatDate(post.publishedAt)}
           </div>
         )}
       </header>
 
       {post.coverImageUrl && (
-        <div style={{ marginBottom: "32px" }}>
+        <div className={styles.cover}>
           <img
             src={post.coverImageUrl}
             alt={post.title}
-            style={{ width: "100%", height: "auto", borderRadius: "4px" }}
+            className={styles.coverImg}
           />
         </div>
       )}
 
       {/* Render Markdown Content */}
-      <div style={{ lineHeight: "1.7", fontSize: "15px" }}>
+      <div className={styles.body}>
         <MarkdownPreview content={post.content} />
       </div>
     </article>
