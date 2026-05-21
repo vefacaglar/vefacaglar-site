@@ -1,5 +1,5 @@
 import React from "react";
-import Link from "next/link";
+import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 
@@ -66,7 +66,7 @@ export default async function BlogPost({ params }: { params: { slug: string } })
   return (
     <article>
       <div style={{ marginBottom: "48px" }}>
-        <Link href="/blog" style={{ color: "var(--muted)", textDecoration: "none" }}>← back</Link>
+        <BackButton />
       </div>
 
       <header style={{ marginBottom: "32px" }}>

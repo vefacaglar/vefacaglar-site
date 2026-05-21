@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from "../components/BackButton";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -40,7 +41,7 @@ export default async function Blog() {
   return (
     <div>
       <div style={{ marginBottom: "48px" }}>
-        <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>← back</Link>
+        <BackButton />
       </div>
       <h1>Blog</h1>
       <p style={{ color: "var(--muted)", marginBottom: "32px" }}>Writing about technical decisions and game development.</p>

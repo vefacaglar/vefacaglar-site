@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from "../components/BackButton";
 import MarkdownPreview from "../components/MarkdownPreview";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
@@ -51,7 +52,7 @@ export default async function About() {
   return (
     <div>
       <div style={{ marginBottom: "48px" }}>
-        <Link href="/" style={{ color: "var(--muted)", textDecoration: "none" }}>← Back</Link>
+        <BackButton />
       </div>
       <h1>{page?.title || "About"}</h1>
       {page?.content && (

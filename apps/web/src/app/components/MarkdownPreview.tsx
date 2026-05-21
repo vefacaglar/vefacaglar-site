@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import Link from "next/link";
 
 interface MarkdownPreviewProps {
   content: string;
@@ -52,10 +55,28 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
       if (match.index > lastIndex) {
         parts.push(<span key={`${index}-${keyCounter++}`}>{text.slice(lastIndex, match.index)}</span>);
       }
+      const href = match[2];
+      const isExternal = href.startsWith("http://") || href.startsWith("https://");
       parts.push(
-        <a key={`${index}-${keyCounter++}`} href={match[2]} style={{ color: "var(--accent)", textDecoration: "underline" }}>
-          {match[1]}
-        </a>
+        isExternal ? (
+          <a
+            key={`${index}-${keyCounter++}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--accent)", textDecoration: "underline" }}
+          >
+            {match[1]}
+          </a>
+        ) : (
+          <Link
+            key={`${index}-${keyCounter++}`}
+            href={href}
+            style={{ color: "var(--accent)", textDecoration: "underline" }}
+          >
+            {match[1]}
+          </Link>
+        )
       );
       lastIndex = match.index + match[0].length;
     }
