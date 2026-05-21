@@ -59,10 +59,10 @@ export async function authRoutes(app: FastifyInstance) {
         return result;
       } catch (error: any) {
         if (error.message === "InvalidCredentials") {
-          return reply.status(401).send({ message: "Geçersiz e-posta veya şifre." });
+          return reply.status(401).send({ message: "Invalid email or password." });
         }
         console.error(error);
-        return reply.status(500).send({ message: "Giriş işlemi sırasında bir hata oluştu." });
+        return reply.status(500).send({ message: "An error occurred during login." });
       }
     }
   );
@@ -89,7 +89,7 @@ export async function authRoutes(app: FastifyInstance) {
         const result = await meHandler.handle(request);
         return result;
       } catch (error) {
-        return reply.status(401).send({ message: "Yetkisiz erişim. Lütfen oturum açın." });
+        return reply.status(401).send({ message: "Unauthorized. Please log in." });
       }
     }
   );
@@ -116,7 +116,7 @@ export async function authRoutes(app: FastifyInstance) {
         const result = await logoutHandler.handle(request);
         return result;
       } catch (error) {
-        return reply.status(401).send({ message: "Yetkisiz işlem." });
+        return reply.status(401).send({ message: "Unauthorized." });
       }
     }
   );

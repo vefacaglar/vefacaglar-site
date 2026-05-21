@@ -14,7 +14,7 @@ export class LogoutHandler {
       .where(eq(sessions.id, session.id));
 
     return {
-      message: "Oturum başarıyla kapatıldı.",
+      message: "Logged out successfully.",
     };
   }
 }

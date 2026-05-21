@@ -11,7 +11,7 @@ export async function loginAction(prevState: any, formData: FormData) {
   const password = formData.get("password") as string;
 
   if (!email || !password) {
-    return { error: "Lütfen tüm alanları doldurun." };
+    return { error: "Please fill in all fields." };
   }
 
   try {
@@ -25,7 +25,7 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { error: data.message || "Giriş yapılamadı. Bilgilerinizi kontrol edin." };
+      return { error: data.message || "Login failed. Please check your credentials." };
     }
 
     const data = await res.json();
@@ -41,7 +41,7 @@ export async function loginAction(prevState: any, formData: FormData) {
 
   } catch (error) {
     console.error("Login action error:", error);
-    return { error: "Sunucu bağlantı hatası oluştu." };
+    return { error: "Server connection error." };
   }
 
   redirect("/admin");
@@ -78,7 +78,7 @@ export async function deletePostAction(id: string) {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Yetkisiz işlem." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/posts/${id}`, {
@@ -90,7 +90,7 @@ export async function deletePostAction(id: string) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { error: data.message || "Yazı silinemedi." };
+      return { error: data.message || "Failed to delete post." };
     }
 
     revalidatePath("/admin");
@@ -98,7 +98,7 @@ export async function deletePostAction(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Delete post error:", error);
-    return { error: "Sunucu bağlantı hatası." };
+    return { error: "Server connection error." };
   }
 }
 
@@ -106,7 +106,7 @@ export async function deletePageAction(id: string) {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Yetkisiz işlem." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/pages/${id}`, {
@@ -118,14 +118,14 @@ export async function deletePageAction(id: string) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { error: data.message || "Sayfa silinemedi." };
+      return { error: data.message || "Failed to delete page." };
     }
 
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
     console.error("Delete page error:", error);
-    return { error: "Sunucu bağlantı hatası." };
+    return { error: "Server connection error." };
   }
 }
 
@@ -142,7 +142,7 @@ export async function createPostAction(data: {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Yetkisiz işlem." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/posts`, {
@@ -164,7 +164,7 @@ export async function createPostAction(data: {
     return { success: true };
   } catch (error) {
     console.error("Create post error:", error);
-    return { error: "Sunucu bağlantı hatası." };
+    return { error: "Server connection error." };
   }
 }
 
@@ -184,7 +184,7 @@ export async function updatePostAction(
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Yetkisiz işlem." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/posts/${id}`, {
@@ -198,7 +198,7 @@ export async function updatePostAction(
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Yazı güncellenemedi." };
+      return { error: errData.message || "Failed to update post." };
     }
 
     revalidatePath("/admin");
@@ -207,7 +207,7 @@ export async function updatePostAction(
     return { success: true };
   } catch (error) {
     console.error("Update post error:", error);
-    return { error: "Sunucu bağlantı hatası." };
+    return { error: "Server connection error." };
   }
 }
 
@@ -222,7 +222,7 @@ export async function createPageAction(data: {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Yetkisiz işlem." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/pages`, {
@@ -243,7 +243,7 @@ export async function createPageAction(data: {
     return { success: true };
   } catch (error) {
     console.error("Create page error:", error);
-    return { error: "Sunucu bağlantı hatası." };
+    return { error: "Server connection error." };
   }
 }
 
@@ -261,7 +261,7 @@ export async function updatePageAction(
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Yetkisiz işlem." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/pages/${id}`, {
@@ -275,14 +275,14 @@ export async function updatePageAction(
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Sayfa güncellenemedi." };
+      return { error: errData.message || "Failed to update page." };
     }
 
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
     console.error("Update page error:", error);
-    return { error: "Sunucu bağlantı hatası." };
+    return { error: "Server connection error." };
   }
 }
 
@@ -290,7 +290,7 @@ export async function getProfileAction() {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Unauthorized action." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/auth/profile`, {
@@ -320,7 +320,7 @@ export async function updateProfileAction(data: {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Unauthorized action." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/auth/profile`, {
@@ -352,7 +352,7 @@ export async function changePasswordAction(data: {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
 
-  if (!token) return { error: "Unauthorized action." };
+  if (!token) return { error: "Unauthorized." };
 
   try {
     const res = await fetch(`${API_URL}/api/auth/profile/password`, {
