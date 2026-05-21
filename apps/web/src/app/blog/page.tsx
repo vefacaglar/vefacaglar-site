@@ -11,6 +11,10 @@ interface PostItem {
   excerpt?: string | null;
   publishedAt?: string | null;
   createdAt: string;
+  author?: {
+    username: string;
+    displayName: string;
+  } | null;
 }
 
 export const dynamic = "force-dynamic";
@@ -57,11 +61,19 @@ export default async function Blog() {
               <div className={styles.itemMeta}>
                 <Link href={`/blog/${post.slug}`}>{post.title}</Link>
                 {post.excerpt && <p className={styles.excerpt}>{post.excerpt}</p>}
-                {post.publishedAt && (
-                  <span className={styles.date}>
-                    {formatDate(post.publishedAt)}
-                  </span>
-                )}
+                <div className={styles.date}>
+                  {post.publishedAt && (
+                    <span>{formatDate(post.publishedAt)}</span>
+                  )}
+                  {post.author && (
+                    <span className={styles.author}>
+                      {" — "}
+                      <Link href={`/author/${post.author.username}`}>
+                        {post.author.displayName}
+                      </Link>
+                    </span>
+                  )}
+                </div>
               </div>
             </li>
           ))}

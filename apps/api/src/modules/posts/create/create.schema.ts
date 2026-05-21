@@ -26,6 +26,13 @@ export const PostResponseSchema = Type.Object({
   publishedAt: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
   updatedAt: Type.String(),
+  author: Type.Union([
+    Type.Object({
+      username: Type.String(),
+      displayName: Type.String(),
+    }),
+    Type.Null(),
+  ]),
 });
 
 export type PostResponse = Static<typeof PostResponseSchema>;

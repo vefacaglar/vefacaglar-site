@@ -27,6 +27,7 @@ export class CreatePostHandler {
         seoTitle: seoTitle || null,
         seoDescription: seoDescription || null,
         publishedAt,
+        authorId: user.id,
       })
       .returning();
 
@@ -43,6 +44,10 @@ export class CreatePostHandler {
       publishedAt: newPost.publishedAt ? newPost.publishedAt.toISOString() : null,
       createdAt: newPost.createdAt.toISOString(),
       updatedAt: newPost.updatedAt.toISOString(),
+      author: {
+        username: user.username,
+        displayName: user.displayName,
+      },
     };
   }
 }

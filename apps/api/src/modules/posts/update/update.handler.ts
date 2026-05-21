@@ -1,5 +1,5 @@
 import { FastifyRequest } from "fastify";
-import { db, posts } from "@vefacaglar/db";
+import { db, posts, users } from "@vefacaglar/db";
 import { eq } from "drizzle-orm";
 import { UpdatePostParams, UpdatePostRequest, UpdatePostResponse } from "./update.schema";
 import { authenticateRequest } from "../../auth/auth.utils";
@@ -64,6 +64,10 @@ export class UpdatePostHandler {
       publishedAt: updatedPost.publishedAt ? updatedPost.publishedAt.toISOString() : null,
       createdAt: updatedPost.createdAt.toISOString(),
       updatedAt: updatedPost.updatedAt.toISOString(),
+      author: {
+        username: user.username,
+        displayName: user.displayName,
+      },
     };
   }
 }

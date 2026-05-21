@@ -1,6 +1,6 @@
 import { FastifyRequest } from "fastify";
-import { db, posts } from "@vefacaglar/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db, posts, users } from "@vefacaglar/db";
+import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 import { ListPostsQuery, ListPostsResponse } from "./list.schema";
 import { authenticateRequest } from "../../auth/auth.utils";
 
@@ -29,28 +29,44 @@ export class ListPostsHandler {
       conditions.push(eq(posts.status, status));
     }
 
-    const query = db
-      .select()
+    const result = await db
+      .select({
+        id: posts.id,
+        slug: posts.slug,
+        title: posts.title,
+        excerpt: posts.excerpt,
+        content: posts.content,
+        status: posts.status,
+        coverImageUrl: posts.coverImageUrl,
+        seoTitle: posts.seoTitle,
+        seoDescription: posts.seoDescription,
+        publishedAt: posts.publishedAt,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorUsername: users.username,
+        authorDisplayName: users.displayName,
+      })
       .from(posts)
+      .leftJoin(users, sql`${posts.authorId} = ${users.id}`)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(posts.publishedAt), desc(posts.createdAt));
 
-    const result = conditions.length > 0
-      ? await query.where(and(...conditions))
-      : await query;
-
-    return result.map((post) => ({
-      id: post.id,
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
-      content: post.content,
-      status: post.status as "draft" | "published",
-      coverImageUrl: post.coverImageUrl,
-      seoTitle: post.seoTitle,
-      seoDescription: post.seoDescription,
-      publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
-      createdAt: post.createdAt.toISOString(),
-      updatedAt: post.updatedAt.toISOString(),
+    return result.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      excerpt: row.excerpt,
+      content: row.content,
+      status: row.status as "draft" | "published",
+      coverImageUrl: row.coverImageUrl,
+      seoTitle: row.seoTitle,
+      seoDescription: row.seoDescription,
+      publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      author: row.authorUsername && row.authorDisplayName
+        ? { username: row.authorUsername, displayName: row.authorDisplayName }
+        : null,
     }));
   }
 }

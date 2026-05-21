@@ -1,6 +1,6 @@
 import { FastifyRequest } from "fastify";
-import { db, posts } from "@vefacaglar/db";
-import { eq, and } from "drizzle-orm";
+import { db, posts, users } from "@vefacaglar/db";
+import { eq, sql } from "drizzle-orm";
 import { GetPostParams, GetPostResponse } from "./detail.schema";
 import { authenticateRequest } from "../../auth/auth.utils";
 
@@ -9,8 +9,24 @@ export class GetPostHandler {
     const { slug } = request.params;
 
     const [post] = await db
-      .select()
+      .select({
+        id: posts.id,
+        slug: posts.slug,
+        title: posts.title,
+        excerpt: posts.excerpt,
+        content: posts.content,
+        status: posts.status,
+        coverImageUrl: posts.coverImageUrl,
+        seoTitle: posts.seoTitle,
+        seoDescription: posts.seoDescription,
+        publishedAt: posts.publishedAt,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorUsername: users.username,
+        authorDisplayName: users.displayName,
+      })
       .from(posts)
+      .leftJoin(users, sql`${posts.authorId} = ${users.id}`)
       .where(eq(posts.slug, slug))
       .limit(1);
 
@@ -47,6 +63,9 @@ export class GetPostHandler {
       publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      author: post.authorUsername && post.authorDisplayName
+        ? { username: post.authorUsername, displayName: post.authorDisplayName }
+        : null,
     };
   }
 }

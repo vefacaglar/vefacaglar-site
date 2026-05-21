@@ -17,6 +17,21 @@
   color: var(--muted);
 }
 
+.author {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.author a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.author a:hover {
+  text-decoration: underline;
+}
+
 .cover {
   margin-bottom: 32px;
 }

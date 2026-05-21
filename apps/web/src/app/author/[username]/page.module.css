@@ -2,14 +2,20 @@
   margin-bottom: 48px;
 }
 
-.subtitle {
+.authorName {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.username {
+  font-size: 14px;
   color: var(--muted);
   margin-bottom: 32px;
 }
 
-.empty {
-  color: var(--muted);
-  font-style: italic;
+.sectionTitle {
+  font-size: 18px;
+  margin-bottom: 16px;
 }
 
 .list {
@@ -19,7 +25,7 @@
 }
 
 .listItem {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   padding-left: 20px;
   position: relative;
 }
@@ -47,17 +53,7 @@
   color: var(--muted);
 }
 
-.author {
-  font-size: 12px;
+.empty {
   color: var(--muted);
-  margin-top: 2px;
-}
-
-.author a {
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.author a:hover {
-  text-decoration: underline;
+  font-style: italic;
 }

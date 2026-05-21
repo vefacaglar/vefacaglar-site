@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
@@ -16,6 +17,10 @@ interface PostDetail {
   seoDescription?: string | null;
   publishedAt?: string | null;
   createdAt: string;
+  author?: {
+    username: string;
+    displayName: string;
+  } | null;
 }
 
 export const dynamic = "force-dynamic";
@@ -75,6 +80,14 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         {post.publishedAt && (
           <div className={styles.date}>
             {formatDate(post.publishedAt)}
+          </div>
+        )}
+        {post.author && (
+          <div className={styles.author}>
+            {"by "}
+            <Link href={`/author/${post.author.username}`}>
+              {post.author.displayName}
+            </Link>
           </div>
         )}
       </header>
