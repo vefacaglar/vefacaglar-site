@@ -69,9 +69,9 @@ export default async function AdminDashboard() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "48px" }}>
         <h1 style={{ margin: 0, fontSize: "20px" }}>Admin Panel</h1>
-        <form action={logoutAction}>
-          <button
-            type="submit"
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <Link
+            href="/admin/profile"
             style={{
               background: "transparent",
               border: "1px solid var(--border)",
@@ -79,12 +79,29 @@ export default async function AdminDashboard() {
               padding: "6px 12px",
               fontFamily: "inherit",
               borderRadius: "4px",
-              cursor: "pointer",
+              textDecoration: "none",
+              fontSize: "14px",
             }}
           >
-            Log Out
-          </button>
-        </form>
+            Profile
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              style={{
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--text)",
+                padding: "6px 12px",
+                fontFamily: "inherit",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Log Out
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Posts Section */}

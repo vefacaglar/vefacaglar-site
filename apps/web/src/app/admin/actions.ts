@@ -285,3 +285,93 @@ export async function updatePageAction(
     return { error: "Sunucu bağlantı hatası." };
   }
 }
+
+export async function getProfileAction() {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized action." };
+
+  try {
+    const res = await fetch(`${API_URL}/api/auth/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.message || "Failed to fetch profile." };
+    }
+
+    return { data: await res.json() };
+  } catch (error) {
+    console.error("Get profile error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updateProfileAction(data: {
+  email: string;
+  username: string;
+  displayName: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized action." };
+
+  try {
+    const res = await fetch(`${API_URL}/api/auth/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update profile." };
+    }
+
+    revalidatePath("/admin/profile");
+    return { success: true };
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function changePasswordAction(data: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized action." };
+
+  try {
+    const res = await fetch(`${API_URL}/api/auth/profile/password`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to change password." };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Change password error:", error);
+    return { error: "Server connection error." };
+  }
+}

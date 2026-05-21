@@ -1,7 +1,13 @@
 import { FastifyRequest } from "fastify";
 import { db, users, sessions } from "@vefacaglar/db";
 import { eq, and, gt, isNull } from "drizzle-orm";
-import { scryptSync, createHash } from "crypto";
+import { scryptSync, randomBytes, createHash } from "crypto";
+
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
 
 export function verifyPassword(password: string, passwordHash: string): boolean {
   const parts = passwordHash.split(":");
