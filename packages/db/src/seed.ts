@@ -33,6 +33,7 @@ async function seed() {
 
       await db.insert(users).values({
         email: 'admin@vefacaglar.com',
+        username: 'admin',
         displayName: 'Admin Vefa',
         passwordHash: passwordHash,
         role: 'admin',
