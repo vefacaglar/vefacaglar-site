@@ -15,6 +15,13 @@
       "when": 1779316184260,
       "tag": "0001_powerful_sumo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779323320582,
+      "tag": "0002_amusing_sasquatch",
+      "breakpoints": true
     }
   ]
 }
