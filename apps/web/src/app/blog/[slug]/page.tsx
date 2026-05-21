@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import MarkdownPreview from "../../components/MarkdownPreview";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const res = await fetch(`${API_URL}/api/posts/${params.slug}`);
-    if (!res.ok) return { title: "Yazı Bulunamadı" };
+    if (!res.ok) return { title: "Post Not Found" };
 
     const post: PostDetail = await res.json();
     return {
@@ -56,7 +56,7 @@ export default async function BlogPost({ params }: { params: { slug: string } })
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("tr-TR", {
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric"
@@ -88,9 +88,9 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         </div>
       )}
 
-      {/* Render MDX Content */}
-      <div className="prose" style={{ lineHeight: "1.7", fontSize: "15px" }}>
-        <MDXRemote source={post.content} />
+      {/* Render Markdown Content */}
+      <div style={{ lineHeight: "1.7", fontSize: "15px" }}>
+        <MarkdownPreview content={post.content} />
       </div>
     </article>
   );

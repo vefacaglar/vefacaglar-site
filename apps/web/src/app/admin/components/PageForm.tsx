@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPageAction, updatePageAction } from "../actions";
+import MarkdownPreview from "../../components/MarkdownPreview";
 
 interface PageFormProps {
   initialData?: {
@@ -207,25 +208,7 @@ export default function PageForm({ initialData }: PageFormProps) {
                 overflowY: "auto",
               }}
             >
-              {content ? (
-                <div style={{ opacity: 0.9 }}>
-                  {/* Basic local markdown rendering for quick preview */}
-                  {content.split("\n").map((line, index) => {
-                    if (line.startsWith("# ")) {
-                      return <h1 key={index} style={{ margin: "16px 0 8px 0" }}>{line.replace("# ", "")}</h1>;
-                    }
-                    if (line.startsWith("## ")) {
-                      return <h2 key={index} style={{ margin: "16px 0 8px 0" }}>{line.replace("## ", "")}</h2>;
-                    }
-                    if (line.startsWith("- ") || line.startsWith("* ")) {
-                      return <li key={index}>{line.substring(2)}</li>;
-                    }
-                    return <p key={index} style={{ margin: "0 0 8px 0" }}>{line}</p>;
-                  })}
-                </div>
-              ) : (
-                <span style={{ color: "var(--muted)" }}>Henüz içerik yazılmamış.</span>
-              )}
+              <MarkdownPreview content={content} />
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MDXRemote } from "next-mdx-remote/rsc";
+import MarkdownPreview from "./components/MarkdownPreview";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -77,7 +77,7 @@ export default async function Home() {
       
       {page?.content && (
         <div style={{ marginBottom: "32px" }}>
-          <MDXRemote source={page.content} />
+          <MarkdownPreview content={page.content} />
         </div>
       )}
 
