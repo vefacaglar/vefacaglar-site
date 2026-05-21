@@ -10,24 +10,21 @@ import { UpdatePageParams, UpdatePageParamsSchema, UpdatePageRequest, UpdatePage
 import { DeletePageHandler } from "./delete/delete.handler";
 import { DeletePageParams, DeletePageParamsSchema, DeletePageResponseSchema } from "./delete/delete.schema";
 import { PagesRepository } from "./pages.repository";
-import { UsersRepository } from "../auth/users.repository";
-import { SessionsRepository } from "../auth/sessions.repository";
-import { AuthService } from "../auth/auth.service";
 
 export async function pagesRoutes(app: FastifyInstance) {
   const pagesRepo = new PagesRepository();
-  const auth = new AuthService(new UsersRepository(), new SessionsRepository());
 
-  const createHandler = new CreatePageHandler(pagesRepo, auth);
-  const listHandler = new ListPagesHandler(pagesRepo, auth);
-  const getHandler = new GetPageHandler(pagesRepo, auth);
-  const updateHandler = new UpdatePageHandler(pagesRepo, auth);
-  const deleteHandler = new DeletePageHandler(pagesRepo, auth);
+  const createHandler = new CreatePageHandler(pagesRepo);
+  const listHandler = new ListPagesHandler(pagesRepo);
+  const getHandler = new GetPageHandler(pagesRepo);
+  const updateHandler = new UpdatePageHandler(pagesRepo);
+  const deleteHandler = new DeletePageHandler(pagesRepo);
 
   // POST /
   app.post<{ Body: CreatePageRequest }>(
     "/",
     {
+      preHandler: app.requireAdmin,
       schema: {
         description: "Create a new page",
         tags: ["Pages"],
@@ -41,12 +38,8 @@ export async function pagesRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await createHandler.handle(request);
-        return result;
-      } catch (error: any) {
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
-        }
+        return await createHandler.handle(request);
+      } catch (error) {
         console.error(error);
         return reply.status(500).send({ message: "An error occurred while creating the page." });
       }
@@ -57,6 +50,7 @@ export async function pagesRoutes(app: FastifyInstance) {
   app.get<{ Querystring: ListPagesQuery }>(
     "/",
     {
+      preHandler: app.tryAuth,
       schema: {
         description: "List pages",
         tags: ["Pages"],
@@ -75,6 +69,7 @@ export async function pagesRoutes(app: FastifyInstance) {
   app.get<{ Params: GetPageParams }>(
     "/:slug",
     {
+      preHandler: app.tryAuth,
       schema: {
         description: "Get page by slug",
         tags: ["Pages"],
@@ -87,8 +82,7 @@ export async function pagesRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await getHandler.handle(request);
-        return result;
+        return await getHandler.handle(request);
       } catch (error: any) {
         if (error.message === "PageNotFound") {
           return reply.status(404).send({ message: "Page not found." });
@@ -103,6 +97,7 @@ export async function pagesRoutes(app: FastifyInstance) {
   app.put<{ Params: UpdatePageParams; Body: UpdatePageRequest }>(
     "/:id",
     {
+      preHandler: app.requireAdmin,
       schema: {
         description: "Update an existing page",
         tags: ["Pages"],
@@ -118,12 +113,8 @@ export async function pagesRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await updateHandler.handle(request);
-        return result;
+        return await updateHandler.handle(request);
       } catch (error: any) {
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
-        }
         if (error.message === "PageNotFound") {
           return reply.status(404).send({ message: "Page not found." });
         }
@@ -137,6 +128,7 @@ export async function pagesRoutes(app: FastifyInstance) {
   app.delete<{ Params: DeletePageParams }>(
     "/:id",
     {
+      preHandler: app.requireAdmin,
       schema: {
         description: "Delete a page",
         tags: ["Pages"],
@@ -151,12 +143,8 @@ export async function pagesRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await deleteHandler.handle(request);
-        return result;
+        return await deleteHandler.handle(request);
       } catch (error: any) {
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
-        }
         if (error.message === "PageNotFound") {
           return reply.status(404).send({ message: "Page not found." });
         }

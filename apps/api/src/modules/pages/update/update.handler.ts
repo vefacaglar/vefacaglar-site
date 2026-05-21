@@ -1,23 +1,13 @@
 import { FastifyRequest } from "fastify";
 import { UpdatePageParams, UpdatePageRequest, UpdatePageResponse } from "./update.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PagesRepository } from "../pages.repository";
 
 export class UpdatePageHandler {
-  constructor(
-    private readonly pagesRepo: PagesRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly pagesRepo: PagesRepository) {}
 
   async handle(
     request: FastifyRequest<{ Params: UpdatePageParams; Body: UpdatePageRequest }>
   ): Promise<UpdatePageResponse> {
-    const { user } = await this.auth.authenticate(request);
-
-    if (user.role !== "admin") {
-      throw new Error("Unauthorized");
-    }
-
     const { id } = request.params;
     const { title, slug, content, status, seoTitle, seoDescription } = request.body;
 

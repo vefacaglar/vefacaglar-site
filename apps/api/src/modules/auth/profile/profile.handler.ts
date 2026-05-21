@@ -1,6 +1,5 @@
 import { FastifyRequest } from "fastify";
 import { hashPassword, verifyPassword } from "../auth.utils";
-import { AuthService } from "../auth.service";
 import { UsersRepository } from "../users.repository";
 import {
   GetProfileResponse,
@@ -11,13 +10,10 @@ import {
 } from "./profile.schema";
 
 export class ProfileHandler {
-  constructor(
-    private readonly usersRepo: UsersRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly usersRepo: UsersRepository) {}
 
   async getProfile(request: FastifyRequest): Promise<GetProfileResponse> {
-    const { user } = await this.auth.authenticate(request);
+    const user = request.user!;
 
     return {
       user: {
@@ -34,7 +30,7 @@ export class ProfileHandler {
     request: FastifyRequest,
     body: UpdateProfileRequest
   ): Promise<UpdateProfileResponse> {
-    const { user } = await this.auth.authenticate(request);
+    const user = request.user!;
 
     try {
       const updated = await this.usersRepo.updateProfile(user.id, {
@@ -70,7 +66,8 @@ export class ProfileHandler {
     request: FastifyRequest,
     body: ChangePasswordRequest
   ): Promise<ChangePasswordResponse> {
-    const { user, session } = await this.auth.authenticate(request);
+    const user = request.user!;
+    const session = request.session!;
 
     const isValid = verifyPassword(body.currentPassword, user.passwordHash);
     if (!isValid) {

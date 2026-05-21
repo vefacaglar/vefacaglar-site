@@ -1,26 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListPostsQuery, ListPostsResponse } from "./list.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PostsRepository } from "../posts.repository";
 
 export class ListPostsHandler {
-  constructor(
-    private readonly postsRepo: PostsRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly postsRepo: PostsRepository) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPostsQuery }>): Promise<ListPostsResponse> {
-    let isAdmin = false;
-
-    try {
-      const { user } = await this.auth.authenticate(request);
-      if (user.role === "admin") {
-        isAdmin = true;
-      }
-    } catch {
-      // Ignore authentication errors for listing, fall back to public view
-    }
-
+    const isAdmin = request.user?.role === "admin";
     const { status } = request.query;
 
     const filter = !isAdmin

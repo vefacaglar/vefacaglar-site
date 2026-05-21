@@ -1,21 +1,11 @@
 import { FastifyRequest } from "fastify";
 import { CreatePageRequest, PageResponse } from "./create.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PagesRepository } from "../pages.repository";
 
 export class CreatePageHandler {
-  constructor(
-    private readonly pagesRepo: PagesRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly pagesRepo: PagesRepository) {}
 
   async handle(request: FastifyRequest<{ Body: CreatePageRequest }>): Promise<PageResponse> {
-    const { user } = await this.auth.authenticate(request);
-
-    if (user.role !== "admin") {
-      throw new Error("Unauthorized");
-    }
-
     const { title, slug, content, status, seoTitle, seoDescription } = request.body;
 
     const publishedAt = status === "published" ? new Date() : null;

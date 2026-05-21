@@ -10,24 +10,21 @@ import { UpdatePostParams, UpdatePostParamsSchema, UpdatePostRequest, UpdatePost
 import { DeletePostHandler } from "./delete/delete.handler";
 import { DeletePostParams, DeletePostParamsSchema, DeletePostResponseSchema } from "./delete/delete.schema";
 import { PostsRepository } from "./posts.repository";
-import { UsersRepository } from "../auth/users.repository";
-import { SessionsRepository } from "../auth/sessions.repository";
-import { AuthService } from "../auth/auth.service";
 
 export async function postsRoutes(app: FastifyInstance) {
   const postsRepo = new PostsRepository();
-  const auth = new AuthService(new UsersRepository(), new SessionsRepository());
 
-  const createHandler = new CreatePostHandler(postsRepo, auth);
-  const listHandler = new ListPostsHandler(postsRepo, auth);
-  const getHandler = new GetPostHandler(postsRepo, auth);
-  const updateHandler = new UpdatePostHandler(postsRepo, auth);
-  const deleteHandler = new DeletePostHandler(postsRepo, auth);
+  const createHandler = new CreatePostHandler(postsRepo);
+  const listHandler = new ListPostsHandler(postsRepo);
+  const getHandler = new GetPostHandler(postsRepo);
+  const updateHandler = new UpdatePostHandler(postsRepo);
+  const deleteHandler = new DeletePostHandler(postsRepo);
 
   // POST /
   app.post<{ Body: CreatePostRequest }>(
     "/",
     {
+      preHandler: app.requireAdmin,
       schema: {
         description: "Create a new blog post",
         tags: ["Posts"],
@@ -41,12 +38,8 @@ export async function postsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await createHandler.handle(request);
-        return result;
-      } catch (error: any) {
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
-        }
+        return await createHandler.handle(request);
+      } catch (error) {
         console.error(error);
         return reply.status(500).send({ message: "An error occurred while creating the post." });
       }
@@ -57,6 +50,7 @@ export async function postsRoutes(app: FastifyInstance) {
   app.get<{ Querystring: ListPostsQuery }>(
     "/",
     {
+      preHandler: app.tryAuth,
       schema: {
         description: "List blog posts",
         tags: ["Posts"],
@@ -75,6 +69,7 @@ export async function postsRoutes(app: FastifyInstance) {
   app.get<{ Params: GetPostParams }>(
     "/:slug",
     {
+      preHandler: app.tryAuth,
       schema: {
         description: "Get blog post by slug",
         tags: ["Posts"],
@@ -87,8 +82,7 @@ export async function postsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await getHandler.handle(request);
-        return result;
+        return await getHandler.handle(request);
       } catch (error: any) {
         if (error.message === "PostNotFound") {
           return reply.status(404).send({ message: "Post not found." });
@@ -103,6 +97,7 @@ export async function postsRoutes(app: FastifyInstance) {
   app.put<{ Params: UpdatePostParams; Body: UpdatePostRequest }>(
     "/:id",
     {
+      preHandler: app.requireAdmin,
       schema: {
         description: "Update an existing blog post",
         tags: ["Posts"],
@@ -118,12 +113,8 @@ export async function postsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await updateHandler.handle(request);
-        return result;
+        return await updateHandler.handle(request);
       } catch (error: any) {
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
-        }
         if (error.message === "PostNotFound") {
           return reply.status(404).send({ message: "Post not found." });
         }
@@ -137,6 +128,7 @@ export async function postsRoutes(app: FastifyInstance) {
   app.delete<{ Params: DeletePostParams }>(
     "/:id",
     {
+      preHandler: app.requireAdmin,
       schema: {
         description: "Delete a blog post",
         tags: ["Posts"],
@@ -151,12 +143,8 @@ export async function postsRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const result = await deleteHandler.handle(request);
-        return result;
+        return await deleteHandler.handle(request);
       } catch (error: any) {
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized action. You must log in as admin." });
-        }
         if (error.message === "PostNotFound") {
           return reply.status(404).send({ message: "Post not found." });
         }

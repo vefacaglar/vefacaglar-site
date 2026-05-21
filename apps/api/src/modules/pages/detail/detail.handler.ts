@@ -1,13 +1,9 @@
 import { FastifyRequest } from "fastify";
 import { GetPageParams, GetPageResponse } from "./detail.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PagesRepository } from "../pages.repository";
 
 export class GetPageHandler {
-  constructor(
-    private readonly pagesRepo: PagesRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly pagesRepo: PagesRepository) {}
 
   async handle(request: FastifyRequest<{ Params: GetPageParams }>): Promise<GetPageResponse> {
     const { slug } = request.params;
@@ -18,20 +14,8 @@ export class GetPageHandler {
       throw new Error("PageNotFound");
     }
 
-    if (page.status === "draft") {
-      let isAdmin = false;
-      try {
-        const { user } = await this.auth.authenticate(request);
-        if (user.role === "admin") {
-          isAdmin = true;
-        }
-      } catch {
-        // Not authenticated
-      }
-
-      if (!isAdmin) {
-        throw new Error("PageNotFound");
-      }
+    if (page.status === "draft" && request.user?.role !== "admin") {
+      throw new Error("PageNotFound");
     }
 
     return {

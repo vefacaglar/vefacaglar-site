@@ -1,22 +1,14 @@
 import { FastifyRequest } from "fastify";
 import { UpdatePostParams, UpdatePostRequest, UpdatePostResponse } from "./update.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PostsRepository } from "../posts.repository";
 
 export class UpdatePostHandler {
-  constructor(
-    private readonly postsRepo: PostsRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly postsRepo: PostsRepository) {}
 
   async handle(
     request: FastifyRequest<{ Params: UpdatePostParams; Body: UpdatePostRequest }>
   ): Promise<UpdatePostResponse> {
-    const { user } = await this.auth.authenticate(request);
-
-    if (user.role !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    const user = request.user!;
 
     const { id } = request.params;
     const { title, slug, excerpt, content, status, coverImageUrl, seoTitle, seoDescription } = request.body;

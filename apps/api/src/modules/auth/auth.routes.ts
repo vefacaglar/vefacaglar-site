@@ -17,17 +17,15 @@ import {
 import { ProfileHandler } from "./profile/profile.handler";
 import { UsersRepository } from "./users.repository";
 import { SessionsRepository } from "./sessions.repository";
-import { AuthService } from "./auth.service";
 
 export async function authRoutes(app: FastifyInstance) {
   const usersRepo = new UsersRepository();
   const sessionsRepo = new SessionsRepository();
-  const auth = new AuthService(usersRepo, sessionsRepo);
 
   const loginHandler = new LoginHandler(usersRepo, sessionsRepo);
-  const meHandler = new MeHandler(auth);
-  const logoutHandler = new LogoutHandler(sessionsRepo, auth);
-  const profileHandler = new ProfileHandler(usersRepo, auth);
+  const meHandler = new MeHandler();
+  const logoutHandler = new LogoutHandler(sessionsRepo);
+  const profileHandler = new ProfileHandler(usersRepo);
 
   // POST /login
   app.post<{ Body: LoginRequest }>(
@@ -45,25 +43,15 @@ export async function authRoutes(app: FastifyInstance) {
         body: LoginRequestSchema,
         response: {
           200: LoginResponseSchema,
-          400: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
-          401: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
-          500: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
+          400: { type: "object", properties: { message: { type: "string" } } },
+          401: { type: "object", properties: { message: { type: "string" } } },
+          500: { type: "object", properties: { message: { type: "string" } } },
         },
       },
     },
     async (request, reply) => {
       try {
-        const result = await loginHandler.handle(request.body);
-        return result;
+        return await loginHandler.handle(request.body);
       } catch (error: any) {
         if (error.message === "InvalidCredentials") {
           return reply.status(401).send({ message: "Invalid email or password." });
@@ -78,87 +66,61 @@ export async function authRoutes(app: FastifyInstance) {
   app.get(
     "/me",
     {
+      preHandler: app.requireAuth,
       schema: {
         description: "Get current user profile information",
         tags: ["Auth"],
         security: [{ bearerAuth: [] }],
         response: {
           200: MeResponseSchema,
-          401: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
+          401: { type: "object", properties: { message: { type: "string" } } },
         },
       },
     },
-    async (request, reply) => {
-      try {
-        const result = await meHandler.handle(request);
-        return result;
-      } catch (error) {
-        return reply.status(401).send({ message: "Unauthorized. Please log in." });
-      }
-    }
+    async (request) => meHandler.handle(request)
   );
 
   // POST /logout
   app.post(
     "/logout",
     {
+      preHandler: app.requireAuth,
       schema: {
         description: "Revoke the current session token",
         tags: ["Auth"],
         security: [{ bearerAuth: [] }],
         response: {
           200: LogoutResponseSchema,
-          401: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
+          401: { type: "object", properties: { message: { type: "string" } } },
         },
       },
     },
-    async (request, reply) => {
-      try {
-        const result = await logoutHandler.handle(request);
-        return result;
-      } catch (error) {
-        return reply.status(401).send({ message: "Unauthorized." });
-      }
-    }
+    async (request) => logoutHandler.handle(request)
   );
 
   // GET /profile
   app.get(
     "/profile",
     {
+      preHandler: app.requireAuth,
       schema: {
         description: "Get current user's full profile",
         tags: ["Auth"],
         security: [{ bearerAuth: [] }],
         response: {
           200: GetProfileResponseSchema,
-          401: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
+          401: { type: "object", properties: { message: { type: "string" } } },
         },
       },
     },
-    async (request, reply) => {
-      try {
-        const result = await profileHandler.getProfile(request);
-        return result;
-      } catch (error) {
-        return reply.status(401).send({ message: "Unauthorized. Please log in." });
-      }
-    }
+    async (request) => profileHandler.getProfile(request)
   );
 
   // PUT /profile
   app.put<{ Body: UpdateProfileRequest }>(
     "/profile",
     {
+      preHandler: app.requireAuth,
       schema: {
         description: "Update current user's profile information",
         tags: ["Auth"],
@@ -166,30 +128,20 @@ export async function authRoutes(app: FastifyInstance) {
         body: UpdateProfileRequestSchema,
         response: {
           200: UpdateProfileResponseSchema,
-          400: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
-          401: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
+          400: { type: "object", properties: { message: { type: "string" } } },
+          401: { type: "object", properties: { message: { type: "string" } } },
         },
       },
     },
     async (request, reply) => {
       try {
-        const result = await profileHandler.updateProfile(request, request.body);
-        return result;
+        return await profileHandler.updateProfile(request, request.body);
       } catch (error: any) {
         if (error.message === "EmailAlreadyExists") {
           return reply.status(400).send({ message: "This email address is already in use." });
         }
         if (error.message === "UsernameAlreadyExists") {
           return reply.status(400).send({ message: "This username is already in use." });
-        }
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized. Please log in." });
         }
         console.error(error);
         return reply.status(500).send({ message: "An error occurred while updating the profile." });
@@ -201,6 +153,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.put<{ Body: ChangePasswordRequest }>(
     "/profile/password",
     {
+      preHandler: app.requireAuth,
       config: {
         rateLimit: {
           max: 5,
@@ -214,27 +167,17 @@ export async function authRoutes(app: FastifyInstance) {
         body: ChangePasswordRequestSchema,
         response: {
           200: ChangePasswordResponseSchema,
-          400: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
-          401: {
-            type: "object",
-            properties: { message: { type: "string" } },
-          },
+          400: { type: "object", properties: { message: { type: "string" } } },
+          401: { type: "object", properties: { message: { type: "string" } } },
         },
       },
     },
     async (request, reply) => {
       try {
-        const result = await profileHandler.changePassword(request, request.body);
-        return result;
+        return await profileHandler.changePassword(request, request.body);
       } catch (error: any) {
         if (error.message === "InvalidCurrentPassword") {
           return reply.status(400).send({ message: "Current password is incorrect." });
-        }
-        if (error.message === "Unauthorized") {
-          return reply.status(401).send({ message: "Unauthorized. Please log in." });
         }
         console.error(error);
         return reply.status(500).send({ message: "An error occurred while changing the password." });

@@ -1,13 +1,9 @@
 import { FastifyRequest } from "fastify";
 import { GetPostParams, GetPostResponse } from "./detail.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PostsRepository } from "../posts.repository";
 
 export class GetPostHandler {
-  constructor(
-    private readonly postsRepo: PostsRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly postsRepo: PostsRepository) {}
 
   async handle(request: FastifyRequest<{ Params: GetPostParams }>): Promise<GetPostResponse> {
     const { slug } = request.params;
@@ -18,20 +14,9 @@ export class GetPostHandler {
       throw new Error("PostNotFound");
     }
 
-    if (post.status === "draft") {
-      let isAdmin = false;
-      try {
-        const { user } = await this.auth.authenticate(request);
-        if (user.role === "admin") {
-          isAdmin = true;
-        }
-      } catch {
-        // Not authenticated or not admin
-      }
-
-      if (!isAdmin) {
-        throw new Error("PostNotFound"); // Hide drafts from public
-      }
+    // Hide drafts from non-admins
+    if (post.status === "draft" && request.user?.role !== "admin") {
+      throw new Error("PostNotFound");
     }
 
     return {

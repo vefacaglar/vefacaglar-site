@@ -6,6 +6,7 @@ import { authRoutes } from "./modules/auth/auth.routes";
 import { postsRoutes } from "./modules/posts/posts.routes";
 import { pagesRoutes } from "./modules/pages/pages.routes";
 import { authorsRoutes } from "./modules/authors/authors.routes";
+import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 
 export const app = Fastify({ logger: true });
 
@@ -52,6 +53,8 @@ app.register(fastifySwaggerUi, {
 app.get("/health", async () => {
   return { status: "ok" };
 });
+
+registerAuthDecorators(app);
 
 app.register(authRoutes, { prefix: "/api/auth" });
 app.register(postsRoutes, { prefix: "/api/posts" });

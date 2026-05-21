@@ -1,20 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { CreatePostRequest, PostResponse } from "./create.schema";
-import { AuthService } from "../../auth/auth.service";
 import { PostsRepository } from "../posts.repository";
 
 export class CreatePostHandler {
-  constructor(
-    private readonly postsRepo: PostsRepository,
-    private readonly auth: AuthService
-  ) {}
+  constructor(private readonly postsRepo: PostsRepository) {}
 
   async handle(request: FastifyRequest<{ Body: CreatePostRequest }>): Promise<PostResponse> {
-    const { user } = await this.auth.authenticate(request);
-
-    if (user.role !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    const user = request.user!;
 
     const { title, slug, excerpt, content, status, coverImageUrl, seoTitle, seoDescription } = request.body;
 
