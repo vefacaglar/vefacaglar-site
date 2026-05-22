@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./post.module.css";
@@ -72,10 +71,6 @@ export default async function BlogPost({ params }: { params: { slug: string } })
 
   return (
     <article>
-      <div className={styles.back}>
-        <BackButton />
-      </div>
-
       <header className={styles.header}>
         <h1 className={styles.postTitle}>{post.title}</h1>
         {post.publishedAt && (

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import BackButton from "../components/BackButton";
 import styles from "./blog.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
@@ -48,9 +47,6 @@ export default async function Blog() {
 
   return (
     <div>
-      <div className={styles.back}>
-        <BackButton />
-      </div>
       <h1>{dict.blog}</h1>
       <p className={styles.subtitle}>
         {lang === "tr" 

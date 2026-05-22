@@ -49,7 +49,7 @@ export default function LanguageSwitcher() {
           textDecoration: lang === "en" ? "underline" : "none",
         }}
       >
-        EN
+        en
       </button>
       <span style={{ color: "var(--border)" }}>|</span>
       <button
@@ -64,7 +64,7 @@ export default function LanguageSwitcher() {
           textDecoration: lang === "tr" ? "underline" : "none",
         }}
       >
-        TR
+        tr
       </button>
     </div>
   );

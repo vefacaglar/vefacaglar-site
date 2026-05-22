@@ -1,6 +1,5 @@
 import React from "react";
 import { notFound } from "next/navigation";
-import BackButton from "../components/BackButton";
 import MarkdownPreview from "../components/MarkdownPreview";
 import { httpClient } from "../../lib/httpClient";
 
@@ -51,9 +50,6 @@ export default async function DynamicPage({ params }: { params: { slug: string }
 
   return (
     <div>
-      <div style={{ marginBottom: "48px" }}>
-        <BackButton />
-      </div>
       <article>
         <h1 style={{ marginBottom: "24px" }}>{page.title}</h1>
         {page.content && (

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import BackButton from "../components/BackButton";
 import MarkdownPreview from "../components/MarkdownPreview";
 import styles from "./about.module.css";
 import { httpClient } from "../../lib/httpClient";
@@ -51,9 +50,6 @@ export default async function About() {
 
   return (
     <div>
-      <div className={styles.back}>
-        <BackButton />
-      </div>
       <h1>{page?.title || "About"}</h1>
       {page?.content && (
         <MarkdownPreview content={page.content} />

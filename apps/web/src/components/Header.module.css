@@ -1,0 +1,49 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 48px;
+  font-family: inherit;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crumbWrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.separator {
+  color: var(--border);
+  font-size: 14px;
+  user-select: none;
+}
+
+.link {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.link:hover {
+  color: var(--accent);
+}
+
+.current {
+  font-weight: normal;
+  font-size: 14px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+}

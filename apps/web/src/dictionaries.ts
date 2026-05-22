@@ -1,19 +1,27 @@
 const dictionaries = {
   en: {
     blog: "Blog",
-    writings: "Writings",
+    writings: "Latest writings",
     view_all: "View all writings",
     back: "Back",
     no_posts: "No posts published yet.",
     current_project: "Current Project",
+    back_to_home: "vefacaglar",
+    back_to_blog: "blog",
+    about: "about",
+    projects: "projects",
   },
   tr: {
-    blog: "Yazılar",
+    blog: "Son yazılar",
     writings: "Yazılar",
     view_all: "Tüm yazıları gör",
     back: "Geri",
     no_posts: "Henüz yazı yayınlanmadı.",
     current_project: "Aktif Proje",
+    back_to_home: "vefacaglar",
+    back_to_blog: "yazılar",
+    about: "hakkımda",
+    projects: "projeler",
   }
 };
 

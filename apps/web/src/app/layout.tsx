@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { TopBar } from "../components/TopBar";
-import LanguageSwitcher from "../components/LanguageSwitcher";
+import Header from "../components/Header";
+import { getActiveLanguage } from "../lib/lang";
+import { getDictionary } from "../dictionaries";
 import "./globals.css";
 import styles from "./layout.module.css";
 
@@ -14,14 +16,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
+
   return (
     <html lang="en">
       <body>
         <TopBar />
         <main className={styles.main}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "32px" }}>
-            <LanguageSwitcher />
-          </div>
+          <Header dict={dict} />
           {children}
         </main>
       </body>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import styles from "./page.module.css";
 import { httpClient } from "../../../lib/httpClient";
@@ -63,10 +62,6 @@ export default async function AuthorPage({ params }: { params: { username: strin
 
   return (
     <div>
-      <div className={styles.back}>
-        <BackButton />
-      </div>
-
       <h1 className={styles.authorName}>{author.displayName}</h1>
       <p className={styles.username}>@{author.username}</p>
 
