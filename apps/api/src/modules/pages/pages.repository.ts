@@ -1,11 +1,14 @@
 import { db, pages } from "@vefacaglar/db";
 import { and, desc, eq } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { injectable } from "tsyringe";
+import type { IPagesRepository } from "./pages.repository.interface";
 
 export type Page = InferSelectModel<typeof pages>;
 export type NewPage = InferInsertModel<typeof pages>;
 
-export class PagesRepository {
+@injectable()
+export class DrizzlePagesRepository implements IPagesRepository {
   async create(values: NewPage): Promise<Page> {
     const [row] = await db.insert(pages).values(values).returning();
     return row;

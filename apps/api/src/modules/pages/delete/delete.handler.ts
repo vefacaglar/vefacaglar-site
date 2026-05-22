@@ -1,10 +1,13 @@
 import { FastifyRequest } from "fastify";
 import { DeletePageParams, DeletePageResponse } from "./delete.schema";
-import { PagesRepository } from "../pages.repository";
+import { injectable, inject } from "tsyringe";
+import { PAGES_REPOSITORY } from "../pages.tokens";
+import type { IPagesRepository } from "../pages.repository.interface";
 import { NotFoundError } from "../../../shared/http-errors";
 
+@injectable()
 export class DeletePageHandler {
-  constructor(private readonly pagesRepo: PagesRepository) {}
+  constructor(@inject(PAGES_REPOSITORY) private readonly pagesRepo: IPagesRepository) {}
 
   async handle(request: FastifyRequest<{ Params: DeletePageParams }>): Promise<DeletePageResponse> {
     const { id } = request.params;

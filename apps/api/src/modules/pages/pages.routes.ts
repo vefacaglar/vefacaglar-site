@@ -9,17 +9,15 @@ import { UpdatePageHandler } from "./update/update.handler";
 import { UpdatePageParams, UpdatePageParamsSchema, UpdatePageRequest, UpdatePageRequestSchema, UpdatePageResponseSchema } from "./update/update.schema";
 import { DeletePageHandler } from "./delete/delete.handler";
 import { DeletePageParams, DeletePageParamsSchema, DeletePageResponseSchema } from "./delete/delete.schema";
-import { PagesRepository } from "./pages.repository";
 import { ErrorResponseSchema } from "../../shared/error-schema";
+import { container } from "../../container";
 
 export async function pagesRoutes(app: FastifyInstance) {
-  const pagesRepo = new PagesRepository();
-
-  const createHandler = new CreatePageHandler(pagesRepo);
-  const listHandler = new ListPagesHandler(pagesRepo);
-  const getHandler = new GetPageHandler(pagesRepo);
-  const updateHandler = new UpdatePageHandler(pagesRepo);
-  const deleteHandler = new DeletePageHandler(pagesRepo);
+  const createHandler = container.resolve(CreatePageHandler);
+  const listHandler = container.resolve(ListPagesHandler);
+  const getHandler = container.resolve(GetPageHandler);
+  const updateHandler = container.resolve(UpdatePageHandler);
+  const deleteHandler = container.resolve(DeletePageHandler);
 
   app.post<{ Body: CreatePageRequest }>("/", {
     preHandler: app.requireAdmin,

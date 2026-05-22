@@ -1,6 +1,8 @@
 import { FastifyRequest } from "fastify";
 import { hashPassword, verifyPassword } from "../auth.utils";
-import { UsersRepository } from "../users.repository";
+import { injectable, inject } from "tsyringe";
+import { USERS_REPOSITORY } from "../auth.tokens";
+import type { IUsersRepository } from "../users.repository.interface";
 import { BadRequestError } from "../../../shared/http-errors";
 import {
   GetProfileResponse,
@@ -10,8 +12,9 @@ import {
   ChangePasswordResponse,
 } from "./profile.schema";
 
+@injectable()
 export class ProfileHandler {
-  constructor(private readonly usersRepo: UsersRepository) {}
+  constructor(@inject(USERS_REPOSITORY) private readonly usersRepo: IUsersRepository) {}
 
   async getProfile(request: FastifyRequest): Promise<GetProfileResponse> {
     const user = request.user!;

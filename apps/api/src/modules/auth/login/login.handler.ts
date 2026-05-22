@@ -1,14 +1,17 @@
 import { randomBytes } from "crypto";
 import { LoginRequest, LoginResponse } from "./login.schema";
 import { hashToken, verifyPassword } from "../auth.utils";
-import { UsersRepository } from "../users.repository";
-import { SessionsRepository } from "../sessions.repository";
+import { injectable, inject } from "tsyringe";
+import { USERS_REPOSITORY, SESSIONS_REPOSITORY } from "../auth.tokens";
+import type { IUsersRepository } from "../users.repository.interface";
+import type { ISessionsRepository } from "../sessions.repository.interface";
 import { UnauthorizedError } from "../../../shared/http-errors";
 
+@injectable()
 export class LoginHandler {
   constructor(
-    private readonly usersRepo: UsersRepository,
-    private readonly sessionsRepo: SessionsRepository
+    @inject(USERS_REPOSITORY) private readonly usersRepo: IUsersRepository,
+    @inject(SESSIONS_REPOSITORY) private readonly sessionsRepo: ISessionsRepository
   ) {}
 
   async handle(request: LoginRequest): Promise<LoginResponse> {

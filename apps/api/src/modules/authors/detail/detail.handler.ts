@@ -1,13 +1,17 @@
 import { FastifyRequest } from "fastify";
 import { GetAuthorParams, GetAuthorResponse } from "./detail.schema";
-import { UsersRepository } from "../../auth/users.repository";
-import { PostsRepository } from "../../posts/posts.repository";
+import { injectable, inject } from "tsyringe";
+import { USERS_REPOSITORY } from "../../auth/auth.tokens";
+import { POSTS_REPOSITORY } from "../../posts/posts.tokens";
+import type { IUsersRepository } from "../../auth/users.repository.interface";
+import type { IPostsRepository } from "../../posts/posts.repository.interface";
 import { NotFoundError } from "../../../shared/http-errors";
 
+@injectable()
 export class GetAuthorHandler {
   constructor(
-    private readonly usersRepo: UsersRepository,
-    private readonly postsRepo: PostsRepository
+    @inject(USERS_REPOSITORY) private readonly usersRepo: IUsersRepository,
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository
   ) {}
 
   async handle(request: FastifyRequest<{ Params: GetAuthorParams }>): Promise<GetAuthorResponse> {

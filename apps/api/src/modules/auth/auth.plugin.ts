@@ -1,8 +1,9 @@
 import { FastifyInstance, FastifyRequest, preHandlerHookHandler } from "fastify";
 import { AuthService } from "./auth.service";
-import { UsersRepository, type User } from "./users.repository";
-import { SessionsRepository, type Session } from "./sessions.repository";
+import type { User } from "./users.repository";
+import type { Session } from "./sessions.repository";
 import { UnauthorizedError } from "../../shared/http-errors";
+import { container } from "../../container";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -17,7 +18,7 @@ declare module "fastify" {
 }
 
 export function registerAuthDecorators(app: FastifyInstance): void {
-  const auth = new AuthService(new UsersRepository(), new SessionsRepository());
+  const auth = container.resolve(AuthService);
 
   const requireAuth = async (request: FastifyRequest) => {
     try {

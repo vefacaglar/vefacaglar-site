@@ -1,9 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { CreatePageRequest, PageResponse } from "./create.schema";
-import { PagesRepository } from "../pages.repository";
+import { injectable, inject } from "tsyringe";
+import { PAGES_REPOSITORY } from "../pages.tokens";
+import type { IPagesRepository } from "../pages.repository.interface";
 
+@injectable()
 export class CreatePageHandler {
-  constructor(private readonly pagesRepo: PagesRepository) {}
+  constructor(@inject(PAGES_REPOSITORY) private readonly pagesRepo: IPagesRepository) {}
 
   async handle(request: FastifyRequest<{ Body: CreatePageRequest }>): Promise<PageResponse> {
     const { title, slug, content, status, seoTitle, seoDescription } = request.body;

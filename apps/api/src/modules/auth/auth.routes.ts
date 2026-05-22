@@ -15,18 +15,14 @@ import {
   ChangePasswordResponseSchema,
 } from "./profile/profile.schema";
 import { ProfileHandler } from "./profile/profile.handler";
-import { UsersRepository } from "./users.repository";
-import { SessionsRepository } from "./sessions.repository";
 import { ErrorResponseSchema } from "../../shared/error-schema";
+import { container } from "../../container";
 
 export async function authRoutes(app: FastifyInstance) {
-  const usersRepo = new UsersRepository();
-  const sessionsRepo = new SessionsRepository();
-
-  const loginHandler = new LoginHandler(usersRepo, sessionsRepo);
-  const meHandler = new MeHandler();
-  const logoutHandler = new LogoutHandler(sessionsRepo);
-  const profileHandler = new ProfileHandler(usersRepo);
+  const loginHandler = container.resolve(LoginHandler);
+  const meHandler = container.resolve(MeHandler);
+  const logoutHandler = container.resolve(LogoutHandler);
+  const profileHandler = container.resolve(ProfileHandler);
 
   app.post<{ Body: LoginRequest }>("/login", {
     config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },

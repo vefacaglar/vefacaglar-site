@@ -1,9 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListPagesQuery, ListPagesResponse } from "./list.schema";
-import { PagesRepository } from "../pages.repository";
+import { injectable, inject } from "tsyringe";
+import { PAGES_REPOSITORY } from "../pages.tokens";
+import type { IPagesRepository } from "../pages.repository.interface";
 
+@injectable()
 export class ListPagesHandler {
-  constructor(private readonly pagesRepo: PagesRepository) {}
+  constructor(@inject(PAGES_REPOSITORY) private readonly pagesRepo: IPagesRepository) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPagesQuery }>): Promise<ListPagesResponse> {
     const isAdmin = request.user?.role === "admin";

@@ -1,6 +1,8 @@
 import { FastifyRequest } from "fastify";
 import { MeResponse } from "./me.schema";
+import { injectable } from "tsyringe";
 
+@injectable()
 export class MeHandler {
   async handle(request: FastifyRequest): Promise<MeResponse> {
     const user = request.user!;

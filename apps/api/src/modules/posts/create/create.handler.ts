@@ -1,9 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { CreatePostRequest, PostResponse } from "./create.schema";
-import { PostsRepository } from "../posts.repository";
+import { injectable, inject } from "tsyringe";
+import { POSTS_REPOSITORY } from "../posts.tokens";
+import type { IPostsRepository } from "../posts.repository.interface";
 
+@injectable()
 export class CreatePostHandler {
-  constructor(private readonly postsRepo: PostsRepository) {}
+  constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
 
   async handle(request: FastifyRequest<{ Body: CreatePostRequest }>): Promise<PostResponse> {
     const user = request.user!;

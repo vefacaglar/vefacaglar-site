@@ -9,17 +9,15 @@ import { UpdatePostHandler } from "./update/update.handler";
 import { UpdatePostParams, UpdatePostParamsSchema, UpdatePostRequest, UpdatePostRequestSchema, UpdatePostResponseSchema } from "./update/update.schema";
 import { DeletePostHandler } from "./delete/delete.handler";
 import { DeletePostParams, DeletePostParamsSchema, DeletePostResponseSchema } from "./delete/delete.schema";
-import { PostsRepository } from "./posts.repository";
 import { ErrorResponseSchema } from "../../shared/error-schema";
+import { container } from "../../container";
 
 export async function postsRoutes(app: FastifyInstance) {
-  const postsRepo = new PostsRepository();
-
-  const createHandler = new CreatePostHandler(postsRepo);
-  const listHandler = new ListPostsHandler(postsRepo);
-  const getHandler = new GetPostHandler(postsRepo);
-  const updateHandler = new UpdatePostHandler(postsRepo);
-  const deleteHandler = new DeletePostHandler(postsRepo);
+  const createHandler = container.resolve(CreatePostHandler);
+  const listHandler = container.resolve(ListPostsHandler);
+  const getHandler = container.resolve(GetPostHandler);
+  const updateHandler = container.resolve(UpdatePostHandler);
+  const deleteHandler = container.resolve(DeletePostHandler);
 
   app.post<{ Body: CreatePostRequest }>("/", {
     preHandler: app.requireAdmin,

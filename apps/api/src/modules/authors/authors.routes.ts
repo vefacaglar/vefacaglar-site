@@ -1,12 +1,11 @@
 import { FastifyInstance } from "fastify";
 import { GetAuthorHandler } from "./detail/detail.handler";
 import { GetAuthorParams, GetAuthorParamsSchema, GetAuthorResponseSchema } from "./detail/detail.schema";
-import { UsersRepository } from "../auth/users.repository";
-import { PostsRepository } from "../posts/posts.repository";
 import { ErrorResponseSchema } from "../../shared/error-schema";
+import { container } from "../../container";
 
 export async function authorsRoutes(app: FastifyInstance) {
-  const getHandler = new GetAuthorHandler(new UsersRepository(), new PostsRepository());
+  const getHandler = container.resolve(GetAuthorHandler);
 
   app.get<{ Params: GetAuthorParams }>("/:username", {
     schema: {

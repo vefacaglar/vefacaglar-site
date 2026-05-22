@@ -1,9 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListPostsQuery, ListPostsResponse } from "./list.schema";
-import { PostsRepository } from "../posts.repository";
+import { injectable, inject } from "tsyringe";
+import { POSTS_REPOSITORY } from "../posts.tokens";
+import type { IPostsRepository } from "../posts.repository.interface";
 
+@injectable()
 export class ListPostsHandler {
-  constructor(private readonly postsRepo: PostsRepository) {}
+  constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPostsQuery }>): Promise<ListPostsResponse> {
     const isAdmin = request.user?.role === "admin";

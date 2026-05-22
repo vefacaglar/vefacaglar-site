@@ -1,10 +1,13 @@
 import { FastifyRequest } from "fastify";
 import { GetPostParams, GetPostResponse } from "./detail.schema";
-import { PostsRepository } from "../posts.repository";
+import { injectable, inject } from "tsyringe";
+import { POSTS_REPOSITORY } from "../posts.tokens";
+import type { IPostsRepository } from "../posts.repository.interface";
 import { NotFoundError } from "../../../shared/http-errors";
 
+@injectable()
 export class GetPostHandler {
-  constructor(private readonly postsRepo: PostsRepository) {}
+  constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
 
   async handle(request: FastifyRequest<{ Params: GetPostParams }>): Promise<GetPostResponse> {
     const { slug } = request.params;

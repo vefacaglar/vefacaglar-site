@@ -1,11 +1,14 @@
 import { db, sessions, users } from "@vefacaglar/db";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { injectable } from "tsyringe";
+import type { IUsersRepository } from "./users.repository.interface";
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 
-export class UsersRepository {
+@injectable()
+export class DrizzleUsersRepository implements IUsersRepository {
   async findById(id: string): Promise<User | null> {
     const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
     return row ?? null;

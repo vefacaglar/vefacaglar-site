@@ -1,6 +1,8 @@
 import { db, posts, users } from "@vefacaglar/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { injectable } from "tsyringe";
+import type { IPostsRepository } from "./posts.repository.interface";
 
 export type Post = InferSelectModel<typeof posts>;
 export type NewPost = InferInsertModel<typeof posts>;
@@ -10,7 +12,8 @@ export type PostWithAuthor = Post & {
   authorDisplayName: string | null;
 };
 
-export class PostsRepository {
+@injectable()
+export class DrizzlePostsRepository implements IPostsRepository {
   async create(values: NewPost): Promise<Post> {
     const [row] = await db.insert(posts).values(values).returning();
     return row;

@@ -1,11 +1,14 @@
 import { db, sessions } from "@vefacaglar/db";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { injectable } from "tsyringe";
+import type { ISessionsRepository } from "./sessions.repository.interface";
 
 export type Session = InferSelectModel<typeof sessions>;
 export type NewSession = InferInsertModel<typeof sessions>;
 
-export class SessionsRepository {
+@injectable()
+export class DrizzleSessionsRepository implements ISessionsRepository {
   async create(values: NewSession): Promise<Session> {
     const [row] = await db.insert(sessions).values(values).returning();
     return row;
