@@ -45,7 +45,7 @@ app.register(fastifySwagger, {
     },
     servers: [
       {
-        url: "http://localhost:3001",
+        url: "/",
       },
     ],
     components: {
