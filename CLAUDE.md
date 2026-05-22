@@ -2,18 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Caveman Rules
-
-- Code simple. Code work. No code smart.
-- No build big thing when small thing do job.
-- No add abstraction until 3 times same code.
-- No new dependency unless real need. Ask first.
-- Fix what break. No touch what work.
-- One change, one reason. No sneak extra change.
-- No comment obvious. Comment why, not what.
-- Delete dead code. No keep "just in case".
-- Make it run, then make it right. No make it clever.
-
 ## Commands
 
 All commands run from the repo root unless otherwise noted.
