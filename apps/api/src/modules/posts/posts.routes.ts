@@ -1,18 +1,18 @@
 import { FastifyInstance } from "fastify";
-import { CreatePostHandler } from "./create/create.handler";
-import { CreatePostRequest, CreatePostRequestSchema, PostResponseSchema } from "./create/create.schema";
+import { CreatePostHandler } from "./dashboard/create/create.handler";
+import { CreatePostRequest, CreatePostRequestSchema, PostResponseSchema } from "./dashboard/create/create.schema";
 import { ListPostsHandler } from "./list/list.handler";
 import { ListPostsQuery, ListPostsQuerySchema, ListPostsResponseSchema } from "./list/list.schema";
-import { ListAdminPostsHandler } from "./admin/list/list.handler";
-import { ListAdminPostsQuery, ListAdminPostsQuerySchema, ListAdminPostsResponseSchema } from "./admin/list/list.schema";
+import { ListAdminPostsHandler } from "./dashboard/list/list.handler";
+import { ListAdminPostsQuery, ListAdminPostsQuerySchema, ListAdminPostsResponseSchema } from "./dashboard/list/list.schema";
 import { GetPostHandler } from "./detail/detail.handler";
 import { GetPostParams, GetPostParamsSchema, GetPostResponseSchema } from "./detail/detail.schema";
-import { GetAdminPostHandler } from "./admin/detail/detail.handler";
-import { GetAdminPostParams, GetAdminPostParamsSchema, GetAdminPostResponseSchema } from "./admin/detail/detail.schema";
-import { UpdatePostHandler } from "./update/update.handler";
-import { UpdatePostParams, UpdatePostParamsSchema, UpdatePostRequest, UpdatePostRequestSchema, UpdatePostResponseSchema } from "./update/update.schema";
-import { DeletePostHandler } from "./delete/delete.handler";
-import { DeletePostParams, DeletePostParamsSchema, DeletePostResponseSchema } from "./delete/delete.schema";
+import { GetAdminPostHandler } from "./dashboard/detail/detail.handler";
+import { GetAdminPostParams, GetAdminPostParamsSchema, GetAdminPostResponseSchema } from "./dashboard/detail/detail.schema";
+import { UpdatePostHandler } from "./dashboard/update/update.handler";
+import { UpdatePostParams, UpdatePostParamsSchema, UpdatePostRequest, UpdatePostRequestSchema, UpdatePostResponseSchema } from "./dashboard/update/update.schema";
+import { DeletePostHandler } from "./dashboard/delete/delete.handler";
+import { DeletePostParams, DeletePostParamsSchema, DeletePostResponseSchema } from "./dashboard/delete/delete.schema";
 import { ErrorResponseSchema } from "../../shared/error-schema";
 import { container } from "../../container";
 
@@ -25,7 +25,7 @@ export async function postsRoutes(app: FastifyInstance) {
   const updateHandler = container.resolve(UpdatePostHandler);
   const deleteHandler = container.resolve(DeletePostHandler);
 
-  app.post<{ Body: CreatePostRequest }>("/", {
+  app.post<{ Body: CreatePostRequest }>("/dashboard", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Create a new blog post",
@@ -46,10 +46,10 @@ export async function postsRoutes(app: FastifyInstance) {
     },
   }, (request) => listHandler.handle(request));
 
-  app.get<{ Querystring: ListAdminPostsQuery }>("/admin", {
+  app.get<{ Querystring: ListAdminPostsQuery }>("/dashboard", {
     preHandler: app.requireAdmin,
     schema: {
-      description: "List raw blog posts for admin",
+      description: "List raw blog posts for dashboard",
       tags: ["Posts"],
       security: [{ bearerAuth: [] }],
       querystring: ListAdminPostsQuerySchema,
@@ -57,10 +57,10 @@ export async function postsRoutes(app: FastifyInstance) {
     },
   }, (request) => listAdminHandler.handle(request));
 
-  app.get<{ Params: GetAdminPostParams }>("/admin/:id", {
+  app.get<{ Params: GetAdminPostParams }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
     schema: {
-      description: "Get raw blog post by id for admin editing",
+      description: "Get raw blog post by id for dashboard editing",
       tags: ["Posts"],
       security: [{ bearerAuth: [] }],
       params: GetAdminPostParamsSchema,
@@ -78,7 +78,7 @@ export async function postsRoutes(app: FastifyInstance) {
     },
   }, (request) => getHandler.handle(request));
 
-  app.put<{ Params: UpdatePostParams; Body: UpdatePostRequest }>("/:id", {
+  app.put<{ Params: UpdatePostParams; Body: UpdatePostRequest }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Update an existing blog post",
@@ -90,7 +90,7 @@ export async function postsRoutes(app: FastifyInstance) {
     },
   }, (request) => updateHandler.handle(request));
 
-  app.delete<{ Params: DeletePostParams }>("/:id", {
+  app.delete<{ Params: DeletePostParams }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Delete a blog post",

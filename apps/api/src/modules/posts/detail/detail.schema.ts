@@ -1,5 +1,5 @@
 import { Type, Static } from "@sinclair/typebox";
-import { PostResponseSchema } from "../create/create.schema";
+import { PostResponseSchema } from "../dashboard/create/create.schema";
 
 export const GetPostParamsSchema = Type.Object({
   slug: Type.String(),

@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import MarkdownPreview from "./MarkdownPreview";
 import styles from "./MarkdownEditor.module.css";
-import { uploadImageAction } from "../admin/actions";
+import { uploadImageAction } from "../dashboard/actions";
 
 interface MarkdownEditorProps {
   value: string;

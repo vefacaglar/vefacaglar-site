@@ -27,7 +27,7 @@ No test runner is configured.
 
 Turborepo + pnpm workspace. Two apps, two packages.
 
-**`apps/web`** — Next.js 14 App Router. Public routes under `src/app/` (`/`, `/about`, `/blog`, `/blog/[slug]`, `/projects`). Admin/content tools live under `src/app/admin/` and use server actions (`admin/actions.ts`) to talk to the API. Uses `next-mdx-remote` to render markdown post bodies. Styling is plain CSS / CSS modules — do not add Tailwind or heavy UI libraries.
+**`apps/web`** — Next.js 14 App Router. Public routes under `src/app/` (`/`, `/about`, `/blog`, `/blog/[slug]`, `/projects`). Dashboard/content tools live under `src/app/dashboard/` and use server actions (`dashboard/actions.ts`) to talk to the API. Uses `next-mdx-remote` to render markdown post bodies. Styling is plain CSS / CSS modules — do not add Tailwind or heavy UI libraries.
 
 **`apps/api`** — Fastify with TypeBox schemas and auto-generated Swagger at `/swagger`. Health at `/health`. Routes registered in `src/app.ts` under `/api/auth`, `/api/posts`, `/api/pages`.
 

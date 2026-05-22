@@ -1,18 +1,18 @@
 import { FastifyInstance } from "fastify";
-import { CreateProjectHandler } from "./create/create.handler";
-import { CreateProjectRequest, CreateProjectRequestSchema, ProjectResponseSchema } from "./create/create.schema";
+import { CreateProjectHandler } from "./dashboard/create/create.handler";
+import { CreateProjectRequest, CreateProjectRequestSchema, ProjectResponseSchema } from "./dashboard/create/create.schema";
 import { ListProjectsHandler } from "./list/list.handler";
 import { ListProjectsQuery, ListProjectsQuerySchema, ListProjectsResponseSchema } from "./list/list.schema";
-import { ListAdminProjectsHandler } from "./admin/list/list.handler";
-import { ListAdminProjectsQuery, ListAdminProjectsQuerySchema, ListAdminProjectsResponseSchema } from "./admin/list/list.schema";
+import { ListAdminProjectsHandler } from "./dashboard/list/list.handler";
+import { ListAdminProjectsQuery, ListAdminProjectsQuerySchema, ListAdminProjectsResponseSchema } from "./dashboard/list/list.schema";
 import { GetProjectHandler } from "./detail/detail.handler";
 import { GetProjectParams, GetProjectParamsSchema, GetProjectResponseSchema } from "./detail/detail.schema";
-import { GetAdminProjectHandler } from "./admin/detail/detail.handler";
-import { GetAdminProjectParams, GetAdminProjectParamsSchema, GetAdminProjectResponseSchema } from "./admin/detail/detail.schema";
-import { UpdateProjectHandler } from "./update/update.handler";
-import { UpdateProjectParams, UpdateProjectParamsSchema, UpdateProjectRequest, UpdateProjectRequestSchema, UpdateProjectResponseSchema } from "./update/update.schema";
-import { DeleteProjectHandler } from "./delete/delete.handler";
-import { DeleteProjectParams, DeleteProjectParamsSchema, DeleteProjectResponseSchema } from "./delete/delete.schema";
+import { GetAdminProjectHandler } from "./dashboard/detail/detail.handler";
+import { GetAdminProjectParams, GetAdminProjectParamsSchema, GetAdminProjectResponseSchema } from "./dashboard/detail/detail.schema";
+import { UpdateProjectHandler } from "./dashboard/update/update.handler";
+import { UpdateProjectParams, UpdateProjectParamsSchema, UpdateProjectRequest, UpdateProjectRequestSchema, UpdateProjectResponseSchema } from "./dashboard/update/update.schema";
+import { DeleteProjectHandler } from "./dashboard/delete/delete.handler";
+import { DeleteProjectParams, DeleteProjectParamsSchema, DeleteProjectResponseSchema } from "./dashboard/delete/delete.schema";
 import { ErrorResponseSchema } from "../../shared/error-schema";
 import { container } from "../../container";
 
@@ -25,7 +25,7 @@ export async function projectsRoutes(app: FastifyInstance) {
   const updateHandler = container.resolve(UpdateProjectHandler);
   const deleteHandler = container.resolve(DeleteProjectHandler);
 
-  app.post<{ Body: CreateProjectRequest }>("/", {
+  app.post<{ Body: CreateProjectRequest }>("/dashboard", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Create a new project",
@@ -46,10 +46,10 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
   }, (request) => listHandler.handle(request));
 
-  app.get<{ Querystring: ListAdminProjectsQuery }>("/admin", {
+  app.get<{ Querystring: ListAdminProjectsQuery }>("/dashboard", {
     preHandler: app.requireAdmin,
     schema: {
-      description: "List raw projects for admin",
+      description: "List raw projects for dashboard",
       tags: ["Projects"],
       security: [{ bearerAuth: [] }],
       querystring: ListAdminProjectsQuerySchema,
@@ -57,10 +57,10 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
   }, (request) => listAdminHandler.handle(request));
 
-  app.get<{ Params: GetAdminProjectParams }>("/admin/:id", {
+  app.get<{ Params: GetAdminProjectParams }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
     schema: {
-      description: "Get raw project by id for admin editing",
+      description: "Get raw project by id for dashboard editing",
       tags: ["Projects"],
       security: [{ bearerAuth: [] }],
       params: GetAdminProjectParamsSchema,
@@ -78,7 +78,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
   }, (request) => getHandler.handle(request));
 
-  app.put<{ Params: UpdateProjectParams; Body: UpdateProjectRequest }>("/:id", {
+  app.put<{ Params: UpdateProjectParams; Body: UpdateProjectRequest }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Update an existing project",
@@ -90,7 +90,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     },
   }, (request) => updateHandler.handle(request));
 
-  app.delete<{ Params: DeleteProjectParams }>("/:id", {
+  app.delete<{ Params: DeleteProjectParams }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Delete a project",

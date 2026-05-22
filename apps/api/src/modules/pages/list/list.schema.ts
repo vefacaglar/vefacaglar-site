@@ -1,5 +1,5 @@
 import { Type, Static } from "@sinclair/typebox";
-import { PageResponseSchema } from "../create/create.schema";
+import { PageResponseSchema } from "../dashboard/create/create.schema";
 
 export const ListPagesQuerySchema = Type.Object({
   status: Type.Optional(Type.Union([Type.Literal("draft"), Type.Literal("published")])),

@@ -1,5 +1,5 @@
 import { Type, Static } from "@sinclair/typebox";
-import { ProjectResponseSchema } from "../create/create.schema";
+import { ProjectResponseSchema } from "../dashboard/create/create.schema";
 
 export const ListProjectsQuerySchema = Type.Object({
   status: Type.Optional(Type.Union([Type.Literal("draft"), Type.Literal("published")])),
