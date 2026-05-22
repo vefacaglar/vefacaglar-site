@@ -443,3 +443,119 @@ export async function deletePlatformAction(id: string) {
   }
 }
 
+export async function createGameAction(data: {
+  title: string;
+  slug: string;
+  originalTitle?: string | null;
+  description?: string | null;
+  coverImageUrl?: string | null;
+  releaseDate?: string | null;
+  metacriticScore?: number | null;
+  openCriticScore?: number | null;
+  hltbMainHours?: string | number | null;
+  hltbMainExtraHours?: string | number | null;
+  hltbCompletionistHours?: string | number | null;
+  developerIds?: string[];
+  publisherIds?: string[];
+  genreIds?: string[];
+  platformIds?: string[];
+  themeIds?: string[];
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post("/api/games/games", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Could not create game." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Create game error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updateGameAction(
+  id: string,
+  data: {
+    title?: string;
+    slug?: string;
+    originalTitle?: string | null;
+    description?: string | null;
+    coverImageUrl?: string | null;
+    releaseDate?: string | null;
+    metacriticScore?: number | null;
+    openCriticScore?: number | null;
+    hltbMainHours?: string | number | null;
+    hltbMainExtraHours?: string | number | null;
+    hltbCompletionistHours?: string | number | null;
+    developerIds?: string[];
+    publisherIds?: string[];
+    genreIds?: string[];
+    platformIds?: string[];
+    themeIds?: string[];
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.put(`/api/games/games/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update game." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Update game error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function deleteGameAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.delete(`/api/games/games/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to delete game." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Delete game error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+

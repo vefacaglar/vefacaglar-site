@@ -1,10 +1,11 @@
 import { injectable, inject } from "tsyringe";
-import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY, THEMES_REPOSITORY, PLATFORMS_REPOSITORY } from "./games.tokens";
+import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY, THEMES_REPOSITORY, PLATFORMS_REPOSITORY, GAMES_REPOSITORY } from "./games.tokens";
 import type { IDevelopersRepository, Developer } from "./developers.repository.interface";
 import type { IPublishersRepository, Publisher } from "./publishers.repository.interface";
 import type { IGenresRepository, Genre } from "./genres.repository.interface";
 import type { IThemesRepository, Theme } from "./themes.repository.interface";
 import type { IPlatformsRepository, Platform } from "./platforms.repository.interface";
+import type { IGamesRepository, GameWithRelations, Game } from "./games.repository.interface";
 import { BadRequestError, NotFoundError } from "../../shared/http-errors";
 
 @injectable()
@@ -14,7 +15,8 @@ export class GameService {
     @inject(PUBLISHERS_REPOSITORY) private readonly publishersRepo: IPublishersRepository,
     @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
-    @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository
+    @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
+    @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository
   ) {}
 
   // --- Developer CRUD Methods ---
@@ -324,5 +326,133 @@ export class GameService {
       throw new NotFoundError("Platform not found.");
     }
     await this.platformsRepo.delete(id);
+  }
+
+  // --- Game CRUD Methods ---
+
+  async createGame(
+    data: {
+      title: string;
+      slug: string;
+      originalTitle?: string | null;
+      description?: string | null;
+      coverImageUrl?: string | null;
+      releaseDate?: string | null;
+      metacriticScore?: number | null;
+      openCriticScore?: number | null;
+      hltbMainHours?: string | number | null;
+      hltbMainExtraHours?: string | number | null;
+      hltbCompletionistHours?: string | number | null;
+    },
+    relations: {
+      developerIds?: string[];
+      publisherIds?: string[];
+      genreIds?: string[];
+      platformIds?: string[];
+      themeIds?: string[];
+    }
+  ): Promise<GameWithRelations> {
+    const existing = await this.gamesRepo.findBySlug(data.slug);
+    if (existing) {
+      throw new BadRequestError("Game with this slug already exists.");
+    }
+
+    return this.gamesRepo.create(
+      {
+        title: data.title,
+        slug: data.slug,
+        originalTitle: data.originalTitle || null,
+        description: data.description || null,
+        coverImageUrl: data.coverImageUrl || null,
+        releaseDate: data.releaseDate || null,
+        metacriticScore: data.metacriticScore || null,
+        openCriticScore: data.openCriticScore || null,
+        hltbMainHours: data.hltbMainHours ? String(data.hltbMainHours) : null,
+        hltbMainExtraHours: data.hltbMainExtraHours ? String(data.hltbMainExtraHours) : null,
+        hltbCompletionistHours: data.hltbCompletionistHours ? String(data.hltbCompletionistHours) : null,
+      },
+      relations
+    );
+  }
+
+  async getGameById(id: string): Promise<GameWithRelations> {
+    const game = await this.gamesRepo.findById(id);
+    if (!game) {
+      throw new NotFoundError("Game not found.");
+    }
+    return game;
+  }
+
+  async getGameBySlug(slug: string): Promise<GameWithRelations> {
+    const game = await this.gamesRepo.findBySlug(slug);
+    if (!game) {
+      throw new NotFoundError("Game not found.");
+    }
+    return game;
+  }
+
+  async listGames(filter?: { page?: number; limit?: number }): Promise<{ items: GameWithRelations[]; total: number }> {
+    return this.gamesRepo.list(filter);
+  }
+
+  async updateGame(
+    id: string,
+    data: {
+      title?: string;
+      slug?: string;
+      originalTitle?: string | null;
+      description?: string | null;
+      coverImageUrl?: string | null;
+      releaseDate?: string | null;
+      metacriticScore?: number | null;
+      openCriticScore?: number | null;
+      hltbMainHours?: string | number | null;
+      hltbMainExtraHours?: string | number | null;
+      hltbCompletionistHours?: string | number | null;
+    },
+    relations?: {
+      developerIds?: string[];
+      publisherIds?: string[];
+      genreIds?: string[];
+      platformIds?: string[];
+      themeIds?: string[];
+    }
+  ): Promise<GameWithRelations> {
+    const existing = await this.gamesRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Game not found.");
+    }
+
+    if (data.slug && data.slug !== existing.slug) {
+      const slugDup = await this.gamesRepo.findBySlug(data.slug);
+      if (slugDup) {
+        throw new BadRequestError("Game with this slug already exists.");
+      }
+    }
+
+    const patch: any = {};
+    if (data.title !== undefined) patch.title = data.title;
+    if (data.slug !== undefined) patch.slug = data.slug;
+    if (data.originalTitle !== undefined) patch.originalTitle = data.originalTitle;
+    if (data.description !== undefined) patch.description = data.description;
+    if (data.coverImageUrl !== undefined) patch.coverImageUrl = data.coverImageUrl;
+    if (data.releaseDate !== undefined) patch.releaseDate = data.releaseDate;
+    if (data.metacriticScore !== undefined) patch.metacriticScore = data.metacriticScore;
+    if (data.openCriticScore !== undefined) patch.openCriticScore = data.openCriticScore;
+    if (data.hltbMainHours !== undefined) patch.hltbMainHours = data.hltbMainHours ? String(data.hltbMainHours) : null;
+    if (data.hltbMainExtraHours !== undefined) patch.hltbMainExtraHours = data.hltbMainExtraHours ? String(data.hltbMainExtraHours) : null;
+    if (data.hltbCompletionistHours !== undefined) patch.hltbCompletionistHours = data.hltbCompletionistHours ? String(data.hltbCompletionistHours) : null;
+
+    patch.updatedAt = new Date();
+
+    return this.gamesRepo.update(id, patch, relations);
+  }
+
+  async deleteGame(id: string): Promise<void> {
+    const existing = await this.gamesRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Game not found.");
+    }
+    await this.gamesRepo.delete(id);
   }
 }

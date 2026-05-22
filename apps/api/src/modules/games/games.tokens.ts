@@ -3,5 +3,7 @@ export const PUBLISHERS_REPOSITORY = Symbol("PublishersRepositoryToken");
 export const GENRES_REPOSITORY = Symbol("GenresRepositoryToken");
 export const THEMES_REPOSITORY = Symbol("ThemesRepositoryToken");
 export const PLATFORMS_REPOSITORY = Symbol("PlatformsRepositoryToken");
+export const GAMES_REPOSITORY = Symbol("GamesRepositoryToken");
+
 
 

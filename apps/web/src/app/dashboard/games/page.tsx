@@ -7,41 +7,6 @@ import styles from "../dashboard.module.css";
 import { httpClient } from "../../../lib/httpClient";
 import GamesDashboardClient from "./GamesDashboardClient";
 
-// Interface definitions for the other mock admin catalog records
-interface GameCatalogItem {
-  id: string;
-  title: string;
-  slug: string;
-  releaseDate?: string;
-  metacriticScore?: number;
-  openCriticScore?: number;
-}
-
-interface PublisherCatalogItem {
-  id: string;
-  name: string;
-  slug: string;
-  countryCode?: string;
-}
-
-interface GenreCatalogItem {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface PlatformCatalogItem {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface ThemeCatalogItem {
-  id: string;
-  name: string;
-  slug: string;
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function GamesDashboard() {
@@ -50,6 +15,22 @@ export default async function GamesDashboard() {
 
   if (!token) {
     redirect("/dashboard/login");
+  }
+
+  // Fetch real games from the backend API
+  let gamesData = { items: [], total: 0, page: 1, limit: 1000, totalPages: 1 };
+  try {
+    const res = await httpClient.get("/api/games/games?limit=1000", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      gamesData = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch games in dashboard:", error);
   }
 
   // Fetch real developers from the backend API
@@ -132,48 +113,6 @@ export default async function GamesDashboard() {
     console.error("Failed to fetch platforms in dashboard:", error);
   }
 
-
-  // Premium mock games matching the database schemas
-  const mockGames: GameCatalogItem[] = [
-    {
-      id: "1",
-      title: "The Legend of Zelda: Tears of the Kingdom",
-      slug: "the-legend-of-zelda-tears-of-the-kingdom",
-      releaseDate: "2023-05-12",
-      metacriticScore: 96,
-      openCriticScore: 96,
-    },
-    {
-      id: "2",
-      title: "Elden Ring",
-      slug: "elden-ring",
-      releaseDate: "2022-02-25",
-      metacriticScore: 96,
-      openCriticScore: 95,
-    },
-    {
-      id: "3",
-      title: "Cyberpunk 2077",
-      slug: "cyberpunk-2077",
-      releaseDate: "2020-12-10",
-      metacriticScore: 86,
-      openCriticScore: 88,
-    },
-  ];
-
-  // Premium mock publishers matching the database schemas
-  const mockPublishers: PublisherCatalogItem[] = [
-    { id: "1", name: "Nintendo", slug: "nintendo", countryCode: "JP" },
-    { id: "2", name: "Bandai Namco", slug: "bandai-namco", countryCode: "JP" },
-    { id: "3", name: "CD Projekt", slug: "cd-projekt", countryCode: "PL" },
-  ];
-
-
-
-
-
-
-
   return (
     <div>
       <div className={styles.header}>
@@ -199,66 +138,14 @@ export default async function GamesDashboard() {
         </Link>
       </div>
 
-      {/* 1. Global Game Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Games ({mockGames.length})</h2>
-          <button className="btnAccent">
-            + New Game
-          </button>
-        </div>
-
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th}>Title</th>
-              <th className={styles.th}>Slug</th>
-              <th className={styles.th}>Release Date</th>
-              <th className={styles.thRight}>Scores (MC / OC)</th>
-              <th className={styles.thRight}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockGames.map((game) => (
-              <tr key={game.id} className={styles.tr}>
-                <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                  {game.title}
-                </td>
-                <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                  {game.slug}
-                </td>
-                <td className={styles.td}>
-                  {game.releaseDate || "—"}
-                </td>
-                <td className={styles.tdRight} style={{ fontWeight: 600 }}>
-                  {game.metacriticScore || "—"} / {game.openCriticScore || "—"}
-                </td>
-                <td className={styles.tdRight}>
-                  <div className={styles.rowActions}>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                      Edit
-                    </button>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {/* 2, 3, 4 & 5. Developers, Publishers, Genres, Themes and Platforms Catalogs (Using real API and Client Component) */}
       <GamesDashboardClient
+        initialGames={gamesData}
         initialDevelopers={developersData}
         initialPublishers={publishersData}
         initialGenres={genresData}
         initialThemes={themesData}
         initialPlatforms={platformsData}
       />
-
-
     </div>
   );
 }
