@@ -31,6 +31,8 @@ export default function MarkdownEditor({
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
+    const scrollTop = textarea.scrollTop;
+    const scrollLeft = textarea.scrollLeft;
     const selectedText = value.substring(start, end);
 
     let replacement = "";
@@ -97,12 +99,14 @@ export default function MarkdownEditor({
 
     // Wait for React to apply onChange state update, then restore focus & select
     setTimeout(() => {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       if (selectedText) {
         textarea.setSelectionRange(start, start + replacement.length);
       } else {
         textarea.setSelectionRange(start + selectionOffsetStart, start + selectionOffsetEnd);
       }
+      textarea.scrollTop = scrollTop;
+      textarea.scrollLeft = scrollLeft;
     }, 0);
   };
 
