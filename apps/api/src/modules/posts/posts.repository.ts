@@ -1,7 +1,9 @@
-import { db, posts, users } from "@vefacaglar/db";
+import { posts, users } from "@vefacaglar/db";
+import type { DbType } from "@vefacaglar/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { injectable } from "tsyringe";
+import { injectable, inject } from "tsyringe";
+import { DB_CONNECTION } from "../../db.tokens";
 import type { IPostsRepository } from "./posts.repository.interface";
 
 export type Post = InferSelectModel<typeof posts>;
@@ -14,18 +16,20 @@ export type PostWithAuthor = Post & {
 
 @injectable()
 export class DrizzlePostsRepository implements IPostsRepository {
+  constructor(@inject(DB_CONNECTION) private readonly db: DbType) {}
+
   async create(values: NewPost): Promise<Post> {
-    const [row] = await db.insert(posts).values(values).returning();
+    const [row] = await this.db.insert(posts).values(values).returning();
     return row;
   }
 
   async findById(id: string): Promise<Post | null> {
-    const [row] = await db.select().from(posts).where(eq(posts.id, id)).limit(1);
+    const [row] = await this.db.select().from(posts).where(eq(posts.id, id)).limit(1);
     return row ?? null;
   }
 
   async findBySlugWithAuthor(slug: string): Promise<PostWithAuthor | null> {
-    const [row] = await db
+    const [row] = await this.db
       .select({
         id: posts.id,
         slug: posts.slug,
@@ -53,7 +57,7 @@ export class DrizzlePostsRepository implements IPostsRepository {
   async listWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]> {
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
 
-    return await db
+    return await this.db
       .select({
         id: posts.id,
         slug: posts.slug,
@@ -78,18 +82,18 @@ export class DrizzlePostsRepository implements IPostsRepository {
   }
 
   async update(id: string, patch: Partial<NewPost>): Promise<Post> {
-    const [row] = await db.update(posts).set(patch).where(eq(posts.id, id)).returning();
+    const [row] = await this.db.update(posts).set(patch).where(eq(posts.id, id)).returning();
     return row;
   }
 
   async delete(id: string): Promise<void> {
-    await db.delete(posts).where(eq(posts.id, id));
+    await this.db.delete(posts).where(eq(posts.id, id));
   }
 
   async listPublishedByAuthorId(
     authorId: string
   ): Promise<Pick<Post, "id" | "slug" | "title" | "excerpt" | "publishedAt">[]> {
-    return await db
+    return await this.db
       .select({
         id: posts.id,
         slug: posts.slug,
