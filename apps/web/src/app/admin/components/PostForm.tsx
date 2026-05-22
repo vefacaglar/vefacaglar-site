@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPostAction, updatePostAction } from "../actions";
-import MarkdownPreview from "../../components/MarkdownPreview";
+import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "./form.module.css";
 
 interface PostFormProps {
@@ -25,7 +25,6 @@ export default function PostForm({ initialData }: PostFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
 
   // Form states
   const [title, setTitle] = useState(initialData?.title || "");
@@ -139,40 +138,14 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <div className={styles.tabBar}>
-            <label className="label">Content (Markdown / MDX)</label>
-            <div className={styles.tabs}>
-              <button
-                type="button"
-                onClick={() => setActiveTab("edit")}
-                className={activeTab === "edit" ? styles.tabActive : styles.tabInactive}
-              >
-                Write
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("preview")}
-                className={activeTab === "preview" ? styles.tabActive : styles.tabInactive}
-              >
-                Preview
-              </button>
-            </div>
-          </div>
-
-          {activeTab === "edit" ? (
-            <textarea
-              required
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={15}
-              placeholder="# Title&#10;&#10;Write your content in MDX/Markdown format..."
-              className={styles.textareaLarge}
-            />
-          ) : (
-            <div className={styles.preview}>
-              <MarkdownPreview content={content} />
-            </div>
-          )}
+          <label className="label">Content (Markdown / MDX)</label>
+          <MarkdownEditor
+            required
+            value={content}
+            onChange={setContent}
+            placeholder="# Title&#10;&#10;Write your content in MDX/Markdown format..."
+            rows={15}
+          />
         </div>
 
         <div className="field">
