@@ -1,9 +1,8 @@
 import { sessions } from "@vefacaglar/db";
-import type { DbType } from "@vefacaglar/db";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { injectable, inject } from "tsyringe";
-import { DB_CONNECTION } from "../../db.tokens";
+import { injectable } from "tsyringe";
+import { DbProvider } from "../../db.provider";
 import type { ISessionsRepository } from "./sessions.repository.interface";
 
 export type Session = InferSelectModel<typeof sessions>;
@@ -11,15 +10,15 @@ export type NewSession = InferInsertModel<typeof sessions>;
 
 @injectable()
 export class DrizzleSessionsRepository implements ISessionsRepository {
-  constructor(@inject(DB_CONNECTION) private readonly db: DbType) {}
+  constructor(private readonly dbProvider: DbProvider) {}
 
   async create(values: NewSession): Promise<Session> {
-    const [row] = await this.db.insert(sessions).values(values).returning();
+    const [row] = await this.dbProvider.client.insert(sessions).values(values).returning();
     return row;
   }
 
   async findActiveByTokenHash(tokenHash: string): Promise<Session | null> {
-    const [row] = await this.db
+    const [row] = await this.dbProvider.client
       .select()
       .from(sessions)
       .where(
@@ -34,7 +33,7 @@ export class DrizzleSessionsRepository implements ISessionsRepository {
   }
 
   async revoke(sessionId: string): Promise<void> {
-    await this.db
+    await this.dbProvider.client
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(eq(sessions.id, sessionId));

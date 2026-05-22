@@ -1,6 +1,8 @@
 import { container } from "tsyringe";
 import { db } from "@vefacaglar/db";
 import { DB_CONNECTION } from "./db.tokens";
+import { DbProvider } from "./db.provider";
+import { TransactionManager } from "./transaction.manager";
 import { POSTS_REPOSITORY } from "./modules/posts/posts.tokens";
 import { DrizzlePostsRepository } from "./modules/posts/posts.repository";
 import { PAGES_REPOSITORY } from "./modules/pages/pages.tokens";
@@ -10,6 +12,8 @@ import { DrizzleUsersRepository } from "./modules/auth/users.repository";
 import { DrizzleSessionsRepository } from "./modules/auth/sessions.repository";
 
 container.registerInstance(DB_CONNECTION, db);
+container.registerSingleton(DbProvider);
+container.registerSingleton(TransactionManager);
 container.registerSingleton(POSTS_REPOSITORY, DrizzlePostsRepository);
 container.registerSingleton(PAGES_REPOSITORY, DrizzlePagesRepository);
 container.registerSingleton(USERS_REPOSITORY, DrizzleUsersRepository);

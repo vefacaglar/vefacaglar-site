@@ -1,9 +1,8 @@
 import { sessions, users } from "@vefacaglar/db";
-import type { DbType } from "@vefacaglar/db";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { injectable, inject } from "tsyringe";
-import { DB_CONNECTION } from "../../db.tokens";
+import { injectable } from "tsyringe";
+import { DbProvider } from "../../db.provider";
 import type { IUsersRepository } from "./users.repository.interface";
 
 export type User = InferSelectModel<typeof users>;
@@ -11,26 +10,26 @@ export type NewUser = InferInsertModel<typeof users>;
 
 @injectable()
 export class DrizzleUsersRepository implements IUsersRepository {
-  constructor(@inject(DB_CONNECTION) private readonly db: DbType) {}
+  constructor(private readonly dbProvider: DbProvider) {}
 
   async findById(id: string): Promise<User | null> {
-    const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    const [row] = await this.dbProvider.client.select().from(users).where(eq(users.id, id)).limit(1);
     return row ?? null;
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const [row] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    const [row] = await this.dbProvider.client.select().from(users).where(eq(users.email, email)).limit(1);
     return row ?? null;
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    const [row] = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    const [row] = await this.dbProvider.client.select().from(users).where(eq(users.username, username)).limit(1);
     return row ?? null;
   }
 
   async updateLastLogin(id: string): Promise<void> {
     const now = new Date();
-    await this.db.update(users).set({ lastLoginAt: now, updatedAt: now }).where(eq(users.id, id));
+    await this.dbProvider.client.update(users).set({ lastLoginAt: now, updatedAt: now }).where(eq(users.id, id));
   }
 
   /**
@@ -41,8 +40,8 @@ export class DrizzleUsersRepository implements IUsersRepository {
     userId: string,
     patch: { email: string; username: string; displayName: string }
   ): Promise<User> {
-    return await this.db.transaction(async (tx) => {
-      const emailExists = await tx
+    return await this.dbProvider.transaction(async () => {
+      const emailExists = await this.dbProvider.client
         .select({ id: users.id })
         .from(users)
         .where(and(eq(users.email, patch.email), ne(users.id, userId)))
@@ -51,7 +50,7 @@ export class DrizzleUsersRepository implements IUsersRepository {
         throw new Error("EmailAlreadyExists");
       }
 
-      const usernameExists = await tx
+      const usernameExists = await this.dbProvider.client
         .select({ id: users.id })
         .from(users)
         .where(and(eq(users.username, patch.username), ne(users.id, userId)))
@@ -60,7 +59,7 @@ export class DrizzleUsersRepository implements IUsersRepository {
         throw new Error("UsernameAlreadyExists");
       }
 
-      const [row] = await tx
+      const [row] = await this.dbProvider.client
         .update(users)
         .set({ ...patch, updatedAt: new Date() })
         .where(eq(users.id, userId))
@@ -78,13 +77,13 @@ export class DrizzleUsersRepository implements IUsersRepository {
     newPasswordHash: string
   ): Promise<void> {
     const now = new Date();
-    await this.db.transaction(async (tx) => {
-      await tx
+    await this.dbProvider.transaction(async () => {
+      await this.dbProvider.client
         .update(users)
         .set({ passwordHash: newPasswordHash, updatedAt: now })
         .where(eq(users.id, userId));
 
-      await tx
+      await this.dbProvider.client
         .update(sessions)
         .set({ revokedAt: now })
         .where(
