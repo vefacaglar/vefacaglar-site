@@ -1,3 +1,5 @@
+import { injectable } from "tsyringe";
+import { languageStorage } from "./localization.plugin";
 import enDict from "./locales/en.json";
 import trDict from "./locales/tr.json";
 
@@ -5,6 +7,13 @@ const locales: Record<string, Record<string, string>> = {
   en: enDict,
   tr: trDict,
 };
+
+@injectable()
+export class LanguageProvider {
+  getLanguage(): string {
+    return languageStorage.getStore() || "en";
+  }
+}
 
 export function translateError(key: string, lang = "en"): string {
   const dict = locales[lang] || locales.en;
@@ -17,11 +26,8 @@ export function mergeTranslations<T extends Record<string, any>>(
 ): T {
   const localized = { ...entity };
   for (const item of translations) {
-    // Standard mapping: convert database snake_case field to camelCase if entity has it,
-    // or keep it as-is if database field matches entity field.
     let targetField: string = item.field;
     if (!(targetField in localized)) {
-      // Try to convert snake_case to camelCase (e.g. seo_title -> seoTitle)
       const camelCaseField = targetField.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
       if (camelCaseField in localized) {
         targetField = camelCaseField;

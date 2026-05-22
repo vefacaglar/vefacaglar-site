@@ -4,7 +4,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IPostsRepository } from "./posts.repository.interface";
-import { mergeTranslations } from "../../shared/localization";
+import { mergeTranslations, LanguageProvider } from "../../shared/localization";
 
 export type Post = InferSelectModel<typeof posts>;
 export type NewPost = InferInsertModel<typeof posts>;
@@ -16,14 +16,18 @@ export type PostWithAuthor = Post & {
 
 @injectable()
 export class DrizzlePostsRepository implements IPostsRepository {
-  constructor(private readonly dbProvider: DbProvider) {}
+  constructor(
+    private readonly dbProvider: DbProvider,
+    private readonly langProvider: LanguageProvider
+  ) {}
 
   async create(values: NewPost): Promise<Post> {
     const [row] = await this.dbProvider.client.insert(posts).values(values).returning();
     return row;
   }
 
-  async findById(id: string, lang?: string): Promise<Post | null> {
+  async findById(id: string): Promise<Post | null> {
+    const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client.select().from(posts).where(eq(posts.id, id)).limit(1);
     if (!row || !lang || lang === 'en') return row ?? null;
 
@@ -39,7 +43,8 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return mergeTranslations(row, translations);
   }
 
-  async findBySlugWithAuthor(slug: string, lang?: string): Promise<PostWithAuthor | null> {
+  async findBySlugWithAuthor(slug: string): Promise<PostWithAuthor | null> {
+    const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client
       .select({
         id: posts.id,
@@ -77,7 +82,8 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return mergeTranslations(row, translations);
   }
 
-  async listWithAuthor(filter?: { status?: "draft" | "published" }, lang?: string): Promise<PostWithAuthor[]> {
+  async listWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]> {
+    const lang = this.langProvider.getLanguage();
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
 
     const rows = await this.dbProvider.client
@@ -139,9 +145,9 @@ export class DrizzlePostsRepository implements IPostsRepository {
   }
 
   async listPublishedByAuthorId(
-    authorId: string,
-    lang?: string
+    authorId: string
   ): Promise<Pick<Post, "id" | "slug" | "title" | "excerpt" | "publishedAt">[]> {
+    const lang = this.langProvider.getLanguage();
     const rows = await this.dbProvider.client
       .select({
         id: posts.id,

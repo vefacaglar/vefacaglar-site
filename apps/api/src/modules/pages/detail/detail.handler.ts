@@ -12,7 +12,7 @@ export class GetPageHandler {
   async handle(request: FastifyRequest<{ Params: GetPageParams }>): Promise<GetPageResponse> {
     const { slug } = request.params;
 
-    const page = await this.pagesRepo.findBySlug(slug, request.lang);
+    const page = await this.pagesRepo.findBySlug(slug);
 
     if (!page) {
       throw new NotFoundError("err_page_not_found");

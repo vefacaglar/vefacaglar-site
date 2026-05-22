@@ -12,7 +12,7 @@ export class GetPostHandler {
   async handle(request: FastifyRequest<{ Params: GetPostParams }>): Promise<GetPostResponse> {
     const { slug } = request.params;
 
-    const post = await this.postsRepo.findBySlugWithAuthor(slug, request.lang);
+    const post = await this.postsRepo.findBySlugWithAuthor(slug);
 
     if (!post) {
       throw new NotFoundError("err_post_not_found");

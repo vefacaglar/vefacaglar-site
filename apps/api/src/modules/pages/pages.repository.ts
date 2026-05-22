@@ -4,21 +4,25 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IPagesRepository } from "./pages.repository.interface";
-import { mergeTranslations } from "../../shared/localization";
+import { mergeTranslations, LanguageProvider } from "../../shared/localization";
 
 export type Page = InferSelectModel<typeof pages>;
 export type NewPage = InferInsertModel<typeof pages>;
 
 @injectable()
 export class DrizzlePagesRepository implements IPagesRepository {
-  constructor(private readonly dbProvider: DbProvider) {}
+  constructor(
+    private readonly dbProvider: DbProvider,
+    private readonly langProvider: LanguageProvider
+  ) {}
 
   async create(values: NewPage): Promise<Page> {
     const [row] = await this.dbProvider.client.insert(pages).values(values).returning();
     return row;
   }
 
-  async findById(id: string, lang?: string): Promise<Page | null> {
+  async findById(id: string): Promise<Page | null> {
+    const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client.select().from(pages).where(eq(pages.id, id)).limit(1);
     if (!row || !lang || lang === 'en') return row ?? null;
 
@@ -34,7 +38,8 @@ export class DrizzlePagesRepository implements IPagesRepository {
     return mergeTranslations(row, translations);
   }
 
-  async findBySlug(slug: string, lang?: string): Promise<Page | null> {
+  async findBySlug(slug: string): Promise<Page | null> {
+    const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client.select().from(pages).where(eq(pages.slug, slug)).limit(1);
     if (!row || !lang || lang === 'en') return row ?? null;
 
@@ -50,7 +55,8 @@ export class DrizzlePagesRepository implements IPagesRepository {
     return mergeTranslations(row, translations);
   }
 
-  async list(filter?: { status?: "draft" | "published" }, lang?: string): Promise<Page[]> {
+  async list(filter?: { status?: "draft" | "published" }): Promise<Page[]> {
+    const lang = this.langProvider.getLanguage();
     const conditions = filter?.status ? [eq(pages.status, filter.status)] : [];
 
     const rows = await this.dbProvider.client
