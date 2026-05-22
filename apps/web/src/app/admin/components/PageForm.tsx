@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPageAction, updatePageAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
 
 interface PageFormProps {
@@ -100,7 +101,10 @@ export default function PageForm({ initialData }: PageFormProps) {
         )}
 
         <div className="field">
-          <label className="label">Title</label>
+          <div className={styles.labelRow}>
+            <label className="label">Title</label>
+            <LocalizationButton entityType="page" entityId={initialData?.id} field="title" label="Title" initialValue={title} />
+          </div>
           <input
             type="text"
             required
@@ -122,7 +126,17 @@ export default function PageForm({ initialData }: PageFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Content (Markdown / MDX)</label>
+          <div className={styles.labelRow}>
+            <label className="label">Content (Markdown / MDX)</label>
+            <LocalizationButton
+              entityType="page"
+              entityId={initialData?.id}
+              field="content"
+              label="Content"
+              initialValue={content}
+              inputType="textarea"
+            />
+          </div>
           <MarkdownEditor
             required
             value={content}
@@ -148,7 +162,16 @@ export default function PageForm({ initialData }: PageFormProps) {
           <summary className={styles.seoSummary}>SEO Settings (Optional)</summary>
           <div className={styles.seoFields}>
             <div className="field">
-              <label className={styles.seoLabel}>SEO Title</label>
+              <div className={styles.labelRow}>
+                <label className={styles.seoLabel}>SEO Title</label>
+                <LocalizationButton
+                  entityType="page"
+                  entityId={initialData?.id}
+                  field="seoTitle"
+                  label="SEO Title"
+                  initialValue={seoTitle}
+                />
+              </div>
               <input
                 type="text"
                 value={seoTitle}
@@ -157,7 +180,17 @@ export default function PageForm({ initialData }: PageFormProps) {
               />
             </div>
             <div className="field">
-              <label className={styles.seoLabel}>SEO Description</label>
+              <div className={styles.labelRow}>
+                <label className={styles.seoLabel}>SEO Description</label>
+                <LocalizationButton
+                  entityType="page"
+                  entityId={initialData?.id}
+                  field="seoDescription"
+                  label="SEO Description"
+                  initialValue={seoDescription}
+                  inputType="textarea"
+                />
+              </div>
               <textarea
                 value={seoDescription}
                 onChange={(e) => setSeoDescription(e.target.value)}

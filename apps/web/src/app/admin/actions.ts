@@ -491,4 +491,71 @@ export async function uploadImageAction(formData: FormData) {
   }
 }
 
+export async function upsertLocalizationAction(data: {
+  entityType: "page" | "post" | "project";
+  entityId: string;
+  languageCode: "tr";
+  field: string;
+  value: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
 
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post("/api/localizations", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to save localization." };
+    }
+
+    return { success: true, data: await res.json() };
+  } catch (error) {
+    console.error("Upsert localization error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function getLocalizationAction(data: {
+  entityType: "page" | "post" | "project";
+  entityId: string;
+  languageCode: "tr";
+  field: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  const params = new URLSearchParams({
+    entityType: data.entityType,
+    entityId: data.entityId,
+    languageCode: data.languageCode,
+    field: data.field,
+  });
+
+  try {
+    const res = await httpClient.get(`/api/localizations?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to load localization." };
+    }
+
+    return { data: await res.json() };
+  } catch (error) {
+    console.error("Get localization error:", error);
+    return { error: "Server connection error." };
+  }
+}

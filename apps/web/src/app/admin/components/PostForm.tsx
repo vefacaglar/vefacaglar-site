@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPostAction, updatePostAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
 
 interface PostFormProps {
@@ -106,7 +107,10 @@ export default function PostForm({ initialData }: PostFormProps) {
         )}
 
         <div className="field">
-          <label className="label">Title</label>
+          <div className={styles.labelRow}>
+            <label className="label">Title</label>
+            <LocalizationButton entityType="post" entityId={initialData?.id} field="title" label="Title" initialValue={title} />
+          </div>
           <input
             type="text"
             required
@@ -128,7 +132,17 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Excerpt</label>
+          <div className={styles.labelRow}>
+            <label className="label">Excerpt</label>
+            <LocalizationButton
+              entityType="post"
+              entityId={initialData?.id}
+              field="excerpt"
+              label="Excerpt"
+              initialValue={excerpt}
+              inputType="textarea"
+            />
+          </div>
           <textarea
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
@@ -138,7 +152,17 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Content (Markdown / MDX)</label>
+          <div className={styles.labelRow}>
+            <label className="label">Content (Markdown / MDX)</label>
+            <LocalizationButton
+              entityType="post"
+              entityId={initialData?.id}
+              field="content"
+              label="Content"
+              initialValue={content}
+              inputType="textarea"
+            />
+          </div>
           <MarkdownEditor
             required
             value={content}
@@ -175,7 +199,16 @@ export default function PostForm({ initialData }: PostFormProps) {
           <summary className={styles.seoSummary}>SEO Settings (Optional)</summary>
           <div className={styles.seoFields}>
             <div className="field">
-              <label className={styles.seoLabel}>SEO Title</label>
+              <div className={styles.labelRow}>
+                <label className={styles.seoLabel}>SEO Title</label>
+                <LocalizationButton
+                  entityType="post"
+                  entityId={initialData?.id}
+                  field="seoTitle"
+                  label="SEO Title"
+                  initialValue={seoTitle}
+                />
+              </div>
               <input
                 type="text"
                 value={seoTitle}
@@ -184,7 +217,17 @@ export default function PostForm({ initialData }: PostFormProps) {
               />
             </div>
             <div className="field">
-              <label className={styles.seoLabel}>SEO Description</label>
+              <div className={styles.labelRow}>
+                <label className={styles.seoLabel}>SEO Description</label>
+                <LocalizationButton
+                  entityType="post"
+                  entityId={initialData?.id}
+                  field="seoDescription"
+                  label="SEO Description"
+                  initialValue={seoDescription}
+                  inputType="textarea"
+                />
+              </div>
               <textarea
                 value={seoDescription}
                 onChange={(e) => setSeoDescription(e.target.value)}
