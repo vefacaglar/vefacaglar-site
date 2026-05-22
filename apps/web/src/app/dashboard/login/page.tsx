@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { loginAction } from "../actions";
 import styles from "./login.module.css";
 import formStyles from "../components/form.module.css";
@@ -10,7 +9,6 @@ import formStyles from "../components/form.module.css";
 export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,11 +18,9 @@ export default function AdminLogin() {
     const formData = new FormData(e.currentTarget);
     const result = await loginAction(null, formData);
 
-    if (result && result.error) {
+    if (result?.error) {
       setError(result.error);
       setLoading(false);
-    } else if (result && result.success) {
-      router.push("/dashboard");
     }
   };
 
