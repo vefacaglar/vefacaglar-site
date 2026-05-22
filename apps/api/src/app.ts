@@ -45,7 +45,7 @@ app.register(fastifySwagger, {
     },
     servers: [
       {
-        url: "/",
+        url: process.env.API_URL ?? "/",
       },
     ],
     components: {
