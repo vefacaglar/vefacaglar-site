@@ -25,23 +25,20 @@ export default async function EditPage({ params }: { params: { id: string } }) {
     redirect("/admin/login");
   }
 
-  // Fetch all pages to find by id
-  let pages: PageItem[] = [];
+  let page: PageItem | null = null;
   try {
-    const res = await httpClient.get("/api/pages", {
+    const res = await httpClient.get(`/api/pages/admin/${params.id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
     });
     if (res.ok) {
-      pages = await res.json();
+      page = await res.json();
     }
   } catch (error) {
-    console.error("Failed to fetch pages for edit:", error);
+    console.error("Failed to fetch page for edit:", error);
   }
-
-  const page = pages.find((p) => p.id === params.id);
 
   if (!page) {
     notFound();

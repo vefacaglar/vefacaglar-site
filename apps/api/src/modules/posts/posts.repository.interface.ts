@@ -5,6 +5,7 @@ export interface IPostsRepository {
   findById(id: string): Promise<Post | null>;
   findBySlugWithAuthor(slug: string): Promise<PostWithAuthor | null>;
   listWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]>;
+  listRawWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]>;
   update(id: string, patch: Partial<NewPost>): Promise<Post>;
   delete(id: string): Promise<void>;
   listPublishedByAuthorId(

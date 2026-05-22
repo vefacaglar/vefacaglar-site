@@ -44,7 +44,7 @@ export default async function AdminDashboard() {
   // Fetch posts (including drafts)
   let posts: PostItem[] = [];
   try {
-    const res = await httpClient.get("/api/posts", {
+    const res = await httpClient.get("/api/posts/admin", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -60,7 +60,7 @@ export default async function AdminDashboard() {
   // Fetch pages (including drafts)
   let pages: PageItem[] = [];
   try {
-    const res = await httpClient.get("/api/pages", {
+    const res = await httpClient.get("/api/pages/admin", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -76,7 +76,7 @@ export default async function AdminDashboard() {
   // Fetch projects (including drafts)
   let projects: ProjectItem[] = [];
   try {
-    const res = await httpClient.get("/api/projects", {
+    const res = await httpClient.get("/api/projects/admin", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

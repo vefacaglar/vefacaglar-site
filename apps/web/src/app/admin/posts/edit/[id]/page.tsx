@@ -27,23 +27,20 @@ export default async function EditPost({ params }: { params: { id: string } }) {
     redirect("/admin/login");
   }
 
-  // Fetch all posts to find by id
-  let posts: PostItem[] = [];
+  let post: PostItem | null = null;
   try {
-    const res = await httpClient.get("/api/posts", {
+    const res = await httpClient.get(`/api/posts/admin/${params.id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
     });
     if (res.ok) {
-      posts = await res.json();
+      post = await res.json();
     }
   } catch (error) {
-    console.error("Failed to fetch posts for edit:", error);
+    console.error("Failed to fetch post for edit:", error);
   }
-
-  const post = posts.find((p) => p.id === params.id);
 
   if (!post) {
     notFound();

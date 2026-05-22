@@ -33,23 +33,20 @@ export default async function EditProject({ params }: { params: { id: string } }
     redirect("/admin/login");
   }
 
-  // Fetch all projects (including drafts for admin)
-  let projects: ProjectItem[] = [];
+  let project: ProjectItem | null = null;
   try {
-    const res = await httpClient.get("/api/projects", {
+    const res = await httpClient.get(`/api/projects/admin/${params.id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
     });
     if (res.ok) {
-      projects = await res.json();
+      project = await res.json();
     }
   } catch (error) {
-    console.error("Failed to fetch projects for edit:", error);
+    console.error("Failed to fetch project for edit:", error);
   }
-
-  const project = projects.find((p) => p.id === params.id);
 
   if (!project) {
     notFound();

@@ -27,20 +27,8 @@ export class DrizzlePostsRepository implements IPostsRepository {
   }
 
   async findById(id: string): Promise<Post | null> {
-    const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client.select().from(posts).where(eq(posts.id, id)).limit(1);
-    if (!row || !lang || lang === 'en') return row ?? null;
-
-    const translations = await this.dbProvider.client
-      .select({ field: localizations.field, value: localizations.value })
-      .from(localizations)
-      .where(and(
-        eq(localizations.entityType, 'post'),
-        eq(localizations.entityId, row.id),
-        eq(localizations.languageCode, lang)
-      ));
-
-    return mergeTranslations(row, translations);
+    return row ?? null;
   }
 
   async findBySlugWithAuthor(slug: string): Promise<PostWithAuthor | null> {
@@ -86,28 +74,7 @@ export class DrizzlePostsRepository implements IPostsRepository {
     const lang = this.langProvider.getLanguage();
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
 
-    const rows = await this.dbProvider.client
-      .select({
-        id: posts.id,
-        slug: posts.slug,
-        title: posts.title,
-        excerpt: posts.excerpt,
-        content: posts.content,
-        status: posts.status,
-        coverImageUrl: posts.coverImageUrl,
-        seoTitle: posts.seoTitle,
-        seoDescription: posts.seoDescription,
-        publishedAt: posts.publishedAt,
-        authorId: posts.authorId,
-        createdAt: posts.createdAt,
-        updatedAt: posts.updatedAt,
-        authorUsername: users.username,
-        authorDisplayName: users.displayName,
-      })
-      .from(posts)
-      .leftJoin(users, eq(posts.authorId, users.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(posts.publishedAt), desc(posts.createdAt));
+    const rows = await this.listRawWithAuthor(filter);
 
     if (rows.length === 0 || !lang || lang === 'en') return rows;
 
@@ -133,6 +100,33 @@ export class DrizzlePostsRepository implements IPostsRepository {
       const postTranslations = translationsMap[row.id] || [];
       return mergeTranslations(row, postTranslations);
     });
+  }
+
+  async listRawWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]> {
+    const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
+
+    return await this.dbProvider.client
+      .select({
+        id: posts.id,
+        slug: posts.slug,
+        title: posts.title,
+        excerpt: posts.excerpt,
+        content: posts.content,
+        status: posts.status,
+        coverImageUrl: posts.coverImageUrl,
+        seoTitle: posts.seoTitle,
+        seoDescription: posts.seoDescription,
+        publishedAt: posts.publishedAt,
+        authorId: posts.authorId,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorUsername: users.username,
+        authorDisplayName: users.displayName,
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(posts.publishedAt), desc(posts.createdAt));
   }
 
   async update(id: string, patch: Partial<NewPost>): Promise<Post> {

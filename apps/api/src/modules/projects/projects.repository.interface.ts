@@ -9,6 +9,7 @@ export interface IProjectsRepository {
   findById(id: string): Promise<Project | null>;
   findBySlug(slug: string): Promise<Project | null>;
   list(filter?: { status?: "draft" | "published" }): Promise<Project[]>;
+  listRaw(filter?: { status?: "draft" | "published" }): Promise<Project[]>;
   update(id: string, patch: Partial<NewProject>): Promise<Project>;
   delete(id: string): Promise<void>;
 }

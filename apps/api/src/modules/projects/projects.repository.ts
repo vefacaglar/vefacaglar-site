@@ -22,20 +22,8 @@ export class DrizzleProjectsRepository implements IProjectsRepository {
   }
 
   async findById(id: string): Promise<Project | null> {
-    const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client.select().from(projects).where(eq(projects.id, id)).limit(1);
-    if (!row || !lang || lang === 'en') return row ?? null;
-
-    const translations = await this.dbProvider.client
-      .select({ field: localizations.field, value: localizations.value })
-      .from(localizations)
-      .where(and(
-        eq(localizations.entityType, 'project'),
-        eq(localizations.entityId, row.id),
-        eq(localizations.languageCode, lang)
-      ));
-
-    return mergeTranslations(row, translations);
+    return row ?? null;
   }
 
   async findBySlug(slug: string): Promise<Project | null> {
@@ -62,13 +50,7 @@ export class DrizzleProjectsRepository implements IProjectsRepository {
 
   async list(filter?: { status?: "draft" | "published" }): Promise<Project[]> {
     const lang = this.langProvider.getLanguage();
-    const conditions = filter?.status ? [eq(projects.status, filter.status)] : [];
-
-    const rows = await this.dbProvider.client
-      .select()
-      .from(projects)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(projects.featured), asc(projects.sortOrder), desc(projects.createdAt));
+    const rows = await this.listRaw(filter);
 
     if (rows.length === 0 || !lang || lang === 'en') return rows;
 
@@ -94,6 +76,16 @@ export class DrizzleProjectsRepository implements IProjectsRepository {
       const projectTranslations = translationsMap[row.id] || [];
       return mergeTranslations(row, projectTranslations);
     });
+  }
+
+  async listRaw(filter?: { status?: "draft" | "published" }): Promise<Project[]> {
+    const conditions = filter?.status ? [eq(projects.status, filter.status)] : [];
+
+    return await this.dbProvider.client
+      .select()
+      .from(projects)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(projects.featured), asc(projects.sortOrder), desc(projects.createdAt));
   }
 
   async update(id: string, patch: Partial<NewProject>): Promise<Project> {
