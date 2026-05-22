@@ -100,6 +100,23 @@ export default async function GamesDashboard() {
     console.error("Failed to fetch genres in dashboard:", error);
   }
 
+  // Fetch real themes from the backend API
+  let themesData = { items: [], total: 0, page: 1, limit: 1000, totalPages: 1 };
+  try {
+    const res = await httpClient.get("/api/games/themes?limit=1000", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      themesData = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch themes in dashboard:", error);
+  }
+
+
   // Premium mock games matching the database schemas
   const mockGames: GameCatalogItem[] = [
     {
@@ -144,12 +161,7 @@ export default async function GamesDashboard() {
     { id: "3", name: "PlayStation 5", slug: "playstation-5" },
   ];
 
-  // Premium mock themes matching the database schemas
-  const mockThemes: ThemeCatalogItem[] = [
-    { id: "1", name: "Fantasy", slug: "fantasy" },
-    { id: "2", name: "Sci-Fi", slug: "sci-fi" },
-    { id: "3", name: "Post-Apocalyptic", slug: "post-apocalyptic" },
-  ];
+
 
   return (
     <div>
@@ -226,8 +238,13 @@ export default async function GamesDashboard() {
         </table>
       </section>
 
-      {/* 2, 3 & 4. Developers, Publishers and Genres Catalogs (Using real API and Client Component) */}
-      <GamesDashboardClient initialDevelopers={developersData} initialPublishers={publishersData} initialGenres={genresData} />
+      {/* 2, 3, 4 & 5. Developers, Publishers, Genres and Themes Catalogs (Using real API and Client Component) */}
+      <GamesDashboardClient
+        initialDevelopers={developersData}
+        initialPublishers={publishersData}
+        initialGenres={genresData}
+        initialThemes={themesData}
+      />
 
       {/* 5. Platforms Catalog */}
       <section className={styles.section}>
@@ -271,47 +288,7 @@ export default async function GamesDashboard() {
         </table>
       </section>
 
-      {/* 6. Themes Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Themes ({mockThemes.length})</h2>
-          <button className="btnAccent">
-            + New Theme
-          </button>
-        </div>
 
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th}>Name</th>
-              <th className={styles.th}>Slug</th>
-              <th className={styles.thRight}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockThemes.map((theme) => (
-              <tr key={theme.id} className={styles.tr}>
-                <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                  {theme.name}
-                </td>
-                <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                  {theme.slug}
-                </td>
-                <td className={styles.tdRight}>
-                  <div className={styles.rowActions}>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                      Edit
-                    </button>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
     </div>
   );
 }

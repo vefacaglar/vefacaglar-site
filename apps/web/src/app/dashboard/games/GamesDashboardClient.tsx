@@ -14,6 +14,9 @@ import {
   createGenreAction,
   updateGenreAction,
   deleteGenreAction,
+  createThemeAction,
+  updateThemeAction,
+  deleteThemeAction,
 } from "./actions";
 
 // Types matching the backend response
@@ -43,6 +46,14 @@ export interface Genre {
   updatedAt: string | null;
 }
 
+export interface Theme {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 interface GamesDashboardClientProps {
   initialDevelopers: {
     items: Developer[];
@@ -65,12 +76,20 @@ interface GamesDashboardClientProps {
     limit: number;
     totalPages: number;
   };
+  initialThemes: {
+    items: Theme[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export default function GamesDashboardClient({
   initialDevelopers,
   initialPublishers,
   initialGenres,
+  initialThemes,
 }: GamesDashboardClientProps) {
   const router = useRouter();
 
@@ -85,6 +104,10 @@ export default function GamesDashboardClient({
   // Genres state
   const [genres, setGenres] = useState<Genre[]>(initialGenres.items);
   const [totalGenres, setTotalGenres] = useState(initialGenres.total);
+
+  // Themes state
+  const [themes, setThemes] = useState<Theme[]>(initialThemes.items);
+  const [totalThemes, setTotalThemes] = useState(initialThemes.total);
 
   // Sync state when props change (Next.js server-side revalidation)
   useEffect(() => {
@@ -102,10 +125,15 @@ export default function GamesDashboardClient({
     setTotalGenres(initialGenres.total);
   }, [initialGenres]);
 
+  useEffect(() => {
+    setThemes(initialThemes.items);
+    setTotalThemes(initialThemes.total);
+  }, [initialThemes]);
+
   // Modal control states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeType, setActiveType] = useState<"developer" | "publisher" | "genre">("developer");
-  const [editingItem, setEditingItem] = useState<Developer | Publisher | Genre | null>(null);
+  const [activeType, setActiveType] = useState<"developer" | "publisher" | "genre" | "theme">("developer");
+  const [editingItem, setEditingItem] = useState<Developer | Publisher | Genre | Theme | null>(null);
   
   // Form states
   const [name, setName] = useState("");
@@ -142,7 +170,7 @@ export default function GamesDashboardClient({
     }
   }, [name, editingItem]);
 
-  const openAddModal = (type: "developer" | "publisher" | "genre") => {
+  const openAddModal = (type: "developer" | "publisher" | "genre" | "theme") => {
     setActiveType(type);
     setEditingItem(null);
     setName("");
@@ -152,7 +180,7 @@ export default function GamesDashboardClient({
     setIsModalOpen(true);
   };
 
-  const openEditModal = (type: "developer" | "publisher" | "genre", item: Developer | Publisher | Genre) => {
+  const openEditModal = (type: "developer" | "publisher" | "genre" | "theme", item: Developer | Publisher | Genre | Theme) => {
     setActiveType(type);
     setEditingItem(item);
     setName(item.name);
@@ -221,6 +249,12 @@ export default function GamesDashboardClient({
       } else {
         res = await createGenreAction(payload);
       }
+    } else if (activeType === "theme") {
+      if (editingItem) {
+        res = await updateThemeAction(editingItem.id, payload);
+      } else {
+        res = await createThemeAction(payload);
+      }
     }
 
     if (res && res.error) {
@@ -233,7 +267,7 @@ export default function GamesDashboardClient({
     }
   };
 
-  const handleDelete = async (type: "developer" | "publisher" | "genre", id: string, itemName: string) => {
+  const handleDelete = async (type: "developer" | "publisher" | "genre" | "theme", id: string, itemName: string) => {
     if (!confirm(`Are you sure you want to delete ${type} "${itemName}"?`)) {
       return;
     }
@@ -245,6 +279,8 @@ export default function GamesDashboardClient({
       res = await deletePublisherAction(id);
     } else if (type === "genre") {
       res = await deleteGenreAction(id);
+    } else if (type === "theme") {
+      res = await deleteThemeAction(id);
     }
 
     if (res && res.error) {
@@ -432,6 +468,62 @@ export default function GamesDashboardClient({
         )}
       </section>
 
+      {/* Themes Catalog */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Themes ({totalThemes})</h2>
+          <button className="btnAccent" onClick={() => openAddModal("theme")}>
+            + New Theme
+          </button>
+        </div>
+
+        {themes.length === 0 ? (
+          <div className={clientStyles.emptyState}>
+            No themes found. Click "+ New Theme" to create your first theme record.
+          </div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.th}>Name</th>
+                <th className={styles.th}>Slug</th>
+                <th className={styles.thRight}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {themes.map((theme) => (
+                <tr key={theme.id} className={styles.tr}>
+                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
+                    {theme.name}
+                  </td>
+                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
+                    {theme.slug}
+                  </td>
+                  <td className={styles.tdRight}>
+                    <div className={styles.rowActions}>
+                      <button 
+                        className={styles.editLink} 
+                        onClick={() => openEditModal("theme", theme)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className={styles.editLink} 
+                        onClick={() => handleDelete("theme", theme.id, theme.name)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       {/* Modern Overlay Form Modal for Add/Edit */}
       {isModalOpen && (
         <div className={clientStyles.modalOverlay} onClick={closeModal}>
@@ -439,8 +531,24 @@ export default function GamesDashboardClient({
             <div className={clientStyles.modalHeader}>
               <h3 className={clientStyles.modalTitle}>
                 {editingItem 
-                  ? `Edit ${activeType === "developer" ? "Developer" : activeType === "publisher" ? "Publisher" : "Genre"}` 
-                  : `New ${activeType === "developer" ? "Developer" : activeType === "publisher" ? "Publisher" : "Genre"}`
+                  ? `Edit ${
+                      activeType === "developer" 
+                        ? "Developer" 
+                        : activeType === "publisher" 
+                          ? "Publisher" 
+                          : activeType === "genre"
+                            ? "Genre"
+                            : "Theme"
+                    }` 
+                  : `New ${
+                      activeType === "developer" 
+                        ? "Developer" 
+                        : activeType === "publisher" 
+                          ? "Publisher" 
+                          : activeType === "genre"
+                            ? "Genre"
+                            : "Theme"
+                    }`
                 }
               </h3>
               <button className={clientStyles.modalClose} onClick={closeModal}>
@@ -462,7 +570,9 @@ export default function GamesDashboardClient({
                       ? "Nintendo EPD, FromSoftware..." 
                       : activeType === "publisher" 
                         ? "Nintendo, Bandai Namco..." 
-                        : "Action, RPG, Platformer..."
+                        : activeType === "genre"
+                          ? "Action, RPG, Platformer..."
+                          : "Fantasy, Sci-Fi, Cyberpunk..."
                   }
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -483,7 +593,9 @@ export default function GamesDashboardClient({
                       ? "nintendo-epd" 
                       : activeType === "publisher" 
                         ? "nintendo" 
-                        : "action"
+                        : activeType === "genre"
+                          ? "action"
+                          : "fantasy"
                   }
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
@@ -492,7 +604,7 @@ export default function GamesDashboardClient({
                 />
               </div>
 
-              {activeType !== "genre" && (
+              {activeType !== "genre" && activeType !== "theme" && (
                 <div className={clientStyles.formGroup}>
                   <label className={clientStyles.label} htmlFor="item-country">Country Code (2 letters, optional)</label>
                   <input
@@ -517,7 +629,15 @@ export default function GamesDashboardClient({
                     ? "Saving..." 
                     : (editingItem 
                         ? "Save Changes" 
-                        : `Create ${activeType === "developer" ? "Developer" : activeType === "publisher" ? "Publisher" : "Genre"}`
+                        : `Create ${
+                            activeType === "developer" 
+                              ? "Developer" 
+                              : activeType === "publisher" 
+                                ? "Publisher" 
+                                : activeType === "genre"
+                                  ? "Genre"
+                                  : "Theme"
+                          }`
                       )
                   }
                 </button>

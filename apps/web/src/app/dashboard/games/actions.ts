@@ -268,3 +268,90 @@ export async function deleteGenreAction(id: string) {
     return { error: "Server connection error." };
   }
 }
+
+export async function createThemeAction(data: {
+  name: string;
+  slug: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post("/api/games/themes", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Could not create theme." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Create theme error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updateThemeAction(
+  id: string,
+  data: {
+    name?: string;
+    slug?: string;
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.put(`/api/games/themes/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update theme." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Update theme error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function deleteThemeAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.delete(`/api/games/themes/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to delete theme." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Delete theme error:", error);
+    return { error: "Server connection error." };
+  }
+}

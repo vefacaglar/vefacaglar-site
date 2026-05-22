@@ -1,8 +1,9 @@
 import { injectable, inject } from "tsyringe";
-import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY } from "./games.tokens";
+import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY, THEMES_REPOSITORY } from "./games.tokens";
 import type { IDevelopersRepository, Developer } from "./developers.repository.interface";
 import type { IPublishersRepository, Publisher } from "./publishers.repository.interface";
 import type { IGenresRepository, Genre } from "./genres.repository.interface";
+import type { IThemesRepository, Theme } from "./themes.repository.interface";
 import { BadRequestError, NotFoundError } from "../../shared/http-errors";
 
 @injectable()
@@ -10,7 +11,8 @@ export class GameService {
   constructor(
     @inject(DEVELOPERS_REPOSITORY) private readonly developersRepo: IDevelopersRepository,
     @inject(PUBLISHERS_REPOSITORY) private readonly publishersRepo: IPublishersRepository,
-    @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository
+    @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
+    @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository
   ) {}
 
   // --- Developer CRUD Methods ---
@@ -198,5 +200,66 @@ export class GameService {
       throw new NotFoundError("Genre not found.");
     }
     await this.genresRepo.delete(id);
+  }
+
+  // --- Theme CRUD Methods ---
+
+  async createTheme(data: { name: string; slug: string }): Promise<Theme> {
+    const existing = await this.themesRepo.findBySlug(data.slug);
+    if (existing) {
+      throw new BadRequestError("Theme with this slug already exists.");
+    }
+    return this.themesRepo.create({
+      name: data.name,
+      slug: data.slug,
+    });
+  }
+
+  async getThemeById(id: string): Promise<Theme> {
+    const theme = await this.themesRepo.findById(id);
+    if (!theme) {
+      throw new NotFoundError("Theme not found.");
+    }
+    return theme;
+  }
+
+  async getThemeBySlug(slug: string): Promise<Theme> {
+    const theme = await this.themesRepo.findBySlug(slug);
+    if (!theme) {
+      throw new NotFoundError("Theme not found.");
+    }
+    return theme;
+  }
+
+  async listThemes(filter?: { page?: number; limit?: number }): Promise<{ items: Theme[]; total: number }> {
+    return this.themesRepo.list(filter);
+  }
+
+  async updateTheme(id: string, data: { name?: string; slug?: string }): Promise<Theme> {
+    const existing = await this.themesRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Theme not found.");
+    }
+
+    if (data.slug && data.slug !== existing.slug) {
+      const slugDup = await this.themesRepo.findBySlug(data.slug);
+      if (slugDup) {
+        throw new BadRequestError("Theme with this slug already exists.");
+      }
+    }
+
+    return this.themesRepo.update(id, {
+      name: data.name,
+      slug: data.slug,
+      updatedAt: new Date(),
+    });
+  }
+
+  async deleteTheme(id: string): Promise<void> {
+    const existing = await this.themesRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Theme not found.");
+    }
+    await this.themesRepo.delete(id);
   }
 }
