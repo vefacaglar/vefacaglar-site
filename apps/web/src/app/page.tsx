@@ -66,7 +66,8 @@ export default async function Home() {
       cache: "no-store",
     });
     if (res.ok) {
-      posts = await res.json();
+      const data = await res.json();
+      posts = Array.isArray(data) ? data : data.items;
     }
   } catch (error) {
     console.error("Failed to fetch homepage blog posts:", error);

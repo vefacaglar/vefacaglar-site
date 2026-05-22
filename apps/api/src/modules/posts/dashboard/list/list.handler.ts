@@ -10,7 +10,7 @@ export class ListAdminPostsHandler {
 
   async handle(request: FastifyRequest<{ Querystring: ListAdminPostsQuery }>): Promise<ListAdminPostsResponse> {
     const { status } = request.query;
-    const rows = await this.postsRepo.listRawWithAuthor(status ? { status } : undefined);
+    const { items: rows } = await this.postsRepo.listRawWithAuthor(status ? { status } : undefined);
 
     return rows.map((row) => ({
       id: row.id,

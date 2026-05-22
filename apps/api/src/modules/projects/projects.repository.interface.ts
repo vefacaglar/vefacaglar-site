@@ -8,8 +8,8 @@ export interface IProjectsRepository {
   create(values: NewProject): Promise<Project>;
   findById(id: string): Promise<Project | null>;
   findBySlug(slug: string): Promise<Project | null>;
-  list(filter?: { status?: "draft" | "published" }): Promise<Project[]>;
-  listRaw(filter?: { status?: "draft" | "published" }): Promise<Project[]>;
+  list(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Project[]; total: number }>;
+  listRaw(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Project[]; total: number }>;
   update(id: string, patch: Partial<NewProject>): Promise<Project>;
   delete(id: string): Promise<void>;
 }

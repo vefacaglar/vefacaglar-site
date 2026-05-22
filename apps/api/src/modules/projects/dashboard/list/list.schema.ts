@@ -1,7 +1,10 @@
-import { ListProjectsQuery, ListProjectsQuerySchema, ListProjectsResponse, ListProjectsResponseSchema } from "../../list/list.schema";
+import { Type, Static } from "@sinclair/typebox";
+import { ProjectResponseSchema } from "../create/create.schema";
 
-export const ListAdminProjectsQuerySchema = ListProjectsQuerySchema;
-export type ListAdminProjectsQuery = ListProjectsQuery;
+export const ListAdminProjectsQuerySchema = Type.Object({
+  status: Type.Optional(Type.Union([Type.Literal("draft"), Type.Literal("published")])),
+});
+export type ListAdminProjectsQuery = Static<typeof ListAdminProjectsQuerySchema>;
 
-export const ListAdminProjectsResponseSchema = ListProjectsResponseSchema;
-export type ListAdminProjectsResponse = ListProjectsResponse;
+export const ListAdminProjectsResponseSchema = Type.Array(ProjectResponseSchema);
+export type ListAdminProjectsResponse = Static<typeof ListAdminProjectsResponseSchema>;

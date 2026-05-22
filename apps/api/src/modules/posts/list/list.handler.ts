@@ -10,17 +10,21 @@ export class ListPostsHandler {
 
   async handle(request: FastifyRequest<{ Querystring: ListPostsQuery }>): Promise<ListPostsResponse> {
     const isAdmin = request.user?.role === "admin";
-    const { status } = request.query;
+    const { status, page, limit } = request.query;
 
-    const filter = !isAdmin
-      ? { status: "published" as const }
-      : status
-      ? { status }
-      : undefined;
+    const pageNum = page !== undefined ? Number(page) : 1;
+    const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const rows = await this.postsRepo.listWithAuthor(filter);
+    const filter = {
+      status: !isAdmin ? ("published" as const) : status ? status : undefined,
+      page: pageNum,
+      limit: limitNum,
+    };
 
-    return rows.map((row) => ({
+    const { items: rows, total } = await this.postsRepo.listWithAuthor(filter);
+    const totalPages = Math.ceil(total / limitNum);
+
+    const items = rows.map((row) => ({
       id: row.id,
       slug: row.slug,
       title: row.title,
@@ -37,5 +41,13 @@ export class ListPostsHandler {
         ? { username: row.authorUsername, displayName: row.authorDisplayName }
         : null,
     }));
+
+    return {
+      items,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+    };
   }
 }

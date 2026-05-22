@@ -10,7 +10,7 @@ export class ListAdminProjectsHandler {
 
   async handle(request: FastifyRequest<{ Querystring: ListAdminProjectsQuery }>): Promise<ListAdminProjectsResponse> {
     const { status } = request.query;
-    const rows = await this.projectsRepo.listRaw(status ? { status } : undefined);
+    const { items: rows } = await this.projectsRepo.listRaw(status ? { status } : undefined);
 
     return rows.map((row) => ({
       id: row.id,

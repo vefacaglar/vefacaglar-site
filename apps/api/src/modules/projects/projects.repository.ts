@@ -1,5 +1,5 @@
 import { projects, localizations } from "@vefacaglar/db";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
@@ -48,11 +48,11 @@ export class DrizzleProjectsRepository implements IProjectsRepository {
     return mergeTranslations(row, translations);
   }
 
-  async list(filter?: { status?: "draft" | "published" }): Promise<Project[]> {
+  async list(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Project[]; total: number }> {
     const lang = this.langProvider.getLanguage();
-    const rows = await this.listRaw(filter);
+    const { items: rows, total } = await this.listRaw(filter);
 
-    if (rows.length === 0 || !lang || lang === 'en') return rows;
+    if (rows.length === 0 || !lang || lang === 'en') return { items: rows, total };
 
     const ids = rows.map((r) => r.id);
     const allTranslations = await this.dbProvider.client
@@ -72,20 +72,38 @@ export class DrizzleProjectsRepository implements IProjectsRepository {
       translationsMap[trans.entityId].push(trans);
     }
 
-    return rows.map((row) => {
+    const translatedItems = rows.map((row) => {
       const projectTranslations = translationsMap[row.id] || [];
       return mergeTranslations(row, projectTranslations);
     });
+
+    return { items: translatedItems, total };
   }
 
-  async listRaw(filter?: { status?: "draft" | "published" }): Promise<Project[]> {
+  async listRaw(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Project[]; total: number }> {
     const conditions = filter?.status ? [eq(projects.status, filter.status)] : [];
 
-    return await this.dbProvider.client
+    const [countResult] = await this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(projects)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const total = Number(countResult?.count || 0);
+
+    let query = this.dbProvider.client
       .select()
       .from(projects)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(projects.featured), asc(projects.sortOrder), desc(projects.createdAt));
+      .orderBy(desc(projects.featured), asc(projects.sortOrder), desc(projects.createdAt))
+      .$dynamic();
+
+    if (filter?.page !== undefined && filter?.limit !== undefined) {
+      const offset = (filter.page - 1) * filter.limit;
+      query = query.limit(filter.limit).offset(offset);
+    }
+
+    const items = await query;
+    return { items, total };
   }
 
   async update(id: string, patch: Partial<NewProject>): Promise<Project> {

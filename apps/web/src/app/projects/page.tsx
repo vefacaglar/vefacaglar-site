@@ -3,6 +3,7 @@ import styles from "./projects.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
 import { httpClient } from '../../lib/httpClient';
+import Pagination from '../components/Pagination';
 
 interface ProjectItem {
   id: string;
@@ -26,21 +27,37 @@ export async function generateMetadata() {
   return { title, description };
 }
 
-export default async function Projects() {
-  let projects: ProjectItem[] = [];
+interface ProjectsProps {
+  searchParams: {
+    page?: string;
+  };
+}
+
+export default async function Projects({ searchParams }: ProjectsProps) {
+  const page = searchParams.page ? Number(searchParams.page) : 1;
+  let projectsData = {
+    items: [] as ProjectItem[],
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  };
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
 
   try {
-    const res = await httpClient.get("/api/projects", {
+    const res = await httpClient.get(`/api/projects?page=${page}&limit=10`, {
       cache: "no-store",
     });
     if (res.ok) {
-      projects = await res.json();
+      projectsData = await res.json();
     }
   } catch (error) {
     console.error("Failed to fetch public projects:", error);
   }
+
+  const projects = projectsData.items || [];
+  const totalPages = projectsData.totalPages || 0;
 
   return (
     <div>
@@ -54,48 +71,51 @@ export default async function Projects() {
       {projects.length === 0 ? (
         <p className={styles.empty}>{dict.no_projects}</p>
       ) : (
-        <ul className={styles.list}>
-          {projects.map((project) => (
-            <li key={project.id} className={styles.listItem}>
-              <span className={styles.dash}>—</span>
-              <div className={styles.itemMeta}>
-                <div>
-                  <Link href={`/projects/${project.slug}`}>{project.title}</Link>
-                  {project.featured && (
-                    <span className={styles.featuredBadge}>
-                      {dict.featured_project || "Featured"}
-                    </span>
-                  )}
-                </div>
-                <p className={styles.summary}>{project.summary}</p>
-                {(project.githubUrl || project.liveUrl) && (
-                  <div className={styles.links}>
-                    {project.githubUrl && (
-                      <a 
-                        href={project.githubUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className={styles.link}
-                      >
-                        GitHub
-                      </a>
-                    )}
-                    {project.liveUrl && (
-                      <a 
-                        href={project.liveUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className={styles.link}
-                      >
-                        Live Demo
-                      </a>
+        <>
+          <ul className={styles.list}>
+            {projects.map((project) => (
+              <li key={project.id} className={styles.listItem}>
+                <span className={styles.dash}>—</span>
+                <div className={styles.itemMeta}>
+                  <div>
+                    <Link href={`/projects/${project.slug}`}>{project.title}</Link>
+                    {project.featured && (
+                      <span className={styles.featuredBadge}>
+                        {dict.featured_project || "Featured"}
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+                  <p className={styles.summary}>{project.summary}</p>
+                  {(project.githubUrl || project.liveUrl) && (
+                    <div className={styles.links}>
+                      {project.githubUrl && (
+                        <a 
+                          href={project.githubUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className={styles.link}
+                        >
+                          GitHub
+                        </a>
+                      )}
+                      {project.liveUrl && (
+                        <a 
+                          href={project.liveUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className={styles.link}
+                        >
+                          Live Demo
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <Pagination currentPage={page} totalPages={totalPages} />
+        </>
       )}
     </div>
   );

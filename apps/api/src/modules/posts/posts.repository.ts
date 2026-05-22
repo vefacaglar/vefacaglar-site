@@ -70,13 +70,11 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return mergeTranslations(row, translations);
   }
 
-  async listWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]> {
+  async listWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostWithAuthor[]; total: number }> {
     const lang = this.langProvider.getLanguage();
-    const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
+    const { items: rows, total } = await this.listRawWithAuthor(filter);
 
-    const rows = await this.listRawWithAuthor(filter);
-
-    if (rows.length === 0 || !lang || lang === 'en') return rows;
+    if (rows.length === 0 || !lang || lang === 'en') return { items: rows, total };
 
     const ids = rows.map((r) => r.id);
     const allTranslations = await this.dbProvider.client
@@ -96,16 +94,25 @@ export class DrizzlePostsRepository implements IPostsRepository {
       translationsMap[trans.entityId].push(trans);
     }
 
-    return rows.map((row) => {
+    const translatedItems = rows.map((row) => {
       const postTranslations = translationsMap[row.id] || [];
       return mergeTranslations(row, postTranslations);
     });
+
+    return { items: translatedItems, total };
   }
 
-  async listRawWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]> {
+  async listRawWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostWithAuthor[]; total: number }> {
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
 
-    return await this.dbProvider.client
+    const [countResult] = await this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(posts)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const total = Number(countResult?.count || 0);
+
+    let query = this.dbProvider.client
       .select({
         id: posts.id,
         slug: posts.slug,
@@ -126,7 +133,16 @@ export class DrizzlePostsRepository implements IPostsRepository {
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(posts.publishedAt), desc(posts.createdAt));
+      .orderBy(desc(posts.publishedAt), desc(posts.createdAt))
+      .$dynamic();
+
+    if (filter?.page !== undefined && filter?.limit !== undefined) {
+      const offset = (filter.page - 1) * filter.limit;
+      query = query.limit(filter.limit).offset(offset);
+    }
+
+    const items = await query;
+    return { items, total };
   }
 
   async update(id: string, patch: Partial<NewPost>): Promise<Post> {

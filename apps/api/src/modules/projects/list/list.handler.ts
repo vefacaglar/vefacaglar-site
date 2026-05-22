@@ -10,17 +10,21 @@ export class ListProjectsHandler {
 
   async handle(request: FastifyRequest<{ Querystring: ListProjectsQuery }>): Promise<ListProjectsResponse> {
     const isAdmin = request.user?.role === "admin";
-    const { status } = request.query;
+    const { status, page, limit } = request.query;
 
-    const filter = !isAdmin
-      ? { status: "published" as const }
-      : status
-      ? { status }
-      : undefined;
+    const pageNum = page !== undefined ? Number(page) : 1;
+    const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const rows = await this.projectsRepo.list(filter);
+    const filter = {
+      status: !isAdmin ? ("published" as const) : status ? status : undefined,
+      page: pageNum,
+      limit: limitNum,
+    };
 
-    return rows.map((row) => ({
+    const { items: rows, total } = await this.projectsRepo.list(filter);
+    const totalPages = Math.ceil(total / limitNum);
+
+    const items = rows.map((row) => ({
       id: row.id,
       slug: row.slug,
       title: row.title,
@@ -40,5 +44,13 @@ export class ListProjectsHandler {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));
+
+    return {
+      items,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+    };
   }
 }

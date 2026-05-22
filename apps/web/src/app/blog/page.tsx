@@ -3,6 +3,7 @@ import styles from "./blog.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
 import { httpClient } from '../../lib/httpClient';
+import Pagination from '../components/Pagination';
 
 interface PostItem {
   id: string;
@@ -19,21 +20,38 @@ interface PostItem {
 
 export const dynamic = "force-dynamic";
 
-export default async function Blog() {
-  let posts: PostItem[] = [];
+interface BlogProps {
+  searchParams: {
+    page?: string;
+  };
+}
+
+export default async function Blog({ searchParams }: BlogProps) {
+  const page = searchParams.page ? Number(searchParams.page) : 1;
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
 
+  let postsData = {
+    items: [] as PostItem[],
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  };
+
   try {
-    const res = await httpClient.get("/api/posts", {
+    const res = await httpClient.get(`/api/posts?page=${page}&limit=10`, {
       cache: "no-store",
     });
     if (res.ok) {
-      posts = await res.json();
+      postsData = await res.json();
     }
   } catch (error) {
     console.error("Failed to fetch public blog posts:", error);
   }
+
+  const posts = postsData.items || [];
+  const totalPages = postsData.totalPages || 0;
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
@@ -57,30 +75,33 @@ export default async function Blog() {
       {posts.length === 0 ? (
         <p className={styles.empty}>{dict.no_posts}</p>
       ) : (
-        <ul className={styles.list}>
-          {posts.map((post) => (
-            <li key={post.id} className={styles.listItem}>
-              <span className={styles.dash}>—</span>
-              <div className={styles.itemMeta}>
-                <Link href={`/blog/${post.slug}`}>{post.title}</Link>
-                {post.excerpt && <p className={styles.excerpt}>{post.excerpt}</p>}
-                <div className={styles.date}>
-                  {post.publishedAt && (
-                    <span>{formatDate(post.publishedAt)}</span>
-                  )}
-                  {post.author && (
-                    <span className={styles.author}>
-                      {" — "}
-                      <Link href={`/author/${post.author.username}`}>
-                        {post.author.displayName}
-                      </Link>
-                    </span>
-                  )}
+        <>
+          <ul className={styles.list}>
+            {posts.map((post) => (
+              <li key={post.id} className={styles.listItem}>
+                <span className={styles.dash}>—</span>
+                <div className={styles.itemMeta}>
+                  <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                  {post.excerpt && <p className={styles.excerpt}>{post.excerpt}</p>}
+                  <div className={styles.date}>
+                    {post.publishedAt && (
+                      <span>{formatDate(post.publishedAt)}</span>
+                    )}
+                    {post.author && (
+                      <span className={styles.author}>
+                        {" — "}
+                        <Link href={`/author/${post.author.username}`}>
+                          {post.author.displayName}
+                        </Link>
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <Pagination currentPage={page} totalPages={totalPages} />
+        </>
       )}
     </div>
   );

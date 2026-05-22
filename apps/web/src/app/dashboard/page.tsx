@@ -154,7 +154,7 @@ export default async function AdminDashboard() {
       </section>
 
       {/* Projects Section */}
-      <section>
+      <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Projects</h2>
           <Link href="/dashboard/projects/new" className="btnAccent">
@@ -198,7 +198,7 @@ export default async function AdminDashboard() {
       </section>
 
       {/* Pages Section */}
-      <section>
+      <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Pages</h2>
           <Link href="/dashboard/pages/new" className="btnAccent">
