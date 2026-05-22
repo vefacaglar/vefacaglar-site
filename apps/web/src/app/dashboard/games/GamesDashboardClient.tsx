@@ -152,6 +152,23 @@ export default function GamesDashboardClient({
 }: GamesDashboardClientProps) {
   const router = useRouter();
 
+  // Active sub-tab state
+  const [activeSubTab, setActiveSubTab] = useState<"games" | "developers" | "publishers" | "genres" | "themes" | "platforms">("games");
+  // Games layout state
+  const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("grid");
+
+  // Search filter query
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Pagination page tracker states
+  const [gamesPage, setGamesPage] = useState(1);
+  const [devsPage, setDevsPage] = useState(1);
+  const [pubsPage, setPubsPage] = useState(1);
+  const [genresPage, setGenresPage] = useState(1);
+  const [themesPage, setThemesPage] = useState(1);
+  const [platformsPage, setPlatformsPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+
   // Games state
   const [games, setGames] = useState<Game[]>(initialGames.items);
   const [totalGames, setTotalGames] = useState(initialGames.total);
@@ -206,6 +223,16 @@ export default function GamesDashboardClient({
     setPlatforms(initialPlatforms.items);
     setTotalPlatforms(initialPlatforms.total);
   }, [initialPlatforms]);
+
+  // Reset pagination to page 1 on active tab/search/page size switches
+  useEffect(() => {
+    setGamesPage(1);
+    setDevsPage(1);
+    setPubsPage(1);
+    setGenresPage(1);
+    setThemesPage(1);
+    setPlatformsPage(1);
+  }, [searchQuery, activeSubTab, pageSize]);
 
   // Modal control states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -270,6 +297,73 @@ export default function GamesDashboardClient({
       }
     }
   }, [name, gameTitle, activeType, editingItem]);
+
+  // Client-side dynamic query filter for Games
+  const filteredGames = games.filter((game) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      game.title.toLowerCase().includes(query) ||
+      game.slug.toLowerCase().includes(query) ||
+      (game.originalTitle && game.originalTitle.toLowerCase().includes(query)) ||
+      game.developers.some((d) => d.name.toLowerCase().includes(query)) ||
+      game.publishers.some((p) => p.name.toLowerCase().includes(query)) ||
+      game.genres.some((g) => g.name.toLowerCase().includes(query)) ||
+      game.platforms.some((pl) => pl.name.toLowerCase().includes(query)) ||
+      game.themes.some((t) => t.name.toLowerCase().includes(query))
+    );
+  });
+
+  // Client-side dynamic query filter for Developers
+  const filteredDevs = developers.filter((dev) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      dev.name.toLowerCase().includes(query) ||
+      dev.slug.toLowerCase().includes(query) ||
+      (dev.countryCode && dev.countryCode.toLowerCase().includes(query))
+    );
+  });
+
+  // Client-side dynamic query filter for Publishers
+  const filteredPubs = publishers.filter((pub) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      pub.name.toLowerCase().includes(query) ||
+      pub.slug.toLowerCase().includes(query) ||
+      (pub.countryCode && pub.countryCode.toLowerCase().includes(query))
+    );
+  });
+
+  // Client-side dynamic query filter for Genres
+  const filteredGenresList = genres.filter((genre) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return genre.name.toLowerCase().includes(query) || genre.slug.toLowerCase().includes(query);
+  });
+
+  // Client-side dynamic query filter for Themes
+  const filteredThemesList = themes.filter((theme) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return theme.name.toLowerCase().includes(query) || theme.slug.toLowerCase().includes(query);
+  });
+
+  // Client-side dynamic query filter for Platforms
+  const filteredPlatformsList = platforms.filter((platform) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return platform.name.toLowerCase().includes(query) || platform.slug.toLowerCase().includes(query);
+  });
+
+  // Sliced paginated list calculations
+  const paginatedGames = filteredGames.slice((gamesPage - 1) * pageSize, gamesPage * pageSize);
+  const paginatedDevs = filteredDevs.slice((devsPage - 1) * pageSize, devsPage * pageSize);
+  const paginatedPubs = filteredPubs.slice((pubsPage - 1) * pageSize, pubsPage * pageSize);
+  const paginatedGenres = filteredGenresList.slice((genresPage - 1) * pageSize, genresPage * pageSize);
+  const paginatedThemes = filteredThemesList.slice((themesPage - 1) * pageSize, themesPage * pageSize);
+  const paginatedPlatforms = filteredPlatformsList.slice((platformsPage - 1) * pageSize, platformsPage * pageSize);
 
   const openAddModal = (type: "game" | "developer" | "publisher" | "genre" | "theme" | "platform") => {
     setActiveType(type);
@@ -486,393 +580,732 @@ export default function GamesDashboardClient({
     }
   };
 
+  // Reusable paginator markup renderer
+  const renderPagination = (
+    currentPage: number,
+    totalItems: number,
+    setPage: (p: number) => void
+  ) => {
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    if (totalPages <= 1) return null;
+
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalItems);
+
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxPagesToShow = 5;
+      if (totalPages <= maxPagesToShow) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        if (currentPage > 3) pages.push("...");
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(totalPages - 1, currentPage + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (currentPage < totalPages - 2) pages.push("...");
+        pages.push(totalPages);
+      }
+      return pages;
+    };
+
+    return (
+      <div className={clientStyles.paginationContainer}>
+        <div className={clientStyles.paginationInfo}>
+          Showing {startItem}-{endItem} of {totalItems} items
+        </div>
+        <div className={clientStyles.paginationControls}>
+          <button
+            type="button"
+            className={`${clientStyles.paginationBtn} ${currentPage === 1 ? clientStyles.paginationBtnDisabled : ""}`}
+            onClick={() => currentPage > 1 && setPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            &larr; Prev
+          </button>
+          {getPageNumbers().map((p, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`${clientStyles.paginationBtn} ${p === currentPage ? clientStyles.paginationBtnActive : ""} ${p === "..." ? clientStyles.paginationBtnDisabled : ""}`}
+              onClick={() => typeof p === "number" && setPage(p)}
+              disabled={p === "..."}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`${clientStyles.paginationBtn} ${currentPage === totalPages ? clientStyles.paginationBtnDisabled : ""}`}
+            onClick={() => currentPage < totalPages && setPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next &rarr;
+          </button>
+        </div>
+        <div className={clientStyles.paginationPageSize}>
+          <span>Items per page:</span>
+          <select
+            className={clientStyles.paginationSelect}
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+          >
+            <option value={12}>12</option>
+            <option value={24}>24</option>
+            <option value={48}>48</option>
+            <option value={96}>96</option>
+          </select>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
-      {/* Games Catalog */}
+      {/* Sub-Tabs horizontal navigation */}
+      <div className={clientStyles.subTabsContainer}>
+        <button
+          type="button"
+          className={`${clientStyles.subTabButton} ${activeSubTab === "games" ? clientStyles.subTabButtonActive : ""}`}
+          onClick={() => setActiveSubTab("games")}
+        >
+          🎮 Games <span className={clientStyles.subTabBadge}>{totalGames}</span>
+        </button>
+        <button
+          type="button"
+          className={`${clientStyles.subTabButton} ${activeSubTab === "developers" ? clientStyles.subTabButtonActive : ""}`}
+          onClick={() => setActiveSubTab("developers")}
+        >
+          💻 Developers <span className={clientStyles.subTabBadge}>{totalDevs}</span>
+        </button>
+        <button
+          type="button"
+          className={`${clientStyles.subTabButton} ${activeSubTab === "publishers" ? clientStyles.subTabButtonActive : ""}`}
+          onClick={() => setActiveSubTab("publishers")}
+        >
+          🏢 Publishers <span className={clientStyles.subTabBadge}>{totalPublishers}</span>
+        </button>
+        <button
+          type="button"
+          className={`${clientStyles.subTabButton} ${activeSubTab === "genres" ? clientStyles.subTabButtonActive : ""}`}
+          onClick={() => setActiveSubTab("genres")}
+        >
+          🏷️ Genres <span className={clientStyles.subTabBadge}>{totalGenres}</span>
+        </button>
+        <button
+          type="button"
+          className={`${clientStyles.subTabButton} ${activeSubTab === "themes" ? clientStyles.subTabButtonActive : ""}`}
+          onClick={() => setActiveSubTab("themes")}
+        >
+          🎨 Themes <span className={clientStyles.subTabBadge}>{totalThemes}</span>
+        </button>
+        <button
+          type="button"
+          className={`${clientStyles.subTabButton} ${activeSubTab === "platforms" ? clientStyles.subTabButtonActive : ""}`}
+          onClick={() => setActiveSubTab("platforms")}
+        >
+          🖥️ Platforms <span className={clientStyles.subTabBadge}>{totalPlatforms}</span>
+        </button>
+      </div>
+
+      {/* Shared Active Catalog Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Games ({totalGames})</h2>
-          <button className="btnAccent" onClick={() => openAddModal("game")}>
-            + New Game
+          <h2 className={styles.sectionTitle}>
+            {activeSubTab === "games" && "Games Library"}
+            {activeSubTab === "developers" && "Game Developers"}
+            {activeSubTab === "publishers" && "Game Publishers"}
+            {activeSubTab === "genres" && "Game Genres"}
+            {activeSubTab === "themes" && "Game Themes"}
+            {activeSubTab === "platforms" && "Game Platforms"}
+          </h2>
+          <button
+            className="btnAccent"
+            onClick={() =>
+              openAddModal(
+                activeSubTab === "games"
+                  ? "game"
+                  : activeSubTab === "developers"
+                    ? "developer"
+                    : activeSubTab === "publishers"
+                      ? "publisher"
+                      : activeSubTab === "genres"
+                        ? "genre"
+                        : activeSubTab === "themes"
+                          ? "theme"
+                          : "platform"
+              )
+            }
+          >
+            + New {
+              activeSubTab === "games"
+                ? "Game"
+                : activeSubTab === "developers"
+                  ? "Developer"
+                  : activeSubTab === "publishers"
+                    ? "Publisher"
+                    : activeSubTab === "genres"
+                      ? "Genre"
+                      : activeSubTab === "themes"
+                        ? "Theme"
+                        : "Platform"
+            }
           </button>
         </div>
 
-        {games.length === 0 ? (
-          <div className={clientStyles.emptyState}>
-            No games found. Click "+ New Game" to add your first game record.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>Title</th>
-                <th className={styles.th}>Slug</th>
-                <th className={styles.th}>Release Date</th>
-                <th className={styles.thRight}>Scores (MC / OC)</th>
-                <th className={styles.thRight}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {games.map((game) => (
-                <tr key={game.id} className={styles.tr}>
-                  <td className={styles.td}>
-                    <div style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                      {game.title}
-                    </div>
-                    {game.originalTitle && (
-                      <div style={{ fontSize: "11px", color: "var(--muted)", fontStyle: "italic", marginTop: "2px" }}>
-                        {game.originalTitle}
+        {/* Adaptive search bar & layout toggles */}
+        <div className={clientStyles.searchBarContainer}>
+          <input
+            type="text"
+            className={clientStyles.searchInput}
+            placeholder={
+              activeSubTab === "games"
+                ? "Search games by title, developer, publisher, genre, platform, theme..."
+                : activeSubTab === "developers"
+                  ? "Search developers by name, slug, country..."
+                  : activeSubTab === "publishers"
+                    ? "Search publishers by name, slug, country..."
+                    : `Search ${activeSubTab} by name or slug...`
+            }
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          {/* Grid / List Mode Toggle for Games Catalog */}
+          {activeSubTab === "games" && (
+            <div className={clientStyles.viewToggleBtnGroup}>
+              <button
+                type="button"
+                className={`${clientStyles.viewToggleBtn} ${gamesViewMode === "grid" ? clientStyles.viewToggleBtnActive : ""}`}
+                onClick={() => setGamesViewMode("grid")}
+                title="Grid View"
+              >
+                Grid
+              </button>
+              <button
+                type="button"
+                className={`${clientStyles.viewToggleBtn} ${gamesViewMode === "list" ? clientStyles.viewToggleBtnActive : ""}`}
+                onClick={() => setGamesViewMode("list")}
+                title="Compact Row List View"
+              >
+                List
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Active Tab Catalog Renderings */}
+        {activeSubTab === "games" && (
+          <>
+            {games.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No games found. Click "+ New Game" to add your first game record.
+              </div>
+            ) : filteredGames.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No games match your search query: "{searchQuery}"
+              </div>
+            ) : gamesViewMode === "grid" ? (
+              <div className={clientStyles.gamesGrid}>
+                {paginatedGames.map((game) => {
+                  const initials = game.title
+                    .split(" ")
+                    .map((word) => word[0])
+                    .join("")
+                    .slice(0, 3)
+                    .toUpperCase();
+
+                  const getScoreColorClass = (score: number | null) => {
+                    if (!score) return "";
+                    if (score >= 90) return clientStyles.scoreHigh;
+                    if (score >= 75) return clientStyles.scoreMid;
+                    return "";
+                  };
+
+                  return (
+                    <div key={game.id} className={clientStyles.gameCard}>
+                      <div className={clientStyles.gameCardCover}>
+                        {game.coverImageUrl ? (
+                          <img
+                            src={game.coverImageUrl}
+                            alt={game.title}
+                            className={clientStyles.gameCardImage}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className={clientStyles.gameCardPlaceholder}>{initials}</div>
+                        )}
+
+                        {(game.metacriticScore || game.openCriticScore) && (
+                          <div className={clientStyles.gameCardScores}>
+                            {game.metacriticScore && (
+                              <span
+                                className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`}
+                                title="Metacritic Score"
+                              >
+                                MC: {game.metacriticScore}
+                              </span>
+                            )}
+                            {game.openCriticScore && (
+                              <span
+                                className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`}
+                                title="OpenCritic Score"
+                              >
+                                OC: {game.openCriticScore}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <div className={clientStyles.relationPills}>
-                      {game.developers.map((d) => (
-                        <span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`}>
-                          {d.name}
-                        </span>
-                      ))}
-                      {game.publishers.map((p) => (
-                        <span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`}>
-                          {p.name}
-                        </span>
-                      ))}
-                      {game.genres.map((g) => (
-                        <span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`}>
-                          {g.name}
-                        </span>
-                      ))}
-                      {game.platforms.map((pl) => (
-                        <span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`}>
-                          {pl.name}
-                        </span>
-                      ))}
-                      {game.themes.map((t) => (
-                        <span key={t.id} className={`${clientStyles.pill} ${clientStyles.pillTheme}`}>
-                          {t.name}
-                        </span>
-                      ))}
+
+                      <div className={clientStyles.gameCardContent}>
+                        <h4 className={clientStyles.gameCardTitle} title={game.title}>
+                          {game.title}
+                        </h4>
+                        {game.originalTitle && (
+                          <div className={clientStyles.gameCardOriginalTitle}>
+                            {game.originalTitle}
+                          </div>
+                        )}
+
+                        <div className={clientStyles.gameCardMeta}>
+                          <span>Release: {game.releaseDate || "—"}</span>
+                          {game.hltbMainHours && (
+                            <span>HLTB: {game.hltbMainHours}h</span>
+                          )}
+                        </div>
+
+                        <div className={clientStyles.gameCardRelations}>
+                          {game.developers.length > 0 && (
+                            <div className={clientStyles.relationPills}>
+                              {game.developers.map((d) => (
+                                <span
+                                  key={d.id}
+                                  className={`${clientStyles.pill} ${clientStyles.pillDev}`}
+                                  title={`Developer: ${d.name}`}
+                                >
+                                  {d.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {game.publishers.length > 0 && (
+                            <div className={clientStyles.relationPills}>
+                              {game.publishers.map((p) => (
+                                <span
+                                  key={p.id}
+                                  className={`${clientStyles.pill} ${clientStyles.pillPub}`}
+                                  title={`Publisher: ${p.name}`}
+                                >
+                                  {p.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {(game.genres.length > 0 || game.platforms.length > 0 || game.themes.length > 0) && (
+                            <div className={clientStyles.relationPills}>
+                              {game.genres.map((g) => (
+                                <span
+                                  key={g.id}
+                                  className={`${clientStyles.pill} ${clientStyles.pillGenre}`}
+                                  title={`Genre: ${g.name}`}
+                                >
+                                  {g.name}
+                                </span>
+                              ))}
+                              {game.platforms.map((pl) => (
+                                <span
+                                  key={pl.id}
+                                  className={`${clientStyles.pill} ${clientStyles.pillPlatform}`}
+                                  title={`Platform: ${pl.name}`}
+                                >
+                                  {pl.name}
+                                </span>
+                              ))}
+                              {game.themes.map((t) => (
+                                <span
+                                  key={t.id}
+                                  className={`${clientStyles.pill} ${clientStyles.pillTheme}`}
+                                  title={`Theme: ${t.name}`}
+                                >
+                                  {t.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={clientStyles.gameCardActions}>
+                        <button
+                          type="button"
+                          className={styles.editLink}
+                          onClick={() => openEditModal("game", game)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.editLink}
+                          onClick={() => handleDelete("game", game.id, game.title)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </td>
-                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                    {game.slug}
-                  </td>
-                  <td className={styles.td}>
-                    {game.releaseDate || "—"}
-                  </td>
-                  <td className={styles.tdRight}>
-                    <span className={clientStyles.scoreBadge}>
-                      {game.metacriticScore || "—"} / {game.openCriticScore || "—"}
-                    </span>
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
-                      <button
-                        className={styles.editLink}
-                        onClick={() => openEditModal("game", game)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className={styles.editLink}
-                        onClick={() => handleDelete("game", game.id, game.title)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
-                      >
-                        Delete
-                      </button>
+                  );
+                })}
+              </div>
+            ) : (
+              // Compact Row List View
+              <div className={clientStyles.gamesCompactList}>
+                {paginatedGames.map((game) => {
+                  const initials = game.title
+                    .split(" ")
+                    .map((word) => word[0])
+                    .join("")
+                    .slice(0, 3)
+                    .toUpperCase();
+
+                  const getScoreColorClass = (score: number | null) => {
+                    if (!score) return "";
+                    if (score >= 90) return clientStyles.scoreHigh;
+                    if (score >= 75) return clientStyles.scoreMid;
+                    return "";
+                  };
+
+                  return (
+                    <div key={game.id} className={clientStyles.gameCompactRow}>
+                      <div className={clientStyles.gameCompactThumb}>
+                        {game.coverImageUrl ? (
+                          <img
+                            src={game.coverImageUrl}
+                            alt={game.title}
+                            className={clientStyles.gameCompactImage}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className={clientStyles.gameCompactPlaceholder}>{initials}</div>
+                        )}
+                      </div>
+
+                      <div className={clientStyles.gameCompactTitleCol}>
+                        <h4 className={clientStyles.gameCompactTitle} title={game.title}>
+                          {game.title}
+                        </h4>
+                        {game.originalTitle && (
+                          <div className={clientStyles.gameCompactOriginalTitle}>
+                            {game.originalTitle}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={clientStyles.gameCompactScoresCol}>
+                        {game.metacriticScore && (
+                          <span
+                            className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`}
+                            title="Metacritic"
+                          >
+                            MC: {game.metacriticScore}
+                          </span>
+                        )}
+                        {game.openCriticScore && (
+                          <span
+                            className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`}
+                            title="OpenCritic"
+                          >
+                            OC: {game.openCriticScore}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className={clientStyles.gameCompactMetaCol}>
+                        <span>Release: {game.releaseDate || "—"}</span>
+                        {game.hltbMainHours && (
+                          <span>HLTB: {game.hltbMainHours}h</span>
+                        )}
+                      </div>
+
+                      <div className={clientStyles.gameCompactRelationsCol}>
+                        <div className={clientStyles.relationPills}>
+                          {game.developers.map((d) => (
+                            <span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>
+                          ))}
+                          {game.publishers.map((p) => (
+                            <span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>
+                          ))}
+                          {game.genres.map((g) => (
+                            <span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>
+                          ))}
+                          {game.platforms.map((pl) => (
+                            <span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={clientStyles.gameCompactActionsCol}>
+                        <button
+                          type="button"
+                          className={styles.editLink}
+                          onClick={() => openEditModal("game", game)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.editLink}
+                          onClick={() => handleDelete("game", game.id, game.title)}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  );
+                })}
+              </div>
+            )}
+            {renderPagination(gamesPage, filteredGames.length, setGamesPage)}
+          </>
         )}
-      </section>
 
-      {/* Developers Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Developers ({totalDevs})</h2>
-          <button className="btnAccent" onClick={() => openAddModal("developer")}>
-            + New Developer
-          </button>
-        </div>
-
-        {developers.length === 0 ? (
-          <div className={clientStyles.emptyState}>
-            No developers found. Click "+ New Developer" to create your first developer record.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>Name</th>
-                <th className={styles.th}>Slug</th>
-                <th className={styles.th}>Country</th>
-                <th className={styles.thRight}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {developers.map((dev) => (
-                <tr key={dev.id} className={styles.tr}>
-                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                    {dev.name}
-                  </td>
-                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                    {dev.slug}
-                  </td>
-                  <td className={styles.td}>
-                    {dev.countryCode || "—"}
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
-                      <button
-                        className={styles.editLink}
-                        onClick={() => openEditModal("developer", dev)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className={styles.editLink}
-                        onClick={() => handleDelete("developer", dev.id, dev.name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
-                      >
-                        Delete
-                      </button>
+        {activeSubTab === "developers" && (
+          <>
+            {developers.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No developers found. Click "+ New Developer" to create your first developer record.
+              </div>
+            ) : filteredDevs.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No developers match search query: "{searchQuery}"
+              </div>
+            ) : (
+              <div className={clientStyles.profileCardsGrid}>
+                {paginatedDevs.map((dev) => {
+                  const initial = dev.name.charAt(0).toUpperCase();
+                  return (
+                    <div key={dev.id} className={clientStyles.profileCard}>
+                      <div className={clientStyles.profileCardHeader}>
+                        <div className={clientStyles.profileCardIcon}>{initial}</div>
+                        <div className={clientStyles.profileCardInfo}>
+                          <h4 className={clientStyles.profileCardName} title={dev.name}>{dev.name}</h4>
+                          <div className={clientStyles.profileCardSlug} title={dev.slug}>{dev.slug}</div>
+                        </div>
+                      </div>
+                      <div className={clientStyles.profileCardFooter}>
+                        <span className={clientStyles.profileCardCountry}>
+                          {dev.countryCode ? `🏳️ ${dev.countryCode}` : "Global"}
+                        </span>
+                        <div className={clientStyles.profileCardActions}>
+                          <button
+                            type="button"
+                            className={styles.editLink}
+                            onClick={() => openEditModal("developer", dev)}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.editLink}
+                            onClick={() => handleDelete("developer", dev.id, dev.name)}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  );
+                })}
+              </div>
+            )}
+            {renderPagination(devsPage, filteredDevs.length, setDevsPage)}
+          </>
         )}
-      </section>
 
-      {/* Publishers Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Publishers ({totalPublishers})</h2>
-          <button className="btnAccent" onClick={() => openAddModal("publisher")}>
-            + New Publisher
-          </button>
-        </div>
-
-        {publishers.length === 0 ? (
-          <div className={clientStyles.emptyState}>
-            No publishers found. Click "+ New Publisher" to create your first publisher record.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>Name</th>
-                <th className={styles.th}>Slug</th>
-                <th className={styles.th}>Country</th>
-                <th className={styles.thRight}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {publishers.map((pub) => (
-                <tr key={pub.id} className={styles.tr}>
-                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                    {pub.name}
-                  </td>
-                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                    {pub.slug}
-                  </td>
-                  <td className={styles.td}>
-                    {pub.countryCode || "—"}
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
-                      <button
-                        className={styles.editLink}
-                        onClick={() => openEditModal("publisher", pub)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className={styles.editLink}
-                        onClick={() => handleDelete("publisher", pub.id, pub.name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
-                      >
-                        Delete
-                      </button>
+        {activeSubTab === "publishers" && (
+          <>
+            {publishers.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No publishers found. Click "+ New Publisher" to create your first publisher record.
+              </div>
+            ) : filteredPubs.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No publishers match search query: "{searchQuery}"
+              </div>
+            ) : (
+              <div className={clientStyles.profileCardsGrid}>
+                {paginatedPubs.map((pub) => {
+                  const initial = pub.name.charAt(0).toUpperCase();
+                  return (
+                    <div key={pub.id} className={clientStyles.profileCard}>
+                      <div className={clientStyles.profileCardHeader}>
+                        <div className={clientStyles.profileCardIcon}>{initial}</div>
+                        <div className={clientStyles.profileCardInfo}>
+                          <h4 className={clientStyles.profileCardName} title={pub.name}>{pub.name}</h4>
+                          <div className={clientStyles.profileCardSlug} title={pub.slug}>{pub.slug}</div>
+                        </div>
+                      </div>
+                      <div className={clientStyles.profileCardFooter}>
+                        <span className={clientStyles.profileCardCountry}>
+                          {pub.countryCode ? `🏳️ ${pub.countryCode}` : "Global"}
+                        </span>
+                        <div className={clientStyles.profileCardActions}>
+                          <button
+                            type="button"
+                            className={styles.editLink}
+                            onClick={() => openEditModal("publisher", pub)}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.editLink}
+                            onClick={() => handleDelete("publisher", pub.id, pub.name)}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  );
+                })}
+              </div>
+            )}
+            {renderPagination(pubsPage, filteredPubs.length, setPubsPage)}
+          </>
         )}
-      </section>
 
-      {/* Genres Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Genres ({totalGenres})</h2>
-          <button className="btnAccent" onClick={() => openAddModal("genre")}>
-            + New Genre
-          </button>
-        </div>
-
-        {genres.length === 0 ? (
-          <div className={clientStyles.emptyState}>
-            No genres found. Click "+ New Genre" to create your first genre record.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>Name</th>
-                <th className={styles.th}>Slug</th>
-                <th className={styles.thRight}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {genres.map((genre) => (
-                <tr key={genre.id} className={styles.tr}>
-                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                    {genre.name}
-                  </td>
-                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                    {genre.slug}
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
+        {activeSubTab === "genres" && (
+          <>
+            {genres.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No genres found. Click "+ New Genre" to create your first genre record.
+              </div>
+            ) : filteredGenresList.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No genres match search query: "{searchQuery}"
+              </div>
+            ) : (
+              <div className={clientStyles.interactiveChipsGrid}>
+                {paginatedGenres.map((genre) => (
+                  <div key={genre.id} className={clientStyles.interactiveChip}>
+                    <span className={clientStyles.interactiveChipName}>{genre.name}</span>
+                    <span className={clientStyles.interactiveChipSlug}>{genre.slug}</span>
+                    <div className={clientStyles.interactiveChipActions}>
                       <button
-                        className={styles.editLink}
+                        type="button"
+                        className={clientStyles.chipActionBtn}
                         onClick={() => openEditModal("genre", genre)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                        title="Edit Genre"
                       >
                         Edit
                       </button>
                       <button
-                        className={styles.editLink}
+                        type="button"
+                        className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`}
                         onClick={() => handleDelete("genre", genre.id, genre.name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                        title="Delete Genre"
                       >
                         Delete
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                ))}
+              </div>
+            )}
+            {renderPagination(genresPage, filteredGenresList.length, setGenresPage)}
+          </>
         )}
-      </section>
 
-      {/* Themes Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Themes ({totalThemes})</h2>
-          <button className="btnAccent" onClick={() => openAddModal("theme")}>
-            + New Theme
-          </button>
-        </div>
-
-        {themes.length === 0 ? (
-          <div className={clientStyles.emptyState}>
-            No themes found. Click "+ New Theme" to create your first theme record.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>Name</th>
-                <th className={styles.th}>Slug</th>
-                <th className={styles.thRight}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {themes.map((theme) => (
-                <tr key={theme.id} className={styles.tr}>
-                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                    {theme.name}
-                  </td>
-                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                    {theme.slug}
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
+        {activeSubTab === "themes" && (
+          <>
+            {themes.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No themes found. Click "+ New Theme" to create your first theme record.
+              </div>
+            ) : filteredThemesList.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No themes match search query: "{searchQuery}"
+              </div>
+            ) : (
+              <div className={clientStyles.interactiveChipsGrid}>
+                {paginatedThemes.map((theme) => (
+                  <div key={theme.id} className={clientStyles.interactiveChip}>
+                    <span className={clientStyles.interactiveChipName}>{theme.name}</span>
+                    <span className={clientStyles.interactiveChipSlug}>{theme.slug}</span>
+                    <div className={clientStyles.interactiveChipActions}>
                       <button
-                        className={styles.editLink}
+                        type="button"
+                        className={clientStyles.chipActionBtn}
                         onClick={() => openEditModal("theme", theme)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                        title="Edit Theme"
                       >
                         Edit
                       </button>
                       <button
-                        className={styles.editLink}
+                        type="button"
+                        className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`}
                         onClick={() => handleDelete("theme", theme.id, theme.name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                        title="Delete Theme"
                       >
                         Delete
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                ))}
+              </div>
+            )}
+            {renderPagination(themesPage, filteredThemesList.length, setThemesPage)}
+          </>
         )}
-      </section>
 
-      {/* Platforms Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Platforms ({totalPlatforms})</h2>
-          <button className="btnAccent" onClick={() => openAddModal("platform")}>
-            + New Platform
-          </button>
-        </div>
-
-        {platforms.length === 0 ? (
-          <div className={clientStyles.emptyState}>
-            No platforms found. Click "+ New Platform" to create your first platform record.
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>Name</th>
-                <th className={styles.th}>Slug</th>
-                <th className={styles.thRight}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {platforms.map((platform) => (
-                <tr key={platform.id} className={styles.tr}>
-                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                    {platform.name}
-                  </td>
-                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                    {platform.slug}
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
+        {activeSubTab === "platforms" && (
+          <>
+            {platforms.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No platforms found. Click "+ New Platform" to create your first platform record.
+              </div>
+            ) : filteredPlatformsList.length === 0 ? (
+              <div className={clientStyles.emptyState}>
+                No platforms match search query: "{searchQuery}"
+              </div>
+            ) : (
+              <div className={clientStyles.interactiveChipsGrid}>
+                {paginatedPlatforms.map((platform) => (
+                  <div key={platform.id} className={clientStyles.interactiveChip}>
+                    <span className={clientStyles.interactiveChipName}>{platform.name}</span>
+                    <span className={clientStyles.interactiveChipSlug}>{platform.slug}</span>
+                    <div className={clientStyles.interactiveChipActions}>
                       <button
-                        className={styles.editLink}
+                        type="button"
+                        className={clientStyles.chipActionBtn}
                         onClick={() => openEditModal("platform", platform)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                        title="Edit Platform"
                       >
                         Edit
                       </button>
                       <button
-                        className={styles.editLink}
+                        type="button"
+                        className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`}
                         onClick={() => handleDelete("platform", platform.id, platform.name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                        title="Delete Platform"
                       >
                         Delete
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                ))}
+              </div>
+            )}
+            {renderPagination(platformsPage, filteredPlatformsList.length, setPlatformsPage)}
+          </>
         )}
       </section>
 
@@ -914,7 +1347,7 @@ export default function GamesDashboardClient({
                     }`
                 }
               </h3>
-              <button className={clientStyles.modalClose} onClick={closeModal}>
+              <button type="button" className={clientStyles.modalClose} onClick={closeModal}>
                 &times;
               </button>
             </div>
@@ -1229,10 +1662,7 @@ export default function GamesDashboardClient({
                     Cancel
                   </button>
                   <button type="submit" className="btnAccent" disabled={loading}>
-                    {loading
-                      ? "Saving..."
-                      : (editingItem ? "Save Changes" : "Create Game")
-                    }
+                    {loading ? "Saving..." : editingItem ? "Save Changes" : "Create Game"}
                   </button>
                 </div>
               </form>
@@ -1312,20 +1742,19 @@ export default function GamesDashboardClient({
                   <button type="submit" className="btnAccent" disabled={loading}>
                     {loading
                       ? "Saving..."
-                      : (editingItem
-                          ? "Save Changes"
-                          : `Create ${
-                              activeType === "developer"
-                                ? "Developer"
-                                : activeType === "publisher"
-                                  ? "Publisher"
-                                  : activeType === "genre"
-                                    ? "Genre"
-                                    : activeType === "theme"
-                                      ? "Theme"
-                                      : "Platform"
-                            }`
-                        )
+                      : editingItem
+                        ? "Save Changes"
+                        : `Create ${
+                            activeType === "developer"
+                              ? "Developer"
+                              : activeType === "publisher"
+                                ? "Publisher"
+                                : activeType === "genre"
+                                  ? "Genre"
+                                  : activeType === "theme"
+                                    ? "Theme"
+                                    : "Platform"
+                          }`
                     }
                   </button>
                 </div>
