@@ -9,6 +9,23 @@ interface MarkdownPreviewProps {
 }
 
 export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
+  const [activeImage, setActiveImage] = React.useState<{ src: string; alt: string } | null>(null);
+
+  React.useEffect(() => {
+    if (!activeImage) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [activeImage]);
+
   if (!content.trim()) {
     return <span className={styles.empty}>No content written yet.</span>;
   }
@@ -64,6 +81,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
             src={srcOrHref}
             alt={altText}
             className={styles.image}
+            onClick={() => setActiveImage({ src: srcOrHref, alt: altText })}
           />
         );
       } else {
@@ -196,5 +214,30 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
 
   flushList();
 
-  return <div className={styles.wrapper}>{elements}</div>;
+  return (
+    <div className={styles.wrapper}>
+      {elements}
+      {activeImage && (
+        <div className={styles.lightboxOverlay} onClick={() => setActiveImage(null)}>
+          <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+            <button 
+              className={styles.lightboxCloseButton} 
+              onClick={() => setActiveImage(null)}
+              aria-label="Close image lightbox"
+            >
+              &times;
+            </button>
+            <img 
+              src={activeImage.src} 
+              alt={activeImage.alt} 
+              className={styles.lightboxImage} 
+            />
+            {activeImage.alt && (
+              <div className={styles.lightboxCaption}>{activeImage.alt}</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
