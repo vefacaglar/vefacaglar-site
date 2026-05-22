@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { logoutAction, deletePostAction, deletePageAction } from "./actions";
+import { logoutAction, deletePostAction, deletePageAction, deleteProjectAction } from "./actions";
 import DeleteButton from "./components/DeleteButton";
 import styles from "./admin.module.css";
 import { httpClient } from "../../lib/httpClient";
@@ -16,6 +16,14 @@ interface PostItem {
 }
 
 interface PageItem {
+  id: string;
+  slug: string;
+  title: string;
+  status: "draft" | "published";
+  createdAt: string;
+}
+
+interface ProjectItem {
   id: string;
   slug: string;
   title: string;
@@ -63,6 +71,22 @@ export default async function AdminDashboard() {
     }
   } catch (error) {
     console.error("Failed to fetch pages in admin:", error);
+  }
+
+  // Fetch projects (including drafts)
+  let projects: ProjectItem[] = [];
+  try {
+    const res = await httpClient.get("/api/projects", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      projects = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch projects in admin:", error);
   }
 
   return (
@@ -120,6 +144,50 @@ export default async function AdminDashboard() {
                         Edit
                       </Link>
                       <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Projects Section */}
+      <section>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Projects</h2>
+          <Link href="/admin/projects/new" className="btnAccent">
+            + New Project
+          </Link>
+        </div>
+
+        {projects.length === 0 ? (
+          <p className={styles.empty}>No projects added yet.</p>
+        ) : (
+          <table className={styles.table}>
+             <thead>
+               <tr>
+                 <th className={styles.th}>Title</th>
+                 <th className={styles.th}>Status</th>
+                 <th className={styles.thRight}>Actions</th>
+               </tr>
+             </thead>
+             <tbody>
+               {projects.map((project) => (
+                <tr key={project.id} className={styles.tr}>
+                  <td className={styles.td}>{project.title} (/projects/{project.slug})</td>
+                  <td className={styles.td}>
+                    <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                      {project.status === "published" ? "Published" : "Draft"}
+                    </span>
+                  </td>
+                  <td className={styles.tdRight}>
+                    <div className={styles.rowActions}>
+                      <Link href={`/admin/projects/edit/${project.id}`} className={styles.editLink}>
+                        Edit
+                      </Link>
+                      <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
                     </div>
                   </td>
                 </tr>

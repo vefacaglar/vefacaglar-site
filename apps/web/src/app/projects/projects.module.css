@@ -1,3 +1,72 @@
 .back {
   margin-bottom: 48px;
 }
+
+.subtitle {
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.listItem {
+  margin-bottom: 28px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.dash {
+  position: absolute;
+  left: 0;
+  color: var(--muted);
+}
+
+.itemMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary {
+  font-size: 14px;
+  margin: 4px 0;
+  color: var(--text);
+}
+
+.featuredBadge {
+  font-size: 11px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.links {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.link {
+  color: var(--muted) !important;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+
+.link:hover {
+  color: var(--accent) !important;
+  text-decoration-color: var(--accent);
+}

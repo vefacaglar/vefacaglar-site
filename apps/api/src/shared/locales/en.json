@@ -1,5 +1,6 @@
 {
   "err_page_not_found": "Page not found.",
   "err_post_not_found": "Blog post not found.",
+  "err_project_not_found": "Project not found.",
   "err_unauthorized": "You are not authorized to access this resource."
 }

@@ -347,3 +347,119 @@ export async function changePasswordAction(data: {
     return { error: "Server connection error." };
   }
 }
+
+export async function createProjectAction(data: {
+  title: string;
+  slug: string;
+  summary: string;
+  content: string;
+  status: "draft" | "published";
+  featured?: boolean;
+  sortOrder?: number;
+  githubUrl?: string;
+  liveUrl?: string;
+  coverImageUrl?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  startedAt?: string;
+  endedAt?: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post("/api/projects", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Could not create project." };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/projects");
+    return { success: true };
+  } catch (error) {
+    console.error("Create project error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updateProjectAction(
+  id: string,
+  data: {
+    title: string;
+    slug: string;
+    summary: string;
+    content: string;
+    status: "draft" | "published";
+    featured?: boolean;
+    sortOrder?: number;
+    githubUrl?: string;
+    liveUrl?: string;
+    coverImageUrl?: string;
+    seoTitle?: string;
+    seoDescription?: string;
+    startedAt?: string;
+    endedAt?: string;
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.put(`/api/projects/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update project." };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${data.slug}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Update project error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function deleteProjectAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.delete(`/api/projects/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to delete project." };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/projects");
+    return { success: true };
+  } catch (error) {
+    console.error("Delete project error:", error);
+    return { error: "Server connection error." };
+  }
+}
+

@@ -10,6 +10,9 @@ const dictionaries = {
     back_to_blog: "blog",
     about: "about",
     projects: "projects",
+    no_projects: "No projects published yet.",
+    back_to_projects: "projects",
+    featured_project: "Featured",
   },
   tr: {
     blog: "Son yazılar",
@@ -22,6 +25,9 @@ const dictionaries = {
     back_to_blog: "yazılar",
     about: "hakkımda",
     projects: "projeler",
+    no_projects: "Henüz proje yayınlanmadı.",
+    back_to_projects: "projeler",
+    featured_project: "Öne Çıkan",
   }
 };
 

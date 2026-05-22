@@ -10,12 +10,15 @@ import { DrizzlePagesRepository } from "./modules/pages/pages.repository";
 import { USERS_REPOSITORY, SESSIONS_REPOSITORY } from "./modules/auth/auth.tokens";
 import { DrizzleUsersRepository } from "./modules/auth/users.repository";
 import { DrizzleSessionsRepository } from "./modules/auth/sessions.repository";
+import { PROJECTS_REPOSITORY } from "./modules/projects/projects.tokens";
+import { DrizzleProjectsRepository } from "./modules/projects/projects.repository";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
 container.registerSingleton(TransactionManager);
 container.registerSingleton(POSTS_REPOSITORY, DrizzlePostsRepository);
 container.registerSingleton(PAGES_REPOSITORY, DrizzlePagesRepository);
+container.registerSingleton(PROJECTS_REPOSITORY, DrizzleProjectsRepository);
 container.registerSingleton(USERS_REPOSITORY, DrizzleUsersRepository);
 container.registerSingleton(SESSIONS_REPOSITORY, DrizzleSessionsRepository);
 
