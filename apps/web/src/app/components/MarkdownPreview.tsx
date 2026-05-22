@@ -42,39 +42,54 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
   };
 
   const renderLinks = (text: string, index: number): React.ReactNode => {
-    const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+    const combinedRegex = /(!)?\[(.*?)\]\((.*?)\)/g;
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
     let match;
     let keyCounter = 0;
 
-    while ((match = linkRegex.exec(text)) !== null) {
+    while ((match = combinedRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         parts.push(<span key={`${index}-${keyCounter++}`}>{text.slice(lastIndex, match.index)}</span>);
       }
-      const href = match[2];
-      const isExternal = href.startsWith("http://") || href.startsWith("https://");
-      parts.push(
-        isExternal ? (
-          <a
+      
+      const isImage = match[1] === "!";
+      const altText = match[2];
+      const srcOrHref = match[3];
+
+      if (isImage) {
+        parts.push(
+          <img
             key={`${index}-${keyCounter++}`}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.link}
-          >
-            {match[1]}
-          </a>
-        ) : (
-          <Link
-            key={`${index}-${keyCounter++}`}
-            href={href}
-            className={styles.link}
-          >
-            {match[1]}
-          </Link>
-        )
-      );
+            src={srcOrHref}
+            alt={altText}
+            className={styles.image}
+          />
+        );
+      } else {
+        const isExternal = srcOrHref.startsWith("http://") || srcOrHref.startsWith("https://");
+        parts.push(
+          isExternal ? (
+            <a
+              key={`${index}-${keyCounter++}`}
+              href={srcOrHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.link}
+            >
+              {altText}
+            </a>
+          ) : (
+            <Link
+              key={`${index}-${keyCounter++}`}
+              href={srcOrHref}
+              className={styles.link}
+            >
+              {altText}
+            </Link>
+          )
+        );
+      }
       lastIndex = match.index + match[0].length;
     }
 

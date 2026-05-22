@@ -58,3 +58,12 @@
   border-radius: 3px;
   font-size: 13px;
 }
+
+.image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 20px auto;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
