@@ -12,6 +12,8 @@ import { DrizzleUsersRepository } from "./modules/auth/users.repository";
 import { DrizzleSessionsRepository } from "./modules/auth/sessions.repository";
 import { PROJECTS_REPOSITORY } from "./modules/projects/projects.tokens";
 import { DrizzleProjectsRepository } from "./modules/projects/projects.repository";
+import { IMAGE_CLIENT } from "./modules/uploads/image/image-client.tokens";
+import { ImageKitClient } from "./modules/uploads/image/imagekit-client.service";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
@@ -21,5 +23,6 @@ container.registerSingleton(PAGES_REPOSITORY, DrizzlePagesRepository);
 container.registerSingleton(PROJECTS_REPOSITORY, DrizzleProjectsRepository);
 container.registerSingleton(USERS_REPOSITORY, DrizzleUsersRepository);
 container.registerSingleton(SESSIONS_REPOSITORY, DrizzleSessionsRepository);
+container.registerSingleton(IMAGE_CLIENT, ImageKitClient);
 
 export { container };
