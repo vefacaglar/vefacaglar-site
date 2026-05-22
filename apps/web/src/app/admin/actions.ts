@@ -143,7 +143,7 @@ export async function createPostAction(data: {
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Yazı oluşturulamadı." };
+      return { error: errData.message || "Could not create post." };
     }
 
     revalidatePath("/admin");
@@ -217,7 +217,7 @@ export async function createPageAction(data: {
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Sayfa oluşturulamadı." };
+      return { error: errData.message || "Could not create page." };
     }
 
     revalidatePath("/admin");

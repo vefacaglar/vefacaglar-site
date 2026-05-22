@@ -106,7 +106,7 @@ export default function PostForm({ initialData }: PostFormProps) {
         )}
 
         <div className="field">
-          <label className="label">Başlık</label>
+          <label className="label">Title</label>
           <input
             type="text"
             required
@@ -117,7 +117,7 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Slug (URL Yolu)</label>
+          <label className="label">Slug (URL Path)</label>
           <input
             type="text"
             required
@@ -128,7 +128,7 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Özet (Excerpt)</label>
+          <label className="label">Excerpt</label>
           <textarea
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
@@ -149,7 +149,7 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Kapak Görseli URL (Cover Image)</label>
+          <label className="label">Cover Image URL</label>
           <input
             type="text"
             value={coverImageUrl}
@@ -160,22 +160,22 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Yayın Durumu</label>
+          <label className="label">Publish Status</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as "draft" | "published")}
             className={styles.select}
           >
-            <option value="draft">Taslak (Draft)</option>
-            <option value="published">Yayında (Published)</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
           </select>
         </div>
 
         <details className={styles.seoDetails}>
-          <summary className={styles.seoSummary}>SEO Ayarları (Opsiyonel)</summary>
+          <summary className={styles.seoSummary}>SEO Settings (Optional)</summary>
           <div className={styles.seoFields}>
             <div className="field">
-              <label className={styles.seoLabel}>SEO Başlığı</label>
+              <label className={styles.seoLabel}>SEO Title</label>
               <input
                 type="text"
                 value={seoTitle}
@@ -184,7 +184,7 @@ export default function PostForm({ initialData }: PostFormProps) {
               />
             </div>
             <div className="field">
-              <label className={styles.seoLabel}>SEO Açıklaması</label>
+              <label className={styles.seoLabel}>SEO Description</label>
               <textarea
                 value={seoDescription}
                 onChange={(e) => setSeoDescription(e.target.value)}
