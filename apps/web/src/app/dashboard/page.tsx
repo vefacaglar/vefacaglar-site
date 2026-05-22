@@ -108,6 +108,15 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
+      <div className={styles.tabsContainer}>
+        <Link href="/dashboard" className={`${styles.tab} ${styles.activeTab}`}>
+          Content
+        </Link>
+        <Link href="/dashboard/games" className={styles.tab}>
+          Games
+        </Link>
+      </div>
+
       <DashboardListsContainer
         initialPosts={posts}
         initialProjects={projects}
