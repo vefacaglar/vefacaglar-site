@@ -9,10 +9,20 @@ export class ListAdminProjectsHandler {
   constructor(@inject(PROJECTS_REPOSITORY) private readonly projectsRepo: IProjectsRepository) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListAdminProjectsQuery }>): Promise<ListAdminProjectsResponse> {
-    const { status } = request.query;
-    const { items: rows } = await this.projectsRepo.listRaw(status ? { status } : undefined);
+    const { status, page, limit } = request.query;
 
-    return rows.map((row) => ({
+    const pageNum = page !== undefined ? Number(page) : 1;
+    const limitNum = limit !== undefined ? Number(limit) : 5;
+
+    const { items: rows, total } = await this.projectsRepo.listRaw({
+      status: status ? status : undefined,
+      page: pageNum,
+      limit: limitNum,
+    });
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    const items = rows.map((row) => ({
       id: row.id,
       slug: row.slug,
       title: row.title,
@@ -32,5 +42,13 @@ export class ListAdminProjectsHandler {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));
+
+    return {
+      items,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+    };
   }
 }

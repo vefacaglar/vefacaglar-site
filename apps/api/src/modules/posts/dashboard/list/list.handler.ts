@@ -9,10 +9,20 @@ export class ListAdminPostsHandler {
   constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListAdminPostsQuery }>): Promise<ListAdminPostsResponse> {
-    const { status } = request.query;
-    const { items: rows } = await this.postsRepo.listRawWithAuthor(status ? { status } : undefined);
+    const { status, page, limit } = request.query;
 
-    return rows.map((row) => ({
+    const pageNum = page !== undefined ? Number(page) : 1;
+    const limitNum = limit !== undefined ? Number(limit) : 5;
+
+    const { items: rows, total } = await this.postsRepo.listRawWithAuthor({
+      status: status ? status : undefined,
+      page: pageNum,
+      limit: limitNum,
+    });
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    const items = rows.map((row) => ({
       id: row.id,
       slug: row.slug,
       title: row.title,
@@ -29,5 +39,13 @@ export class ListAdminPostsHandler {
         ? { username: row.authorUsername, displayName: row.authorDisplayName }
         : null,
     }));
+
+    return {
+      items,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+    };
   }
 }

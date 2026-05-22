@@ -1,5 +1,5 @@
 import { pages, localizations } from "@vefacaglar/db";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
@@ -43,11 +43,11 @@ export class DrizzlePagesRepository implements IPagesRepository {
     return mergeTranslations(row, translations);
   }
 
-  async list(filter?: { status?: "draft" | "published" }): Promise<Page[]> {
+  async list(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Page[]; total: number }> {
     const lang = this.langProvider.getLanguage();
-    const rows = await this.listRaw(filter);
+    const { items: rows, total } = await this.listRaw(filter);
 
-    if (rows.length === 0 || !lang || lang === 'en') return rows;
+    if (rows.length === 0 || !lang || lang === 'en') return { items: rows, total };
 
     const ids = rows.map((r) => r.id);
     const allTranslations = await this.dbProvider.client
@@ -67,20 +67,38 @@ export class DrizzlePagesRepository implements IPagesRepository {
       translationsMap[trans.entityId].push(trans);
     }
 
-    return rows.map((row) => {
+    const translatedItems = rows.map((row) => {
       const pageTranslations = translationsMap[row.id] || [];
       return mergeTranslations(row, pageTranslations);
     });
+
+    return { items: translatedItems, total };
   }
 
-  async listRaw(filter?: { status?: "draft" | "published" }): Promise<Page[]> {
+  async listRaw(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Page[]; total: number }> {
     const conditions = filter?.status ? [eq(pages.status, filter.status)] : [];
 
-    return await this.dbProvider.client
+    const [countResult] = await this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(pages)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    const total = Number(countResult?.count || 0);
+
+    let query = this.dbProvider.client
       .select()
       .from(pages)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(pages.publishedAt), desc(pages.createdAt));
+      .orderBy(desc(pages.publishedAt), desc(pages.createdAt))
+      .$dynamic();
+
+    if (filter?.page !== undefined && filter?.limit !== undefined) {
+      const offset = (filter.page - 1) * filter.limit;
+      query = query.limit(filter.limit).offset(offset);
+    }
+
+    const items = await query;
+    return { items, total };
   }
 
   async update(id: string, patch: Partial<NewPage>): Promise<Page> {

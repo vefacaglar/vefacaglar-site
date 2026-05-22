@@ -99,3 +99,78 @@
 .empty {
   color: var(--muted);
 }
+
+.paginationRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.simplePagination {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  margin-top: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.simplePaginationButton {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s ease;
+}
+
+.simplePaginationButton:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+.simplePaginationDisabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.simplePaginationInfo {
+  opacity: 0.8;
+}
+
+.pageSizeContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.pageSizeLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pageSizeSelect {
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.pageSizeSelect:hover,
+.pageSizeSelect:focus {
+  border-color: var(--text);
+}
