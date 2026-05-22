@@ -1,9 +1,10 @@
 import { injectable, inject } from "tsyringe";
-import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY, THEMES_REPOSITORY } from "./games.tokens";
+import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY, THEMES_REPOSITORY, PLATFORMS_REPOSITORY } from "./games.tokens";
 import type { IDevelopersRepository, Developer } from "./developers.repository.interface";
 import type { IPublishersRepository, Publisher } from "./publishers.repository.interface";
 import type { IGenresRepository, Genre } from "./genres.repository.interface";
 import type { IThemesRepository, Theme } from "./themes.repository.interface";
+import type { IPlatformsRepository, Platform } from "./platforms.repository.interface";
 import { BadRequestError, NotFoundError } from "../../shared/http-errors";
 
 @injectable()
@@ -12,7 +13,8 @@ export class GameService {
     @inject(DEVELOPERS_REPOSITORY) private readonly developersRepo: IDevelopersRepository,
     @inject(PUBLISHERS_REPOSITORY) private readonly publishersRepo: IPublishersRepository,
     @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
-    @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository
+    @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
+    @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository
   ) {}
 
   // --- Developer CRUD Methods ---
@@ -261,5 +263,66 @@ export class GameService {
       throw new NotFoundError("Theme not found.");
     }
     await this.themesRepo.delete(id);
+  }
+
+  // --- Platform CRUD Methods ---
+
+  async createPlatform(data: { name: string; slug: string }): Promise<Platform> {
+    const existing = await this.platformsRepo.findBySlug(data.slug);
+    if (existing) {
+      throw new BadRequestError("Platform with this slug already exists.");
+    }
+    return this.platformsRepo.create({
+      name: data.name,
+      slug: data.slug,
+    });
+  }
+
+  async getPlatformById(id: string): Promise<Platform> {
+    const platform = await this.platformsRepo.findById(id);
+    if (!platform) {
+      throw new NotFoundError("Platform not found.");
+    }
+    return platform;
+  }
+
+  async getPlatformBySlug(slug: string): Promise<Platform> {
+    const platform = await this.platformsRepo.findBySlug(slug);
+    if (!platform) {
+      throw new NotFoundError("Platform not found.");
+    }
+    return platform;
+  }
+
+  async listPlatforms(filter?: { page?: number; limit?: number }): Promise<{ items: Platform[]; total: number }> {
+    return this.platformsRepo.list(filter);
+  }
+
+  async updatePlatform(id: string, data: { name?: string; slug?: string }): Promise<Platform> {
+    const existing = await this.platformsRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Platform not found.");
+    }
+
+    if (data.slug && data.slug !== existing.slug) {
+      const slugDup = await this.platformsRepo.findBySlug(data.slug);
+      if (slugDup) {
+        throw new BadRequestError("Platform with this slug already exists.");
+      }
+    }
+
+    return this.platformsRepo.update(id, {
+      name: data.name,
+      slug: data.slug,
+      updatedAt: new Date(),
+    });
+  }
+
+  async deletePlatform(id: string): Promise<void> {
+    const existing = await this.platformsRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Platform not found.");
+    }
+    await this.platformsRepo.delete(id);
   }
 }

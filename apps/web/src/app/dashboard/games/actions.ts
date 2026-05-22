@@ -355,3 +355,91 @@ export async function deleteThemeAction(id: string) {
     return { error: "Server connection error." };
   }
 }
+
+export async function createPlatformAction(data: {
+  name: string;
+  slug: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post("/api/games/platforms", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Could not create platform." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Create platform error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updatePlatformAction(
+  id: string,
+  data: {
+    name?: string;
+    slug?: string;
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.put(`/api/games/platforms/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update platform." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Update platform error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function deletePlatformAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.delete(`/api/games/platforms/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to delete platform." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Delete platform error:", error);
+    return { error: "Server connection error." };
+  }
+}
+

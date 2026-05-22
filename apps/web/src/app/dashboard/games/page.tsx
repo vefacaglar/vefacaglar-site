@@ -116,6 +116,22 @@ export default async function GamesDashboard() {
     console.error("Failed to fetch themes in dashboard:", error);
   }
 
+  // Fetch real platforms from the backend API
+  let platformsData = { items: [], total: 0, page: 1, limit: 1000, totalPages: 1 };
+  try {
+    const res = await httpClient.get("/api/games/platforms?limit=1000", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      platformsData = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch platforms in dashboard:", error);
+  }
+
 
   // Premium mock games matching the database schemas
   const mockGames: GameCatalogItem[] = [
@@ -154,12 +170,7 @@ export default async function GamesDashboard() {
 
 
 
-  // Premium mock platforms matching the database schemas
-  const mockPlatforms: PlatformCatalogItem[] = [
-    { id: "1", name: "Nintendo Switch", slug: "nintendo-switch" },
-    { id: "2", name: "PC", slug: "pc" },
-    { id: "3", name: "PlayStation 5", slug: "playstation-5" },
-  ];
+
 
 
 
@@ -238,55 +249,14 @@ export default async function GamesDashboard() {
         </table>
       </section>
 
-      {/* 2, 3, 4 & 5. Developers, Publishers, Genres and Themes Catalogs (Using real API and Client Component) */}
+      {/* 2, 3, 4 & 5. Developers, Publishers, Genres, Themes and Platforms Catalogs (Using real API and Client Component) */}
       <GamesDashboardClient
         initialDevelopers={developersData}
         initialPublishers={publishersData}
         initialGenres={genresData}
         initialThemes={themesData}
+        initialPlatforms={platformsData}
       />
-
-      {/* 5. Platforms Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Platforms ({mockPlatforms.length})</h2>
-          <button className="btnAccent">
-            + New Platform
-          </button>
-        </div>
-
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th}>Name</th>
-              <th className={styles.th}>Slug</th>
-              <th className={styles.thRight}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockPlatforms.map((platform) => (
-              <tr key={platform.id} className={styles.tr}>
-                <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                  {platform.name}
-                </td>
-                <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                  {platform.slug}
-                </td>
-                <td className={styles.tdRight}>
-                  <div className={styles.rowActions}>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                      Edit
-                    </button>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
 
 
     </div>
