@@ -68,6 +68,22 @@ export default async function GamesDashboard() {
     console.error("Failed to fetch developers in dashboard:", error);
   }
 
+  // Fetch real publishers from the backend API
+  let publishersData = { items: [], total: 0, page: 1, limit: 1000, totalPages: 1 };
+  try {
+    const res = await httpClient.get("/api/games/publishers?limit=1000", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      publishersData = await res.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch publishers in dashboard:", error);
+  }
+
   // Premium mock games matching the database schemas
   const mockGames: GameCatalogItem[] = [
     {
@@ -199,54 +215,8 @@ export default async function GamesDashboard() {
         </table>
       </section>
 
-      {/* 2. Developers Catalog (Using real API and Client Component) */}
-      <GamesDashboardClient initialDevelopers={developersData} />
-
-      {/* 3. Publishers Catalog */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Publishers ({mockPublishers.length})</h2>
-          <button className="btnAccent">
-            + New Publisher
-          </button>
-        </div>
-
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th}>Name</th>
-              <th className={styles.th}>Slug</th>
-              <th className={styles.th}>Country</th>
-              <th className={styles.thRight}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockPublishers.map((pub) => (
-              <tr key={pub.id} className={styles.tr}>
-                <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
-                  {pub.name}
-                </td>
-                <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
-                  {pub.slug}
-                </td>
-                <td className={styles.td}>
-                  {pub.countryCode || "—"}
-                </td>
-                <td className={styles.tdRight}>
-                  <div className={styles.rowActions}>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                      Edit
-                    </button>
-                    <button className={styles.editLink} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      {/* 2 & 3. Developers and Publishers Catalogs (Using real API and Client Component) */}
+      <GamesDashboardClient initialDevelopers={developersData} initialPublishers={publishersData} />
 
       {/* 4. Genres Catalog */}
       <section className={styles.section}>

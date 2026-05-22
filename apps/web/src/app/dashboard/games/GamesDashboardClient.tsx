@@ -4,10 +4,26 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../dashboard.module.css";
 import clientStyles from "./games-client.module.css";
-import { createDeveloperAction, updateDeveloperAction, deleteDeveloperAction } from "./actions";
+import {
+  createDeveloperAction,
+  updateDeveloperAction,
+  deleteDeveloperAction,
+  createPublisherAction,
+  updatePublisherAction,
+  deletePublisherAction,
+} from "./actions";
 
 // Types matching the backend response
 export interface Developer {
+  id: string;
+  name: string;
+  slug: string;
+  countryCode: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface Publisher {
   id: string;
   name: string;
   slug: string;
@@ -24,22 +40,44 @@ interface GamesDashboardClientProps {
     limit: number;
     totalPages: number;
   };
+  initialPublishers: {
+    items: Publisher[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
-export default function GamesDashboardClient({ initialDevelopers }: GamesDashboardClientProps) {
+export default function GamesDashboardClient({
+  initialDevelopers,
+  initialPublishers,
+}: GamesDashboardClientProps) {
   const router = useRouter();
+
+  // Developers state
   const [developers, setDevelopers] = useState<Developer[]>(initialDevelopers.items);
-  const [total, setTotal] = useState(initialDevelopers.total);
+  const [totalDevs, setTotalDevs] = useState(initialDevelopers.total);
+
+  // Publishers state
+  const [publishers, setPublishers] = useState<Publisher[]>(initialPublishers.items);
+  const [totalPublishers, setTotalPublishers] = useState(initialPublishers.total);
 
   // Sync state when props change (Next.js server-side revalidation)
   useEffect(() => {
     setDevelopers(initialDevelopers.items);
-    setTotal(initialDevelopers.total);
+    setTotalDevs(initialDevelopers.total);
   }, [initialDevelopers]);
+
+  useEffect(() => {
+    setPublishers(initialPublishers.items);
+    setTotalPublishers(initialPublishers.total);
+  }, [initialPublishers]);
 
   // Modal control states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDev, setEditingDev] = useState<Developer | null>(null);
+  const [activeType, setActiveType] = useState<"developer" | "publisher">("developer");
+  const [editingItem, setEditingItem] = useState<Developer | Publisher | null>(null);
   
   // Form states
   const [name, setName] = useState("");
@@ -71,13 +109,14 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
 
   // Auto-generate slug from name only when creating a new record
   useEffect(() => {
-    if (!editingDev) {
+    if (!editingItem) {
       setSlug(slugify(name));
     }
-  }, [name, editingDev]);
+  }, [name, editingItem]);
 
-  const openAddModal = () => {
-    setEditingDev(null);
+  const openAddModal = (type: "developer" | "publisher") => {
+    setActiveType(type);
+    setEditingItem(null);
     setName("");
     setSlug("");
     setCountryCode("");
@@ -85,18 +124,19 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
     setIsModalOpen(true);
   };
 
-  const openEditModal = (dev: Developer) => {
-    setEditingDev(dev);
-    setName(dev.name);
-    setSlug(dev.slug);
-    setCountryCode(dev.countryCode || "");
+  const openEditModal = (type: "developer" | "publisher", item: Developer | Publisher) => {
+    setActiveType(type);
+    setEditingItem(item);
+    setName(item.name);
+    setSlug(item.slug);
+    setCountryCode(item.countryCode || "");
     setError(null);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setEditingDev(null);
+    setEditingItem(null);
     setName("");
     setSlug("");
     setCountryCode("");
@@ -124,13 +164,24 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
     };
 
     let res;
-    if (editingDev) {
-      res = await updateDeveloperAction(editingDev.id, {
-        ...payload,
-        countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : null
-      });
+    if (activeType === "developer") {
+      if (editingItem) {
+        res = await updateDeveloperAction(editingItem.id, {
+          ...payload,
+          countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : null
+        });
+      } else {
+        res = await createDeveloperAction(payload);
+      }
     } else {
-      res = await createDeveloperAction(payload);
+      if (editingItem) {
+        res = await updatePublisherAction(editingItem.id, {
+          ...payload,
+          countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : null
+        });
+      } else {
+        res = await createPublisherAction(payload);
+      }
     }
 
     if (res && res.error) {
@@ -143,12 +194,15 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
     }
   };
 
-  const handleDelete = async (id: string, devName: string) => {
-    if (!confirm(`Are you sure you want to delete developer "${devName}"?`)) {
+  const handleDelete = async (type: "developer" | "publisher", id: string, itemName: string) => {
+    if (!confirm(`Are you sure you want to delete ${type} "${itemName}"?`)) {
       return;
     }
 
-    const res = await deleteDeveloperAction(id);
+    const res = type === "developer" 
+      ? await deleteDeveloperAction(id)
+      : await deletePublisherAction(id);
+
     if (res && res.error) {
       alert(res.error);
     } else {
@@ -158,11 +212,11 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
 
   return (
     <div>
-      {/* 2. Developers Catalog */}
+      {/* Developers Catalog */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Developers ({total})</h2>
-          <button className="btnAccent" onClick={openAddModal}>
+          <h2 className={styles.sectionTitle}>Developers ({totalDevs})</h2>
+          <button className="btnAccent" onClick={() => openAddModal("developer")}>
             + New Developer
           </button>
         </div>
@@ -197,14 +251,74 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
                     <div className={styles.rowActions}>
                       <button 
                         className={styles.editLink} 
-                        onClick={() => openEditModal(dev)}
+                        onClick={() => openEditModal("developer", dev)}
                         style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
                       >
                         Edit
                       </button>
                       <button 
                         className={styles.editLink} 
-                        onClick={() => handleDelete(dev.id, dev.name)}
+                        onClick={() => handleDelete("developer", dev.id, dev.name)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Publishers Catalog */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Publishers ({totalPublishers})</h2>
+          <button className="btnAccent" onClick={() => openAddModal("publisher")}>
+            + New Publisher
+          </button>
+        </div>
+
+        {publishers.length === 0 ? (
+          <div className={clientStyles.emptyState}>
+            No publishers found. Click "+ New Publisher" to create your first publisher record.
+          </div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.th}>Name</th>
+                <th className={styles.th}>Slug</th>
+                <th className={styles.th}>Country</th>
+                <th className={styles.thRight}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {publishers.map((pub) => (
+                <tr key={pub.id} className={styles.tr}>
+                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
+                    {pub.name}
+                  </td>
+                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
+                    {pub.slug}
+                  </td>
+                  <td className={styles.td}>
+                    {pub.countryCode || "—"}
+                  </td>
+                  <td className={styles.tdRight}>
+                    <div className={styles.rowActions}>
+                      <button 
+                        className={styles.editLink} 
+                        onClick={() => openEditModal("publisher", pub)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className={styles.editLink} 
+                        onClick={() => handleDelete("publisher", pub.id, pub.name)}
                         style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
                       >
                         Delete
@@ -224,7 +338,10 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
           <div className={clientStyles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={clientStyles.modalHeader}>
               <h3 className={clientStyles.modalTitle}>
-                {editingDev ? "Edit Developer" : "New Developer"}
+                {editingItem 
+                  ? `Edit ${activeType === "developer" ? "Developer" : "Publisher"}` 
+                  : `New ${activeType === "developer" ? "Developer" : "Publisher"}`
+                }
               </h3>
               <button className={clientStyles.modalClose} onClick={closeModal}>
                 &times;
@@ -235,12 +352,12 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
               {error && <div className={clientStyles.errorMsg}>{error}</div>}
 
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="dev-name">Name</label>
+                <label className={clientStyles.label} htmlFor="item-name">Name</label>
                 <input
-                  id="dev-name"
+                  id="item-name"
                   type="text"
                   className={clientStyles.input}
-                  placeholder="Nintendo EPD, FromSoftware..."
+                  placeholder={activeType === "developer" ? "Nintendo EPD, FromSoftware..." : "Nintendo, Bandai Namco..."}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
@@ -250,12 +367,12 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
               </div>
 
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="dev-slug">Slug</label>
+                <label className={clientStyles.label} htmlFor="item-slug">Slug</label>
                 <input
-                  id="dev-slug"
+                  id="item-slug"
                   type="text"
                   className={clientStyles.input}
-                  placeholder="nintendo-epd"
+                  placeholder={activeType === "developer" ? "nintendo-epd" : "nintendo"}
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   disabled={loading}
@@ -264,9 +381,9 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
               </div>
 
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="dev-country">Country Code (2 letters, optional)</label>
+                <label className={clientStyles.label} htmlFor="item-country">Country Code (2 letters, optional)</label>
                 <input
-                  id="dev-country"
+                  id="item-country"
                   type="text"
                   maxLength={2}
                   className={clientStyles.input}
@@ -282,7 +399,13 @@ export default function GamesDashboardClient({ initialDevelopers }: GamesDashboa
                   Cancel
                 </button>
                 <button type="submit" className="btnAccent" disabled={loading}>
-                  {loading ? "Saving..." : (editingDev ? "Save Changes" : "Create Developer")}
+                  {loading 
+                    ? "Saving..." 
+                    : (editingItem 
+                        ? "Save Changes" 
+                        : `Create ${activeType === "developer" ? "Developer" : "Publisher"}`
+                      )
+                  }
                 </button>
               </div>
             </form>
