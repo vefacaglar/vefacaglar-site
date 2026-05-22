@@ -141,3 +141,30 @@ p {
   color: var(--muted);
   text-decoration: none;
 }
+
+/* Custom Theme-Aware Scrollbar Styling */
+html {
+  scrollbar-color: var(--border) var(--bg);
+  scrollbar-width: thin;
+}
+
+/* WebKit Browser Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 6px;
+  border: 2px solid var(--bg); /* creates padding around the thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+}
+
