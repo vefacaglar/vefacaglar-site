@@ -1,5 +1,4 @@
 import React from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./project.module.css";
@@ -83,12 +82,6 @@ export default async function Project({ params }: { params: { slug: string } }) 
 
   return (
     <article>
-      <div className={styles.back}>
-        <Link href="/projects" className="backLink">
-          ← {dict.back_to_projects || "projects"}
-        </Link>
-      </div>
-
       <header className={styles.header}>
         <h1 className={styles.projectTitle}>
           {project.title}

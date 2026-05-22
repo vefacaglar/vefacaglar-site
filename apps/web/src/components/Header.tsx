@@ -31,7 +31,11 @@ export default function Header({ dict }: HeaderProps) {
     if (pathname.startsWith("/about")) {
       items.push({ label: dict.about.toLowerCase(), href: null });
     } else if (pathname.startsWith("/projects")) {
-      items.push({ label: dict.projects.toLowerCase(), href: null });
+      if (pathname !== "/projects") {
+        items.push({ label: dict.projects.toLowerCase(), href: "/projects" });
+      } else {
+        items.push({ label: dict.projects.toLowerCase(), href: null });
+      }
     } else if (pathname.startsWith("/blog")) {
       if (pathname !== "/blog") {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: "/blog" });
