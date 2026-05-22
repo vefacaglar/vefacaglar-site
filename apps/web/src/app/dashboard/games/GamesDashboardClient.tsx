@@ -155,7 +155,7 @@ export default function GamesDashboardClient({
   // Active sub-tab state
   const [activeSubTab, setActiveSubTab] = useState<"games" | "developers" | "publishers" | "genres" | "themes" | "platforms">("games");
   // Games layout state
-  const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("grid");
+  const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("list");
 
   // Search filter query
   const [searchQuery, setSearchQuery] = useState("");
@@ -233,6 +233,14 @@ export default function GamesDashboardClient({
     setThemesPage(1);
     setPlatformsPage(1);
   }, [searchQuery, activeSubTab, pageSize]);
+
+  // Load saved games view mode preference on mount to avoid hydration mismatch
+  useEffect(() => {
+    const savedMode = localStorage.getItem("gamesViewMode");
+    if (savedMode === "grid" || savedMode === "list") {
+      setGamesViewMode(savedMode);
+    }
+  }, []);
 
   // Modal control states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -669,42 +677,42 @@ export default function GamesDashboardClient({
           className={`${clientStyles.subTabButton} ${activeSubTab === "games" ? clientStyles.subTabButtonActive : ""}`}
           onClick={() => setActiveSubTab("games")}
         >
-          🎮 Games <span className={clientStyles.subTabBadge}>{totalGames}</span>
+          Games <span className={clientStyles.subTabBadge}>{totalGames}</span>
         </button>
         <button
           type="button"
           className={`${clientStyles.subTabButton} ${activeSubTab === "developers" ? clientStyles.subTabButtonActive : ""}`}
           onClick={() => setActiveSubTab("developers")}
         >
-          💻 Developers <span className={clientStyles.subTabBadge}>{totalDevs}</span>
+          Developers <span className={clientStyles.subTabBadge}>{totalDevs}</span>
         </button>
         <button
           type="button"
           className={`${clientStyles.subTabButton} ${activeSubTab === "publishers" ? clientStyles.subTabButtonActive : ""}`}
           onClick={() => setActiveSubTab("publishers")}
         >
-          🏢 Publishers <span className={clientStyles.subTabBadge}>{totalPublishers}</span>
+          Publishers <span className={clientStyles.subTabBadge}>{totalPublishers}</span>
         </button>
         <button
           type="button"
           className={`${clientStyles.subTabButton} ${activeSubTab === "genres" ? clientStyles.subTabButtonActive : ""}`}
           onClick={() => setActiveSubTab("genres")}
         >
-          🏷️ Genres <span className={clientStyles.subTabBadge}>{totalGenres}</span>
+          Genres <span className={clientStyles.subTabBadge}>{totalGenres}</span>
         </button>
         <button
           type="button"
           className={`${clientStyles.subTabButton} ${activeSubTab === "themes" ? clientStyles.subTabButtonActive : ""}`}
           onClick={() => setActiveSubTab("themes")}
         >
-          🎨 Themes <span className={clientStyles.subTabBadge}>{totalThemes}</span>
+          Themes <span className={clientStyles.subTabBadge}>{totalThemes}</span>
         </button>
         <button
           type="button"
           className={`${clientStyles.subTabButton} ${activeSubTab === "platforms" ? clientStyles.subTabButtonActive : ""}`}
           onClick={() => setActiveSubTab("platforms")}
         >
-          🖥️ Platforms <span className={clientStyles.subTabBadge}>{totalPlatforms}</span>
+          Platforms <span className={clientStyles.subTabBadge}>{totalPlatforms}</span>
         </button>
       </div>
 
@@ -777,7 +785,10 @@ export default function GamesDashboardClient({
               <button
                 type="button"
                 className={`${clientStyles.viewToggleBtn} ${gamesViewMode === "grid" ? clientStyles.viewToggleBtnActive : ""}`}
-                onClick={() => setGamesViewMode("grid")}
+                onClick={() => {
+                  setGamesViewMode("grid");
+                  localStorage.setItem("gamesViewMode", "grid");
+                }}
                 title="Grid View"
               >
                 Grid
@@ -785,7 +796,10 @@ export default function GamesDashboardClient({
               <button
                 type="button"
                 className={`${clientStyles.viewToggleBtn} ${gamesViewMode === "list" ? clientStyles.viewToggleBtnActive : ""}`}
-                onClick={() => setGamesViewMode("list")}
+                onClick={() => {
+                  setGamesViewMode("list");
+                  localStorage.setItem("gamesViewMode", "list");
+                }}
                 title="Compact Row List View"
               >
                 List
