@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { httpClient } from "../../lib/httpClient";
@@ -22,13 +22,17 @@ export async function loginAction(prevState: any, formData: FormData) {
     }
 
     const data = await res.json();
-    
-    // Set cookie
+
+    const headersList = headers();
+    const proto = headersList.get("x-forwarded-proto");
+    const isSecure = proto === "https" || process.env.NODE_ENV === "production";
+
     const cookieStore = cookies();
     cookieStore.set("session_token", data.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      secure: isSecure,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60,
       path: "/",
     });
 
