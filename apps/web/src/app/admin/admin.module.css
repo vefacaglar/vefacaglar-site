@@ -16,6 +16,10 @@
   align-items: center;
 }
 
+.section {
+  margin-bottom: 48px;
+}
+
 .sectionHeader {
   display: flex;
   justify-content: space-between;
