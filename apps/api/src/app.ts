@@ -7,9 +7,14 @@ import { postsRoutes } from "./modules/posts/posts.routes";
 import { pagesRoutes } from "./modules/pages/pages.routes";
 import { authorsRoutes } from "./modules/authors/authors.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
+import { registerLocalization } from "./shared/localization.plugin";
+import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
 
 export const app = Fastify({ logger: true });
+
+// Register localization plugin
+registerLocalization(app);
 
 // Register rate limit (global default; per-route overrides on sensitive endpoints)
 app.register(fastifyRateLimit, {
@@ -59,7 +64,8 @@ registerAuthDecorators(app);
 
 app.setErrorHandler((err, request, reply) => {
   if (err instanceof HttpError) {
-    return reply.status(err.statusCode).send({ message: err.message });
+    const translatedMsg = translateError(err.message, request.lang);
+    return reply.status(err.statusCode).send({ message: translatedMsg });
   }
   const fastifyErr = err as { validation?: unknown; message?: string };
   if (fastifyErr.validation) {

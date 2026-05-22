@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import BackButton from "../components/BackButton";
 import styles from "./blog.module.css";
+import { getActiveLanguage } from '../../lib/lang';
+import { getDictionary } from '../../dictionaries';
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -21,10 +23,15 @@ export const dynamic = "force-dynamic";
 
 export default async function Blog() {
   let posts: PostItem[] = [];
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const res = await fetch(`${API_URL}/api/posts`, {
       cache: "no-store",
+      headers: {
+        language: lang,
+      },
     });
     if (res.ok) {
       posts = await res.json();
@@ -36,7 +43,7 @@ export default async function Blog() {
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", {
       year: "numeric",
       month: "long",
       day: "numeric"
@@ -48,11 +55,15 @@ export default async function Blog() {
       <div className={styles.back}>
         <BackButton />
       </div>
-      <h1>Blog</h1>
-      <p className={styles.subtitle}>Writing about technical decisions and game development.</p>
+      <h1>{dict.blog}</h1>
+      <p className={styles.subtitle}>
+        {lang === "tr" 
+          ? "Teknik kararlar ve oyun geliştirme üzerine yazılar." 
+          : "Writing about technical decisions and game development."}
+      </p>
 
       {posts.length === 0 ? (
-        <p className={styles.empty}>No posts published yet.</p>
+        <p className={styles.empty}>{dict.no_posts}</p>
       ) : (
         <ul className={styles.list}>
           {posts.map((post) => (

@@ -4,6 +4,7 @@ import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./post.module.css";
+import { getActiveLanguage } from "../../../lib/lang";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -27,8 +28,13 @@ export const dynamic = "force-dynamic";
 
 // Dynamic SEO Metadata Generation
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const lang = getActiveLanguage();
   try {
-    const res = await fetch(`${API_URL}/api/posts/${params.slug}`);
+    const res = await fetch(`${API_URL}/api/posts/${params.slug}`, {
+      headers: {
+        language: lang,
+      },
+    });
     if (!res.ok) return { title: "Post Not Found" };
 
     const post: PostDetail = await res.json();
@@ -43,10 +49,14 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function BlogPost({ params }: { params: { slug: string } }) {
   let post: PostDetail | null = null;
+  const lang = getActiveLanguage();
 
   try {
     const res = await fetch(`${API_URL}/api/posts/${params.slug}`, {
       cache: "no-store",
+      headers: {
+        language: lang,
+      },
     });
     if (res.ok) {
       post = await res.json();
@@ -62,7 +72,7 @@ export default async function BlogPost({ params }: { params: { slug: string } })
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", {
       year: "numeric",
       month: "long",
       day: "numeric"
@@ -84,7 +94,7 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         )}
         {post.author && (
           <div className={styles.author}>
-            {"by "}
+            {lang === "tr" ? "yazar: " : "by "}
             <Link href={`/author/${post.author.username}`}>
               {post.author.displayName}
             </Link>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TopBar } from "../components/TopBar";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 import "./globals.css";
 import styles from "./layout.module.css";
 
@@ -18,6 +19,9 @@ export default function RootLayout({
       <body>
         <TopBar />
         <main className={styles.main}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "32px" }}>
+            <LanguageSwitcher />
+          </div>
           {children}
         </main>
       </body>

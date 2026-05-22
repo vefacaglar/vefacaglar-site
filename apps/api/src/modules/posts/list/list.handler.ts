@@ -18,7 +18,7 @@ export class ListPostsHandler {
       ? { status }
       : undefined;
 
-    const rows = await this.postsRepo.listWithAuthor(filter);
+    const rows = await this.postsRepo.listWithAuthor(filter, request.lang);
 
     return rows.map((row) => ({
       id: row.id,

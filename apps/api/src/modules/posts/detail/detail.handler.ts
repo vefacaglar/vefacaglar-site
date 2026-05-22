@@ -12,15 +12,15 @@ export class GetPostHandler {
   async handle(request: FastifyRequest<{ Params: GetPostParams }>): Promise<GetPostResponse> {
     const { slug } = request.params;
 
-    const post = await this.postsRepo.findBySlugWithAuthor(slug);
+    const post = await this.postsRepo.findBySlugWithAuthor(slug, request.lang);
 
     if (!post) {
-      throw new NotFoundError("Post not found.");
+      throw new NotFoundError("err_post_not_found");
     }
 
     // Hide drafts from non-admins
     if (post.status === "draft" && request.user?.role !== "admin") {
-      throw new NotFoundError("Post not found.");
+      throw new NotFoundError("err_post_not_found");
     }
 
     return {

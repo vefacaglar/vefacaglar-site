@@ -1,9 +1,10 @@
-import { posts, users } from "@vefacaglar/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { posts, users, localizations } from "@vefacaglar/db";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IPostsRepository } from "./posts.repository.interface";
+import { mergeTranslations } from "../../shared/localization";
 
 export type Post = InferSelectModel<typeof posts>;
 export type NewPost = InferInsertModel<typeof posts>;
@@ -22,12 +23,23 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return row;
   }
 
-  async findById(id: string): Promise<Post | null> {
+  async findById(id: string, lang?: string): Promise<Post | null> {
     const [row] = await this.dbProvider.client.select().from(posts).where(eq(posts.id, id)).limit(1);
-    return row ?? null;
+    if (!row || !lang || lang === 'en') return row ?? null;
+
+    const translations = await this.dbProvider.client
+      .select({ field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, 'post'),
+        eq(localizations.entityId, row.id),
+        eq(localizations.languageCode, lang)
+      ));
+
+    return mergeTranslations(row, translations);
   }
 
-  async findBySlugWithAuthor(slug: string): Promise<PostWithAuthor | null> {
+  async findBySlugWithAuthor(slug: string, lang?: string): Promise<PostWithAuthor | null> {
     const [row] = await this.dbProvider.client
       .select({
         id: posts.id,
@@ -50,13 +62,25 @@ export class DrizzlePostsRepository implements IPostsRepository {
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(eq(posts.slug, slug))
       .limit(1);
-    return row ?? null;
+
+    if (!row || !lang || lang === 'en') return row ?? null;
+
+    const translations = await this.dbProvider.client
+      .select({ field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, 'post'),
+        eq(localizations.entityId, row.id),
+        eq(localizations.languageCode, lang)
+      ));
+
+    return mergeTranslations(row, translations);
   }
 
-  async listWithAuthor(filter?: { status?: "draft" | "published" }): Promise<PostWithAuthor[]> {
+  async listWithAuthor(filter?: { status?: "draft" | "published" }, lang?: string): Promise<PostWithAuthor[]> {
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
 
-    return await this.dbProvider.client
+    const rows = await this.dbProvider.client
       .select({
         id: posts.id,
         slug: posts.slug,
@@ -78,6 +102,31 @@ export class DrizzlePostsRepository implements IPostsRepository {
       .leftJoin(users, eq(posts.authorId, users.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(posts.publishedAt), desc(posts.createdAt));
+
+    if (rows.length === 0 || !lang || lang === 'en') return rows;
+
+    const ids = rows.map((r) => r.id);
+    const allTranslations = await this.dbProvider.client
+      .select({ entityId: localizations.entityId, field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, 'post'),
+        inArray(localizations.entityId, ids),
+        eq(localizations.languageCode, lang)
+      ));
+
+    const translationsMap: Record<string, { field: string; value: string }[]> = {};
+    for (const trans of allTranslations) {
+      if (!translationsMap[trans.entityId]) {
+        translationsMap[trans.entityId] = [];
+      }
+      translationsMap[trans.entityId].push(trans);
+    }
+
+    return rows.map((row) => {
+      const postTranslations = translationsMap[row.id] || [];
+      return mergeTranslations(row, postTranslations);
+    });
   }
 
   async update(id: string, patch: Partial<NewPost>): Promise<Post> {
@@ -90,9 +139,10 @@ export class DrizzlePostsRepository implements IPostsRepository {
   }
 
   async listPublishedByAuthorId(
-    authorId: string
+    authorId: string,
+    lang?: string
   ): Promise<Pick<Post, "id" | "slug" | "title" | "excerpt" | "publishedAt">[]> {
-    return await this.dbProvider.client
+    const rows = await this.dbProvider.client
       .select({
         id: posts.id,
         slug: posts.slug,
@@ -103,5 +153,30 @@ export class DrizzlePostsRepository implements IPostsRepository {
       .from(posts)
       .where(and(sql`${posts.authorId} = ${authorId}`, eq(posts.status, "published")))
       .orderBy(posts.publishedAt, posts.createdAt);
+
+    if (rows.length === 0 || !lang || lang === 'en') return rows;
+
+    const ids = rows.map((r) => r.id);
+    const allTranslations = await this.dbProvider.client
+      .select({ entityId: localizations.entityId, field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, 'post'),
+        inArray(localizations.entityId, ids),
+        eq(localizations.languageCode, lang)
+      ));
+
+    const translationsMap: Record<string, { field: string; value: string }[]> = {};
+    for (const trans of allTranslations) {
+      if (!translationsMap[trans.entityId]) {
+        translationsMap[trans.entityId] = [];
+      }
+      translationsMap[trans.entityId].push(trans);
+    }
+
+    return rows.map((row) => {
+      const postTranslations = translationsMap[row.id] || [];
+      return mergeTranslations(row, postTranslations);
+    });
   }
 }

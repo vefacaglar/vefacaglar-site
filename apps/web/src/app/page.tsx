@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import MarkdownPreview from "./components/MarkdownPreview";
 import styles from "./home.module.css";
+import { getActiveLanguage } from '../lib/lang';
+import { getDictionary } from '../dictionaries';
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
@@ -25,10 +27,14 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   let page: PageItem | null = null;
+  const lang = getActiveLanguage();
 
   try {
     const res = await fetch(`${API_URL}/api/pages/home`, {
       cache: "no-store",
+      headers: {
+        language: lang,
+      },
     });
     if (res.ok) {
       page = await res.json();
@@ -46,10 +52,15 @@ export async function generateMetadata() {
 export default async function Home() {
   let page: PageItem | null = null;
   let posts: PostItem[] = [];
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const pageRes = await fetch(`${API_URL}/api/pages/home`, {
       cache: "no-store",
+      headers: {
+        language: lang,
+      },
     });
     if (pageRes.ok) {
       page = await pageRes.json();
@@ -61,6 +72,9 @@ export default async function Home() {
   try {
     const res = await fetch(`${API_URL}/api/posts`, {
       cache: "no-store",
+      headers: {
+        language: lang,
+      },
     });
     if (res.ok) {
       posts = await res.json();
@@ -82,9 +96,9 @@ export default async function Home() {
         </div>
       )}
 
-      <h2 className={styles.writingsHeading}>Writings</h2>
+      <h2 className={styles.writingsHeading}>{dict.writings}</h2>
       {latestPosts.length === 0 ? (
-        <p className={styles.empty}>No posts published yet.</p>
+        <p className={styles.empty}>{dict.no_posts}</p>
       ) : (
         <ul className={styles.list}>
           {latestPosts.map((post) => (
@@ -97,7 +111,7 @@ export default async function Home() {
       )}
       
       <div className={styles.viewAll}>
-        <Link href="/blog">View all writings</Link>
+        <Link href="/blog">{dict.view_all}</Link>
       </div>
     </div>
   );

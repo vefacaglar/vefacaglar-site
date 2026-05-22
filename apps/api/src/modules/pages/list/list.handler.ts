@@ -18,7 +18,7 @@ export class ListPagesHandler {
       ? { status }
       : undefined;
 
-    const result = await this.pagesRepo.list(filter);
+    const result = await this.pagesRepo.list(filter, request.lang);
 
     return result.map((page) => ({
       id: page.id,
