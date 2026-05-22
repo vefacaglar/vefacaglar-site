@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { logoutAction, deletePostAction, deletePageAction } from "./actions";
 import DeleteButton from "./components/DeleteButton";
 import styles from "./admin.module.css";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../lib/httpClient";
 
 interface PostItem {
   id: string;
@@ -37,7 +36,7 @@ export default async function AdminDashboard() {
   // Fetch posts (including drafts)
   let posts: PostItem[] = [];
   try {
-    const res = await fetch(`${API_URL}/api/posts`, {
+    const res = await httpClient.get("/api/posts", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -53,7 +52,7 @@ export default async function AdminDashboard() {
   // Fetch pages (including drafts)
   let pages: PageItem[] = [];
   try {
-    const res = await fetch(`${API_URL}/api/pages`, {
+    const res = await httpClient.get("/api/pages", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

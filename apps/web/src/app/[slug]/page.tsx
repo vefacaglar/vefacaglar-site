@@ -2,9 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import BackButton from "../components/BackButton";
 import MarkdownPreview from "../components/MarkdownPreview";
-import { getActiveLanguage } from "../../lib/lang";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../lib/httpClient";
 
 interface PageItem {
   id: string;
@@ -19,13 +17,8 @@ interface PageItem {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const lang = getActiveLanguage();
   try {
-    const res = await fetch(`${API_URL}/api/pages/${params.slug}`, {
-      headers: {
-        language: lang,
-      },
-    });
+    const res = await httpClient.get(`/api/pages/${params.slug}`);
     if (!res.ok) return { title: "Page Not Found" };
 
     const page: PageItem = await res.json();
@@ -40,14 +33,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function DynamicPage({ params }: { params: { slug: string } }) {
   let page: PageItem | null = null;
-  const lang = getActiveLanguage();
 
   try {
-    const res = await fetch(`${API_URL}/api/pages/${params.slug}`, {
+    const res = await httpClient.get(`/api/pages/${params.slug}`, {
       cache: "no-store",
-      headers: {
-        language: lang,
-      },
     });
     if (res.ok) {
       page = await res.json();

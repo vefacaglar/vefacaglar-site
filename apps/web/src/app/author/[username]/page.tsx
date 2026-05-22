@@ -2,8 +2,7 @@ import Link from "next/link";
 import BackButton from "../../components/BackButton";
 import { notFound } from "next/navigation";
 import styles from "./page.module.css";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../../lib/httpClient";
 
 interface AuthorDetail {
   username: string;
@@ -21,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { username: string } }) {
   try {
-    const res = await fetch(`${API_URL}/api/authors/${params.username}`);
+    const res = await httpClient.get(`/api/authors/${params.username}`);
     if (!res.ok) return { title: "Author Not Found" };
 
     const author: AuthorDetail = await res.json();
@@ -38,7 +37,7 @@ export default async function AuthorPage({ params }: { params: { username: strin
   let author: AuthorDetail | null = null;
 
   try {
-    const res = await fetch(`${API_URL}/api/authors/${params.username}`, {
+    const res = await httpClient.get(`/api/authors/${params.username}`, {
       cache: "no-store",
     });
     if (res.ok) {

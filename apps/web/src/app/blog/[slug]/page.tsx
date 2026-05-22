@@ -5,8 +5,7 @@ import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./post.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../../lib/httpClient";
 
 interface PostDetail {
   id: string;
@@ -28,13 +27,8 @@ export const dynamic = "force-dynamic";
 
 // Dynamic SEO Metadata Generation
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const lang = getActiveLanguage();
   try {
-    const res = await fetch(`${API_URL}/api/posts/${params.slug}`, {
-      headers: {
-        language: lang,
-      },
-    });
+    const res = await httpClient.get(`/api/posts/${params.slug}`);
     if (!res.ok) return { title: "Post Not Found" };
 
     const post: PostDetail = await res.json();
@@ -52,11 +46,8 @@ export default async function BlogPost({ params }: { params: { slug: string } })
   const lang = getActiveLanguage();
 
   try {
-    const res = await fetch(`${API_URL}/api/posts/${params.slug}`, {
+    const res = await httpClient.get(`/api/posts/${params.slug}`, {
       cache: "no-store",
-      headers: {
-        language: lang,
-      },
     });
     if (res.ok) {
       post = await res.json();

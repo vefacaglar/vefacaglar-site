@@ -2,8 +2,7 @@ import Link from 'next/link';
 import BackButton from "../components/BackButton";
 import MarkdownPreview from "../components/MarkdownPreview";
 import styles from "./about.module.css";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../lib/httpClient";
 
 interface PageItem {
   id: string;
@@ -20,7 +19,7 @@ export async function generateMetadata() {
   let page: PageItem | null = null;
 
   try {
-    const res = await fetch(`${API_URL}/api/pages/about`, {
+    const res = await httpClient.get("/api/pages/about", {
       cache: "no-store",
     });
     if (res.ok) {
@@ -40,7 +39,7 @@ export default async function About() {
   let page: PageItem | null = null;
 
   try {
-    const pageRes = await fetch(`${API_URL}/api/pages/about`, {
+    const pageRes = await httpClient.get("/api/pages/about", {
       cache: "no-store",
     });
     if (pageRes.ok) {

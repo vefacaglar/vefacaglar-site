@@ -2,8 +2,7 @@ import React from "react";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import PostForm from "../../../components/PostForm";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../../../../lib/httpClient";
 
 interface PostItem {
   id: string;
@@ -31,7 +30,7 @@ export default async function EditPost({ params }: { params: { id: string } }) {
   // Fetch all posts to find by id
   let posts: PostItem[] = [];
   try {
-    const res = await fetch(`${API_URL}/api/posts`, {
+    const res = await httpClient.get("/api/posts", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

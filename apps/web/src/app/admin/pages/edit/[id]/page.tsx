@@ -2,8 +2,7 @@ import React from "react";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import PageForm from "../../../components/PageForm";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../../../../lib/httpClient";
 
 interface PageItem {
   id: string;
@@ -29,7 +28,7 @@ export default async function EditPage({ params }: { params: { id: string } }) {
   // Fetch all pages to find by id
   let pages: PageItem[] = [];
   try {
-    const res = await fetch(`${API_URL}/api/pages`, {
+    const res = await httpClient.get("/api/pages", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

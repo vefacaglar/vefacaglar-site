@@ -3,8 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from "../../lib/httpClient";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -15,13 +14,7 @@ export async function loginAction(prevState: any, formData: FormData) {
   }
 
   try {
-    const res = await fetch(`${API_URL}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    const res = await httpClient.post("/api/auth/login", { email, password });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -54,8 +47,7 @@ export async function logoutAction() {
   if (token) {
     try {
       // Best effort API logout
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: "POST",
+      await httpClient.post("/api/auth/logout", undefined, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -81,8 +73,7 @@ export async function deletePostAction(id: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/posts/${id}`, {
-      method: "DELETE",
+    const res = await httpClient.delete(`/api/posts/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -109,8 +100,7 @@ export async function deletePageAction(id: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/pages/${id}`, {
-      method: "DELETE",
+    const res = await httpClient.delete(`/api/pages/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -145,13 +135,10 @@ export async function createPostAction(data: {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/posts`, {
-      method: "POST",
+    const res = await httpClient.post("/api/posts", data, {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     });
 
     if (!res.ok) {
@@ -187,13 +174,10 @@ export async function updatePostAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/posts/${id}`, {
-      method: "PUT",
+    const res = await httpClient.put(`/api/posts/${id}`, data, {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     });
 
     if (!res.ok) {
@@ -225,13 +209,10 @@ export async function createPageAction(data: {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/pages`, {
-      method: "POST",
+    const res = await httpClient.post("/api/pages", data, {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     });
 
     if (!res.ok) {
@@ -264,13 +245,10 @@ export async function updatePageAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/pages/${id}`, {
-      method: "PUT",
+    const res = await httpClient.put(`/api/pages/${id}`, data, {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     });
 
     if (!res.ok) {
@@ -293,7 +271,7 @@ export async function getProfileAction() {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/auth/profile`, {
+    const res = await httpClient.get("/api/auth/profile", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -323,13 +301,10 @@ export async function updateProfileAction(data: {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/auth/profile`, {
-      method: "PUT",
+    const res = await httpClient.put("/api/auth/profile", data, {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     });
 
     if (!res.ok) {
@@ -355,13 +330,10 @@ export async function changePasswordAction(data: {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await fetch(`${API_URL}/api/auth/profile/password`, {
-      method: "PUT",
+    const res = await httpClient.put("/api/auth/profile/password", data, {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     });
 
     if (!res.ok) {

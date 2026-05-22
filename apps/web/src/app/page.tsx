@@ -3,8 +3,7 @@ import MarkdownPreview from "./components/MarkdownPreview";
 import styles from "./home.module.css";
 import { getActiveLanguage } from '../lib/lang';
 import { getDictionary } from '../dictionaries';
-
-const API_URL = process.env.API_URL || "http://localhost:3001";
+import { httpClient } from '../lib/httpClient';
 
 interface PageItem {
   id: string;
@@ -27,14 +26,10 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   let page: PageItem | null = null;
-  const lang = getActiveLanguage();
 
   try {
-    const res = await fetch(`${API_URL}/api/pages/home`, {
+    const res = await httpClient.get("/api/pages/home", {
       cache: "no-store",
-      headers: {
-        language: lang,
-      },
     });
     if (res.ok) {
       page = await res.json();
@@ -56,11 +51,8 @@ export default async function Home() {
   const dict = getDictionary(lang);
 
   try {
-    const pageRes = await fetch(`${API_URL}/api/pages/home`, {
+    const pageRes = await httpClient.get("/api/pages/home", {
       cache: "no-store",
-      headers: {
-        language: lang,
-      },
     });
     if (pageRes.ok) {
       page = await pageRes.json();
@@ -70,11 +62,8 @@ export default async function Home() {
   }
 
   try {
-    const res = await fetch(`${API_URL}/api/posts`, {
+    const res = await httpClient.get("/api/posts", {
       cache: "no-store",
-      headers: {
-        language: lang,
-      },
     });
     if (res.ok) {
       posts = await res.json();
