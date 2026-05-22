@@ -58,6 +58,14 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
     });
   };
 
+  const isSafeUrl = (url: string): boolean => {
+    const trimmed = url.trim().toLowerCase();
+    if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith("?")) return true;
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true;
+    if (trimmed.startsWith("mailto:")) return true;
+    return false;
+  };
+
   const renderLinks = (text: string, index: number): React.ReactNode => {
     const combinedRegex = /(!)?\[(.*?)\]\((.*?)\)/g;
     const parts: React.ReactNode[] = [];
@@ -69,10 +77,16 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
       if (match.index > lastIndex) {
         parts.push(<span key={`${index}-${keyCounter++}`}>{text.slice(lastIndex, match.index)}</span>);
       }
-      
+
       const isImage = match[1] === "!";
       const altText = match[2];
       const srcOrHref = match[3];
+
+      if (!isSafeUrl(srcOrHref)) {
+        parts.push(<span key={`${index}-${keyCounter++}`}>{altText}</span>);
+        lastIndex = match.index + match[0].length;
+        continue;
+      }
 
       if (isImage) {
         parts.push(

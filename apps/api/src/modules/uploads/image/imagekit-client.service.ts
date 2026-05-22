@@ -35,8 +35,9 @@ export class ImageKitClient implements IImageClient {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new HttpError(500, `ImageKit API returned error: ${response.status} - ${errorText}`);
+        const errorText = await response.text().catch(() => "");
+        console.error("ImageKit upload failed", response.status, errorText);
+        throw new HttpError(500, "Image upload failed.");
       }
 
       const result = await response.json() as { url: string };

@@ -1,4 +1,4 @@
-import { scryptSync, randomBytes, createHash } from "crypto";
+import { scryptSync, randomBytes, createHash, timingSafeEqual } from "crypto";
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -9,10 +9,12 @@ export function hashPassword(password: string): string {
 export function verifyPassword(password: string, passwordHash: string): boolean {
   const parts = passwordHash.split(":");
   if (parts.length !== 2) return false;
-  const [salt, hash] = parts;
-  if (!salt || !hash) return false;
-  const inputHash = scryptSync(password, salt, 64).toString("hex");
-  return inputHash === hash;
+  const [salt, hashHex] = parts;
+  if (!salt || !hashHex) return false;
+  const stored = Buffer.from(hashHex, "hex");
+  const input = scryptSync(password, salt, 64);
+  if (stored.length !== input.length) return false;
+  return timingSafeEqual(stored, input);
 }
 
 export function hashToken(token: string): string {
