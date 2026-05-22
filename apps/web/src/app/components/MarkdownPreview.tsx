@@ -4,6 +4,13 @@ import React from "react";
 import Link from "next/link";
 import styles from "./MarkdownPreview.module.css";
 
+function getYouTubeId(url: string): string | null {
+  const regExp = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.trim().match(regExp);
+  return (match && match[1]) ? match[1] : null;
+}
+
+
 interface MarkdownPreviewProps {
   content: string;
 }
@@ -142,6 +149,22 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
 
     if (trimmed === "") {
       flushList();
+      continue;
+    }
+
+    const youtubeId = getYouTubeId(trimmed);
+    if (youtubeId) {
+      flushList();
+      elements.push(
+        <div key={key++} className={styles.videoWrapper}>
+          <iframe
+            src={`https://www.youtube.com/embed/${youtubeId}`}
+            title="YouTube video player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      );
       continue;
     }
 

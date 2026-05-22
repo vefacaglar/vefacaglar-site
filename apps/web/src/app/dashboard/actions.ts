@@ -41,7 +41,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     return { error: "Server connection error." };
   }
 
-  return { success: true };
+  redirect("/dashboard");
 }
 
 export async function logoutAction() {
