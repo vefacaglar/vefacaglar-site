@@ -181,3 +181,90 @@ export async function deletePublisherAction(id: string) {
     return { error: "Server connection error." };
   }
 }
+
+export async function createGenreAction(data: {
+  name: string;
+  slug: string;
+}) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post("/api/games/genres", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Could not create genre." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Create genre error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updateGenreAction(
+  id: string,
+  data: {
+    name?: string;
+    slug?: string;
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.put(`/api/games/genres/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update genre." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Update genre error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function deleteGenreAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.delete(`/api/games/genres/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to delete genre." };
+    }
+
+    revalidatePath("/dashboard/games");
+    return { success: true };
+  } catch (error) {
+    console.error("Delete genre error:", error);
+    return { error: "Server connection error." };
+  }
+}

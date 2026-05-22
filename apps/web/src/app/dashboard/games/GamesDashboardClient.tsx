@@ -11,6 +11,9 @@ import {
   createPublisherAction,
   updatePublisherAction,
   deletePublisherAction,
+  createGenreAction,
+  updateGenreAction,
+  deleteGenreAction,
 } from "./actions";
 
 // Types matching the backend response
@@ -32,6 +35,14 @@ export interface Publisher {
   updatedAt: string | null;
 }
 
+export interface Genre {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 interface GamesDashboardClientProps {
   initialDevelopers: {
     items: Developer[];
@@ -47,11 +58,19 @@ interface GamesDashboardClientProps {
     limit: number;
     totalPages: number;
   };
+  initialGenres: {
+    items: Genre[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export default function GamesDashboardClient({
   initialDevelopers,
   initialPublishers,
+  initialGenres,
 }: GamesDashboardClientProps) {
   const router = useRouter();
 
@@ -62,6 +81,10 @@ export default function GamesDashboardClient({
   // Publishers state
   const [publishers, setPublishers] = useState<Publisher[]>(initialPublishers.items);
   const [totalPublishers, setTotalPublishers] = useState(initialPublishers.total);
+
+  // Genres state
+  const [genres, setGenres] = useState<Genre[]>(initialGenres.items);
+  const [totalGenres, setTotalGenres] = useState(initialGenres.total);
 
   // Sync state when props change (Next.js server-side revalidation)
   useEffect(() => {
@@ -74,10 +97,15 @@ export default function GamesDashboardClient({
     setTotalPublishers(initialPublishers.total);
   }, [initialPublishers]);
 
+  useEffect(() => {
+    setGenres(initialGenres.items);
+    setTotalGenres(initialGenres.total);
+  }, [initialGenres]);
+
   // Modal control states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeType, setActiveType] = useState<"developer" | "publisher">("developer");
-  const [editingItem, setEditingItem] = useState<Developer | Publisher | null>(null);
+  const [activeType, setActiveType] = useState<"developer" | "publisher" | "genre">("developer");
+  const [editingItem, setEditingItem] = useState<Developer | Publisher | Genre | null>(null);
   
   // Form states
   const [name, setName] = useState("");
@@ -114,7 +142,7 @@ export default function GamesDashboardClient({
     }
   }, [name, editingItem]);
 
-  const openAddModal = (type: "developer" | "publisher") => {
+  const openAddModal = (type: "developer" | "publisher" | "genre") => {
     setActiveType(type);
     setEditingItem(null);
     setName("");
@@ -124,12 +152,12 @@ export default function GamesDashboardClient({
     setIsModalOpen(true);
   };
 
-  const openEditModal = (type: "developer" | "publisher", item: Developer | Publisher) => {
+  const openEditModal = (type: "developer" | "publisher" | "genre", item: Developer | Publisher | Genre) => {
     setActiveType(type);
     setEditingItem(item);
     setName(item.name);
     setSlug(item.slug);
-    setCountryCode(item.countryCode || "");
+    setCountryCode((item as any).countryCode || "");
     setError(null);
     setIsModalOpen(true);
   };
@@ -160,7 +188,6 @@ export default function GamesDashboardClient({
     const payload = {
       name: name.trim(),
       slug: slug.trim(),
-      countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : undefined,
     };
 
     let res;
@@ -171,16 +198,28 @@ export default function GamesDashboardClient({
           countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : null
         });
       } else {
-        res = await createDeveloperAction(payload);
+        res = await createDeveloperAction({
+          ...payload,
+          countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : undefined
+        });
       }
-    } else {
+    } else if (activeType === "publisher") {
       if (editingItem) {
         res = await updatePublisherAction(editingItem.id, {
           ...payload,
           countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : null
         });
       } else {
-        res = await createPublisherAction(payload);
+        res = await createPublisherAction({
+          ...payload,
+          countryCode: countryCode.trim() ? countryCode.trim().toUpperCase() : undefined
+        });
+      }
+    } else if (activeType === "genre") {
+      if (editingItem) {
+        res = await updateGenreAction(editingItem.id, payload);
+      } else {
+        res = await createGenreAction(payload);
       }
     }
 
@@ -194,14 +233,19 @@ export default function GamesDashboardClient({
     }
   };
 
-  const handleDelete = async (type: "developer" | "publisher", id: string, itemName: string) => {
+  const handleDelete = async (type: "developer" | "publisher" | "genre", id: string, itemName: string) => {
     if (!confirm(`Are you sure you want to delete ${type} "${itemName}"?`)) {
       return;
     }
 
-    const res = type === "developer" 
-      ? await deleteDeveloperAction(id)
-      : await deletePublisherAction(id);
+    let res;
+    if (type === "developer") {
+      res = await deleteDeveloperAction(id);
+    } else if (type === "publisher") {
+      res = await deletePublisherAction(id);
+    } else if (type === "genre") {
+      res = await deleteGenreAction(id);
+    }
 
     if (res && res.error) {
       alert(res.error);
@@ -332,6 +376,62 @@ export default function GamesDashboardClient({
         )}
       </section>
 
+      {/* Genres Catalog */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Genres ({totalGenres})</h2>
+          <button className="btnAccent" onClick={() => openAddModal("genre")}>
+            + New Genre
+          </button>
+        </div>
+
+        {genres.length === 0 ? (
+          <div className={clientStyles.emptyState}>
+            No genres found. Click "+ New Genre" to create your first genre record.
+          </div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.th}>Name</th>
+                <th className={styles.th}>Slug</th>
+                <th className={styles.thRight}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {genres.map((genre) => (
+                <tr key={genre.id} className={styles.tr}>
+                  <td className={styles.td} style={{ fontWeight: 500, color: "var(--text-heading)" }}>
+                    {genre.name}
+                  </td>
+                  <td className={styles.td} style={{ fontSize: "13px", color: "var(--text)" }}>
+                    {genre.slug}
+                  </td>
+                  <td className={styles.tdRight}>
+                    <div className={styles.rowActions}>
+                      <button 
+                        className={styles.editLink} 
+                        onClick={() => openEditModal("genre", genre)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className={styles.editLink} 
+                        onClick={() => handleDelete("genre", genre.id, genre.name)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       {/* Modern Overlay Form Modal for Add/Edit */}
       {isModalOpen && (
         <div className={clientStyles.modalOverlay} onClick={closeModal}>
@@ -339,8 +439,8 @@ export default function GamesDashboardClient({
             <div className={clientStyles.modalHeader}>
               <h3 className={clientStyles.modalTitle}>
                 {editingItem 
-                  ? `Edit ${activeType === "developer" ? "Developer" : "Publisher"}` 
-                  : `New ${activeType === "developer" ? "Developer" : "Publisher"}`
+                  ? `Edit ${activeType === "developer" ? "Developer" : activeType === "publisher" ? "Publisher" : "Genre"}` 
+                  : `New ${activeType === "developer" ? "Developer" : activeType === "publisher" ? "Publisher" : "Genre"}`
                 }
               </h3>
               <button className={clientStyles.modalClose} onClick={closeModal}>
@@ -357,7 +457,13 @@ export default function GamesDashboardClient({
                   id="item-name"
                   type="text"
                   className={clientStyles.input}
-                  placeholder={activeType === "developer" ? "Nintendo EPD, FromSoftware..." : "Nintendo, Bandai Namco..."}
+                  placeholder={
+                    activeType === "developer" 
+                      ? "Nintendo EPD, FromSoftware..." 
+                      : activeType === "publisher" 
+                        ? "Nintendo, Bandai Namco..." 
+                        : "Action, RPG, Platformer..."
+                  }
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
@@ -372,7 +478,13 @@ export default function GamesDashboardClient({
                   id="item-slug"
                   type="text"
                   className={clientStyles.input}
-                  placeholder={activeType === "developer" ? "nintendo-epd" : "nintendo"}
+                  placeholder={
+                    activeType === "developer" 
+                      ? "nintendo-epd" 
+                      : activeType === "publisher" 
+                        ? "nintendo" 
+                        : "action"
+                  }
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   disabled={loading}
@@ -380,19 +492,21 @@ export default function GamesDashboardClient({
                 />
               </div>
 
-              <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="item-country">Country Code (2 letters, optional)</label>
-                <input
-                  id="item-country"
-                  type="text"
-                  maxLength={2}
-                  className={clientStyles.input}
-                  placeholder="JP, US, TR, PL..."
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              {activeType !== "genre" && (
+                <div className={clientStyles.formGroup}>
+                  <label className={clientStyles.label} htmlFor="item-country">Country Code (2 letters, optional)</label>
+                  <input
+                    id="item-country"
+                    type="text"
+                    maxLength={2}
+                    className={clientStyles.input}
+                    placeholder="JP, US, TR, PL..."
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              )}
 
               <div className={clientStyles.modalActions}>
                 <button type="button" className={clientStyles.btnCancel} onClick={closeModal} disabled={loading}>
@@ -403,7 +517,7 @@ export default function GamesDashboardClient({
                     ? "Saving..." 
                     : (editingItem 
                         ? "Save Changes" 
-                        : `Create ${activeType === "developer" ? "Developer" : "Publisher"}`
+                        : `Create ${activeType === "developer" ? "Developer" : activeType === "publisher" ? "Publisher" : "Genre"}`
                       )
                   }
                 </button>

@@ -16,9 +16,10 @@ import { IMAGE_CLIENT } from "./modules/uploads/image/image-client.tokens";
 import { ImageKitClient } from "./modules/uploads/image/imagekit-client.service";
 import { LOCALIZATIONS_REPOSITORY } from "./modules/localizations/localizations.tokens";
 import { DrizzleLocalizationsRepository } from "./modules/localizations/localizations.repository";
-import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY } from "./modules/games/games.tokens";
+import { DEVELOPERS_REPOSITORY, PUBLISHERS_REPOSITORY, GENRES_REPOSITORY } from "./modules/games/games.tokens";
 import { DrizzleDevelopersRepository } from "./modules/games/developers.repository";
 import { DrizzlePublishersRepository } from "./modules/games/publishers.repository";
+import { DrizzleGenresRepository } from "./modules/games/genres.repository";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
@@ -32,5 +33,7 @@ container.registerSingleton(IMAGE_CLIENT, ImageKitClient);
 container.registerSingleton(LOCALIZATIONS_REPOSITORY, DrizzleLocalizationsRepository);
 container.registerSingleton(DEVELOPERS_REPOSITORY, DrizzleDevelopersRepository);
 container.registerSingleton(PUBLISHERS_REPOSITORY, DrizzlePublishersRepository);
+container.registerSingleton(GENRES_REPOSITORY, DrizzleGenresRepository);
+
 
 export { container };
