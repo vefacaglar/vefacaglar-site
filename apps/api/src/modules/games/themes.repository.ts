@@ -1,0 +1,56 @@
+import { themes } from "@vefacaglar/db";
+import { asc, eq, sql } from "drizzle-orm";
+import { injectable } from "tsyringe";
+import { DbProvider } from "../../db.provider";
+import type { IThemesRepository, Theme, NewTheme } from "./themes.repository.interface";
+
+@injectable()
+export class DrizzleThemesRepository implements IThemesRepository {
+  constructor(private readonly dbProvider: DbProvider) {}
+
+  async create(values: NewTheme): Promise<Theme> {
+    const [row] = await this.dbProvider.client.insert(themes).values(values).returning();
+    return row;
+  }
+
+  async findById(id: string): Promise<Theme | null> {
+    const [row] = await this.dbProvider.client.select().from(themes).where(eq(themes.id, id)).limit(1);
+    return row ?? null;
+  }
+
+  async findBySlug(slug: string): Promise<Theme | null> {
+    const [row] = await this.dbProvider.client.select().from(themes).where(eq(themes.slug, slug)).limit(1);
+    return row ?? null;
+  }
+
+  async list(filter?: { page?: number; limit?: number }): Promise<{ items: Theme[]; total: number }> {
+    const [countResult] = await this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(themes);
+
+    const total = Number(countResult?.count || 0);
+
+    let query = this.dbProvider.client
+      .select()
+      .from(themes)
+      .orderBy(asc(themes.name))
+      .$dynamic();
+
+    if (filter?.page !== undefined && filter?.limit !== undefined) {
+      const offset = (filter.page - 1) * filter.limit;
+      query = query.limit(filter.limit).offset(offset);
+    }
+
+    const items = await query;
+    return { items, total };
+  }
+
+  async update(id: string, patch: Partial<NewTheme>): Promise<Theme> {
+    const [row] = await this.dbProvider.client.update(themes).set(patch).where(eq(themes.id, id)).returning();
+    return row;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.dbProvider.client.delete(themes).where(eq(themes.id, id));
+  }
+}
