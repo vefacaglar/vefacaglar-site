@@ -9,6 +9,9 @@ import styles from "./layout.module.css";
 export const metadata: Metadata = {
   title: "Vefa Çağlar",
   description: "Personal website of Vefa Çağlar",
+  verification: {
+    google: "nVnbCv8TKlOREhb5XkkIegzW0AImFUIHrvNokeSlJYA",
+  },
 };
 
 export default function RootLayout({
