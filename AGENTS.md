@@ -67,6 +67,12 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
 
 Never hand-write migration SQL files. Always edit the Drizzle schema in `packages/db/src/schema/` and generate the migration with `pnpm --filter @vefacaglar/db db:generate`. Editing a generated file is only allowed to insert a data/backfill step (e.g. `UPDATE` between `ADD COLUMN` and `SET NOT NULL`) — never to rewrite the DDL Drizzle produced.
 
+## Development & Verification Guidelines
+
+To verify code changes (syntax and TypeScript correctness) without disrupting the active local development server (`pnpm dev` / `next dev`):
+- **NEVER** run `pnpm build` or `turbo run build` during active coding sessions. Doing so overwrites the `.next` directory and breaks Hot Module Replacement (HMR) for the active developer.
+- **ALWAYS** use `pnpm typecheck` or `turbo run typecheck` to perform non-destructive, fast type checks.
+
 ## Language
 
 All visible UI text in `apps/web` must be in **English**.
