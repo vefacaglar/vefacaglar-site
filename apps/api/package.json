@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "0.1.0",
-  "main": "dist/index.js",
+  "main": "dist/app.js",
   "scripts": {
     "dev": "ts-node-dev src/server.ts",
     "build": "tsc",
