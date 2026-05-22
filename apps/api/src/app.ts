@@ -7,15 +7,24 @@ import { postsRoutes } from "./modules/posts/posts.routes";
 import { pagesRoutes } from "./modules/pages/pages.routes";
 import { authorsRoutes } from "./modules/authors/authors.routes";
 import { projectsRoutes } from "./modules/projects/projects.routes";
+import { uploadsRoutes } from "./modules/uploads/uploads.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
+import fastifyMultipart from "@fastify/multipart";
 
 export const app = Fastify({ logger: true });
 
 // Register localization plugin
 registerLocalization(app);
+
+// Register multipart support for secure file uploads (10MB limit)
+app.register(fastifyMultipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+});
 
 // Register rate limit (global default; per-route overrides on sensitive endpoints)
 app.register(fastifyRateLimit, {
@@ -81,3 +90,4 @@ app.register(postsRoutes, { prefix: "/api/posts" });
 app.register(pagesRoutes, { prefix: "/api/pages" });
 app.register(authorsRoutes, { prefix: "/api/authors" });
 app.register(projectsRoutes, { prefix: "/api/projects" });
+app.register(uploadsRoutes, { prefix: "/api/uploads" });

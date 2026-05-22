@@ -463,3 +463,32 @@ export async function deleteProjectAction(id: string) {
   }
 }
 
+export async function uploadImageAction(formData: FormData) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const API_URL = process.env.API_URL || "http://localhost:3001";
+    const res = await fetch(`${API_URL}/api/uploads/image`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.message || "Failed to upload image." };
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Upload image error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+

@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import MarkdownPreview from "./MarkdownPreview";
 import styles from "./MarkdownEditor.module.css";
+import { uploadImageAction } from "../admin/actions";
 
 interface MarkdownEditorProps {
   value: string;
@@ -20,6 +21,8 @@ export default function MarkdownEditor({
   rows = 15,
 }: MarkdownEditorProps) {
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertMarkdown = (type: string) => {
@@ -101,6 +104,106 @@ export default function MarkdownEditor({
         textarea.setSelectionRange(start + selectionOffsetStart, start + selectionOffsetEnd);
       }
     }, 0);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const imageFile = Array.from(files).find((file) => file.type.startsWith("image/"));
+    if (!imageFile) return;
+
+    await uploadImage(imageFile);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    let imageFile: File | null = null;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith("image/")) {
+        imageFile = item.getAsFile();
+        break;
+      }
+    }
+
+    if (imageFile) {
+      e.preventDefault();
+      await uploadImage(imageFile);
+    }
+  };
+
+  const uploadImage = async (file: File) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    const filename = file.name || "image.png";
+    const placeholderText = `![Uploading ${filename}...]()`;
+
+    const beforeText = value.substring(0, start);
+    const afterText = value.substring(end);
+    const newValueWithPlaceholder = beforeText + placeholderText + afterText;
+
+    onChange(newValueWithPlaceholder);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const result = await uploadImageAction(formData);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      const finalImageMarkdown = `![${filename}](${result.url})`;
+
+      const currentVal = textareaRef.current ? textareaRef.current.value : newValueWithPlaceholder;
+      const index = currentVal.indexOf(placeholderText);
+      if (index !== -1) {
+        const updatedVal =
+          currentVal.substring(0, index) +
+          finalImageMarkdown +
+          currentVal.substring(index + placeholderText.length);
+        onChange(updatedVal);
+      } else {
+        onChange(beforeText + finalImageMarkdown + afterText);
+      }
+    } catch (error: any) {
+      console.error("Drag-and-drop upload error:", error);
+      alert(error.message || "An error occurred while uploading the image.");
+
+      // Clean up placeholder
+      const currentVal = textareaRef.current ? textareaRef.current.value : newValueWithPlaceholder;
+      const index = currentVal.indexOf(placeholderText);
+      if (index !== -1) {
+        const updatedVal =
+          currentVal.substring(0, index) +
+          currentVal.substring(index + placeholderText.length);
+        onChange(updatedVal);
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -227,9 +330,14 @@ export default function MarkdownEditor({
             required={required}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onPaste={handlePaste}
             rows={rows}
-            placeholder={placeholder}
-            className={styles.textarea}
+            placeholder={isDragging ? "Drop your image here..." : isUploading ? "Uploading image..." : placeholder}
+            disabled={isUploading}
+            className={`${styles.textarea} ${isDragging ? styles.textareaDragActive : ""}`}
           />
         ) : (
           <div className={styles.preview}>

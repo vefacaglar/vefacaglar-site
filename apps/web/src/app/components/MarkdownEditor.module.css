@@ -118,3 +118,10 @@
   background: transparent;
   overflow-y: auto;
 }
+
+.textareaDragActive {
+  background: rgba(200, 98, 64, 0.04) !important;
+  outline: 2px dashed var(--accent) !important;
+  outline-offset: -4px;
+}
+
