@@ -143,6 +143,9 @@ export default function GamesDashboardClient() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  // Tracks which tab the currently-loaded items belong to — guards render
+  // against using a previous tab's items (different shape) right after switching.
+  const [loadedTab, setLoadedTab] = useState<SubTab | null>(null);
 
   // Tab badge counts (fetched lazily on tab visit; only first time)
   const [counts, setCounts] = useState<Partial<Record<SubTab, number>>>({});
@@ -178,6 +181,7 @@ export default function GamesDashboardClient() {
         setTotal(res.total);
         setCounts((c) => ({ ...c, [tab]: res.total }));
       }
+      setLoadedTab(tab);
       setLoading(false);
     });
   }, [activeSubTab, page, pageSize, debouncedSearch]);
@@ -209,6 +213,7 @@ export default function GamesDashboardClient() {
         setItems(res.items);
         setTotal(res.total);
         setCounts((c) => ({ ...c, [tab]: res.total }));
+        setLoadedTab(tab);
       }
       setLoading(false);
     });
@@ -627,11 +632,11 @@ export default function GamesDashboardClient() {
           )}
         </div>
 
-        {loading && (
+        {(loading || loadedTab !== activeSubTab) && (
           <div className={clientStyles.emptyState}>Loading…</div>
         )}
 
-        {!loading && items.length === 0 && (
+        {!loading && loadedTab === activeSubTab && items.length === 0 && (
           <div className={clientStyles.emptyState}>
             {debouncedSearch
               ? `No ${activeSubTab} match your search query: "${debouncedSearch}"`
@@ -639,7 +644,7 @@ export default function GamesDashboardClient() {
           </div>
         )}
 
-        {!loading && items.length > 0 && activeSubTab === "games" && (
+        {!loading && loadedTab === activeSubTab && items.length > 0 && activeSubTab === "games" && (
           gamesViewMode === "grid" ? (
             <div className={clientStyles.gamesGrid}>
               {(items as Game[]).map((game) => {
@@ -752,7 +757,7 @@ export default function GamesDashboardClient() {
           )
         )}
 
-        {!loading && items.length > 0 && (activeSubTab === "developers" || activeSubTab === "publishers") && (
+        {!loading && loadedTab === activeSubTab && items.length > 0 && (activeSubTab === "developers" || activeSubTab === "publishers") && (
           <div className={clientStyles.profileCardsGrid}>
             {(items as (Developer | Publisher)[]).map((it) => {
               const initial = it.name.charAt(0).toUpperCase();
@@ -779,7 +784,7 @@ export default function GamesDashboardClient() {
           </div>
         )}
 
-        {!loading && items.length > 0 && (activeSubTab === "genres" || activeSubTab === "themes" || activeSubTab === "platforms") && (
+        {!loading && loadedTab === activeSubTab && items.length > 0 && (activeSubTab === "genres" || activeSubTab === "themes" || activeSubTab === "platforms") && (
           <div className={clientStyles.interactiveChipsGrid}>
             {(items as (Genre | Theme | Platform)[]).map((it) => {
               const t: "genre" | "theme" | "platform" =
@@ -799,7 +804,7 @@ export default function GamesDashboardClient() {
           </div>
         )}
 
-        {!loading && renderPagination()}
+        {!loading && loadedTab === activeSubTab && renderPagination()}
       </section>
 
       {isModalOpen && (
