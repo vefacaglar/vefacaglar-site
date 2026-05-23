@@ -23,16 +23,6 @@ import {
   createGameAction,
   updateGameAction,
   deleteGameAction,
-  linkGameDeveloperAction,
-  unlinkGameDeveloperAction,
-  linkGamePublisherAction,
-  unlinkGamePublisherAction,
-  linkGameGenreAction,
-  unlinkGameGenreAction,
-  linkGamePlatformAction,
-  unlinkGamePlatformAction,
-  linkGameThemeAction,
-  unlinkGameThemeAction,
   listGamesAction,
   listDevelopersAction,
   listPublishersAction,
@@ -248,12 +238,13 @@ export default function GamesDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Toggle a relation: optimistic local update, then hit Next.js Route Handler
+  // which proxies to Fastify with the session cookie. Rolls back on failure.
   const toggleRelation = async (
     relation: GameRelationItem,
     selected: GameRelationItem[],
     setSelected: (rs: GameRelationItem[]) => void,
-    linkAction: (gameId: string, relationId: string) => Promise<{ error?: string; success?: boolean }>,
-    unlinkAction: (gameId: string, relationId: string) => Promise<{ error?: string; success?: boolean }>
+    relationType: "developers" | "publishers" | "genres" | "platforms" | "themes"
   ) => {
     const isSelected = selected.some((s) => s.id === relation.id);
     const next = isSelected
@@ -263,14 +254,21 @@ export default function GamesDashboardClient() {
     setSelected(next);
 
     if (!editingItem) return;
-    const gameId = editingItem.id;
-    const res = isSelected
-      ? await unlinkAction(gameId, relation.id)
-      : await linkAction(gameId, relation.id);
 
-    if (res?.error) {
+    try {
+      const res = await fetch(
+        `/api/games/games/${editingItem.id}/${relationType}/${relation.id}`,
+        { method: isSelected ? "DELETE" : "POST" }
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setSelected(selected);
+        setError(errData.message || `Failed to ${isSelected ? "unlink" : "link"} ${relationType.slice(0, -1)}.`);
+      }
+    } catch (err) {
       setSelected(selected);
-      setError(res.error);
+      setError("Server connection error.");
     }
   };
 
@@ -880,35 +878,35 @@ export default function GamesDashboardClient() {
                       label="Developers"
                       kind="developer"
                       selected={selectedDevelopers}
-                      onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, linkGameDeveloperAction, unlinkGameDeveloperAction)}
+                      onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")}
                       disabled={submitting}
                     />
                     <RelationPicker
                       label="Publishers"
                       kind="publisher"
                       selected={selectedPublishers}
-                      onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, linkGamePublisherAction, unlinkGamePublisherAction)}
+                      onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")}
                       disabled={submitting}
                     />
                     <RelationPicker
                       label="Genres"
                       kind="genre"
                       selected={selectedGenres}
-                      onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, linkGameGenreAction, unlinkGameGenreAction)}
+                      onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")}
                       disabled={submitting}
                     />
                     <RelationPicker
                       label="Platforms"
                       kind="platform"
                       selected={selectedPlatforms}
-                      onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, linkGamePlatformAction, unlinkGamePlatformAction)}
+                      onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")}
                       disabled={submitting}
                     />
                     <RelationPicker
                       label="Themes"
                       kind="theme"
                       selected={selectedThemes}
-                      onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, linkGameThemeAction, unlinkGameThemeAction)}
+                      onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")}
                       disabled={submitting}
                     />
                   </div>
@@ -983,12 +981,21 @@ function RelationPicker({
   disabled?: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const debounced = useDebounced(query, 250);
+  // Only fire a search once the user has typed >=3 chars; wait 2s of idle after the last keystroke.
+  const debounced = useDebounced(query, 2000);
   const [results, setResults] = useState<GameRelationItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const reqRef = useRef(0);
   useEffect(() => {
+    const trimmed = debounced.trim();
+    if (trimmed.length < 3) {
+      // Reset stale results and skip the request — modal open / short input should not hit the API.
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
     const action =
       kind === "developer" ? listDevelopersAction :
       kind === "publisher" ? listPublishersAction :
@@ -998,7 +1005,7 @@ function RelationPicker({
 
     const reqId = ++reqRef.current;
     setLoading(true);
-    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: debounced }).then((res) => {
+    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: trimmed }).then((res) => {
       if (reqId !== reqRef.current) return;
       if ("error" in res) {
         setResults([]);
