@@ -21,36 +21,21 @@ export class UpdateGameHandler {
       hltbMainHours,
       hltbMainExtraHours,
       hltbCompletionistHours,
-      developerIds,
-      publisherIds,
-      genreIds,
-      platformIds,
-      themeIds,
     } = request.body;
 
-    const updated = await this.gameService.updateGame(
-      id,
-      {
-        title,
-        slug,
-        originalTitle,
-        description,
-        coverImageUrl,
-        releaseDate,
-        metacriticScore,
-        openCriticScore,
-        hltbMainHours,
-        hltbMainExtraHours,
-        hltbCompletionistHours,
-      },
-      {
-        developerIds,
-        publisherIds,
-        genreIds,
-        platformIds,
-        themeIds,
-      }
-    );
+    const updated = await this.gameService.updateGame(id, {
+      title,
+      slug,
+      originalTitle,
+      description,
+      coverImageUrl,
+      releaseDate,
+      metacriticScore,
+      openCriticScore,
+      hltbMainHours,
+      hltbMainExtraHours,
+      hltbCompletionistHours,
+    });
 
     return {
       id: updated.id,

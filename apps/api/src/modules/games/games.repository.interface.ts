@@ -31,16 +31,17 @@ export interface IGamesRepository {
   findById(id: string): Promise<GameWithRelations | null>;
   findBySlug(slug: string): Promise<GameWithRelations | null>;
   list(filter?: { page?: number; limit?: number }): Promise<{ items: GameWithRelations[]; total: number }>;
-  update(
-    id: string,
-    patch: Partial<NewGame>,
-    relations?: {
-      developerIds?: string[];
-      publisherIds?: string[];
-      genreIds?: string[];
-      platformIds?: string[];
-      themeIds?: string[];
-    }
-  ): Promise<GameWithRelations>;
+  update(id: string, patch: Partial<NewGame>): Promise<GameWithRelations>;
   delete(id: string): Promise<void>;
+
+  linkDeveloper(gameId: string, developerId: string): Promise<void>;
+  unlinkDeveloper(gameId: string, developerId: string): Promise<void>;
+  linkPublisher(gameId: string, publisherId: string): Promise<void>;
+  unlinkPublisher(gameId: string, publisherId: string): Promise<void>;
+  linkGenre(gameId: string, genreId: string): Promise<void>;
+  unlinkGenre(gameId: string, genreId: string): Promise<void>;
+  linkPlatform(gameId: string, platformId: string): Promise<void>;
+  unlinkPlatform(gameId: string, platformId: string): Promise<void>;
+  linkTheme(gameId: string, themeId: string): Promise<void>;
+  unlinkTheme(gameId: string, themeId: string): Promise<void>;
 }

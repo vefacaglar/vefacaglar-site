@@ -23,6 +23,16 @@ import {
   createGameAction,
   updateGameAction,
   deleteGameAction,
+  linkGameDeveloperAction,
+  unlinkGameDeveloperAction,
+  linkGamePublisherAction,
+  unlinkGamePublisherAction,
+  linkGameGenreAction,
+  unlinkGameGenreAction,
+  linkGamePlatformAction,
+  unlinkGamePlatformAction,
+  linkGameThemeAction,
+  unlinkGameThemeAction,
 } from "./actions";
 
 // Types matching the backend response
@@ -274,6 +284,36 @@ export default function GamesDashboardClient({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Optimistic toggle helper for editing game relations.
+  // In add mode (no editingItem) it just mutates local state and lets the create payload carry the IDs.
+  // In edit mode it optimistically updates local state, calls the API, and rolls back on failure.
+  const toggleRelation = async (
+    relationId: string,
+    selectedIds: string[],
+    setSelectedIds: (ids: string[]) => void,
+    linkAction: (gameId: string, relationId: string) => Promise<{ error?: string; success?: boolean }>,
+    unlinkAction: (gameId: string, relationId: string) => Promise<{ error?: string; success?: boolean }>
+  ) => {
+    const isCurrentlySelected = selectedIds.includes(relationId);
+    const nextIds = isCurrentlySelected
+      ? selectedIds.filter((id) => id !== relationId)
+      : [...selectedIds, relationId];
+
+    setSelectedIds(nextIds);
+
+    if (!editingItem) return;
+
+    const gameId = editingItem.id;
+    const res = isCurrentlySelected
+      ? await unlinkAction(gameId, relationId)
+      : await linkAction(gameId, relationId);
+
+    if (res?.error) {
+      setSelectedIds(selectedIds);
+      setError(res.error);
+    }
+  };
+
   // Helper to slugify title/name
   const slugify = (text: string) => {
     const trMap: Record<string, string> = {
@@ -472,7 +512,7 @@ export default function GamesDashboardClient({
 
     let res;
     if (activeType === "game") {
-      const payload = {
+      const baseFields = {
         title: gameTitle.trim(),
         slug: slug.trim(),
         originalTitle: gameOriginalTitle.trim() ? gameOriginalTitle.trim() : null,
@@ -484,17 +524,21 @@ export default function GamesDashboardClient({
         hltbMainHours: gameHltbMainHours !== "" ? String(gameHltbMainHours) : null,
         hltbMainExtraHours: gameHltbMainExtraHours !== "" ? String(gameHltbMainExtraHours) : null,
         hltbCompletionistHours: gameHltbCompletionistHours !== "" ? String(gameHltbCompletionistHours) : null,
-        developerIds: selectedDeveloperIds,
-        publisherIds: selectedPublisherIds,
-        genreIds: selectedGenreIds,
-        platformIds: selectedPlatformIds,
-        themeIds: selectedThemeIds,
       };
 
       if (editingItem) {
-        res = await updateGameAction(editingItem.id, payload);
+        // Save Changes only updates base game fields; relations are toggled live via link/unlink endpoints.
+        res = await updateGameAction(editingItem.id, baseFields);
       } else {
-        res = await createGameAction(payload);
+        // On create, send relation IDs in the same request so the new game gets fully wired up in one round-trip.
+        res = await createGameAction({
+          ...baseFields,
+          developerIds: selectedDeveloperIds,
+          publisherIds: selectedPublisherIds,
+          genreIds: selectedGenreIds,
+          platformIds: selectedPlatformIds,
+          themeIds: selectedThemeIds,
+        });
       }
     } else {
       const payload = {
@@ -1541,13 +1585,13 @@ export default function GamesDashboardClient({
                               <input
                                 type="checkbox"
                                 checked={selectedDeveloperIds.includes(dev.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedDeveloperIds([...selectedDeveloperIds, dev.id]);
-                                  } else {
-                                    setSelectedDeveloperIds(selectedDeveloperIds.filter(id => id !== dev.id));
-                                  }
-                                }}
+                                onChange={() => toggleRelation(
+                                  dev.id,
+                                  selectedDeveloperIds,
+                                  setSelectedDeveloperIds,
+                                  linkGameDeveloperAction,
+                                  unlinkGameDeveloperAction,
+                                )}
                                 disabled={loading}
                               />
                               {dev.name}
@@ -1569,13 +1613,13 @@ export default function GamesDashboardClient({
                               <input
                                 type="checkbox"
                                 checked={selectedPublisherIds.includes(pub.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedPublisherIds([...selectedPublisherIds, pub.id]);
-                                  } else {
-                                    setSelectedPublisherIds(selectedPublisherIds.filter(id => id !== pub.id));
-                                  }
-                                }}
+                                onChange={() => toggleRelation(
+                                  pub.id,
+                                  selectedPublisherIds,
+                                  setSelectedPublisherIds,
+                                  linkGamePublisherAction,
+                                  unlinkGamePublisherAction,
+                                )}
                                 disabled={loading}
                               />
                               {pub.name}
@@ -1597,13 +1641,13 @@ export default function GamesDashboardClient({
                               <input
                                 type="checkbox"
                                 checked={selectedGenreIds.includes(genre.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedGenreIds([...selectedGenreIds, genre.id]);
-                                  } else {
-                                    setSelectedGenreIds(selectedGenreIds.filter(id => id !== genre.id));
-                                  }
-                                }}
+                                onChange={() => toggleRelation(
+                                  genre.id,
+                                  selectedGenreIds,
+                                  setSelectedGenreIds,
+                                  linkGameGenreAction,
+                                  unlinkGameGenreAction,
+                                )}
                                 disabled={loading}
                               />
                               {genre.name}
@@ -1625,13 +1669,13 @@ export default function GamesDashboardClient({
                               <input
                                 type="checkbox"
                                 checked={selectedPlatformIds.includes(platform.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedPlatformIds([...selectedPlatformIds, platform.id]);
-                                  } else {
-                                    setSelectedPlatformIds(selectedPlatformIds.filter(id => id !== platform.id));
-                                  }
-                                }}
+                                onChange={() => toggleRelation(
+                                  platform.id,
+                                  selectedPlatformIds,
+                                  setSelectedPlatformIds,
+                                  linkGamePlatformAction,
+                                  unlinkGamePlatformAction,
+                                )}
                                 disabled={loading}
                               />
                               {platform.name}
@@ -1653,13 +1697,13 @@ export default function GamesDashboardClient({
                               <input
                                 type="checkbox"
                                 checked={selectedThemeIds.includes(theme.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedThemeIds([...selectedThemeIds, theme.id]);
-                                  } else {
-                                    setSelectedThemeIds(selectedThemeIds.filter(id => id !== theme.id));
-                                  }
-                                }}
+                                onChange={() => toggleRelation(
+                                  theme.id,
+                                  selectedThemeIds,
+                                  setSelectedThemeIds,
+                                  linkGameThemeAction,
+                                  unlinkGameThemeAction,
+                                )}
                                 disabled={loading}
                               />
                               {theme.name}

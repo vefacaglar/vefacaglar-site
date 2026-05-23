@@ -409,13 +409,6 @@ export class GameService {
       hltbMainHours?: string | number | null;
       hltbMainExtraHours?: string | number | null;
       hltbCompletionistHours?: string | number | null;
-    },
-    relations?: {
-      developerIds?: string[];
-      publisherIds?: string[];
-      genreIds?: string[];
-      platformIds?: string[];
-      themeIds?: string[];
     }
   ): Promise<GameWithRelations> {
     const existing = await this.gamesRepo.findById(id);
@@ -445,7 +438,7 @@ export class GameService {
 
     patch.updatedAt = new Date();
 
-    return this.gamesRepo.update(id, patch, relations);
+    return this.gamesRepo.update(id, patch);
   }
 
   async deleteGame(id: string): Promise<void> {
@@ -454,5 +447,72 @@ export class GameService {
       throw new NotFoundError("Game not found.");
     }
     await this.gamesRepo.delete(id);
+  }
+
+  // --- Game Relation Link/Unlink ---
+
+  private async assertGameExists(gameId: string): Promise<void> {
+    const game = await this.gamesRepo.findById(gameId);
+    if (!game) throw new NotFoundError("Game not found.");
+  }
+
+  async linkGameDeveloper(gameId: string, developerId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    const dev = await this.developersRepo.findById(developerId);
+    if (!dev) throw new NotFoundError("Developer not found.");
+    await this.gamesRepo.linkDeveloper(gameId, developerId);
+  }
+
+  async unlinkGameDeveloper(gameId: string, developerId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    await this.gamesRepo.unlinkDeveloper(gameId, developerId);
+  }
+
+  async linkGamePublisher(gameId: string, publisherId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    const pub = await this.publishersRepo.findById(publisherId);
+    if (!pub) throw new NotFoundError("Publisher not found.");
+    await this.gamesRepo.linkPublisher(gameId, publisherId);
+  }
+
+  async unlinkGamePublisher(gameId: string, publisherId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    await this.gamesRepo.unlinkPublisher(gameId, publisherId);
+  }
+
+  async linkGameGenre(gameId: string, genreId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    const genre = await this.genresRepo.findById(genreId);
+    if (!genre) throw new NotFoundError("Genre not found.");
+    await this.gamesRepo.linkGenre(gameId, genreId);
+  }
+
+  async unlinkGameGenre(gameId: string, genreId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    await this.gamesRepo.unlinkGenre(gameId, genreId);
+  }
+
+  async linkGamePlatform(gameId: string, platformId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    const platform = await this.platformsRepo.findById(platformId);
+    if (!platform) throw new NotFoundError("Platform not found.");
+    await this.gamesRepo.linkPlatform(gameId, platformId);
+  }
+
+  async unlinkGamePlatform(gameId: string, platformId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    await this.gamesRepo.unlinkPlatform(gameId, platformId);
+  }
+
+  async linkGameTheme(gameId: string, themeId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    const theme = await this.themesRepo.findById(themeId);
+    if (!theme) throw new NotFoundError("Theme not found.");
+    await this.gamesRepo.linkTheme(gameId, themeId);
+  }
+
+  async unlinkGameTheme(gameId: string, themeId: string): Promise<void> {
+    await this.assertGameExists(gameId);
+    await this.gamesRepo.unlinkTheme(gameId, themeId);
   }
 }

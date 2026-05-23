@@ -293,17 +293,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
     return { items, total };
   }
 
-  async update(
-    id: string,
-    patch: Partial<NewGame>,
-    relations?: {
-      developerIds?: string[];
-      publisherIds?: string[];
-      genreIds?: string[];
-      platformIds?: string[];
-      themeIds?: string[];
-    }
-  ): Promise<GameWithRelations> {
+  async update(id: string, patch: Partial<NewGame>): Promise<GameWithRelations> {
     const db = this.dbProvider.client;
 
     return db.transaction(async (tx) => {
@@ -320,73 +310,76 @@ export class DrizzleGamesRepository implements IGamesRepository {
         gameRow = existing;
       }
 
-      if (relations) {
-        if (relations.developerIds !== undefined) {
-          await tx.delete(gameDevelopers).where(eq(gameDevelopers.gameId, id));
-          if (relations.developerIds.length > 0) {
-            await tx.insert(gameDevelopers).values(
-              relations.developerIds.map((devId) => ({
-                gameId: id,
-                developerId: devId,
-              }))
-            );
-          }
-        }
-
-        if (relations.publisherIds !== undefined) {
-          await tx.delete(gamePublishers).where(eq(gamePublishers.gameId, id));
-          if (relations.publisherIds.length > 0) {
-            await tx.insert(gamePublishers).values(
-              relations.publisherIds.map((pubId) => ({
-                gameId: id,
-                publisherId: pubId,
-              }))
-            );
-          }
-        }
-
-        if (relations.genreIds !== undefined) {
-          await tx.delete(gameGenres).where(eq(gameGenres.gameId, id));
-          if (relations.genreIds.length > 0) {
-            await tx.insert(gameGenres).values(
-              relations.genreIds.map((genId) => ({
-                gameId: id,
-                genreId: genId,
-              }))
-            );
-          }
-        }
-
-        if (relations.platformIds !== undefined) {
-          await tx.delete(gamePlatforms).where(eq(gamePlatforms.gameId, id));
-          if (relations.platformIds.length > 0) {
-            await tx.insert(gamePlatforms).values(
-              relations.platformIds.map((platId) => ({
-                gameId: id,
-                platformId: platId,
-              }))
-            );
-          }
-        }
-
-        if (relations.themeIds !== undefined) {
-          await tx.delete(gameThemes).where(eq(gameThemes.gameId, id));
-          if (relations.themeIds.length > 0) {
-            await tx.insert(gameThemes).values(
-              relations.themeIds.map((themeId) => ({
-                gameId: id,
-                themeId: themeId,
-              }))
-            );
-          }
-        }
-      }
-
       return this.getGameWithRelationsUsingTx(tx, gameRow);
     });
   }
 
   async delete(id: string): Promise<void> {
     await this.dbProvider.client.delete(games).where(eq(games.id, id));
+  }
+
+  async linkDeveloper(gameId: string, developerId: string): Promise<void> {
+    await this.dbProvider.client
+      .insert(gameDevelopers)
+      .values({ gameId, developerId })
+      .onConflictDoNothing();
+  }
+
+  async unlinkDeveloper(gameId: string, developerId: string): Promise<void> {
+    await this.dbProvider.client
+      .delete(gameDevelopers)
+      .where(and(eq(gameDevelopers.gameId, gameId), eq(gameDevelopers.developerId, developerId)));
+  }
+
+  async linkPublisher(gameId: string, publisherId: string): Promise<void> {
+    await this.dbProvider.client
+      .insert(gamePublishers)
+      .values({ gameId, publisherId })
+      .onConflictDoNothing();
+  }
+
+  async unlinkPublisher(gameId: string, publisherId: string): Promise<void> {
+    await this.dbProvider.client
+      .delete(gamePublishers)
+      .where(and(eq(gamePublishers.gameId, gameId), eq(gamePublishers.publisherId, publisherId)));
+  }
+
+  async linkGenre(gameId: string, genreId: string): Promise<void> {
+    await this.dbProvider.client
+      .insert(gameGenres)
+      .values({ gameId, genreId })
+      .onConflictDoNothing();
+  }
+
+  async unlinkGenre(gameId: string, genreId: string): Promise<void> {
+    await this.dbProvider.client
+      .delete(gameGenres)
+      .where(and(eq(gameGenres.gameId, gameId), eq(gameGenres.genreId, genreId)));
+  }
+
+  async linkPlatform(gameId: string, platformId: string): Promise<void> {
+    await this.dbProvider.client
+      .insert(gamePlatforms)
+      .values({ gameId, platformId })
+      .onConflictDoNothing();
+  }
+
+  async unlinkPlatform(gameId: string, platformId: string): Promise<void> {
+    await this.dbProvider.client
+      .delete(gamePlatforms)
+      .where(and(eq(gamePlatforms.gameId, gameId), eq(gamePlatforms.platformId, platformId)));
+  }
+
+  async linkTheme(gameId: string, themeId: string): Promise<void> {
+    await this.dbProvider.client
+      .insert(gameThemes)
+      .values({ gameId, themeId })
+      .onConflictDoNothing();
+  }
+
+  async unlinkTheme(gameId: string, themeId: string): Promise<void> {
+    await this.dbProvider.client
+      .delete(gameThemes)
+      .where(and(eq(gameThemes.gameId, gameId), eq(gameThemes.themeId, themeId)));
   }
 }
