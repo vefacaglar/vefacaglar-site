@@ -1,5 +1,5 @@
 import { publishers } from "@vefacaglar/db";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, ilike, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IPublishersRepository, Publisher, NewPublisher } from "./publishers.repository.interface";
@@ -23,10 +23,18 @@ export class DrizzlePublishersRepository implements IPublishersRepository {
     return row ?? null;
   }
 
-  async list(filter?: { page?: number; limit?: number }): Promise<{ items: Publisher[]; total: number }> {
-    const [countResult] = await this.dbProvider.client
+  async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Publisher[]; total: number }> {
+    const q = filter?.q?.trim();
+    const whereExpr = q
+      ? or(ilike(publishers.name, `%${q}%`), ilike(publishers.slug, `%${q}%`))
+      : undefined;
+
+    const countQuery = this.dbProvider.client
       .select({ count: sql<number>`count(*)` })
-      .from(publishers);
+      .from(publishers)
+      .$dynamic();
+    if (whereExpr) countQuery.where(whereExpr);
+    const [countResult] = await countQuery;
 
     const total = Number(countResult?.count || 0);
 
@@ -35,6 +43,8 @@ export class DrizzlePublishersRepository implements IPublishersRepository {
       .from(publishers)
       .orderBy(asc(publishers.name))
       .$dynamic();
+
+    if (whereExpr) query = query.where(whereExpr);
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;

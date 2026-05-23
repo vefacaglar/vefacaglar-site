@@ -3,6 +3,7 @@ import { Type, Static } from "@sinclair/typebox";
 export const ListPublishersQuerySchema = Type.Object({
   page: Type.Optional(Type.Number()),
   limit: Type.Optional(Type.Number()),
+  q: Type.Optional(Type.String()),
 });
 
 export type ListPublishersQuery = Static<typeof ListPublishersQuerySchema>;

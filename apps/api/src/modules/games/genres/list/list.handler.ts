@@ -8,7 +8,7 @@ export class ListGenresHandler {
   constructor(private readonly gameService: GameService) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListGenresQuery }>): Promise<ListGenresResponse> {
-    const { page, limit } = request.query;
+    const { page, limit, q } = request.query;
 
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
@@ -16,6 +16,7 @@ export class ListGenresHandler {
     const { items: rows, total } = await this.gameService.listGenres({
       page: pageNum,
       limit: limitNum,
+      q,
     });
 
     const totalPages = Math.ceil(total / limitNum);

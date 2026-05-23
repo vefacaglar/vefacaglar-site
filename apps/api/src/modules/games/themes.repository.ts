@@ -1,5 +1,5 @@
 import { themes } from "@vefacaglar/db";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, ilike, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IThemesRepository, Theme, NewTheme } from "./themes.repository.interface";
@@ -23,10 +23,18 @@ export class DrizzleThemesRepository implements IThemesRepository {
     return row ?? null;
   }
 
-  async list(filter?: { page?: number; limit?: number }): Promise<{ items: Theme[]; total: number }> {
-    const [countResult] = await this.dbProvider.client
+  async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Theme[]; total: number }> {
+    const q = filter?.q?.trim();
+    const whereExpr = q
+      ? or(ilike(themes.name, `%${q}%`), ilike(themes.slug, `%${q}%`))
+      : undefined;
+
+    const countQuery = this.dbProvider.client
       .select({ count: sql<number>`count(*)` })
-      .from(themes);
+      .from(themes)
+      .$dynamic();
+    if (whereExpr) countQuery.where(whereExpr);
+    const [countResult] = await countQuery;
 
     const total = Number(countResult?.count || 0);
 
@@ -35,6 +43,8 @@ export class DrizzleThemesRepository implements IThemesRepository {
       .from(themes)
       .orderBy(asc(themes.name))
       .$dynamic();
+
+    if (whereExpr) query = query.where(whereExpr);
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;

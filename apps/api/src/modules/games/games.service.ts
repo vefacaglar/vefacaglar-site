@@ -49,7 +49,7 @@ export class GameService {
     return dev;
   }
 
-  async listDevelopers(filter?: { page?: number; limit?: number }): Promise<{ items: Developer[]; total: number }> {
+  async listDevelopers(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Developer[]; total: number }> {
     return this.developersRepo.list(filter);
   }
 
@@ -112,7 +112,7 @@ export class GameService {
     return pub;
   }
 
-  async listPublishers(filter?: { page?: number; limit?: number }): Promise<{ items: Publisher[]; total: number }> {
+  async listPublishers(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Publisher[]; total: number }> {
     return this.publishersRepo.list(filter);
   }
 
@@ -174,7 +174,7 @@ export class GameService {
     return genre;
   }
 
-  async listGenres(filter?: { page?: number; limit?: number }): Promise<{ items: Genre[]; total: number }> {
+  async listGenres(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Genre[]; total: number }> {
     return this.genresRepo.list(filter);
   }
 
@@ -235,7 +235,7 @@ export class GameService {
     return theme;
   }
 
-  async listThemes(filter?: { page?: number; limit?: number }): Promise<{ items: Theme[]; total: number }> {
+  async listThemes(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Theme[]; total: number }> {
     return this.themesRepo.list(filter);
   }
 
@@ -296,7 +296,7 @@ export class GameService {
     return platform;
   }
 
-  async listPlatforms(filter?: { page?: number; limit?: number }): Promise<{ items: Platform[]; total: number }> {
+  async listPlatforms(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Platform[]; total: number }> {
     return this.platformsRepo.list(filter);
   }
 
@@ -391,7 +391,7 @@ export class GameService {
     return game;
   }
 
-  async listGames(filter?: { page?: number; limit?: number }): Promise<{ items: GameWithRelations[]; total: number }> {
+  async listGames(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: GameWithRelations[]; total: number }> {
     return this.gamesRepo.list(filter);
   }
 

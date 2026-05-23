@@ -620,4 +620,60 @@ export async function deleteGameAction(id: string) {
   }
 }
 
+// --- List actions (server-side paginated/searched fetch) ---
 
+type ListParams = { page?: number; limit?: number; q?: string };
+type ListResult<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+async function listProxy<T>(path: string, params: ListParams): Promise<ListResult<T> | { error: string }> {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  const search = new URLSearchParams();
+  if (params.page !== undefined) search.set("page", String(params.page));
+  if (params.limit !== undefined) search.set("limit", String(params.limit));
+  if (params.q && params.q.trim()) search.set("q", params.q.trim());
+  const qs = search.toString();
+  const url = qs ? `${path}?${qs}` : path;
+
+  try {
+    const res = await httpClient.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to fetch list." };
+    }
+    return (await res.json()) as ListResult<T>;
+  } catch (error) {
+    console.error("List fetch error:", path, error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function listGamesAction(params: ListParams) {
+  return listProxy("/api/games/games", params);
+}
+export async function listDevelopersAction(params: ListParams) {
+  return listProxy("/api/games/developers", params);
+}
+export async function listPublishersAction(params: ListParams) {
+  return listProxy("/api/games/publishers", params);
+}
+export async function listGenresAction(params: ListParams) {
+  return listProxy("/api/games/genres", params);
+}
+export async function listThemesAction(params: ListParams) {
+  return listProxy("/api/games/themes", params);
+}
+export async function listPlatformsAction(params: ListParams) {
+  return listProxy("/api/games/platforms", params);
+}

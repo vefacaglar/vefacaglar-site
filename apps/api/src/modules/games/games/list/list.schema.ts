@@ -3,6 +3,7 @@ import { Type, Static } from "@sinclair/typebox";
 export const ListGamesQuerySchema = Type.Object({
   page: Type.Optional(Type.Number()),
   limit: Type.Optional(Type.Number()),
+  q: Type.Optional(Type.String()),
 });
 
 export type ListGamesQuery = Static<typeof ListGamesQuerySchema>;

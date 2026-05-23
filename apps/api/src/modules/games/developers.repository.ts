@@ -1,5 +1,5 @@
 import { developers } from "@vefacaglar/db";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IDevelopersRepository, Developer, NewDeveloper } from "./developers.repository.interface";
@@ -23,10 +23,18 @@ export class DrizzleDevelopersRepository implements IDevelopersRepository {
     return row ?? null;
   }
 
-  async list(filter?: { page?: number; limit?: number }): Promise<{ items: Developer[]; total: number }> {
-    const [countResult] = await this.dbProvider.client
+  async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Developer[]; total: number }> {
+    const q = filter?.q?.trim();
+    const whereExpr = q
+      ? or(ilike(developers.name, `%${q}%`), ilike(developers.slug, `%${q}%`))
+      : undefined;
+
+    const countQuery = this.dbProvider.client
       .select({ count: sql<number>`count(*)` })
-      .from(developers);
+      .from(developers)
+      .$dynamic();
+    if (whereExpr) countQuery.where(whereExpr);
+    const [countResult] = await countQuery;
 
     const total = Number(countResult?.count || 0);
 
@@ -35,6 +43,8 @@ export class DrizzleDevelopersRepository implements IDevelopersRepository {
       .from(developers)
       .orderBy(asc(developers.name))
       .$dynamic();
+
+    if (whereExpr) query = query.where(whereExpr);
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;

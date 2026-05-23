@@ -5,7 +5,8 @@
       "Bash(pnpm typecheck *)",
       "Bash(pnpm view *)",
       "Bash(pnpm install *)",
-      "Bash(timeout 10 pnpm --filter api dev)"
+      "Bash(timeout 10 pnpm --filter api dev)",
+      "Bash(pnpm --filter web typecheck)"
     ]
   }
 }

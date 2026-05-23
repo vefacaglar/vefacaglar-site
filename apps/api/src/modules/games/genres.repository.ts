@@ -1,5 +1,5 @@
 import { genres } from "@vefacaglar/db";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, ilike, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IGenresRepository, Genre, NewGenre } from "./genres.repository.interface";
@@ -23,10 +23,18 @@ export class DrizzleGenresRepository implements IGenresRepository {
     return row ?? null;
   }
 
-  async list(filter?: { page?: number; limit?: number }): Promise<{ items: Genre[]; total: number }> {
-    const [countResult] = await this.dbProvider.client
+  async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Genre[]; total: number }> {
+    const q = filter?.q?.trim();
+    const whereExpr = q
+      ? or(ilike(genres.name, `%${q}%`), ilike(genres.slug, `%${q}%`))
+      : undefined;
+
+    const countQuery = this.dbProvider.client
       .select({ count: sql<number>`count(*)` })
-      .from(genres);
+      .from(genres)
+      .$dynamic();
+    if (whereExpr) countQuery.where(whereExpr);
+    const [countResult] = await countQuery;
 
     const total = Number(countResult?.count || 0);
 
@@ -35,6 +43,8 @@ export class DrizzleGenresRepository implements IGenresRepository {
       .from(genres)
       .orderBy(asc(genres.name))
       .$dynamic();
+
+    if (whereExpr) query = query.where(whereExpr);
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;

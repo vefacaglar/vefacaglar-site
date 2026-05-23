@@ -30,7 +30,7 @@ export interface IGamesRepository {
   ): Promise<GameWithRelations>;
   findById(id: string): Promise<GameWithRelations | null>;
   findBySlug(slug: string): Promise<GameWithRelations | null>;
-  list(filter?: { page?: number; limit?: number }): Promise<{ items: GameWithRelations[]; total: number }>;
+  list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: GameWithRelations[]; total: number }>;
   update(id: string, patch: Partial<NewGame>): Promise<GameWithRelations>;
   delete(id: string): Promise<void>;
 
