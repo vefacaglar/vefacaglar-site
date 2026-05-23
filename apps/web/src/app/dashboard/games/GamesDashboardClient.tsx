@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../dashboard.module.css";
@@ -103,7 +103,7 @@ export interface Game {
   themes: GameRelationItem[];
 }
 
-type SubTab = "games" | "developers" | "publishers" | "genres" | "themes" | "platforms";
+export type SubTab = "games" | "developers" | "publishers" | "genres" | "themes" | "platforms";
 type EntityType = "game" | "developer" | "publisher" | "genre" | "theme" | "platform";
 
 // Tiny debounce hook
@@ -118,64 +118,94 @@ function useDebounced<T>(value: T, delay = 300): T {
 
 const RELATION_PICKER_LIMIT = 50;
 
-export default function GamesDashboardClient() {
+export interface GamesDashboardClientProps {
+  initialItems: any[];
+  initialTotal: number;
+  initialTab: SubTab;
+  initialPage: number;
+  initialLimit: number;
+  initialSearch: string;
+}
+
+export default function GamesDashboardClient({
+  initialItems,
+  initialTotal,
+  initialTab,
+  initialPage,
+  initialLimit,
+  initialSearch,
+}: GamesDashboardClientProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>("games");
   const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("list");
-
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const debouncedSearch = useDebounced(searchQuery, 300);
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  // Derivate values from props
+  const activeSubTab = initialTab;
+  const page = initialPage;
+  const pageSize = initialLimit;
+  const items = initialItems;
+  const total = initialTotal;
 
-  // Active tab data
-  const [items, setItems] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  // Tracks which tab the currently-loaded items belong to — guards render
-  // against using a previous tab's items (different shape) right after switching.
-  const [loadedTab, setLoadedTab] = useState<SubTab | null>(null);
-
-  // Tab badge counts (fetched lazily on tab visit; only first time)
-  const [counts, setCounts] = useState<Partial<Record<SubTab, number>>>({});
-
-  // Reset to page 1 when search/tab/pageSize changes
+  // Sync searchQuery when URL query changes (e.g. browser back/forward)
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, activeSubTab, pageSize]);
+    setSearchQuery(initialSearch);
+  }, [initialSearch]);
 
-  // Fetch active tab data
-  const fetchCounterRef = useRef(0);
+  // Tab badge counts
+  const [counts, setCounts] = useState<Partial<Record<SubTab, number>>>({
+    [initialTab]: initialTotal,
+  });
+
+  // Sync count when initialTotal or initialTab changes
   useEffect(() => {
-    const tab = activeSubTab;
-    const reqId = ++fetchCounterRef.current;
-    setLoading(true);
+    setCounts((c) => ({ ...c, [initialTab]: initialTotal }));
+  }, [initialTab, initialTotal]);
 
-    const params = { page, limit: pageSize, q: debouncedSearch };
-    const action =
-      tab === "games" ? listGamesAction :
-      tab === "developers" ? listDevelopersAction :
-      tab === "publishers" ? listPublishersAction :
-      tab === "genres" ? listGenresAction :
-      tab === "themes" ? listThemesAction :
-      listPlatformsAction;
+  // Handle updates to URL searchParams
+  const navigateTo = useCallback((updatedParams: { tab?: SubTab; page?: number; limit?: number; q?: string }) => {
+    const params = new URLSearchParams();
+    params.set("tab", updatedParams.tab !== undefined ? updatedParams.tab : initialTab);
+    params.set("page", String(updatedParams.page !== undefined ? updatedParams.page : initialPage));
+    
+    const limit = updatedParams.limit !== undefined ? updatedParams.limit : initialLimit;
+    if (limit !== 12) {
+      params.set("limit", String(limit));
+    }
+    
+    const q = updatedParams.q !== undefined ? updatedParams.q : searchQuery;
+    if (q.trim()) {
+      params.set("q", q.trim());
+    }
 
-    action(params).then((res) => {
-      if (reqId !== fetchCounterRef.current) return; // stale
-      if ("error" in res) {
-        setItems([]);
-        setTotal(0);
-      } else {
-        setItems(res.items);
-        setTotal(res.total);
-        setCounts((c) => ({ ...c, [tab]: res.total }));
-      }
-      setLoadedTab(tab);
-      setLoading(false);
+    startTransition(() => {
+      router.push(`/dashboard/games?${params.toString()}`);
     });
-  }, [activeSubTab, page, pageSize, debouncedSearch]);
+  }, [initialTab, initialPage, initialLimit, searchQuery, router]);
+
+  // Trigger search URL update on debounced change
+  useEffect(() => {
+    if (debouncedSearch !== initialSearch) {
+      navigateTo({ page: 1, q: debouncedSearch });
+    }
+  }, [debouncedSearch, initialSearch, navigateTo]);
+
+  // Tab change
+  const handleTabChange = (newTab: SubTab) => {
+    navigateTo({ tab: newTab, page: 1 });
+  };
+
+  // Page change
+  const handlePageChange = (newPage: number) => {
+    navigateTo({ page: newPage });
+  };
+
+  // Limit change
+  const handlePageSizeChange = (newLimit: number) => {
+    navigateTo({ page: 1, limit: newLimit });
+  };
 
   // Load saved games view mode
   useEffect(() => {
@@ -184,31 +214,6 @@ export default function GamesDashboardClient() {
       setGamesViewMode(savedMode);
     }
   }, []);
-
-  // Reload current tab after a mutation
-  const reloadActiveTab = useCallback(() => {
-    const reqId = ++fetchCounterRef.current;
-    setLoading(true);
-    const params = { page, limit: pageSize, q: debouncedSearch };
-    const tab = activeSubTab;
-    const action =
-      tab === "games" ? listGamesAction :
-      tab === "developers" ? listDevelopersAction :
-      tab === "publishers" ? listPublishersAction :
-      tab === "genres" ? listGenresAction :
-      tab === "themes" ? listThemesAction :
-      listPlatformsAction;
-    action(params).then((res) => {
-      if (reqId !== fetchCounterRef.current) return;
-      if (!("error" in res)) {
-        setItems(res.items);
-        setTotal(res.total);
-        setCounts((c) => ({ ...c, [tab]: res.total }));
-        setLoadedTab(tab);
-      }
-      setLoading(false);
-    });
-  }, [activeSubTab, page, pageSize, debouncedSearch]);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -452,8 +457,9 @@ export default function GamesDashboardClient() {
     } else {
       closeModal();
       setSubmitting(false);
-      reloadActiveTab();
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     }
   };
 
@@ -471,8 +477,9 @@ export default function GamesDashboardClient() {
     if (res && res.error) {
       alert(res.error);
     } else {
-      reloadActiveTab();
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     }
   };
 
@@ -509,7 +516,7 @@ export default function GamesDashboardClient() {
           <button
             type="button"
             className={`${clientStyles.paginationBtn} ${page === 1 ? clientStyles.paginationBtnDisabled : ""}`}
-            onClick={() => page > 1 && setPage(page - 1)}
+            onClick={() => page > 1 && handlePageChange(page - 1)}
             disabled={page === 1}
           >
             &larr; Prev
@@ -519,7 +526,7 @@ export default function GamesDashboardClient() {
               key={idx}
               type="button"
               className={`${clientStyles.paginationBtn} ${p === page ? clientStyles.paginationBtnActive : ""} ${p === "..." ? clientStyles.paginationBtnDisabled : ""}`}
-              onClick={() => typeof p === "number" && setPage(p)}
+              onClick={() => typeof p === "number" && handlePageChange(p)}
               disabled={p === "..."}
             >
               {p}
@@ -528,7 +535,7 @@ export default function GamesDashboardClient() {
           <button
             type="button"
             className={`${clientStyles.paginationBtn} ${page === totalPages ? clientStyles.paginationBtnDisabled : ""}`}
-            onClick={() => page < totalPages && setPage(page + 1)}
+            onClick={() => page < totalPages && handlePageChange(page + 1)}
             disabled={page === totalPages}
           >
             Next &rarr;
@@ -539,7 +546,7 @@ export default function GamesDashboardClient() {
           <select
             className={clientStyles.paginationSelect}
             value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
+            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
           >
             <option value={12}>12</option>
             <option value={24}>24</option>
@@ -576,7 +583,7 @@ export default function GamesDashboardClient() {
               key={tab}
               type="button"
               className={`${clientStyles.subTabButton} ${activeSubTab === tab ? clientStyles.subTabButtonActive : ""}`}
-              onClick={() => setActiveSubTab(tab)}
+              onClick={() => handleTabChange(tab)}
             >
               {labels[tab]} {count !== undefined && <span className={clientStyles.subTabBadge}>{count}</span>}
             </button>
@@ -647,179 +654,183 @@ export default function GamesDashboardClient() {
           )}
         </div>
 
-        {(loading || loadedTab !== activeSubTab) && (
-          <div className={clientStyles.emptyState}>Loading…</div>
-        )}
+        <div
+          style={{
+            opacity: isPending ? 0.6 : 1,
+            pointerEvents: isPending ? "none" : "auto",
+            transition: "opacity 0.2s ease-in-out",
+          }}
+        >
+          {items.length === 0 && (
+            <div className={clientStyles.emptyState}>
+              {debouncedSearch
+                ? `No ${activeSubTab} match your search query: "${debouncedSearch}"`
+                : `No ${activeSubTab} found.`}
+            </div>
+          )}
 
-        {!loading && loadedTab === activeSubTab && items.length === 0 && (
-          <div className={clientStyles.emptyState}>
-            {debouncedSearch
-              ? `No ${activeSubTab} match your search query: "${debouncedSearch}"`
-              : `No ${activeSubTab} found.`}
-          </div>
-        )}
-
-        {!loading && loadedTab === activeSubTab && items.length > 0 && activeSubTab === "games" && (
-          gamesViewMode === "grid" ? (
-            <div className={clientStyles.gamesGrid}>
-              {(items as Game[]).map((game) => {
-                const initials = game.title.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
-                return (
-                  <div key={game.id} className={clientStyles.gameCard}>
-                    <div className={clientStyles.gameCardCover}>
-                      {game.coverImageUrl ? (
-                        <img src={game.coverImageUrl} alt={game.title} className={clientStyles.gameCardImage} loading="lazy" />
-                      ) : (
-                        <div className={clientStyles.gameCardPlaceholder}>{initials}</div>
-                      )}
-                      {(game.metacriticScore || game.openCriticScore) && (
-                        <div className={clientStyles.gameCardScores}>
-                          {game.metacriticScore && (
-                            <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title="Metacritic Score">MC: {game.metacriticScore}</span>
+          {items.length > 0 && activeSubTab === "games" && (
+            gamesViewMode === "grid" ? (
+              <div className={clientStyles.gamesGrid}>
+                {(items as Game[]).map((game) => {
+                  const initials = game.title.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+                  return (
+                    <div key={game.id} className={clientStyles.gameCard}>
+                      <div className={clientStyles.gameCardCover}>
+                        {game.coverImageUrl ? (
+                          <img src={game.coverImageUrl} alt={game.title} className={clientStyles.gameCardImage} loading="lazy" />
+                        ) : (
+                          <div className={clientStyles.gameCardPlaceholder}>{initials}</div>
+                        )}
+                        {(game.metacriticScore || game.openCriticScore) && (
+                          <div className={clientStyles.gameCardScores}>
+                            {game.metacriticScore && (
+                              <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title="Metacritic Score">MC: {game.metacriticScore}</span>
+                            )}
+                            {game.openCriticScore && (
+                              <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title="OpenCritic Score">OC: {game.openCriticScore}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className={clientStyles.gameCardContent}>
+                        <h4 className={clientStyles.gameCardTitle} title={game.title}>{game.title}</h4>
+                        {game.originalTitle && <div className={clientStyles.gameCardOriginalTitle}>{game.originalTitle}</div>}
+                        <div className={clientStyles.gameCardMeta}>
+                          <span>Release: {game.releaseDate || "—"}</span>
+                          {game.hltbMainHours && <span>HLTB: {game.hltbMainHours}h</span>}
+                        </div>
+                        <div className={clientStyles.gameCardRelations}>
+                          {game.developers.length > 0 && (
+                            <div className={clientStyles.relationPills}>
+                              {game.developers.map((d) => (
+                                <span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>
+                              ))}
+                            </div>
                           )}
-                          {game.openCriticScore && (
-                            <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title="OpenCritic Score">OC: {game.openCriticScore}</span>
+                          {game.publishers.length > 0 && (
+                            <div className={clientStyles.relationPills}>
+                              {game.publishers.map((p) => (
+                                <span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>
+                              ))}
+                            </div>
+                          )}
+                          {(game.genres.length > 0 || game.platforms.length > 0 || game.themes.length > 0) && (
+                            <div className={clientStyles.relationPills}>
+                              {game.genres.map((g) => (
+                                <span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>
+                              ))}
+                              {game.platforms.map((pl) => (
+                                <span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>
+                              ))}
+                              {game.themes.map((t) => (
+                                <span key={t.id} className={`${clientStyles.pill} ${clientStyles.pillTheme}`} title={`Theme: ${t.name}`}>{t.name}</span>
+                              ))}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
+                      <div className={clientStyles.gameCardActions}>
+                        <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
+                        <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
+                      </div>
                     </div>
-                    <div className={clientStyles.gameCardContent}>
-                      <h4 className={clientStyles.gameCardTitle} title={game.title}>{game.title}</h4>
-                      {game.originalTitle && <div className={clientStyles.gameCardOriginalTitle}>{game.originalTitle}</div>}
-                      <div className={clientStyles.gameCardMeta}>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={clientStyles.gamesCompactList}>
+                {(items as Game[]).map((game) => {
+                  const initials = game.title.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+                  return (
+                    <div key={game.id} className={clientStyles.gameCompactRow}>
+                      <div className={clientStyles.gameCompactThumb}>
+                        {game.coverImageUrl ? (
+                          <img src={game.coverImageUrl} alt={game.title} className={clientStyles.gameCompactImage} loading="lazy" />
+                        ) : (
+                          <div className={clientStyles.gameCompactPlaceholder}>{initials}</div>
+                        )}
+                      </div>
+                      <div className={clientStyles.gameCompactTitleCol}>
+                        <h4 className={clientStyles.gameCompactTitle} title={game.title}>{game.title}</h4>
+                        {game.originalTitle && <div className={clientStyles.gameCompactOriginalTitle}>{game.originalTitle}</div>}
+                      </div>
+                      <div className={clientStyles.gameCompactScoresCol}>
+                        {game.metacriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title="Metacritic">MC: {game.metacriticScore}</span>)}
+                        {game.openCriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title="OpenCritic">OC: {game.openCriticScore}</span>)}
+                      </div>
+                      <div className={clientStyles.gameCompactMetaCol}>
                         <span>Release: {game.releaseDate || "—"}</span>
                         {game.hltbMainHours && <span>HLTB: {game.hltbMainHours}h</span>}
                       </div>
-                      <div className={clientStyles.gameCardRelations}>
-                        {game.developers.length > 0 && (
-                          <div className={clientStyles.relationPills}>
-                            {game.developers.map((d) => (
-                              <span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>
-                            ))}
-                          </div>
-                        )}
-                        {game.publishers.length > 0 && (
-                          <div className={clientStyles.relationPills}>
-                            {game.publishers.map((p) => (
-                              <span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>
-                            ))}
-                          </div>
-                        )}
-                        {(game.genres.length > 0 || game.platforms.length > 0 || game.themes.length > 0) && (
-                          <div className={clientStyles.relationPills}>
-                            {game.genres.map((g) => (
-                              <span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>
-                            ))}
-                            {game.platforms.map((pl) => (
-                              <span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>
-                            ))}
-                            {game.themes.map((t) => (
-                              <span key={t.id} className={`${clientStyles.pill} ${clientStyles.pillTheme}`} title={`Theme: ${t.name}`}>{t.name}</span>
-                            ))}
-                          </div>
-                        )}
+                      <div className={clientStyles.gameCompactRelationsCol}>
+                        <div className={clientStyles.relationPills}>
+                          {game.developers.map((d) => (<span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>))}
+                          {game.publishers.map((p) => (<span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>))}
+                          {game.genres.map((g) => (<span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>))}
+                          {game.platforms.map((pl) => (<span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>))}
+                        </div>
+                      </div>
+                      <div className={clientStyles.gameCompactActionsCol}>
+                        <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
+                        <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
                       </div>
                     </div>
-                    <div className={clientStyles.gameCardActions}>
-                      <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
-                      <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={clientStyles.gamesCompactList}>
-              {(items as Game[]).map((game) => {
-                const initials = game.title.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {items.length > 0 && (activeSubTab === "developers" || activeSubTab === "publishers") && (
+            <div className={clientStyles.profileCardsGrid}>
+              {(items as (Developer | Publisher)[]).map((it) => {
+                const initial = it.name.charAt(0).toUpperCase();
+                const t: "developer" | "publisher" = activeSubTab === "developers" ? "developer" : "publisher";
                 return (
-                  <div key={game.id} className={clientStyles.gameCompactRow}>
-                    <div className={clientStyles.gameCompactThumb}>
-                      {game.coverImageUrl ? (
-                        <img src={game.coverImageUrl} alt={game.title} className={clientStyles.gameCompactImage} loading="lazy" />
-                      ) : (
-                        <div className={clientStyles.gameCompactPlaceholder}>{initials}</div>
-                      )}
-                    </div>
-                    <div className={clientStyles.gameCompactTitleCol}>
-                      <h4 className={clientStyles.gameCompactTitle} title={game.title}>{game.title}</h4>
-                      {game.originalTitle && <div className={clientStyles.gameCompactOriginalTitle}>{game.originalTitle}</div>}
-                    </div>
-                    <div className={clientStyles.gameCompactScoresCol}>
-                      {game.metacriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title="Metacritic">MC: {game.metacriticScore}</span>)}
-                      {game.openCriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title="OpenCritic">OC: {game.openCriticScore}</span>)}
-                    </div>
-                    <div className={clientStyles.gameCompactMetaCol}>
-                      <span>Release: {game.releaseDate || "—"}</span>
-                      {game.hltbMainHours && <span>HLTB: {game.hltbMainHours}h</span>}
-                    </div>
-                    <div className={clientStyles.gameCompactRelationsCol}>
-                      <div className={clientStyles.relationPills}>
-                        {game.developers.map((d) => (<span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>))}
-                        {game.publishers.map((p) => (<span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>))}
-                        {game.genres.map((g) => (<span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>))}
-                        {game.platforms.map((pl) => (<span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>))}
+                  <div key={it.id} className={clientStyles.profileCard}>
+                    <div className={clientStyles.profileCardHeader}>
+                      <div className={clientStyles.profileCardIcon}>{initial}</div>
+                      <div className={clientStyles.profileCardInfo}>
+                        <h4 className={clientStyles.profileCardName} title={it.name}>{it.name}</h4>
+                        <div className={clientStyles.profileCardSlug} title={it.slug}>{it.slug}</div>
                       </div>
                     </div>
-                    <div className={clientStyles.gameCompactActionsCol}>
-                      <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
-                      <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
+                    <div className={clientStyles.profileCardFooter}>
+                      <span className={clientStyles.profileCardCountry}>{it.countryCode ? `🏳️ ${it.countryCode}` : "Global"}</span>
+                      <div className={clientStyles.profileCardActions}>
+                        <button type="button" className={styles.editLink} onClick={() => openEditModal(t, it)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Edit</button>
+                        <button type="button" className={styles.editLink} onClick={() => handleDelete(t, it.id, it.name)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          )
-        )}
+          )}
 
-        {!loading && loadedTab === activeSubTab && items.length > 0 && (activeSubTab === "developers" || activeSubTab === "publishers") && (
-          <div className={clientStyles.profileCardsGrid}>
-            {(items as (Developer | Publisher)[]).map((it) => {
-              const initial = it.name.charAt(0).toUpperCase();
-              const t: "developer" | "publisher" = activeSubTab === "developers" ? "developer" : "publisher";
-              return (
-                <div key={it.id} className={clientStyles.profileCard}>
-                  <div className={clientStyles.profileCardHeader}>
-                    <div className={clientStyles.profileCardIcon}>{initial}</div>
-                    <div className={clientStyles.profileCardInfo}>
-                      <h4 className={clientStyles.profileCardName} title={it.name}>{it.name}</h4>
-                      <div className={clientStyles.profileCardSlug} title={it.slug}>{it.slug}</div>
+          {items.length > 0 && (activeSubTab === "genres" || activeSubTab === "themes" || activeSubTab === "platforms") && (
+            <div className={clientStyles.interactiveChipsGrid}>
+              {(items as (Genre | Theme | Platform)[]).map((it) => {
+                const t: "genre" | "theme" | "platform" =
+                  activeSubTab === "genres" ? "genre" :
+                  activeSubTab === "themes" ? "theme" : "platform";
+                return (
+                  <div key={it.id} className={clientStyles.interactiveChip}>
+                    <span className={clientStyles.interactiveChipName}>{it.name}</span>
+                    <span className={clientStyles.interactiveChipSlug}>{it.slug}</span>
+                    <div className={clientStyles.interactiveChipActions}>
+                      <button type="button" className={clientStyles.chipActionBtn} onClick={() => openEditModal(t, it)} title={`Edit ${t}`}>Edit</button>
+                      <button type="button" className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`} onClick={() => handleDelete(t, it.id, it.name)} title={`Delete ${t}`}>Delete</button>
                     </div>
                   </div>
-                  <div className={clientStyles.profileCardFooter}>
-                    <span className={clientStyles.profileCardCountry}>{it.countryCode ? `🏳️ ${it.countryCode}` : "Global"}</span>
-                    <div className={clientStyles.profileCardActions}>
-                      <button type="button" className={styles.editLink} onClick={() => openEditModal(t, it)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Edit</button>
-                      <button type="button" className={styles.editLink} onClick={() => handleDelete(t, it.id, it.name)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
 
-        {!loading && loadedTab === activeSubTab && items.length > 0 && (activeSubTab === "genres" || activeSubTab === "themes" || activeSubTab === "platforms") && (
-          <div className={clientStyles.interactiveChipsGrid}>
-            {(items as (Genre | Theme | Platform)[]).map((it) => {
-              const t: "genre" | "theme" | "platform" =
-                activeSubTab === "genres" ? "genre" :
-                activeSubTab === "themes" ? "theme" : "platform";
-              return (
-                <div key={it.id} className={clientStyles.interactiveChip}>
-                  <span className={clientStyles.interactiveChipName}>{it.name}</span>
-                  <span className={clientStyles.interactiveChipSlug}>{it.slug}</span>
-                  <div className={clientStyles.interactiveChipActions}>
-                    <button type="button" className={clientStyles.chipActionBtn} onClick={() => openEditModal(t, it)} title={`Edit ${t}`}>Edit</button>
-                    <button type="button" className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`} onClick={() => handleDelete(t, it.id, it.name)} title={`Delete ${t}`}>Delete</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {!loading && loadedTab === activeSubTab && renderPagination()}
+          {renderPagination()}
+        </div>
       </section>
 
       {isModalOpen && (
