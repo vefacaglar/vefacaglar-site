@@ -139,6 +139,30 @@ Explore your PostgreSQL database, manage tables, and edit data in a clean UI ins
 pnpm --filter @vefacaglar/db db:studio
 ```
 
+### 6. Database Backup (SQL Dump)
+To take a secure copy/backup of your remote Neon database or any PostgreSQL instance:
+
+#### Prerequisites
+Ensure you have `pg_dump` installed. On macOS, you can install and link it via Homebrew:
+```bash
+brew install libpq
+brew link --force libpq
+```
+
+#### Run Backup Commands
+- **Standard SQL Backup (Highly Recommended & Fast):**
+  Uses PostgreSQL's high-speed `COPY` syntax to format your data:
+  ```bash
+  pg_dump "postgresql://user:password@host/dbname?sslmode=require" -F p -v -f ~/db_backup.sql
+  ```
+
+- **INSERT Statement Backup (Human-Readable & Portable):**
+  Dumps your rows as standard, explicit SQL `INSERT INTO table (columns) VALUES (...)` commands. This is slightly slower to restore but very easy to read, edit, or import into other database engines:
+  ```bash
+  pg_dump "postgresql://user:password@host/dbname?sslmode=require" --column-inserts -F p -v -f ~/db_backup_inserts.sql
+  ```
+
+
 ---
 
 ## 🌐 API Endpoints & Swagger
