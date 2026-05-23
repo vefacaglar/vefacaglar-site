@@ -8,7 +8,7 @@ export interface IThemesRepository {
   create(values: NewTheme): Promise<Theme>;
   findById(id: string): Promise<Theme | null>;
   findBySlug(slug: string): Promise<Theme | null>;
-  list(filter?: { page?: number; limit?: number }): Promise<{ items: Theme[]; total: number }>;
+  list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Theme[]; total: number }>;
   update(id: string, patch: Partial<NewTheme>): Promise<Theme>;
   delete(id: string): Promise<void>;
 }

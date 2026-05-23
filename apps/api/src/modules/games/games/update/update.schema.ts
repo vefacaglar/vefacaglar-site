@@ -17,13 +17,6 @@ export const UpdateGameRequestSchema = Type.Object({
   hltbMainHours: Type.Optional(Type.Union([Type.String(), Type.Number(), Type.Null()])),
   hltbMainExtraHours: Type.Optional(Type.Union([Type.String(), Type.Number(), Type.Null()])),
   hltbCompletionistHours: Type.Optional(Type.Union([Type.String(), Type.Number(), Type.Null()])),
-  
-  // Relations to update/sync
-  developerIds: Type.Optional(Type.Array(Type.String())),
-  publisherIds: Type.Optional(Type.Array(Type.String())),
-  genreIds: Type.Optional(Type.Array(Type.String())),
-  platformIds: Type.Optional(Type.Array(Type.String())),
-  themeIds: Type.Optional(Type.Array(Type.String())),
 });
 
 export type UpdateGameParams = Static<typeof UpdateGameParamsSchema>;
