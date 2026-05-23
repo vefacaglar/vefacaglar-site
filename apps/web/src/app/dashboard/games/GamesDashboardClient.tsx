@@ -327,37 +327,53 @@ export default function GamesDashboardClient() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (type: EntityType, item: any) => {
+  const populateGameForm = (game: Game) => {
+    setEditingItem(game);
+    setGameTitle(game.title);
+    setSlug(game.slug);
+    setGameOriginalTitle(game.originalTitle || "");
+    setGameDescription(game.description || "");
+    setGameCoverImageUrl(game.coverImageUrl || "");
+    setGameReleaseDate(game.releaseDate || "");
+    setGameMetacriticScore(game.metacriticScore !== null ? game.metacriticScore : "");
+    setGameOpenCriticScore(game.openCriticScore !== null ? game.openCriticScore : "");
+    setGameHltbMainHours(game.hltbMainHours || "");
+    setGameHltbMainExtraHours(game.hltbMainExtraHours || "");
+    setGameHltbCompletionistHours(game.hltbCompletionistHours || "");
+    setSelectedDevelopers(game.developers);
+    setSelectedPublishers(game.publishers);
+    setSelectedGenres(game.genres);
+    setSelectedPlatforms(game.platforms);
+    setSelectedThemes(game.themes);
+  };
+
+  const openEditModal = async (type: EntityType, item: any) => {
     setActiveType(type);
     setEditingItem(item);
     setError(null);
+    setIsModalOpen(true);
 
     if (type === "game") {
-      const game = item as Game;
-      setGameTitle(game.title);
-      setSlug(game.slug);
-      setGameOriginalTitle(game.originalTitle || "");
-      setGameDescription(game.description || "");
-      setGameCoverImageUrl(game.coverImageUrl || "");
-      setGameReleaseDate(game.releaseDate || "");
-      setGameMetacriticScore(game.metacriticScore !== null ? game.metacriticScore : "");
-      setGameOpenCriticScore(game.openCriticScore !== null ? game.openCriticScore : "");
-      setGameHltbMainHours(game.hltbMainHours || "");
-      setGameHltbMainExtraHours(game.hltbMainExtraHours || "");
-      setGameHltbCompletionistHours(game.hltbCompletionistHours || "");
-
-      setSelectedDevelopers(game.developers);
-      setSelectedPublishers(game.publishers);
-      setSelectedGenres(game.genres);
-      setSelectedPlatforms(game.platforms);
-      setSelectedThemes(game.themes);
+      // Seed with cached row so the modal opens instantly, then refetch the
+      // canonical record (with current relations) and overwrite local state.
+      populateGameForm(item as Game);
+      try {
+        const res = await fetch(`/api/games/games/${item.id}`, { cache: "no-store" });
+        if (res.ok) {
+          const fresh = (await res.json()) as Game;
+          populateGameForm(fresh);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.message || "Failed to load latest game data.");
+        }
+      } catch {
+        setError("Server connection error.");
+      }
     } else {
       setName(item.name);
       setSlug(item.slug);
       setCountryCode(item.countryCode || "");
     }
-
-    setIsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -1029,7 +1045,7 @@ function RelationPicker({
       <input
         type="text"
         className={clientStyles.input}
-        placeholder={`Search ${label.toLowerCase()}...`}
+        placeholder={`Search ${label.toLowerCase()} (min 3 chars)...`}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
@@ -1039,7 +1055,13 @@ function RelationPicker({
         {loading && merged.length === 0 ? (
           <div style={{ fontSize: "12px", color: "var(--muted)" }}>Loading…</div>
         ) : merged.length === 0 ? (
-          <div style={{ fontSize: "12px", color: "var(--muted)" }}>No matches.</div>
+          <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+            {query.trim().length > 0 && query.trim().length < 3
+              ? "Type at least 3 characters."
+              : query.trim().length >= 3 && debounced.trim().length < 3
+                ? "Waiting…"
+                : "No matches."}
+          </div>
         ) : (
           merged.map((it) => (
             <label key={it.id} className={clientStyles.checkboxLabel}>
