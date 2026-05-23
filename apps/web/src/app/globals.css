@@ -196,5 +196,15 @@ html {
   background-color: var(--muted);
 }
 
+/* Prevent auto-zooming on mobile devices on input focus */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+
 
 
