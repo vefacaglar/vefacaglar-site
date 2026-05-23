@@ -2,6 +2,7 @@
   "name": "vefacaglar-site",
   "private": true,
   "scripts": {
+    "predev": "turbo run build --filter=@vefacaglar/db",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
