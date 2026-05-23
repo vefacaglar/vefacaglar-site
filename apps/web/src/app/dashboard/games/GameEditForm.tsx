@@ -183,11 +183,13 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
 
           <div>
             <div className={clientStyles.formSectionTitle}>Relations</div>
-            <RelationPicker label="Developers" kind="developer" selected={selectedDevelopers} onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")} disabled={submitting} />
-            <RelationPicker label="Publishers" kind="publisher" selected={selectedPublishers} onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")} disabled={submitting} />
-            <RelationPicker label="Genres" kind="genre" selected={selectedGenres} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} />
-            <RelationPicker label="Platforms" kind="platform" selected={selectedPlatforms} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} />
-            <RelationPicker label="Themes" kind="theme" selected={selectedThemes} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} />
+            <div className={clientStyles.relationsGrid}>
+              <RelationPicker label="Developers" kind="developer" selected={selectedDevelopers} onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")} disabled={submitting} />
+              <RelationPicker label="Publishers" kind="publisher" selected={selectedPublishers} onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")} disabled={submitting} />
+              <RelationPicker label="Genres" kind="genre" selected={selectedGenres} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} />
+              <RelationPicker label="Platforms" kind="platform" selected={selectedPlatforms} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} />
+              <RelationPicker label="Themes" kind="theme" selected={selectedThemes} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} />
+            </div>
           </div>
         </div>
 
