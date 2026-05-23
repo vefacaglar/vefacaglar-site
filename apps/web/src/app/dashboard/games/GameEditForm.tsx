@@ -25,7 +25,7 @@ function useDebounced<T>(value: T, delay = 300): T {
   return debounced;
 }
 
-export default function GameEditForm({ game }: { game: Game }) {
+export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: { game: Game; returnUrl?: string }) {
   const router = useRouter();
   const [title, setTitle] = useState(game.title);
   const [slug, setSlug] = useState(game.slug);
@@ -112,14 +112,14 @@ export default function GameEditForm({ game }: { game: Game }) {
       return;
     }
 
-    router.push("/dashboard/games");
+    router.push(returnUrl);
     router.refresh();
   };
 
   return (
     <div className={clientStyles.editPageWrapper}>
       <div className={clientStyles.editPageBack}>
-        <Link href="/dashboard/games" className="backLink">← back to games</Link>
+        <Link href={returnUrl} className="backLink">← back to games</Link>
       </div>
 
       <div className={clientStyles.editPageHeader}>
@@ -192,7 +192,7 @@ export default function GameEditForm({ game }: { game: Game }) {
         </div>
 
         <div className={clientStyles.modalActions}>
-          <Link href="/dashboard/games" className={clientStyles.btnCancel}>Cancel</Link>
+          <Link href={returnUrl} className={clientStyles.btnCancel}>Cancel</Link>
           <button type="submit" className="btnAccent" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</button>
         </div>
       </form>

@@ -7,7 +7,13 @@ import type { Game } from "../../GamesDashboardClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditGame({ params }: { params: { id: string } }) {
+export default async function EditGame({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { returnUrl?: string };
+}) {
   const token = cookies().get("session_token")?.value;
 
   if (!token) {
@@ -33,5 +39,5 @@ export default async function EditGame({ params }: { params: { id: string } }) {
     notFound();
   }
 
-  return <GameEditForm game={game} />;
+  return <GameEditForm game={game} returnUrl={searchParams.returnUrl || "/dashboard/games"} />;
 }

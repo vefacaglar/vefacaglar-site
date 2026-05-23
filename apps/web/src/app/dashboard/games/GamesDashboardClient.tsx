@@ -185,6 +185,19 @@ export default function GamesDashboardClient({
     });
   }, [initialTab, initialPage, initialLimit, searchQuery, router]);
 
+  const getReturnUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set("tab", activeSubTab);
+    params.set("page", String(page));
+    if (pageSize !== 12) {
+      params.set("limit", String(pageSize));
+    }
+    if (searchQuery.trim()) {
+      params.set("q", searchQuery.trim());
+    }
+    return `/dashboard/games?${params.toString()}`;
+  }, [activeSubTab, page, pageSize, searchQuery]);
+
   // Trigger search URL update on debounced change
   useEffect(() => {
     if (debouncedSearch !== initialSearch) {
@@ -731,7 +744,7 @@ export default function GamesDashboardClient({
                         </div>
                       </div>
                       <div className={clientStyles.gameCardActions}>
-                        <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
+                        <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>Edit</Link>
                         <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
                       </div>
                     </div>
@@ -772,7 +785,7 @@ export default function GamesDashboardClient({
                         </div>
                       </div>
                       <div className={clientStyles.gameCompactActionsCol}>
-                        <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
+                        <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>Edit</Link>
                         <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
                       </div>
                     </div>
