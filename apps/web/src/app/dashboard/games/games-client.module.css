@@ -290,6 +290,32 @@
   box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 255, 75, 43), 0.15);
 }
 
+.editPageWrapper {
+  max-width: 980px;
+}
+
+.editPageBack {
+  margin-bottom: 20px;
+}
+
+.editPageHeader {
+  margin-bottom: 24px;
+}
+
+.editPageTitle {
+  font-size: 28px;
+  font-weight: 650;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.editPagePanel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 28px;
+  background: rgba(255, 255, 255, 0.01);
+}
+
 .scoreBadge {
   font-size: 12px;
   font-weight: 600;

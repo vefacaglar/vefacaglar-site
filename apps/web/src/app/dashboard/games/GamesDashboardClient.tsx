@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../dashboard.module.css";
 import clientStyles from "./games-client.module.css";
@@ -720,7 +721,7 @@ export default function GamesDashboardClient() {
                       </div>
                     </div>
                     <div className={clientStyles.gameCardActions}>
-                      <button type="button" className={styles.editLink} onClick={() => openEditModal("game", game)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Edit</button>
+                      <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
                       <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
                     </div>
                   </div>
@@ -761,7 +762,7 @@ export default function GamesDashboardClient() {
                       </div>
                     </div>
                     <div className={clientStyles.gameCompactActionsCol}>
-                      <button type="button" className={styles.editLink} onClick={() => openEditModal("game", game)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Edit</button>
+                      <Link href={`/dashboard/games/edit/${game.id}`} className={styles.editLink}>Edit</Link>
                       <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
                     </div>
                   </div>
