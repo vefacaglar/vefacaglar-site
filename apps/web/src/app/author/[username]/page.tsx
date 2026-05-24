@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import styles from "./page.module.css";
+import { getActiveLanguage } from "../../../lib/lang";
+import { getDictionary } from "../../../dictionaries";
+import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
 
 interface AuthorDetail {
@@ -34,6 +37,8 @@ export async function generateMetadata({ params }: { params: { username: string 
 
 export default async function AuthorPage({ params }: { params: { username: string } }) {
   let author: AuthorDetail | null = null;
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const res = await httpClient.get(`/api/authors/${params.username}`, {
@@ -53,7 +58,7 @@ export default async function AuthorPage({ params }: { params: { username: strin
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -65,17 +70,17 @@ export default async function AuthorPage({ params }: { params: { username: strin
       <h1 className={styles.authorName}>{author.displayName}</h1>
       <p className={styles.username}>@{author.username}</p>
 
-      <h2 className={styles.sectionTitle}>Posts</h2>
+      <h2 className={styles.sectionTitle}>{dict.posts}</h2>
 
       {author.posts.length === 0 ? (
-        <p className={styles.empty}>No posts published yet.</p>
+        <p className={styles.empty}>{dict.no_posts_by_author}</p>
       ) : (
         <ul className={styles.list}>
           {author.posts.map((post) => (
             <li key={post.id} className={styles.listItem}>
               <span className={styles.dash}>—</span>
               <div className={styles.itemMeta}>
-                <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                <Link href={localizeHref(`/blog/${post.slug}`, lang)}>{post.title}</Link>
                 {post.excerpt && (
                   <p className={styles.excerpt}>{post.excerpt}</p>
                 )}

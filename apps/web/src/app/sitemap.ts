@@ -4,7 +4,6 @@ import { httpClient } from "../lib/httpClient";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vefacaglar.com";
 
-  // Static routes of the personal website
   const staticRoutes = [
     {
       url: baseUrl,
@@ -30,11 +29,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/tr`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/tr/about`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/tr/blog`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/tr/projects`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    },
   ];
 
   let dynamicRoutes: MetadataRoute.Sitemap = [];
 
-  // Fetch dynamic blog posts
   try {
     const postsRes = await httpClient.get("/api/posts?limit=1000", {
       cache: "no-store",
@@ -42,19 +64,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (postsRes.ok) {
       const postsData = await postsRes.ok ? await postsRes.json() : { items: [] };
       const posts = postsData.items || [];
-      const postRoutes = posts.map((post: any) => ({
-        url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: new Date(post.updatedAt || post.publishedAt || post.createdAt),
-        changeFrequency: "monthly" as const,
-        priority: 0.7,
-      }));
-      dynamicRoutes = [...dynamicRoutes, ...postRoutes];
+      for (const post of posts) {
+        const lastMod = new Date(post.updatedAt || post.publishedAt || post.createdAt);
+        dynamicRoutes.push({
+          url: `${baseUrl}/blog/${post.slug}`,
+          lastModified: lastMod,
+          changeFrequency: "monthly" as const,
+          priority: 0.7,
+        });
+        dynamicRoutes.push({
+          url: `${baseUrl}/tr/blog/${post.slug}`,
+          lastModified: lastMod,
+          changeFrequency: "monthly" as const,
+          priority: 0.7,
+        });
+      }
     }
   } catch (error) {
     console.error("Sitemap: Failed to fetch posts for dynamic sitemap:", error);
   }
 
-  // Fetch dynamic pages
   try {
     const pagesRes = await httpClient.get("/api/pages", {
       cache: "no-store",
@@ -69,7 +98,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           changeFrequency: "monthly" as const,
           priority: 0.6,
         }));
-      dynamicRoutes = [...dynamicRoutes, ...pageRoutes];
+      const trPageRoutes = pages
+        .filter((page: any) => page.slug !== "about" && page.status === "published")
+        .map((page: any) => ({
+          url: `${baseUrl}/tr/${page.slug}`,
+          lastModified: new Date(page.updatedAt || page.publishedAt || page.createdAt),
+          changeFrequency: "monthly" as const,
+          priority: 0.6,
+        }));
+      dynamicRoutes = [...dynamicRoutes, ...pageRoutes, ...trPageRoutes];
     }
   } catch (error) {
     console.error("Sitemap: Failed to fetch dynamic pages for sitemap:", error);

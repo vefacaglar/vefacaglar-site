@@ -2,6 +2,7 @@ import Link from 'next/link';
 import styles from "./projects.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
+import { localizeHref } from '../../lib/localizeHref';
 import { httpClient } from '../../lib/httpClient';
 import Pagination from '../components/Pagination';
 
@@ -62,11 +63,7 @@ export default async function Projects({ searchParams }: ProjectsProps) {
   return (
     <div>
       <h1>{dict.projects}</h1>
-      <p className={styles.subtitle}>
-        {lang === "tr" 
-          ? "Geliştirdiğim açık kaynaklı projeler, araçlar ve deneyler." 
-          : "Side projects, open source tools, and experiments."}
-      </p>
+      <p className={styles.subtitle}>{dict.projects_subtitle}</p>
 
       {projects.length === 0 ? (
         <p className={styles.empty}>{dict.no_projects}</p>
@@ -78,10 +75,10 @@ export default async function Projects({ searchParams }: ProjectsProps) {
                 <span className={styles.dash}>—</span>
                 <div className={styles.itemMeta}>
                   <div>
-                    <Link href={`/projects/${project.slug}`}>{project.title}</Link>
+                    <Link href={localizeHref(`/projects/${project.slug}`, lang)}>{project.title}</Link>
                     {project.featured && (
                       <span className={styles.featuredBadge}>
-                        {dict.featured_project || "Featured"}
+                        {dict.featured_project}
                       </span>
                     )}
                   </div>
@@ -95,7 +92,7 @@ export default async function Projects({ searchParams }: ProjectsProps) {
                           rel="noopener noreferrer" 
                           className={styles.link}
                         >
-                          GitHub
+                          {dict.source_code}
                         </a>
                       )}
                       {project.liveUrl && (
@@ -105,7 +102,7 @@ export default async function Projects({ searchParams }: ProjectsProps) {
                           rel="noopener noreferrer" 
                           className={styles.link}
                         >
-                          Live Demo
+                          {dict.live_demo}
                         </a>
                       )}
                     </div>

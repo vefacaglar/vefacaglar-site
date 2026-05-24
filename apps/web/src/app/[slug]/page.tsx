@@ -1,6 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../components/MarkdownPreview";
+import { getActiveLanguage } from "../../lib/lang";
 import { httpClient } from "../../lib/httpClient";
 
 interface PageItem {
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function DynamicPage({ params }: { params: { slug: string } }) {
   let page: PageItem | null = null;
+  const lang = getActiveLanguage();
 
   try {
     const res = await httpClient.get(`/api/pages/${params.slug}`, {

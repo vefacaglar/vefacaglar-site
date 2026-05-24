@@ -3,6 +3,7 @@ import MarkdownPreview from "./components/MarkdownPreview";
 import styles from "./home.module.css";
 import { getActiveLanguage } from '../lib/lang';
 import { getDictionary } from '../dictionaries';
+import { localizeHref } from '../lib/localizeHref';
 import { httpClient } from '../lib/httpClient';
 
 interface PageItem {
@@ -73,7 +74,6 @@ export default async function Home() {
     console.error("Failed to fetch homepage blog posts:", error);
   }
 
-  // Get the 3 latest posts
   const latestPosts = posts.slice(0, 3);
 
   return (
@@ -94,14 +94,14 @@ export default async function Home() {
           {latestPosts.map((post) => (
             <li key={post.id} className={styles.listItem}>
               <span className={styles.dash}>—</span>
-              <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+              <Link href={localizeHref(`/blog/${post.slug}`, lang)}>{post.title}</Link>
             </li>
           ))}
         </ul>
       )}
       
       <div className={styles.viewAll}>
-        <Link href="/blog">{dict.view_all}</Link>
+        <Link href={localizeHref("/blog", lang)}>{dict.view_all}</Link>
       </div>
     </div>
   );

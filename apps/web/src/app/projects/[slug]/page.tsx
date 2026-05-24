@@ -26,7 +26,6 @@ interface ProjectDetail {
 
 export const dynamic = "force-dynamic";
 
-// Dynamic SEO Metadata Generation
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const res = await httpClient.get(`/api/projects/${params.slug}`);
@@ -74,7 +73,7 @@ export default async function Project({ params }: { params: { slug: string } }) 
   const getDurationString = () => {
     if (!project?.startedAt) return "";
     const start = formatProjectDate(project.startedAt);
-    const end = project.endedAt ? formatProjectDate(project.endedAt) : (lang === "tr" ? "Devam Ediyor" : "Present");
+    const end = project.endedAt ? formatProjectDate(project.endedAt) : dict.present;
     return `${start} — ${end}`;
   };
 
@@ -87,7 +86,7 @@ export default async function Project({ params }: { params: { slug: string } }) 
           {project.title}
           {project.featured && (
             <span className={styles.featuredBadge}>
-              {dict.featured_project || "Featured"}
+              {dict.featured_project}
             </span>
           )}
         </h1>
@@ -102,7 +101,7 @@ export default async function Project({ params }: { params: { slug: string } }) 
                 rel="noopener noreferrer" 
                 className={styles.link}
               >
-                GitHub
+                {dict.source_code}
               </a>
             )}
             {project.liveUrl && (
@@ -112,7 +111,7 @@ export default async function Project({ params }: { params: { slug: string } }) 
                 rel="noopener noreferrer" 
                 className={styles.link}
               >
-                Live Demo
+                {dict.live_demo}
               </a>
             )}
           </div>
@@ -129,7 +128,6 @@ export default async function Project({ params }: { params: { slug: string } }) 
         </div>
       )}
 
-      {/* Render Markdown Content */}
       <div className={styles.body}>
         <MarkdownPreview content={project.content} />
       </div>

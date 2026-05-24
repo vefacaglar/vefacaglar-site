@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import MarkdownPreview from "../components/MarkdownPreview";
 import styles from "./about.module.css";
+import { getActiveLanguage } from "../../lib/lang";
 import { httpClient } from "../../lib/httpClient";
 
 interface PageItem {
@@ -36,6 +36,7 @@ export async function generateMetadata() {
 
 export default async function About() {
   let page: PageItem | null = null;
+  const lang = getActiveLanguage();
 
   try {
     const pageRes = await httpClient.get("/api/pages/about", {
