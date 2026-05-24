@@ -7,6 +7,55 @@ import { getSessionToken } from "../dashboard/actions";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+const COMPRESS_MAX_DIMENSION = 1000;
+const COMPRESS_TARGET_BYTES = 300 * 1024;
+const COMPRESS_QUALITIES = [0.85, 0.75, 0.65, 0.55, 0.45];
+
+async function compressImage(file: File): Promise<File> {
+  if (file.type === "image/gif" || !file.type.startsWith("image/")) {
+    return file;
+  }
+
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  if (width > COMPRESS_MAX_DIMENSION || height > COMPRESS_MAX_DIMENSION) {
+    const ratio = Math.min(COMPRESS_MAX_DIMENSION / width, COMPRESS_MAX_DIMENSION / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    return file;
+  }
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  let bestBlob: Blob | null = null;
+  for (const quality of COMPRESS_QUALITIES) {
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/webp", quality)
+    );
+    if (!blob) continue;
+    bestBlob = blob;
+    if (blob.size <= COMPRESS_TARGET_BYTES) break;
+  }
+
+  if (!bestBlob || bestBlob.size >= file.size) {
+    return file;
+  }
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
+  return new File([bestBlob], `${baseName}.webp`, {
+    type: "image/webp",
+    lastModified: Date.now(),
+  });
+}
+
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -177,8 +226,10 @@ export default function MarkdownEditor({
         throw new Error("Unauthorized. Please log in.");
       }
 
+      const compressedFile = await compressImage(file);
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
 
       const response = await fetch(`${API_URL}/api/uploads/image`, {
         method: "POST",
