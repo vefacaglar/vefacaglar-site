@@ -92,6 +92,8 @@ import {
 
 import { ErrorResponseSchema } from "../../shared/error-schema";
 import { container } from "../../container";
+import { RelationsOptionsHandler } from "./options/options.handler";
+import { RelationsOptionsResponseSchema } from "./options/options.schema";
 
 export async function gamesRoutes(app: FastifyInstance) {
   const createDeveloperHandler = container.resolve(CreateDeveloperHandler);
@@ -140,6 +142,7 @@ export async function gamesRoutes(app: FastifyInstance) {
   const unlinkGamePlatformHandler = container.resolve(UnlinkGamePlatformHandler);
   const linkGameThemeHandler = container.resolve(LinkGameThemeHandler);
   const unlinkGameThemeHandler = container.resolve(UnlinkGameThemeHandler);
+  const relationsOptionsHandler = container.resolve(RelationsOptionsHandler);
 
 
   // --- Developer CRUD Routes (Admin only) ---
@@ -609,6 +612,19 @@ export async function gamesRoutes(app: FastifyInstance) {
       },
     },
   }, (request) => deleteGameHandler.handle(request));
+
+  app.get("/relations-options", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "List all relation options (genres, themes, platforms) for catalog management",
+      tags: ["Games - Catalog"],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: RelationsOptionsResponseSchema,
+        401: ErrorResponseSchema,
+      },
+    },
+  }, (request) => relationsOptionsHandler.handle(request));
 
   // --- Game Relation Link/Unlink Routes (Admin only) ---
 

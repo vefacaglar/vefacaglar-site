@@ -38,25 +38,16 @@ export default function LanguageSwitcher() {
     });
   };
 
-  const btnClass = (lang: "en" | "tr") =>
-    locale === lang ? `${styles.btn} ${styles.btnActive}` : styles.btn;
+  const nextLang = locale === "en" ? "tr" : "en";
 
   return (
     <div className={styles.switcher}>
       <button 
-        onClick={() => handleLanguageChange("en")} 
-        className={btnClass("en")}
+        onClick={() => handleLanguageChange(nextLang)} 
+        className={styles.btn}
         disabled={isPending}
       >
-        en
-      </button>
-      <span className={styles.divider}>|</span>
-      <button 
-        onClick={() => handleLanguageChange("tr")} 
-        className={btnClass("tr")}
-        disabled={isPending}
-      >
-        tr
+        {nextLang}
       </button>
     </div>
   );
