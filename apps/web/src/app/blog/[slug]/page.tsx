@@ -7,6 +7,7 @@ import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
+import AdminEditLink from "../../../components/AdminEditLink";
 
 interface PostDetail {
   id: string;
@@ -103,6 +104,9 @@ export default async function BlogPost({ params }: { params: { slug: string } })
       <div className={styles.body}>
         <MarkdownPreview content={post.content} />
       </div>
+      {post.id && (
+        <AdminEditLink type="post" id={post.id} from={localizeHref(`/blog/${post.slug}`, lang)} />
+      )}
     </article>
   );
 }

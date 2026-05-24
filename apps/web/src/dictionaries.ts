@@ -26,6 +26,9 @@ const dictionaries = {
     no_posts_by_author: "No posts published yet.",
     source_code: "GitHub",
     live_demo: "Live Demo",
+    edit_page: "Edit Page",
+    edit_post: "Edit Post",
+    edit_project: "Edit Project",
   },
   tr: {
     blog: "Son yaz\u0131lar",
@@ -54,6 +57,9 @@ const dictionaries = {
     no_posts_by_author: "Hen\u00FCz yaz\u0131 yay\u0131nlanmad\u0131.",
     source_code: "GitHub",
     live_demo: "Canl\u0131 Demo",
+    edit_page: "Sayfayı Düzenle",
+    edit_post: "Yazıyı Düzenle",
+    edit_project: "Projeyi Düzenle",
   }
 };
 

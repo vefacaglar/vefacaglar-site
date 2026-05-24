@@ -5,6 +5,8 @@ import styles from "./project.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary } from "../../../dictionaries";
 import { httpClient } from "../../../lib/httpClient";
+import AdminEditLink from "../../../components/AdminEditLink";
+import { localizeHref } from "../../../lib/localizeHref";
 
 interface ProjectDetail {
   id: string;
@@ -131,6 +133,9 @@ export default async function Project({ params }: { params: { slug: string } }) 
       <div className={styles.body}>
         <MarkdownPreview content={project.content} />
       </div>
+      {project.id && (
+        <AdminEditLink type="project" id={project.id} from={localizeHref(`/projects/${project.slug}`, lang)} />
+      )}
     </article>
   );
 }

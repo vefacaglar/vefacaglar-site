@@ -4,6 +4,8 @@ import MarkdownPreview from "../components/MarkdownPreview";
 import { getActiveLanguage } from "../../lib/lang";
 import { httpClient } from "../../lib/httpClient";
 import styles from "./page.module.css";
+import AdminEditLink from "../../components/AdminEditLink";
+import { localizeHref } from "../../lib/localizeHref";
 
 interface PageItem {
   id: string;
@@ -57,6 +59,9 @@ export default async function DynamicPage({ params }: { params: { slug: string }
         <h1 className={styles.title}>{page.title}</h1>
         {page.content && (
           <MarkdownPreview content={page.content} />
+        )}
+        {page.id && (
+          <AdminEditLink type="page" id={page.id} from={localizeHref(`/${page.slug}`, lang)} />
         )}
       </article>
     </div>
