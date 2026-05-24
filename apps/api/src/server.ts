@@ -2,9 +2,10 @@ import "reflect-metadata";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
-}
+// Always attempt to load environment variables from the root .env file if it exists.
+// This ensures local .env files are loaded in self-hosted production environments,
+// while not overriding variables already injected by cloud platforms (e.g. Vercel, Docker).
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import { app } from "./app";
 

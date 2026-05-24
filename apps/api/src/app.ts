@@ -97,6 +97,10 @@ registerAuthDecorators(app);
 
 app.setErrorHandler((err, request, reply) => {
   if (err instanceof HttpError) {
+    // Log server-side HTTP errors (5xx) so they are visible in production logs
+    if (err.statusCode >= 500) {
+      request.log.error(err, `Server HTTP Error: ${err.message}`);
+    }
     const translatedMsg = translateError(err.message, request.lang);
     return reply.status(err.statusCode).send({ message: translatedMsg });
   }
