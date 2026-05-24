@@ -47,5 +47,6 @@ The API follows a strict **Feature Folder / Handler pattern**:
 
 From `AGENTS.md` — these are firm constraints, not suggestions:
 - This is a small personal site, not a SaaS product. Keep everything simple.
+- **API Entrypoint**: The `"main": "dist/app.js"` in `apps/api/package.json` must **NEVER** be modified. Production deployment (Vercel) points to it, while local dev uses `src/server.ts`. Do not change this main entrypoint or anything referencing it.
 - Do **not** add Tailwind, heavy UI libraries, authentication, or database logic unless explicitly requested.
 - All user-facing UI text, code/comments/logs, and git commit messages must be in **English**.

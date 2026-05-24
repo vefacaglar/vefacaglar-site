@@ -76,6 +76,10 @@ To verify code changes (syntax and TypeScript correctness) without disrupting th
 - **NEVER** run `pnpm build` or `turbo run build` during active coding sessions. Doing so overwrites the `.next` directory and breaks Hot Module Replacement (HMR) for the active developer.
 - **ALWAYS** use `pnpm typecheck` or `turbo run typecheck` to perform non-destructive, fast type checks.
 
+## Deployment Constraints
+
+- **API Entrypoint (`apps/api/package.json`)**: The `"main": "dist/app.js"` configuration in `apps/api/package.json` must **NEVER** be modified under any circumstances. While local development runs via `src/server.ts`, production deployment (e.g. Vercel serverless) points directly to `dist/app.js` which executes the serverless handler exported in `src/app.ts`. Do not change this main entrypoint or anything referencing it.
+
 ## Language
 
 All visible UI text in `apps/web` must be in **English**.
