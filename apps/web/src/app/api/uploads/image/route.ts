@@ -10,15 +10,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const API_URL = process.env.API_URL || "http://localhost:3001";
 
   try {
-    const formData = await req.formData();
+    if (!req.body) {
+      return NextResponse.json({ message: "No file body provided." }, { status: 400 });
+    }
 
-    // Forward the request to the Fastify API
+    // Stream the raw body directly to the Fastify backend API.
+    // This avoids parsing the multipart form data in Next.js, preventing memory/CPU overhead
+    // and bypassing any Next.js Serverless body-parsing bugs.
     const apiRes = await fetch(`${API_URL}/api/uploads/image`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": req.headers.get("Content-Type") || "multipart/form-data",
       },
-      body: formData,
+      body: req.body,
+      // @ts-ignore - duplex is required in Node's fetch implementation when passing a stream body
+      duplex: "half",
     });
 
     const body = await apiRes.text();
@@ -29,7 +36,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    console.error(`Next.js image upload forwarding error (target: ${API_URL}/api/uploads/image):`, error);
+    console.error(`Next.js image upload proxy error (target: ${API_URL}/api/uploads/image):`, error);
     return NextResponse.json(
       { message: `Server connection error (tried connecting to ${API_URL}).` },
       { status: 500 }
