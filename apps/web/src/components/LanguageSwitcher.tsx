@@ -11,7 +11,9 @@ export default function LanguageSwitcher() {
   const locale = useLocale();
   const pathname = rawPath.replace(/^\/tr/, "") || "/";
 
-  const handleLanguageChange = async (newLang: "en" | "tr") => {
+  const [isPending, startTransition] = React.useTransition();
+
+  const handleLanguageChange = (newLang: "en" | "tr") => {
     document.cookie = `lang=${newLang};path=/;max-age=31536000`;
 
     if (newLang === locale) return;
@@ -23,8 +25,17 @@ export default function LanguageSwitcher() {
       targetPath = pathname;
     }
 
-    await router.push(targetPath);
-    router.refresh();
+    // Merge existing search params and set/update 'lang' query parameter
+    // to bypass Next.js client-side router cache key collisions
+    const params = new URLSearchParams(window.location.search);
+    params.set("lang", newLang);
+
+    const finalPath = `${targetPath}?${params.toString()}`;
+
+    startTransition(() => {
+      router.push(finalPath);
+      router.refresh();
+    });
   };
 
   const btnClass = (lang: "en" | "tr") =>
@@ -32,11 +43,19 @@ export default function LanguageSwitcher() {
 
   return (
     <div className={styles.switcher}>
-      <button onClick={() => handleLanguageChange("en")} className={btnClass("en")}>
+      <button 
+        onClick={() => handleLanguageChange("en")} 
+        className={btnClass("en")}
+        disabled={isPending}
+      >
         en
       </button>
       <span className={styles.divider}>|</span>
-      <button onClick={() => handleLanguageChange("tr")} className={btnClass("tr")}>
+      <button 
+        onClick={() => handleLanguageChange("tr")} 
+        className={btnClass("tr")}
+        disabled={isPending}
+      >
         tr
       </button>
     </div>
