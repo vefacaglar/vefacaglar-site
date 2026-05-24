@@ -28,9 +28,7 @@ import {
   listGamesAction,
   listDevelopersAction,
   listPublishersAction,
-  listGenresAction,
-  listThemesAction,
-  listPlatformsAction,
+  listRelationsOptionsAction,
 } from "./actions";
 
 export interface Developer {
@@ -233,6 +231,27 @@ export default function GamesDashboardClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeType, setActiveType] = useState<EntityType>("game");
   const [editingItem, setEditingItem] = useState<any | null>(null);
+
+  const [options, setOptions] = useState<{
+    genres: GameRelationItem[];
+    themes: GameRelationItem[];
+    platforms: GameRelationItem[];
+  } | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isModalOpen && activeType === "game" && !options) {
+      setOptionsLoading(true);
+      listRelationsOptionsAction().then((res) => {
+        if (res && "error" in res) {
+          setError(res.error);
+        } else {
+          setOptions(res);
+        }
+        setOptionsLoading(false);
+      });
+    }
+  }, [isModalOpen, activeType, options]);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -927,32 +946,35 @@ export default function GamesDashboardClient({
                         onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")}
                         disabled={submitting}
                       />
-                      <RelationPicker
+                      <LazyRelationPicker
                         label="Genres"
-                        kind="genre"
                         selected={selectedGenres}
+                        allOptions={options?.genres || []}
                         onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")}
                         disabled={submitting}
+                        loading={optionsLoading}
                       />
-                      <RelationPicker
+                      <LazyRelationPicker
                         label="Platforms"
-                        kind="platform"
                         selected={selectedPlatforms}
+                        allOptions={options?.platforms || []}
                         onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")}
                         disabled={submitting}
+                        loading={optionsLoading}
                       />
-                      <RelationPicker
+                      <LazyRelationPicker
                         label="Themes"
-                        kind="theme"
                         selected={selectedThemes}
+                        allOptions={options?.themes || []}
                         onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")}
                         disabled={submitting}
+                        loading={optionsLoading}
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className={clientStyles.modalActions}>
+                <div className={clientStyles.editPageActions}>
                   <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>Cancel</Button>
                   <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : editingItem ? "Save Changes" : "Create Game"}</Button>
                 </div>
@@ -990,7 +1012,7 @@ export default function GamesDashboardClient({
                     <input id="item-country" type="text" maxLength={2} className={clientStyles.input} placeholder="JP, US, TR, PL..." value={countryCode} onChange={(e) => setCountryCode(e.target.value)} disabled={submitting} />
                   </div>
                 )}
-                <div className={clientStyles.modalActions}>
+                <div className={clientStyles.editPageActions}>
                   <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>Cancel</Button>
                   <Button type="submit" variant="accent" disabled={submitting}>
                     {submitting ? "Saving..." : editingItem ? "Save Changes" : `Create ${activeType.charAt(0).toUpperCase() + activeType.slice(1)}`}
@@ -1015,7 +1037,7 @@ function RelationPicker({
   disabled,
 }: {
   label: string;
-  kind: "developer" | "publisher" | "genre" | "platform" | "theme";
+  kind: "developer" | "publisher";
   selected: GameRelationItem[];
   onToggle: (rel: GameRelationItem) => void;
   disabled?: boolean;
@@ -1038,14 +1060,11 @@ function RelationPicker({
 
     const action =
       kind === "developer" ? listDevelopersAction :
-      kind === "publisher" ? listPublishersAction :
-      kind === "genre" ? listGenresAction :
-      kind === "platform" ? listPlatformsAction :
-      listThemesAction;
+      listPublishersAction;
 
     const reqId = ++reqRef.current;
     setLoading(true);
-    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: trimmed }).then((res) => {
+    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: trimmed }).then((res: any) => {
       if (reqId !== reqRef.current) return;
       if ("error" in res) {
         setResults([]);
@@ -1087,6 +1106,76 @@ function RelationPicker({
           </div>
         ) : (
           merged.map((it) => (
+            <label key={it.id} className={clientStyles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(it.id)}
+                onChange={() => onToggle(it)}
+                disabled={disabled}
+              />
+              {it.name}
+            </label>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LazyRelationPicker({
+  label,
+  selected,
+  allOptions,
+  onToggle,
+  disabled,
+  loading,
+}: {
+  label: string;
+  selected: GameRelationItem[];
+  allOptions: GameRelationItem[];
+  onToggle: (rel: GameRelationItem) => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+
+  if (loading) {
+    return (
+      <div className={clientStyles.formGroup}>
+        <label className={clientStyles.label}>{label}</label>
+        <div className={clientStyles.fieldHint}>Loading options...</div>
+      </div>
+    );
+  }
+
+  const selectedIds = new Set(selected.map((s) => s.id));
+
+  // Place selected ones at the top, then filter by search query (case insensitive)
+  const sortedOptions = [
+    ...selected,
+    ...allOptions.filter((opt) => !selectedIds.has(opt.id)),
+  ];
+
+  const filtered = sortedOptions.filter((opt) =>
+    opt.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className={clientStyles.formGroup}>
+      <label className={clientStyles.label}>{label}</label>
+      <input
+        type="text"
+        className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
+        placeholder={`Filter ${label.toLowerCase()}...`}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        disabled={disabled}
+      />
+      <div className={clientStyles.checkboxGroupList}>
+        {filtered.length === 0 ? (
+          <div className={clientStyles.fieldHint}>No options found.</div>
+        ) : (
+          filtered.map((it) => (
             <label key={it.id} className={clientStyles.checkboxLabel}>
               <input
                 type="checkbox"

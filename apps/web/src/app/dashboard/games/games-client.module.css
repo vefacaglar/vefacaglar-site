@@ -100,6 +100,17 @@
   margin-top: 32px;
 }
 
+.editPageActions {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.editPageActions > * {
+  flex: 1;
+}
+
 .btnCancel {
   background: transparent;
   border: 1px solid var(--border);

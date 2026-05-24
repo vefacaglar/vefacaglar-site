@@ -592,6 +592,27 @@ async function listProxy<T>(path: string, params: ListParams): Promise<ListResul
   }
 }
 
+async function getProxy<T>(path: string): Promise<T | { error: string }> {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.get(path, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to fetch." };
+    }
+    return (await res.json()) as T;
+  } catch (error) {
+    console.error("Get proxy fetch error:", path, error);
+    return { error: "Server connection error." };
+  }
+}
+
 export async function listGamesAction(params: ListParams) {
   return listProxy("/api/games/games", params);
 }
@@ -609,4 +630,11 @@ export async function listThemesAction(params: ListParams) {
 }
 export async function listPlatformsAction(params: ListParams) {
   return listProxy("/api/games/platforms", params);
+}
+export async function listRelationsOptionsAction() {
+  return getProxy<{
+    genres: { id: string; name: string; slug: string }[];
+    themes: { id: string; name: string; slug: string }[];
+    platforms: { id: string; name: string; slug: string }[];
+  }>("/api/games/relations-options");
 }

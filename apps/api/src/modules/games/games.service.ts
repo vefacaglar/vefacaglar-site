@@ -7,6 +7,7 @@ import type { IThemesRepository, Theme } from "./themes.repository.interface";
 import type { IPlatformsRepository, Platform } from "./platforms.repository.interface";
 import type { IGamesRepository, GameWithRelations, Game } from "./games.repository.interface";
 import { BadRequestError, NotFoundError } from "../../shared/http-errors";
+import { DbProvider } from "../../db.provider";
 
 @injectable()
 export class GameService {
@@ -16,7 +17,8 @@ export class GameService {
     @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
     @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
-    @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository
+    @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
+    private readonly dbProvider: DbProvider
   ) {}
 
   // --- Developer CRUD Methods ---
@@ -514,5 +516,20 @@ export class GameService {
   async unlinkGameTheme(gameId: string, themeId: string): Promise<void> {
     await this.assertGameExists(gameId);
     await this.gamesRepo.unlinkTheme(gameId, themeId);
+  }
+
+  async getRelationsOptions(): Promise<{ genres: Genre[]; platforms: Platform[]; themes: Theme[] }> {
+    return this.dbProvider.transaction(async () => {
+      const [genresRes, platformsRes, themesRes] = await Promise.all([
+        this.genresRepo.list({ limit: 1000 }),
+        this.platformsRepo.list({ limit: 1000 }),
+        this.themesRepo.list({ limit: 1000 }),
+      ]);
+      return {
+        genres: genresRes.items,
+        platforms: platformsRes.items,
+        themes: themesRes.items,
+      };
+    });
   }
 }

@@ -6,10 +6,8 @@ import { useRouter } from "next/navigation";
 import Button from "../../../components/Button";
 import {
   listDevelopersAction,
-  listGenresAction,
-  listPlatformsAction,
   listPublishersAction,
-  listThemesAction,
+  listRelationsOptionsAction,
   updateGameAction,
 } from "./actions";
 import type { Game, GameRelationItem } from "./GamesDashboardClient";
@@ -48,6 +46,25 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [options, setOptions] = useState<{
+    genres: GameRelationItem[];
+    themes: GameRelationItem[];
+    platforms: GameRelationItem[];
+  } | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+
+  useEffect(() => {
+    setOptionsLoading(true);
+    listRelationsOptionsAction().then((res) => {
+      if ("error" in res) {
+        setError(res.error);
+      } else {
+        setOptions(res);
+      }
+      setOptionsLoading(false);
+    });
+  }, []);
 
   const toggleRelation = async (
     relation: GameRelationItem,
@@ -182,21 +199,21 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
             </div>
           </div>
 
+          <div className={clientStyles.editPageActions}>
+            <Button href={returnUrl} variant="ghost">Cancel</Button>
+            <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</Button>
+          </div>
+
           <div>
             <div className={clientStyles.formSectionTitle}>Relations</div>
             <div className={clientStyles.relationsGrid}>
               <RelationPicker label="Developers" kind="developer" selected={selectedDevelopers} onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")} disabled={submitting} />
               <RelationPicker label="Publishers" kind="publisher" selected={selectedPublishers} onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")} disabled={submitting} />
-              <RelationPicker label="Genres" kind="genre" selected={selectedGenres} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} />
-              <RelationPicker label="Platforms" kind="platform" selected={selectedPlatforms} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} />
-              <RelationPicker label="Themes" kind="theme" selected={selectedThemes} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} />
+              <LazyRelationPicker label="Genres" selected={selectedGenres} allOptions={options?.genres || []} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} loading={optionsLoading} />
+              <LazyRelationPicker label="Platforms" selected={selectedPlatforms} allOptions={options?.platforms || []} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} loading={optionsLoading} />
+              <LazyRelationPicker label="Themes" selected={selectedThemes} allOptions={options?.themes || []} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} loading={optionsLoading} />
             </div>
           </div>
-        </div>
-
-        <div className={clientStyles.modalActions}>
-          <Button href={returnUrl} variant="ghost">Cancel</Button>
-          <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</Button>
         </div>
       </form>
     </div>
@@ -211,7 +228,7 @@ function RelationPicker({
   disabled,
 }: {
   label: string;
-  kind: "developer" | "publisher" | "genre" | "platform" | "theme";
+  kind: "developer" | "publisher";
   selected: GameRelationItem[];
   onToggle: (rel: GameRelationItem) => void;
   disabled?: boolean;
@@ -232,14 +249,11 @@ function RelationPicker({
 
     const action =
       kind === "developer" ? listDevelopersAction :
-      kind === "publisher" ? listPublishersAction :
-      kind === "genre" ? listGenresAction :
-      kind === "platform" ? listPlatformsAction :
-      listThemesAction;
+      listPublishersAction;
 
     const reqId = ++reqRef.current;
     setLoading(true);
-    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: trimmed }).then((res) => {
+    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: trimmed }).then((res: any) => {
       if (reqId !== reqRef.current) return;
       if ("error" in res) {
         setResults([]);
@@ -278,6 +292,76 @@ function RelationPicker({
           merged.map((it) => (
             <label key={it.id} className={clientStyles.checkboxLabel}>
               <input type="checkbox" checked={selectedIds.has(it.id)} onChange={() => onToggle(it)} disabled={disabled} />
+              {it.name}
+            </label>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LazyRelationPicker({
+  label,
+  selected,
+  allOptions,
+  onToggle,
+  disabled,
+  loading,
+}: {
+  label: string;
+  selected: GameRelationItem[];
+  allOptions: GameRelationItem[];
+  onToggle: (rel: GameRelationItem) => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+
+  if (loading) {
+    return (
+      <div className={clientStyles.formGroup}>
+        <label className={clientStyles.label}>{label}</label>
+        <div className={clientStyles.fieldHint}>Loading options...</div>
+      </div>
+    );
+  }
+
+  const selectedIds = new Set(selected.map((s) => s.id));
+
+  // Place selected ones at the top, then filter by search query (case insensitive)
+  const sortedOptions = [
+    ...selected,
+    ...allOptions.filter((opt) => !selectedIds.has(opt.id)),
+  ];
+
+  const filtered = sortedOptions.filter((opt) =>
+    opt.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className={clientStyles.formGroup}>
+      <label className={clientStyles.label}>{label}</label>
+      <input
+        type="text"
+        className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
+        placeholder={`Filter ${label.toLowerCase()}...`}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        disabled={disabled}
+      />
+      <div className={clientStyles.checkboxGroupList}>
+        {filtered.length === 0 ? (
+          <div className={clientStyles.fieldHint}>No options found.</div>
+        ) : (
+          filtered.map((it) => (
+            <label key={it.id} className={clientStyles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(it.id)}
+                onChange={() => onToggle(it)}
+                disabled={disabled}
+              />
               {it.name}
             </label>
           ))
