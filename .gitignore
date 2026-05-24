@@ -54,3 +54,4 @@ docker-compose.override.yml
 .temp/
 tmp/
 .commandcode/taste/taste.md
+.claude/settings.local.json

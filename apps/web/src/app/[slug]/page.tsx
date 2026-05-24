@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import MarkdownPreview from "../components/MarkdownPreview";
 import { getActiveLanguage } from "../../lib/lang";
 import { httpClient } from "../../lib/httpClient";
+import styles from "./page.module.css";
 
 interface PageItem {
   id: string;
@@ -53,7 +54,7 @@ export default async function DynamicPage({ params }: { params: { slug: string }
   return (
     <div>
       <article>
-        <h1 style={{ marginBottom: "24px" }}>{page.title}</h1>
+        <h1 className={styles.title}>{page.title}</h1>
         {page.content && (
           <MarkdownPreview content={page.content} />
         )}

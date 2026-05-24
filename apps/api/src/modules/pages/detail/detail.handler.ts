@@ -14,11 +14,7 @@ export class GetPageHandler {
 
     const page = await this.pagesRepo.findBySlug(slug);
 
-    if (!page) {
-      throw new NotFoundError("err_page_not_found");
-    }
-
-    if (page.status === "draft" && request.user?.role !== "admin") {
+    if (!page || page.status !== "published") {
       throw new NotFoundError("err_page_not_found");
     }
 

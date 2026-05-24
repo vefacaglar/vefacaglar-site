@@ -32,8 +32,15 @@ Turborepo + pnpm workspace. Two apps, two packages.
 **`apps/api`** — Fastify with TypeBox schemas and auto-generated Swagger at `/swagger`. Health at `/health`. Routes registered in `src/app.ts` under `/api/auth`, `/api/posts`, `/api/pages`.
 
 The API follows a strict **Feature Folder / Handler pattern**:
-- `src/modules/<module>/<feature>/` contains `*.schema.ts` (TypeBox request/response schemas — `Static<typeof Schema>` infers TS types) and `*.handler.ts` (a Handler class with the business logic and DB calls).
-- `src/modules/<module>/<module>.routes.ts` is a thin dispatcher: validates input via the registered schema, calls the handler, maps response/errors. Always register schemas on the route options so they appear in Swagger.
+- `src/modules/<module>/<feature>/` contains `*.schema.ts` (TypeBox request/response schemas — `Static<typeof Schema>` infers TS types) and `*.handler.ts` (a Handler class with the business logic and DB calls). Handlers use `@injectable()` and constructor injection.
+- **Strict Page-Specific Endpoints**: Public/external endpoints and dashboard/admin endpoints must **always** live in separate features and endpoints (e.g. public blog list under `src/modules/posts/list/` vs. dashboard blog list under `src/modules/posts/dashboard/list/`). API endpoints must be custom-tailored to their specific page/view requirements to prevent raw administrative logic/data from leaking to public APIs.
+- `src/modules/<module>/<module>.routes.ts` is a thin dispatcher: validates input via the registered schema, resolves the handler from the container (`container.resolve(Handler)`), calls the handler, maps response/errors. Always register schemas on the route options so they appear in Swagger.
+- **Dependency Injection**: Registered in `src/container.ts` using `tsyringe`. Handlers inject repository interfaces using injection tokens (e.g. `POSTS_REPOSITORY`).
+- **No Direct DB Access in Handlers**: Handlers must **never** perform direct database queries or import Drizzle schemas/tables. All database access must go through a **Repository** (for single data sources) or a **Service** (for multiple distinct data sources). Repositories are **not** restricted to a single table schema and can query multiple related tables/schemas under their domain (e.g. games repo querying developers, genres, themes, platforms).
+- **Implicit Transactions**: Done via `DbProvider` and `TransactionManager` utilizing `AsyncLocalStorage` (`transactionStorage`). Repositories use `this.dbProvider.client` for query execution, avoiding passing around `tx` parameters.
+- **Authorization / Route Guards**: Enforced at the route definition using `preHandler: app.requireAdmin` or `preHandler: app.tryAuth` options. Keep checks out of handler logic.
+- **Db Content Localization**: Dynamic content translations are resolved in repositories by injecting `LanguageProvider` and using `mergeTranslations(row, translations)`. **Crucial Optimization**: If the requested language is English (`'en'`) or not specified, **NEVER** query the `localizations` table or run `mergeTranslations` — return the raw row immediately to avoid redundant DB calls.
+- **Error / Localization**: Global error handling via `app.setErrorHandler` translates thrown `HttpError` keys based on `request.lang` using `translateError`.
 - Auth helpers (cookie/session, password hashing with scrypt) live in `modules/auth/auth.utils.ts`.
 
 **`packages/db`** (`@vefacaglar/db`) — Drizzle ORM schemas in `src/schema/` (`users`, `sessions`, `posts`, `pages`, `projects`), exported via `src/index.ts`. Migrations are committed under `drizzle/`. Consumed by `apps/api`.
@@ -44,5 +51,11 @@ The API follows a strict **Feature Folder / Handler pattern**:
 
 From `AGENTS.md` — these are firm constraints, not suggestions:
 - This is a small personal site, not a SaaS product. Keep everything simple.
+- **API Entrypoint**: The `"main": "dist/app.js"` in `apps/api/package.json` must **NEVER** be modified. Production deployment (Vercel) points to it, while local dev uses `src/server.ts`. Do not change this main entrypoint or anything referencing it.
+- **Web Styling & UI Rules**:
+  - **No Inline CSS**: Never use the `style={{ ... }}` attribute under any circumstances.
+  - **CSS Modules Only**: Use `*.module.css` imported as `styles`. No custom global CSS or Tailwind.
+  - **Colors & Palette**: Always use variables from `globals.css` (`var(--bg)`, `var(--text)`, `var(--text-heading)`, `var(--muted)`, `var(--border)`, `var(--accent)`). Never hardcode hex/rgb colors.
+  - **Buttons**: Must strictly use standard classes from `globals.css`: `btnAccent` (primary) and `btnGhost` (secondary).
 - Do **not** add Tailwind, heavy UI libraries, authentication, or database logic unless explicitly requested.
 - All user-facing UI text, code/comments/logs, and git commit messages must be in **English**.

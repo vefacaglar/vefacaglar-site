@@ -37,7 +37,6 @@ export async function projectsRoutes(app: FastifyInstance) {
   }, (request) => createHandler.handle(request));
 
   app.get<{ Querystring: ListProjectsQuery }>("/", {
-    preHandler: app.tryAuth,
     schema: {
       description: "List projects",
       tags: ["Projects"],
@@ -69,7 +68,6 @@ export async function projectsRoutes(app: FastifyInstance) {
   }, (request) => getAdminHandler.handle(request));
 
   app.get<{ Params: GetProjectParams }>("/:slug", {
-    preHandler: app.tryAuth,
     schema: {
       description: "Get project by slug",
       tags: ["Projects"],

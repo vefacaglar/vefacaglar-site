@@ -202,8 +202,8 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
           />
         </div>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
-          <div className="field" style={{ flex: 1, minWidth: "200px" }}>
+        <div className={styles.formRow}>
+          <div className={`field ${styles.formCol}`}>
             <label className="label">Started At</label>
             <input
               type="date"
@@ -213,7 +213,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
             />
           </div>
 
-          <div className="field" style={{ flex: 1, minWidth: "200px" }}>
+          <div className={`field ${styles.formCol}`}>
             <label className="label">Ended At (Optional)</label>
             <input
               type="date"
@@ -224,8 +224,8 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
-          <div className="field" style={{ flex: 1, minWidth: "200px" }}>
+        <div className={styles.formRowAlignCenter}>
+          <div className={`field ${styles.formCol}`}>
             <label className="label">Publish Status</label>
             <select
               value={status}
@@ -237,7 +237,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
             </select>
           </div>
 
-          <div className="field" style={{ flex: 1, minWidth: "200px" }}>
+          <div className={`field ${styles.formCol}`}>
             <label className="label">Sort Order</label>
             <input
               type="number"
@@ -247,15 +247,15 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
             />
           </div>
 
-          <div className="field" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "10px", marginTop: "24px" }}>
+          <div className={styles.checkboxRow}>
             <input
               type="checkbox"
               id="featured"
               checked={featured}
               onChange={(e) => setFeatured(e.target.checked)}
-              style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              className={styles.checkbox}
             />
-            <label htmlFor="featured" className="label" style={{ cursor: "pointer", userSelect: "none" }}>
+            <label htmlFor="featured" className={`label ${styles.checkboxLabel}`}>
               Featured Project
             </label>
           </div>
