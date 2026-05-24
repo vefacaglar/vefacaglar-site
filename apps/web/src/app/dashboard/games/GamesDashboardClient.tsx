@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../dashboard.module.css";
 import clientStyles from "./games-client.module.css";
+import Button from "../../../components/Button";
 import {
   createDeveloperAction,
   updateDeveloperAction,
@@ -614,8 +615,8 @@ export default function GamesDashboardClient({
             {activeSubTab === "themes" && "Game Themes"}
             {activeSubTab === "platforms" && "Game Platforms"}
           </h2>
-          <button
-            className="btnAccent"
+          <Button
+            variant="accent"
             onClick={() => openAddModal(
               activeSubTab === "games" ? "game" :
               activeSubTab === "developers" ? "developer" :
@@ -631,7 +632,7 @@ export default function GamesDashboardClient({
               activeSubTab === "genres" ? "Genre" :
               activeSubTab === "themes" ? "Theme" : "Platform"
             }
-          </button>
+          </Button>
         </div>
 
         <div className={clientStyles.searchBarContainer}>
@@ -952,8 +953,8 @@ export default function GamesDashboardClient({
                 </div>
 
                 <div className={clientStyles.modalActions}>
-                  <button type="button" className={clientStyles.btnCancel} onClick={closeModal} disabled={submitting}>Cancel</button>
-                  <button type="submit" className="btnAccent" disabled={submitting}>{submitting ? "Saving..." : editingItem ? "Save Changes" : "Create Game"}</button>
+                  <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>Cancel</Button>
+                  <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : editingItem ? "Save Changes" : "Create Game"}</Button>
                 </div>
               </form>
             ) : (
@@ -990,10 +991,10 @@ export default function GamesDashboardClient({
                   </div>
                 )}
                 <div className={clientStyles.modalActions}>
-                  <button type="button" className={clientStyles.btnCancel} onClick={closeModal} disabled={submitting}>Cancel</button>
-                  <button type="submit" className="btnAccent" disabled={submitting}>
+                  <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>Cancel</Button>
+                  <Button type="submit" variant="accent" disabled={submitting}>
                     {submitting ? "Saving..." : editingItem ? "Save Changes" : `Create ${activeType.charAt(0).toUpperCase() + activeType.slice(1)}`}
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}

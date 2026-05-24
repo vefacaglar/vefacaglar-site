@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createProjectAction, updateProjectAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
@@ -30,6 +30,8 @@ interface ProjectFormProps {
 
 export default function ProjectForm({ initialData }: ProjectFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromUrl = searchParams.get("from");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,7 +109,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
       setError(result.error);
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      router.push(fromUrl || "/dashboard");
       router.refresh();
     }
   };
@@ -115,7 +117,9 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
   return (
     <div className={styles.wrapper}>
       <div className={styles.back}>
-        <Link href="/dashboard" className="backLink">← back to dashboard</Link>
+        <Link href={fromUrl || "/dashboard"} className="backLink">
+          {fromUrl ? "← cancel" : "← back to dashboard"}
+        </Link>
       </div>
 
       <h1>

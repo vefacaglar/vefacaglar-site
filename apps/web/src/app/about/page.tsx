@@ -2,6 +2,8 @@ import MarkdownPreview from "../components/MarkdownPreview";
 import styles from "./about.module.css";
 import { getActiveLanguage } from "../../lib/lang";
 import { httpClient } from "../../lib/httpClient";
+import AdminEditLink from "../../components/AdminEditLink";
+import { localizeHref } from "../../lib/localizeHref";
 
 interface PageItem {
   id: string;
@@ -54,6 +56,9 @@ export default async function About() {
       <h1>{page?.title || "About"}</h1>
       {page?.content && (
         <MarkdownPreview content={page.content} />
+      )}
+      {page?.id && (
+        <AdminEditLink type="page" id={page.id} from={localizeHref("/about", lang)} />
       )}
     </div>
   );

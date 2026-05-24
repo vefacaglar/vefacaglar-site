@@ -53,6 +53,7 @@ To maintain a consistent minimalist aesthetic and pristine code quality:
 - **Predefined Button Classes**: Buttons must strictly use the standard classes defined in `globals.css`:
   - Primary / Action buttons: Use `btnAccent` from `globals.css` (imported or referenced).
   - Secondary / Outline buttons: Use `btnGhost` from `globals.css`.
+- **No Rounded Corners (Sharp Flat Aesthetic)**: All buttons, links styled as buttons, inputs, textareas, selectors, pagination controls, editor tabs, and interactive chips must have sharp, flat 90-degree square corners (`border-radius: 0;`). Under no circumstances should rounded corners (`border-radius` > 0) be added to interactive controls or standard components.
 
 ## Repository Structure
 

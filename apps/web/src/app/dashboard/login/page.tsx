@@ -6,6 +6,8 @@ import { loginAction } from "../actions";
 import styles from "./login.module.css";
 import formStyles from "../components/form.module.css";
 
+import Button from "../../../components/Button";
+
 export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,13 +65,13 @@ export default function AdminLogin() {
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className={formStyles.submitSm}
+          className={styles.submitBtn}
         >
           {loading ? "Signing in..." : "Sign In"}
-        </button>
+        </Button>
       </form>
     </div>
   );

@@ -5,9 +5,9 @@
   --muted: #7E756B;
   --border: #DFDCD6;
   --accent: #5C544A;
-  --success: #4CAF50;
-  --warning: #FFC107;
-  --info: #2196F3;
+  --success: #6B786F; /* Elegant desaturated sage-grey */
+  --warning: #938779; /* Sophisticated warm sandstone-grey */
+  --info: #6A7580;    /* Muted cool blue-slate grey */
   --on-accent: #FFFFFF;
   --max: 640px;
 }
@@ -20,9 +20,9 @@
     --muted: #9E968A;
     --border: #262626;
     --accent: #B5A897;
-    --success: #66BB6A;
-    --warning: #FFCA28;
-    --info: #42A5F5;
+    --success: #97A39B; /* Soft desaturated sage-grey */
+    --warning: #B3A799; /* Soft warm clay/sandstone-grey */
+    --info: #98A4AF;    /* Soft cool slate-grey */
     --on-accent: #FFFFFF;
   }
 }
@@ -87,7 +87,7 @@ p {
   font-size: 14px;
   background: var(--bg);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .textarea {
@@ -97,7 +97,7 @@ p {
   font-size: 14px;
   background: var(--bg);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: 0;
   resize: vertical;
 }
 
@@ -105,15 +105,32 @@ p {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 6px 12px;
+  padding: 8px 16px;
   font-family: inherit;
   font-size: 14px;
   line-height: 1.5;
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+}
+
+.btnGhost:hover {
+  background-color: var(--border);
+  border-color: var(--text-heading);
+  transform: translateY(-1px);
+}
+
+.btnGhost:active {
+  transform: translateY(0);
+}
+
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btnAccent {
@@ -123,7 +140,7 @@ p {
   text-decoration: none;
   border: 1px solid var(--text-heading);
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 0;
   font-weight: bold;
   cursor: pointer;
   display: inline-flex;
@@ -151,7 +168,7 @@ p {
   color: var(--accent);
   padding: 12px;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 14px;
 }
 
@@ -159,7 +176,7 @@ p {
   color: var(--success);
   padding: 12px;
   border: 1px solid var(--success);
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 14px;
 }
 

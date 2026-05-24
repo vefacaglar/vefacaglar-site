@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { getLocalizationAction, upsertLocalizationAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "./LocalizationButton.module.css";
+import Button from "../../../components/Button";
 
 type EntityType = "page" | "post" | "project";
 type InputType = "input" | "textarea";
@@ -165,12 +166,12 @@ export default function LocalizationButton({
               </div>
 
               <div className={styles.actions}>
-                <button type="button" className="btnGhost" onClick={close}>
+                <Button type="button" variant="ghost" onClick={close}>
                   Cancel
-                </button>
-                <button type="button" className="btnAccent" disabled={loading || loadingValue} onClick={handleSave}>
+                </Button>
+                <Button type="button" variant="accent" disabled={loading || loadingValue} onClick={handleSave}>
                   {loading ? "Saving..." : "Save"}
-                </button>
+                </Button>
               </div>
             </div>
           </div>

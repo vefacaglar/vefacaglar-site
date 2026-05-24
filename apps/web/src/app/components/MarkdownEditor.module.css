@@ -39,7 +39,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 13px;
   padding: 4px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
@@ -73,7 +73,7 @@
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   transition: all 0.15s ease;
   user-select: none;
 }

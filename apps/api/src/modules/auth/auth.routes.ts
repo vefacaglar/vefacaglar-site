@@ -25,11 +25,12 @@ export async function authRoutes(app: FastifyInstance) {
   const profileHandler = container.resolve(ProfileHandler);
 
   app.post<{ Body: LoginRequest }>("/login", {
+    config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
     schema: {
       description: "User login to retrieve a session token",
       tags: ["Auth"],
       body: LoginRequestSchema,
-      response: { 200: LoginResponseSchema, 401: ErrorResponseSchema },
+      response: { 200: LoginResponseSchema, 401: ErrorResponseSchema, 429: ErrorResponseSchema },
     },
   }, (request) => loginHandler.handle(request.body));
 

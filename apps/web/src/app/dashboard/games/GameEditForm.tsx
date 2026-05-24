@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Button from "../../../components/Button";
 import {
   listDevelopersAction,
   listGenresAction,
@@ -194,8 +195,8 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
         </div>
 
         <div className={clientStyles.modalActions}>
-          <Link href={returnUrl} className={clientStyles.btnCancel}>Cancel</Link>
-          <button type="submit" className="btnAccent" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</button>
+          <Button href={returnUrl} variant="ghost">Cancel</Button>
+          <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</Button>
         </div>
       </form>
     </div>

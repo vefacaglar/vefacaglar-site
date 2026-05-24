@@ -10,6 +10,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/seed.ts",
+    "db:cleanup-sessions": "tsx src/cleanup-sessions.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
