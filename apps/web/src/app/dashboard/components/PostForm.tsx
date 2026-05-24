@@ -7,6 +7,7 @@ import { createPostAction, updatePostAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
+import Button from "../../../components/Button";
 
 interface PostFormProps {
   initialData?: {
@@ -242,13 +243,13 @@ export default function PostForm({ initialData }: PostFormProps) {
           </div>
         </details>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className={styles.submit}
+          className={styles.submitBtn}
         >
           {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Post"}
-        </button>
+        </Button>
       </form>
     </div>
   );

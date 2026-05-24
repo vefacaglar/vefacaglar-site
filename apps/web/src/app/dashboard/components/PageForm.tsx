@@ -7,6 +7,7 @@ import { createPageAction, updatePageAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
+import Button from "../../../components/Button";
 
 interface PageFormProps {
   initialData?: {
@@ -205,13 +206,13 @@ export default function PageForm({ initialData }: PageFormProps) {
           </div>
         </details>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className={styles.submit}
+          className={styles.submitBtn}
         >
           {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Page"}
-        </button>
+        </Button>
       </form>
     </div>
   );

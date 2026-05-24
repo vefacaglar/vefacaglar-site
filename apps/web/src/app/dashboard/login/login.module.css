@@ -22,3 +22,7 @@
   color: var(--accent);
   font-size: 14px;
 }
+
+.submitBtn {
+  width: 100%;
+}

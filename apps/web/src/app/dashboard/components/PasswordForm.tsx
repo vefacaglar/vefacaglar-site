@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { changePasswordAction } from "../actions";
 import formStyles from "./form.module.css";
 
+import Button from "../../../components/Button";
+
 export default function PasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,13 +99,12 @@ export default function PasswordForm() {
         />
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={loading}
-        className={formStyles.submitSm}
       >
         {loading ? "Changing..." : "Change Password"}
-      </button>
+      </Button>
     </form>
   );
 }

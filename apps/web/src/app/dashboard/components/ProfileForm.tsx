@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { updateProfileAction } from "../actions";
 import formStyles from "./form.module.css";
 
+import Button from "../../../components/Button";
+
 interface ProfileFormProps {
   initialData: {
     email: string;
@@ -89,13 +91,12 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
         />
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={loading}
-        className={formStyles.submitSm}
       >
         {loading ? "Saving..." : "Save Profile"}
-      </button>
+      </Button>
     </form>
   );
 }

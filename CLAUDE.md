@@ -57,5 +57,6 @@ From `AGENTS.md` — these are firm constraints, not suggestions:
   - **CSS Modules Only**: Use `*.module.css` imported as `styles`. No custom global CSS or Tailwind.
   - **Colors & Palette**: Always use variables from `globals.css` (`var(--bg)`, `var(--text)`, `var(--text-heading)`, `var(--muted)`, `var(--border)`, `var(--accent)`). Never hardcode hex/rgb colors.
   - **Buttons**: Must strictly use standard classes from `globals.css`: `btnAccent` (primary) and `btnGhost` (secondary).
+  - **No Rounded Corners (Sharp Flat Aesthetic)**: All buttons, links styled as buttons, inputs, textareas, selectors, pagination controls, editor tabs, and interactive chips must have sharp, flat 90-degree square corners (`border-radius: 0;`). Never add rounded corners (`border-radius` > 0) to standard components.
 - Do **not** add Tailwind, heavy UI libraries, authentication, or database logic unless explicitly requested.
 - All user-facing UI text, code/comments/logs, and git commit messages must be in **English**.
