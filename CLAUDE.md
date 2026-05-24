@@ -48,5 +48,10 @@ The API follows a strict **Feature Folder / Handler pattern**:
 From `AGENTS.md` — these are firm constraints, not suggestions:
 - This is a small personal site, not a SaaS product. Keep everything simple.
 - **API Entrypoint**: The `"main": "dist/app.js"` in `apps/api/package.json` must **NEVER** be modified. Production deployment (Vercel) points to it, while local dev uses `src/server.ts`. Do not change this main entrypoint or anything referencing it.
+- **Web Styling & UI Rules**:
+  - **No Inline CSS**: Never use the `style={{ ... }}` attribute under any circumstances.
+  - **CSS Modules Only**: Use `*.module.css` imported as `styles`. No custom global CSS or Tailwind.
+  - **Colors & Palette**: Always use variables from `globals.css` (`var(--bg)`, `var(--text)`, `var(--text-heading)`, `var(--muted)`, `var(--border)`, `var(--accent)`). Never hardcode hex/rgb colors.
+  - **Buttons**: Must strictly use standard classes from `globals.css`: `btnAccent` (primary) and `btnGhost` (secondary).
 - Do **not** add Tailwind, heavy UI libraries, authentication, or database logic unless explicitly requested.
 - All user-facing UI text, code/comments/logs, and git commit messages must be in **English**.

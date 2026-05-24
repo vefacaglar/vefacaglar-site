@@ -38,6 +38,22 @@ Do not add authentication unless explicitly requested.
 
 Do not add database logic unless explicitly requested.
 
+## Web Styling & UI Standards (`apps/web`)
+
+To maintain a consistent minimalist aesthetic and pristine code quality:
+- **No Inline CSS**: Never use the `style={{ ... }}` attribute in React/Next.js components under any circumstances.
+- **CSS Modules Only**: All component styles must be declared inside modular CSS files (`*.module.css`) and imported as `styles`. Do not add custom global stylesheets or Tailwind classes.
+- **Color Palette Variables**: Do not hardcode hex, rgb, or named colors in CSS files. Always use the predefined CSS variables from [globals.css](file:///Users/vefa/Projects/vefacaglar-site/apps/web/src/app/globals.css):
+  - Background: `var(--bg)`
+  - Primary Text: `var(--text)`
+  - Headings: `var(--text-heading)`
+  - Muted: `var(--muted)`
+  - Borders: `var(--border)`
+  - Accents: `var(--accent)`
+- **Predefined Button Classes**: Buttons must strictly use the standard classes defined in `globals.css`:
+  - Primary / Action buttons: Use `btnAccent` from `globals.css` (imported or referenced).
+  - Secondary / Outline buttons: Use `btnGhost` from `globals.css`.
+
 ## Repository Structure
 
 Expected structure:
