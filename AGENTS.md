@@ -13,7 +13,7 @@ The site includes:
 - Blog / writings
 - Blog detail pages
 - Projects page
-- Later: small API and admin/content tools
+- Later: small API and dahsboard/content tools
 
 Keep everything simple.
 
@@ -61,6 +61,9 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
   - `*.schema.ts`: Request/Response schemas and types.
   - `*.handler.ts`: Business/database logic inside a Handler class.
 - **Routes**: Define routing in a parent module file (e.g., `src/modules/<module>/<module>.routes.ts`). Route controllers must remain thin—only validating requests, invoking the handler, and mapping responses/errors.
+- **Dependency Injection**: Use `tsyringe` for DI. Handlers must be decorated with `@injectable()` and receive repositories through `@inject(TOKEN)` constructor injection. All repository interfaces, implementations, and services must be registered in `src/container.ts`.
+- **Transactions & DB Access**: Repositories must inject `DbProvider` and use `this.dbProvider.client` for all queries. Never manually pass transaction (`tx`) parameters through layers; transaction propagation is handled implicitly via `AsyncLocalStorage` (`transactionStorage`) inside `TransactionManager`.
+- **Error & Localization**: Throw custom `HttpError` subclasses using predefined translation keys. The global error handler translates errors automatically using `translateError` based on `request.lang`.
 - **Swagger Documentation**: Always register schemas in route options to support automated, typed OpenAPI documentation at `/swagger`.
 
 ## Database Migrations

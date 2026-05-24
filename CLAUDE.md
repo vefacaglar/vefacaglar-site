@@ -32,8 +32,11 @@ Turborepo + pnpm workspace. Two apps, two packages.
 **`apps/api`** — Fastify with TypeBox schemas and auto-generated Swagger at `/swagger`. Health at `/health`. Routes registered in `src/app.ts` under `/api/auth`, `/api/posts`, `/api/pages`.
 
 The API follows a strict **Feature Folder / Handler pattern**:
-- `src/modules/<module>/<feature>/` contains `*.schema.ts` (TypeBox request/response schemas — `Static<typeof Schema>` infers TS types) and `*.handler.ts` (a Handler class with the business logic and DB calls).
-- `src/modules/<module>/<module>.routes.ts` is a thin dispatcher: validates input via the registered schema, calls the handler, maps response/errors. Always register schemas on the route options so they appear in Swagger.
+- `src/modules/<module>/<feature>/` contains `*.schema.ts` (TypeBox request/response schemas — `Static<typeof Schema>` infers TS types) and `*.handler.ts` (a Handler class with the business logic and DB calls). Handlers use `@injectable()` and constructor injection.
+- `src/modules/<module>/<module>.routes.ts` is a thin dispatcher: validates input via the registered schema, resolves the handler from the container (`container.resolve(Handler)`), calls the handler, maps response/errors. Always register schemas on the route options so they appear in Swagger.
+- **Dependency Injection**: Registered in `src/container.ts` using `tsyringe`. Handlers inject repository interfaces using injection tokens (e.g. `POSTS_REPOSITORY`).
+- **Implicit Transactions**: Done via `DbProvider` and `TransactionManager` utilizing `AsyncLocalStorage` (`transactionStorage`). Repositories use `this.dbProvider.client` for query execution, avoiding passing around `tx` parameters.
+- **Error / Localization**: Global error handling via `app.setErrorHandler` translates thrown `HttpError` keys based on `request.lang` using `translateError`.
 - Auth helpers (cookie/session, password hashing with scrypt) live in `modules/auth/auth.utils.ts`.
 
 **`packages/db`** (`@vefacaglar/db`) — Drizzle ORM schemas in `src/schema/` (`users`, `sessions`, `posts`, `pages`, `projects`), exported via `src/index.ts`. Migrations are committed under `drizzle/`. Consumed by `apps/api`.
