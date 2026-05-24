@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import DeleteButton from "./DeleteButton";
 import SimplePagination from "./SimplePagination";
 import styles from "../dashboard.module.css";
@@ -31,60 +32,60 @@ interface ProjectItem {
 }
 
 interface DashboardListsContainerProps {
-  initialPosts: PostItem[];
-  initialProjects: ProjectItem[];
-  initialPages: PageItem[];
+  posts: PostItem[];
+  postsTotal: number;
+  postsPage: number;
+  postsLimit: number;
+  postsTotalPages: number;
+
+  projects: ProjectItem[];
+  projectsTotal: number;
+  projectsPage: number;
+  projectsLimit: number;
+  projectsTotalPages: number;
+
+  pages: PageItem[];
+  pagesTotal: number;
+  pagesPage: number;
+  pagesLimit: number;
+  pagesTotalPages: number;
+
   deletePostAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
   deleteProjectAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
   deletePageAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
 }
 
 export default function DashboardListsContainer({
-  initialPosts,
-  initialProjects,
-  initialPages,
+  posts,
+  postsTotal,
+  postsPage,
+  postsLimit,
+  postsTotalPages,
+  projects,
+  projectsTotal,
+  projectsPage,
+  projectsLimit,
+  projectsTotalPages,
+  pages,
+  pagesTotal,
+  pagesPage,
+  pagesLimit,
+  pagesTotalPages,
   deletePostAction,
   deleteProjectAction,
   deletePageAction,
 }: DashboardListsContainerProps) {
-  // Posts state
-  const [postsPage, setPostsPage] = useState(1);
-  const [postsLimit, setPostsLimit] = useState(10);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // Projects state
-  const [projectsPage, setProjectsPage] = useState(1);
-  const [projectsLimit, setProjectsLimit] = useState(10);
-
-  // Pages state
-  const [pagesPage, setPagesPage] = useState(1);
-  const [pagesLimit, setPagesLimit] = useState(10);
-
-  // Derive paginated Posts
-  const postsTotal = initialPosts.length;
-  const postsTotalPages = Math.ceil(postsTotal / postsLimit);
-  const activePostsPage = Math.min(postsPage, Math.max(1, postsTotalPages));
-  const paginatedPosts = initialPosts.slice(
-    (activePostsPage - 1) * postsLimit,
-    activePostsPage * postsLimit
-  );
-
-  // Derive paginated Projects
-  const projectsTotal = initialProjects.length;
-  const projectsTotalPages = Math.ceil(projectsTotal / projectsLimit);
-  const activeProjectsPage = Math.min(projectsPage, Math.max(1, projectsTotalPages));
-  const paginatedProjects = initialProjects.slice(
-    (activeProjectsPage - 1) * projectsLimit,
-    activeProjectsPage * projectsLimit
-  );
-
-  // Derive paginated Pages
-  const pagesTotal = initialPages.length;
-  const pagesTotalPages = Math.ceil(pagesTotal / pagesLimit);
-  const activePagesPage = Math.min(pagesPage, Math.max(1, pagesTotalPages));
-  const paginatedPages = initialPages.slice(
-    (activePagesPage - 1) * pagesLimit,
-    activePagesPage * pagesLimit
-  );
+  const updateQueryParam = (updates: Record<string, string | number>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      params.set(key, value.toString());
+    });
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div>
@@ -97,7 +98,7 @@ export default function DashboardListsContainer({
           </Link>
         </div>
 
-        {initialPosts.length === 0 ? (
+        {postsTotal === 0 ? (
           <p className={styles.empty}>No posts added yet.</p>
         ) : (
           <>
@@ -110,7 +111,7 @@ export default function DashboardListsContainer({
                 </tr>
               </thead>
               <tbody>
-                {paginatedPosts.map((post) => (
+                {posts.map((post) => (
                   <tr key={post.id} className={styles.tr}>
                     <td className={styles.td}>
                       <Link href={`/blog/${post.slug}`} target="_blank" className={styles.postLink}>
@@ -139,8 +140,8 @@ export default function DashboardListsContainer({
                currentPage={postsPage}
                totalPages={postsTotalPages}
                limit={postsLimit}
-               onPageChange={setPostsPage}
-               onLimitChange={setPostsLimit}
+               onPageChange={(page) => updateQueryParam({ postsPage: page })}
+               onLimitChange={(limit) => updateQueryParam({ postsLimit: limit, postsPage: 1 })}
                selectId="postsPageSize"
              />
           </>
@@ -156,7 +157,7 @@ export default function DashboardListsContainer({
           </Link>
         </div>
 
-        {initialProjects.length === 0 ? (
+        {projectsTotal === 0 ? (
           <p className={styles.empty}>No projects added yet.</p>
         ) : (
           <>
@@ -169,7 +170,7 @@ export default function DashboardListsContainer({
                 </tr>
               </thead>
               <tbody>
-                {paginatedProjects.map((project) => (
+                {projects.map((project) => (
                   <tr key={project.id} className={styles.tr}>
                     <td className={styles.td}>{project.title} (/projects/{project.slug})</td>
                     <td className={styles.td}>
@@ -194,8 +195,8 @@ export default function DashboardListsContainer({
                currentPage={projectsPage}
                totalPages={projectsTotalPages}
                limit={projectsLimit}
-               onPageChange={setProjectsPage}
-               onLimitChange={setProjectsLimit}
+               onPageChange={(page) => updateQueryParam({ projectsPage: page })}
+               onLimitChange={(limit) => updateQueryParam({ projectsLimit: limit, projectsPage: 1 })}
                selectId="projectsPageSize"
              />
           </>
@@ -211,7 +212,7 @@ export default function DashboardListsContainer({
           </Link>
         </div>
 
-        {initialPages.length === 0 ? (
+        {pagesTotal === 0 ? (
           <p className={styles.empty}>No pages added yet.</p>
         ) : (
           <>
@@ -224,7 +225,7 @@ export default function DashboardListsContainer({
                 </tr>
               </thead>
               <tbody>
-                {paginatedPages.map((page) => (
+                {pages.map((page) => (
                   <tr key={page.id} className={styles.tr}>
                     <td className={styles.td}>{page.title} (/{page.slug})</td>
                     <td className={styles.td}>
@@ -249,8 +250,8 @@ export default function DashboardListsContainer({
                currentPage={pagesPage}
                totalPages={pagesTotalPages}
                limit={pagesLimit}
-               onPageChange={setPagesPage}
-               onLimitChange={setPagesLimit}
+               onPageChange={(page) => updateQueryParam({ pagesPage: page })}
+               onLimitChange={(limit) => updateQueryParam({ pagesLimit: limit, pagesPage: 1 })}
                selectId="pagesPageSize"
              />
           </>
