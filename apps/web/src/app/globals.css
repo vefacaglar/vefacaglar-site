@@ -5,9 +5,9 @@
   --muted: #7E756B;
   --border: #DFDCD6;
   --accent: #5C544A;
-  --success: #4CAF50;
-  --warning: #FFC107;
-  --info: #2196F3;
+  --success: #6B786F; /* Elegant desaturated sage-grey */
+  --warning: #938779; /* Sophisticated warm sandstone-grey */
+  --info: #6A7580;    /* Muted cool blue-slate grey */
   --on-accent: #FFFFFF;
   --max: 640px;
 }
@@ -20,9 +20,9 @@
     --muted: #9E968A;
     --border: #262626;
     --accent: #B5A897;
-    --success: #66BB6A;
-    --warning: #FFCA28;
-    --info: #42A5F5;
+    --success: #97A39B; /* Soft desaturated sage-grey */
+    --warning: #B3A799; /* Soft warm clay/sandstone-grey */
+    --info: #98A4AF;    /* Soft cool slate-grey */
     --on-accent: #FFFFFF;
   }
 }
