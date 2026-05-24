@@ -33,6 +33,7 @@ Turborepo + pnpm workspace. Two apps, two packages.
 
 The API follows a strict **Feature Folder / Handler pattern**:
 - `src/modules/<module>/<feature>/` contains `*.schema.ts` (TypeBox request/response schemas — `Static<typeof Schema>` infers TS types) and `*.handler.ts` (a Handler class with the business logic and DB calls). Handlers use `@injectable()` and constructor injection.
+- **Strict Page-Specific Endpoints**: Public/external endpoints and dashboard/admin endpoints must **always** live in separate features and endpoints (e.g. public blog list under `src/modules/posts/list/` vs. dashboard blog list under `src/modules/posts/dashboard/list/`). API endpoints must be custom-tailored to their specific page/view requirements to prevent raw administrative logic/data from leaking to public APIs.
 - `src/modules/<module>/<module>.routes.ts` is a thin dispatcher: validates input via the registered schema, resolves the handler from the container (`container.resolve(Handler)`), calls the handler, maps response/errors. Always register schemas on the route options so they appear in Swagger.
 - **Dependency Injection**: Registered in `src/container.ts` using `tsyringe`. Handlers inject repository interfaces using injection tokens (e.g. `POSTS_REPOSITORY`).
 - **Implicit Transactions**: Done via `DbProvider` and `TransactionManager` utilizing `AsyncLocalStorage` (`transactionStorage`). Repositories use `this.dbProvider.client` for query execution, avoiding passing around `tx` parameters.
