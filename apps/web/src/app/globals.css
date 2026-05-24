@@ -5,6 +5,10 @@
   --muted: #7E756B;
   --border: #DFDCD6;
   --accent: #5C544A;
+  --success: #4CAF50;
+  --warning: #FFC107;
+  --info: #2196F3;
+  --on-accent: #FFFFFF;
   --max: 640px;
 }
 
@@ -16,6 +20,10 @@
     --muted: #9E968A;
     --border: #262626;
     --accent: #B5A897;
+    --success: #66BB6A;
+    --warning: #FFCA28;
+    --info: #42A5F5;
+    --on-accent: #FFFFFF;
   }
 }
 
@@ -148,9 +156,9 @@ p {
 }
 
 .successMsg {
-  color: #4CAF50;
+  color: var(--success);
   padding: 12px;
-  border: 1px solid #4CAF50;
+  border: 1px solid var(--success);
   border-radius: 4px;
   font-size: 14px;
 }

@@ -668,11 +668,7 @@ export default function GamesDashboardClient({
         </div>
 
         <div
-          style={{
-            opacity: isPending ? 0.6 : 1,
-            pointerEvents: isPending ? "none" : "auto",
-            transition: "opacity 0.2s ease-in-out",
-          }}
+          className={`${clientStyles.pendingOverlay} ${isPending ? clientStyles.pendingOverlayActive : ""}`}
         >
           {items.length === 0 && (
             <div className={clientStyles.emptyState}>
@@ -745,7 +741,7 @@ export default function GamesDashboardClient({
                       </div>
                       <div className={clientStyles.gameCardActions}>
                         <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>Edit</Link>
-                        <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete("game", game.id, game.title)}>Delete</button>
                       </div>
                     </div>
                   );
@@ -786,7 +782,7 @@ export default function GamesDashboardClient({
                       </div>
                       <div className={clientStyles.gameCompactActionsCol}>
                         <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>Edit</Link>
-                        <button type="button" className={styles.editLink} onClick={() => handleDelete("game", game.id, game.title)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete("game", game.id, game.title)}>Delete</button>
                       </div>
                     </div>
                   );
@@ -812,8 +808,8 @@ export default function GamesDashboardClient({
                     <div className={clientStyles.profileCardFooter}>
                       <span className={clientStyles.profileCardCountry}>{it.countryCode ? `🏳️ ${it.countryCode}` : "Global"}</span>
                       <div className={clientStyles.profileCardActions}>
-                        <button type="button" className={styles.editLink} onClick={() => openEditModal(t, it)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Edit</button>
-                        <button type="button" className={styles.editLink} onClick={() => handleDelete(t, it.id, it.name)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, color: "var(--accent)" }}>Delete</button>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtn}`} onClick={() => openEditModal(t, it)}>Edit</button>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete(t, it.id, it.name)}>Delete</button>
                       </div>
                     </div>
                   </div>
@@ -1071,18 +1067,17 @@ function RelationPicker({
       <label className={clientStyles.label}>{label}</label>
       <input
         type="text"
-        className={clientStyles.input}
+        className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
         placeholder={`Search ${label.toLowerCase()} (min 3 chars)...`}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
-        style={{ marginBottom: 6 }}
       />
       <div className={clientStyles.checkboxGroupList}>
         {loading && merged.length === 0 ? (
-          <div style={{ fontSize: "12px", color: "var(--muted)" }}>Loading…</div>
+          <div className={clientStyles.fieldHint}>Loading…</div>
         ) : merged.length === 0 ? (
-          <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+          <div className={clientStyles.fieldHint}>
             {query.trim().length > 0 && query.trim().length < 3
               ? "Type at least 3 characters."
               : query.trim().length >= 3 && debounced.trim().length < 3

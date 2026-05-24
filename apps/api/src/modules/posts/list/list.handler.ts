@@ -9,14 +9,13 @@ export class ListPostsHandler {
   constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPostsQuery }>): Promise<ListPostsResponse> {
-    const isAdmin = request.user?.role === "admin";
-    const { status, page, limit } = request.query;
+    const { page, limit } = request.query;
 
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
     const filter = {
-      status: !isAdmin ? ("published" as const) : status ? status : undefined,
+      status: "published" as const,
       page: pageNum,
       limit: limitNum,
     };

@@ -37,7 +37,6 @@ export async function postsRoutes(app: FastifyInstance) {
   }, (request) => createHandler.handle(request));
 
   app.get<{ Querystring: ListPostsQuery }>("/", {
-    preHandler: app.tryAuth,
     schema: {
       description: "List blog posts",
       tags: ["Posts"],
@@ -69,7 +68,6 @@ export async function postsRoutes(app: FastifyInstance) {
   }, (request) => getAdminHandler.handle(request));
 
   app.get<{ Params: GetPostParams }>("/:slug", {
-    preHandler: app.tryAuth,
     schema: {
       description: "Get blog post by slug",
       tags: ["Posts"],

@@ -8,17 +8,8 @@ import type { IPagesRepository } from "../pages.repository.interface";
 export class ListPagesHandler {
   constructor(@inject(PAGES_REPOSITORY) private readonly pagesRepo: IPagesRepository) {}
 
-  async handle(request: FastifyRequest<{ Querystring: ListPagesQuery }>): Promise<ListPagesResponse> {
-    const isAdmin = request.user?.role === "admin";
-    const { status } = request.query;
-
-    const filter = !isAdmin
-      ? { status: "published" as const }
-      : status
-      ? { status }
-      : undefined;
-
-    const { items: result } = await this.pagesRepo.list(filter);
+  async handle(_request: FastifyRequest<{ Querystring: ListPagesQuery }>): Promise<ListPagesResponse> {
+    const { items: result } = await this.pagesRepo.list({ status: "published" });
 
     return result.map((page) => ({
       id: page.id,

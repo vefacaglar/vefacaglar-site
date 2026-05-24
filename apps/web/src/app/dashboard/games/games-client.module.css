@@ -239,6 +239,43 @@
   margin-bottom: 16px;
 }
 
+.searchInputBottom {
+  margin-bottom: 6px;
+}
+
+.fieldHint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pendingOverlay {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.pendingOverlayActive {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.linkBtnDanger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  color: var(--accent);
+}
+
 .checkboxLabel {
   display: flex;
   align-items: center;

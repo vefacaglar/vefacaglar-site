@@ -14,12 +14,7 @@ export class GetPostHandler {
 
     const post = await this.postsRepo.findBySlugWithAuthor(slug);
 
-    if (!post) {
-      throw new NotFoundError("err_post_not_found");
-    }
-
-    // Hide drafts from non-admins
-    if (post.status === "draft" && request.user?.role !== "admin") {
+    if (!post || post.status !== "published") {
       throw new NotFoundError("err_post_not_found");
     }
 

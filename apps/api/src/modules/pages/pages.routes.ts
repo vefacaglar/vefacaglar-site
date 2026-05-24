@@ -37,7 +37,6 @@ export async function pagesRoutes(app: FastifyInstance) {
   }, (request) => createHandler.handle(request));
 
   app.get<{ Querystring: ListPagesQuery }>("/", {
-    preHandler: app.tryAuth,
     schema: {
       description: "List pages",
       tags: ["Pages"],
@@ -69,7 +68,6 @@ export async function pagesRoutes(app: FastifyInstance) {
   }, (request) => getAdminHandler.handle(request));
 
   app.get<{ Params: GetPageParams }>("/:slug", {
-    preHandler: app.tryAuth,
     schema: {
       description: "Get page by slug",
       tags: ["Pages"],

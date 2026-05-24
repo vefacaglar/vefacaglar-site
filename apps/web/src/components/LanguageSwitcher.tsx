@@ -3,6 +3,7 @@
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "./LocaleProvider";
+import styles from "./LanguageSwitcher.module.css";
 
 export default function LanguageSwitcher() {
   const router = useRouter();
@@ -26,40 +27,16 @@ export default function LanguageSwitcher() {
     router.refresh();
   };
 
+  const btnClass = (lang: "en" | "tr") =>
+    locale === lang ? `${styles.btn} ${styles.btnActive}` : styles.btn;
+
   return (
-    <div style={{
-      display: "flex",
-      gap: "8px",
-      fontSize: "12px",
-      fontFamily: "inherit"
-    }}>
-      <button
-        onClick={() => handleLanguageChange("en")}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "2px 4px",
-          color: locale === "en" ? "var(--accent)" : "var(--muted)",
-          fontWeight: locale === "en" ? "600" : "normal",
-          textDecoration: locale === "en" ? "underline" : "none",
-        }}
-      >
+    <div className={styles.switcher}>
+      <button onClick={() => handleLanguageChange("en")} className={btnClass("en")}>
         en
       </button>
-      <span style={{ color: "var(--border)" }}>|</span>
-      <button
-        onClick={() => handleLanguageChange("tr")}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "2px 4px",
-          color: locale === "tr" ? "var(--accent)" : "var(--muted)",
-          fontWeight: locale === "tr" ? "600" : "normal",
-          textDecoration: locale === "tr" ? "underline" : "none",
-        }}
-      >
+      <span className={styles.divider}>|</span>
+      <button onClick={() => handleLanguageChange("tr")} className={btnClass("tr")}>
         tr
       </button>
     </div>

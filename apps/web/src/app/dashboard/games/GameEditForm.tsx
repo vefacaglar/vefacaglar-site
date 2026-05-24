@@ -260,18 +260,17 @@ function RelationPicker({
       <label className={clientStyles.label}>{label}</label>
       <input
         type="text"
-        className={clientStyles.input}
+        className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
         placeholder={`Search ${label.toLowerCase()} (min 3 chars)...`}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
-        style={{ marginBottom: 6 }}
       />
       <div className={clientStyles.checkboxGroupList}>
         {loading && merged.length === 0 ? (
-          <div style={{ fontSize: "12px", color: "var(--muted)" }}>Loading…</div>
+          <div className={clientStyles.fieldHint}>Loading…</div>
         ) : merged.length === 0 ? (
-          <div style={{ fontSize: "12px", color: "var(--muted)" }}>
+          <div className={clientStyles.fieldHint}>
             {query.trim().length > 0 && query.trim().length < 3 ? "Type at least 3 characters." : "No matches."}
           </div>
         ) : (

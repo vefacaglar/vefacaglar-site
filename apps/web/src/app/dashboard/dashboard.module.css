@@ -85,7 +85,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   background: rgba(76, 175, 80, 0.15);
-  color: #4CAF50;
+  color: var(--success);
 }
 
 .statusDraft {
@@ -93,7 +93,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   background: rgba(255, 193, 7, 0.15);
-  color: #FFC107;
+  color: var(--warning);
 }
 
 .statusPlaying {
@@ -101,7 +101,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   background: rgba(33, 150, 243, 0.15);
-  color: #2196F3;
+  color: var(--info);
 }
 
 .statusOnHold {

@@ -14,12 +14,7 @@ export class GetProjectHandler {
 
     const project = await this.projectsRepo.findBySlug(slug);
 
-    if (!project) {
-      throw new NotFoundError("err_project_not_found");
-    }
-
-    // Hide drafts from non-admins
-    if (project.status === "draft" && request.user?.role !== "admin") {
+    if (!project || project.status !== "published") {
       throw new NotFoundError("err_project_not_found");
     }
 

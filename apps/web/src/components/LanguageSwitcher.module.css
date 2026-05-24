@@ -1,0 +1,28 @@
+.switcher {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-weight: normal;
+  text-decoration: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.btnActive {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.divider {
+  color: var(--border);
+}
