@@ -3,6 +3,9 @@
 import React, { useState, useRef } from "react";
 import MarkdownPreview from "./MarkdownPreview";
 import styles from "./MarkdownEditor.module.css";
+import { getSessionToken } from "../dashboard/actions";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface MarkdownEditorProps {
   value: string;
@@ -169,11 +172,19 @@ export default function MarkdownEditor({
     setIsUploading(true);
 
     try {
+      const token = await getSessionToken();
+      if (!token) {
+        throw new Error("Unauthorized. Please log in.");
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/api/uploads/image", {
+      const response = await fetch(`${API_URL}/api/uploads/image`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 

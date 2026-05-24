@@ -21,7 +21,11 @@ import fastifyMultipart from "@fastify/multipart";
 
 const isProduction = process.env.NODE_ENV === "production";
 
-export const app = Fastify({ logger: true, trustProxy: true });
+export const app = Fastify({
+  logger: true,
+  trustProxy: true,
+  bodyLimit: 10 * 1024 * 1024,
+});
 
 // Security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, ...)
 app.register(fastifyHelmet, {
