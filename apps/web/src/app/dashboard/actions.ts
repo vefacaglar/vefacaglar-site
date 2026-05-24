@@ -473,8 +473,9 @@ export async function uploadImageAction(formData: FormData) {
 
   if (!token) return { error: "Unauthorized." };
 
+  const API_URL = process.env.API_URL || "http://localhost:3001";
+
   try {
-    const API_URL = process.env.API_URL || "http://localhost:3001";
     const res = await fetch(`${API_URL}/api/uploads/image`, {
       method: "POST",
       headers: {
@@ -490,8 +491,8 @@ export async function uploadImageAction(formData: FormData) {
 
     return await res.json();
   } catch (error) {
-    console.error("Upload image error:", error);
-    return { error: "Server connection error." };
+    console.error(`Upload image error (tried fetching from ${API_URL}/api/uploads/image):`, error);
+    return { error: `Server connection error (tried connecting to ${API_URL}).` };
   }
 }
 
