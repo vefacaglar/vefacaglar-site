@@ -36,6 +36,8 @@ The API follows a strict **Feature Folder / Handler pattern**:
 - `src/modules/<module>/<module>.routes.ts` is a thin dispatcher: validates input via the registered schema, resolves the handler from the container (`container.resolve(Handler)`), calls the handler, maps response/errors. Always register schemas on the route options so they appear in Swagger.
 - **Dependency Injection**: Registered in `src/container.ts` using `tsyringe`. Handlers inject repository interfaces using injection tokens (e.g. `POSTS_REPOSITORY`).
 - **Implicit Transactions**: Done via `DbProvider` and `TransactionManager` utilizing `AsyncLocalStorage` (`transactionStorage`). Repositories use `this.dbProvider.client` for query execution, avoiding passing around `tx` parameters.
+- **Authorization / Route Guards**: Enforced at the route definition using `preHandler: app.requireAdmin` or `preHandler: app.tryAuth` options. Keep checks out of handler logic.
+- **Db Content Localization**: Dynamic content translations are resolved in repositories by injecting `LanguageProvider` and using `mergeTranslations(row, translations)`. **Crucial Optimization**: If the requested language is English (`'en'`) or not specified, **NEVER** query the `localizations` table or run `mergeTranslations` — return the raw row immediately to avoid redundant DB calls.
 - **Error / Localization**: Global error handling via `app.setErrorHandler` translates thrown `HttpError` keys based on `request.lang` using `translateError`.
 - Auth helpers (cookie/session, password hashing with scrypt) live in `modules/auth/auth.utils.ts`.
 
