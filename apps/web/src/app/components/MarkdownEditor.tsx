@@ -3,7 +3,6 @@
 import React, { useState, useRef } from "react";
 import MarkdownPreview from "./MarkdownPreview";
 import styles from "./MarkdownEditor.module.css";
-import { uploadImageAction } from "../dashboard/actions";
 
 interface MarkdownEditorProps {
   value: string;
@@ -173,10 +172,15 @@ export default function MarkdownEditor({
       const formData = new FormData();
       formData.append("file", file);
 
-      const result = await uploadImageAction(formData);
+      const response = await fetch("/api/uploads/image", {
+        method: "POST",
+        body: formData,
+      });
 
-      if (result.error) {
-        throw new Error(result.error);
+      const result = await response.json();
+
+      if (!response.ok || result.error || result.message) {
+        throw new Error(result.error || result.message || "Failed to upload image.");
       }
 
       const finalImageMarkdown = `![${filename}](${result.url})`;
