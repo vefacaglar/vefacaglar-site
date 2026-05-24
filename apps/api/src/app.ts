@@ -100,9 +100,13 @@ app.setErrorHandler((err, request, reply) => {
     const translatedMsg = translateError(err.message, request.lang);
     return reply.status(err.statusCode).send({ message: translatedMsg });
   }
-  const fastifyErr = err as { validation?: unknown; message?: string };
+  const fastifyErr = err as { validation?: unknown; message?: string; statusCode?: number };
   if (fastifyErr.validation) {
     return reply.status(400).send({ message: fastifyErr.message ?? "Validation error." });
+  }
+  if (fastifyErr.statusCode === 429) {
+    const translatedMsg = translateError("err_rate_limit_exceeded", request.lang);
+    return reply.status(429).send({ message: translatedMsg });
   }
   request.log.error(err);
   return reply.status(500).send({ message: "Internal server error." });

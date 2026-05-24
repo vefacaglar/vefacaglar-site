@@ -2,5 +2,6 @@
   "err_page_not_found": "Sayfa bulunamadı.",
   "err_post_not_found": "Yazı bulunamadı.",
   "err_project_not_found": "Proje bulunamadı.",
-  "err_unauthorized": "Bu kaynağa erişim yetkiniz bulunmamaktadır."
+  "err_unauthorized": "Bu kaynağa erişim yetkiniz bulunmamaktadır.",
+  "err_rate_limit_exceeded": "Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin."
 }

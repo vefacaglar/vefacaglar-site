@@ -19,6 +19,25 @@ class HttpClient {
       headers.set("language", lang);
     }
 
+    // In a server-side context (e.g. Server Actions, Server Components),
+    // forward the client's real IP address to the API.
+    if (typeof window === "undefined") {
+      try {
+        const { headers: nextHeaders } = require("next/headers");
+        const list = nextHeaders();
+        const forwardedFor = list.get("x-forwarded-for");
+        const realIp = list.get("x-real-ip");
+
+        if (forwardedFor && !headers.has("x-forwarded-for")) {
+          headers.set("x-forwarded-for", forwardedFor);
+        } else if (realIp && !headers.has("x-forwarded-for")) {
+          headers.set("x-forwarded-for", realIp);
+        }
+      } catch (e) {
+        // Silence errors if called outside of a request context (e.g., static generation/build time)
+      }
+    }
+
     return fetch(url, {
       ...init,
       headers,

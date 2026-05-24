@@ -25,7 +25,16 @@ export async function authRoutes(app: FastifyInstance) {
   const profileHandler = container.resolve(ProfileHandler);
 
   app.post<{ Body: LoginRequest }>("/login", {
-    config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: "15 minutes",
+        keyGenerator: (request) => {
+          const email = (request.body as LoginRequest | undefined)?.email || "";
+          return `${request.ip}-${email}`;
+        },
+      },
+    },
     schema: {
       description: "User login to retrieve a session token",
       tags: ["Auth"],
