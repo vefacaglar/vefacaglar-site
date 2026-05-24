@@ -1,6 +1,8 @@
 import { MetadataRoute } from "next";
 import { httpClient } from "../lib/httpClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vefacaglar.com";
 
