@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./post.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
+import { getDictionary } from "../../../dictionaries";
+import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
 
 interface PostDetail {
@@ -24,7 +26,6 @@ interface PostDetail {
 
 export const dynamic = "force-dynamic";
 
-// Dynamic SEO Metadata Generation
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const res = await httpClient.get(`/api/posts/${params.slug}`);
@@ -43,6 +44,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function BlogPost({ params }: { params: { slug: string } }) {
   let post: PostDetail | null = null;
   const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const res = await httpClient.get(`/api/posts/${params.slug}`, {
@@ -80,8 +82,8 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         )}
         {post.author && (
           <div className={styles.author}>
-            {lang === "tr" ? "yazar: " : "by "}
-            <Link href={`/author/${post.author.username}`}>
+            {dict.by}{" "}
+            <Link href={localizeHref(`/author/${post.author.username}`, lang)}>
               {post.author.displayName}
             </Link>
           </div>
@@ -98,7 +100,6 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         </div>
       )}
 
-      {/* Render Markdown Content */}
       <div className={styles.body}>
         <MarkdownPreview content={post.content} />
       </div>

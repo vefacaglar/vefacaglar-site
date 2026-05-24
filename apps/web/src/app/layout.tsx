@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TopBar } from "../components/TopBar";
 import Header from "../components/Header";
+import { LocaleProvider } from "../components/LocaleProvider";
 import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
 import "./globals.css";
@@ -21,15 +22,18 @@ export default function RootLayout({
 }) {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const locale = (lang === "tr" ? "tr" : "en") as "en" | "tr";
 
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body>
-        <TopBar />
-        <main className={styles.main}>
-          <Header dict={dict} />
-          {children}
-        </main>
+        <LocaleProvider locale={locale}>
+          <TopBar />
+          <main className={styles.main}>
+            <Header dict={dict} />
+            {children}
+          </main>
+        </LocaleProvider>
       </body>
     </html>
   );

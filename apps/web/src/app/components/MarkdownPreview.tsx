@@ -2,7 +2,21 @@
 
 import React from "react";
 import Link from "next/link";
+import { useLocale } from "../../components/LocaleProvider";
 import styles from "./MarkdownPreview.module.css";
+
+function useLocalizedHref(href: string): string {
+  const locale = useLocale();
+  if (locale === "tr" && href.startsWith("/") && !href.startsWith("/tr")) {
+    return `/tr${href}`;
+  }
+  return href;
+}
+
+function LocalizedLink({ href, ...props }: React.ComponentProps<typeof Link>) {
+  const localizedHref = useLocalizedHref(typeof href === "string" ? href : "");
+  return <Link href={localizedHref} {...props} />;
+}
 
 function getYouTubeId(url: string): string | null {
   const regExp = /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -119,13 +133,13 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
               {altText}
             </a>
           ) : (
-            <Link
+            <LocalizedLink
               key={`${index}-${keyCounter++}`}
               href={srcOrHref}
               className={styles.link}
             >
               {altText}
-            </Link>
+            </LocalizedLink>
           )
         );
       }

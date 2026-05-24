@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useLocale } from "./LocaleProvider";
 import styles from "./Header.module.css";
 
 interface HeaderProps {
@@ -15,35 +16,35 @@ interface HeaderProps {
 }
 
 export default function Header({ dict }: HeaderProps) {
-  const pathname = usePathname();
+  const rawPath = usePathname();
+  const locale = useLocale();
+  const prefix = locale === "tr" ? "/tr" : "";
+  const pagePath = rawPath.replace(/^\/tr/, "") || "/";
 
-  // Helper to determine the breadcrumbs
   const getBreadcrumbs = () => {
-    const isHome = !pathname || pathname === "/";
+    const isHome = pagePath === "/" || pagePath === "";
     const items: Array<{ label: string; href: string | null }> = [
-      { label: "vefacaglar", href: isHome ? null : "/" }
+      { label: "vefacaglar", href: isHome ? null : `${prefix}/` }
     ];
 
-    if (isHome) {
-      return items;
-    }
+    if (isHome) return items;
 
-    if (pathname.startsWith("/about")) {
+    if (pagePath.startsWith("/about")) {
       items.push({ label: dict.about.toLowerCase(), href: null });
-    } else if (pathname.startsWith("/projects")) {
-      if (pathname !== "/projects") {
-        items.push({ label: dict.projects.toLowerCase(), href: "/projects" });
+    } else if (pagePath.startsWith("/projects")) {
+      if (pagePath !== "/projects") {
+        items.push({ label: dict.projects.toLowerCase(), href: `${prefix}/projects` });
       } else {
         items.push({ label: dict.projects.toLowerCase(), href: null });
       }
-    } else if (pathname.startsWith("/blog")) {
-      if (pathname !== "/blog") {
-        items.push({ label: dict.back_to_blog.toLowerCase(), href: "/blog" });
+    } else if (pagePath.startsWith("/blog")) {
+      if (pagePath !== "/blog") {
+        items.push({ label: dict.back_to_blog.toLowerCase(), href: `${prefix}/blog` });
       } else {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: null });
       }
-    } else if (pathname.startsWith("/author/")) {
-      const parts = pathname.split("/");
+    } else if (pagePath.startsWith("/author/")) {
+      const parts = pagePath.split("/");
       const username = parts[2] || "author";
       items.push({ label: username.toLowerCase(), href: null });
     }

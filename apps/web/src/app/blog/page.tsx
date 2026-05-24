@@ -2,6 +2,7 @@ import Link from 'next/link';
 import styles from "./blog.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
+import { localizeHref } from '../../lib/localizeHref';
 import { httpClient } from '../../lib/httpClient';
 import Pagination from '../components/Pagination';
 
@@ -66,11 +67,7 @@ export default async function Blog({ searchParams }: BlogProps) {
   return (
     <div>
       <h1>{dict.blog}</h1>
-      <p className={styles.subtitle}>
-        {lang === "tr" 
-          ? "Teknik kararlar ve oyun geliştirme üzerine yazılar." 
-          : "Writing about technical decisions and game development."}
-      </p>
+      <p className={styles.subtitle}>{dict.blog_subtitle}</p>
 
       {posts.length === 0 ? (
         <p className={styles.empty}>{dict.no_posts}</p>
@@ -81,7 +78,7 @@ export default async function Blog({ searchParams }: BlogProps) {
               <li key={post.id} className={styles.listItem}>
                 <span className={styles.dash}>—</span>
                 <div className={styles.itemMeta}>
-                  <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                  <Link href={localizeHref(`/blog/${post.slug}`, lang)}>{post.title}</Link>
                   {post.excerpt && <p className={styles.excerpt}>{post.excerpt}</p>}
                   <div className={styles.date}>
                     {post.publishedAt && (
@@ -90,7 +87,7 @@ export default async function Blog({ searchParams }: BlogProps) {
                     {post.author && (
                       <span className={styles.author}>
                         {" — "}
-                        <Link href={`/author/${post.author.username}`}>
+                        <Link href={localizeHref(`/author/${post.author.username}`, lang)}>
                           {post.author.displayName}
                         </Link>
                       </span>
