@@ -10,22 +10,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const API_URL = process.env.API_URL || "http://localhost:3001";
 
   try {
-    if (!req.body) {
-      return NextResponse.json({ message: "No file body provided." }, { status: 400 });
+    // Read the raw request body as an ArrayBuffer.
+    // This is 100% compatible with Vercel's serverless environment and avoids stream duplex crashes.
+    const arrayBuffer = await req.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    if (buffer.length === 0) {
+      return NextResponse.json({ message: "No file content provided." }, { status: 400 });
     }
 
-    // Stream the raw body directly to the Fastify backend API.
-    // This avoids parsing the multipart form data in Next.js, preventing memory/CPU overhead
-    // and bypassing any Next.js Serverless body-parsing bugs.
+    // Forward the raw buffer to the Fastify backend API
     const apiRes = await fetch(`${API_URL}/api/uploads/image`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": req.headers.get("Content-Type") || "multipart/form-data",
       },
-      body: req.body,
-      // @ts-ignore - duplex is required in Node's fetch implementation when passing a stream body
-      duplex: "half",
+      body: buffer,
     });
 
     const body = await apiRes.text();
