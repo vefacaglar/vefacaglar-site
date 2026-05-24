@@ -16,7 +16,7 @@
 .modalContent {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 4px;
   width: 100%;
   max-width: 500px;
   padding: 32px;
@@ -68,20 +68,19 @@
 }
 
 .input {
-  padding: 12px;
+  padding: 8px 12px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: 4px;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 255, 75, 43), 0.15);
+  border-color: var(--text-heading);
 }
 
 .errorMsg {
@@ -105,8 +104,8 @@
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 10px 20px;
-  border-radius: 6px;
+  padding: 8px 16px;
+  border-radius: 4px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -159,40 +158,40 @@
 }
 
 .pillDev {
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
-  background: rgba(59, 130, 246, 0.04);
+  border-color: var(--border);
+  color: var(--muted);
+  background: transparent;
 }
 
 .pillPub {
-  border-color: rgba(20, 184, 166, 0.3);
-  color: #2dd4bf;
-  background: rgba(20, 184, 166, 0.04);
+  border-color: var(--border);
+  color: var(--muted);
+  background: transparent;
 }
 
 .pillGenre {
-  border-color: rgba(139, 92, 246, 0.3);
-  color: #a78bfa;
-  background: rgba(139, 92, 246, 0.04);
+  border-color: var(--border);
+  color: var(--muted);
+  background: transparent;
 }
 
 .pillPlatform {
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.04);
+  border-color: var(--border);
+  color: var(--muted);
+  background: transparent;
 }
 
 .pillTheme {
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.04);
+  border-color: var(--border);
+  color: var(--muted);
+  background: transparent;
 }
 
 /* Large Modal Layout */
 .modalContentLarge {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 4px;
   width: 100%;
   max-width: 850px;
   padding: 32px;
@@ -234,7 +233,7 @@
   max-height: 120px;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.01);
   margin-bottom: 16px;
@@ -273,22 +272,21 @@
 }
 
 .textarea {
-  padding: 12px;
+  padding: 8px 12px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: 4px;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
   resize: vertical;
   min-height: 80px;
 }
 
 .textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 255, 75, 43), 0.15);
+  border-color: var(--text-heading);
 }
 
 .editPageWrapper {
@@ -312,9 +310,9 @@
 
 .editPagePanel {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 28px;
-  background: rgba(255, 255, 255, 0.01);
+  background: transparent;
 }
 
 .scoreBadge {
@@ -330,10 +328,10 @@
 /* Sub-Tabbed Layout Styles */
 .subTabsContainer {
   display: flex;
-  gap: 10px;
+  gap: 24px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
   margin-bottom: 32px;
+  padding-bottom: 12px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -343,37 +341,44 @@
 }
 
 .subTabButton {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   color: var(--muted);
-  padding: 8px 18px;
-  border-radius: 6px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0 0 12px 0;
+  margin-bottom: -13px;
+  transition: color 0.2s ease;
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
 }
 
+.subTabButton:hover {
+  color: var(--text);
+}
 
 .subTabButtonActive {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(255, 75, 43, 0.25);
+  color: var(--text-heading);
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
 }
 
 .subTabBadge {
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.2);
-  color: inherit;
+  border-radius: 4px;
+  background: var(--border);
+  color: var(--muted);
   font-weight: 600;
+}
+
+.subTabButtonActive .subTabBadge {
+  background: rgba(200, 98, 64, 0.15);
+  color: var(--accent);
 }
 
 /* View Mode Switcher */
@@ -388,28 +393,27 @@
 .searchInput {
   flex: 1;
   min-width: 250px;
-  padding: 12px 18px;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 12px;
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
-  border-radius: 8px;
+  border-radius: 4px;
   outline: none;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .searchInput:focus {
-  border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--text-heading);
 }
 
 .viewToggleBtnGroup {
   display: flex;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
+  border-radius: 4px;
+  padding: 2px;
   gap: 2px;
 }
 
@@ -418,21 +422,21 @@
   border: none;
   color: var(--muted);
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .viewToggleBtnActive {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border);
   color: var(--text-heading);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
 }
 
 .viewToggleBtn:hover:not(.viewToggleBtnActive) {
@@ -448,21 +452,19 @@
 }
 
 .gameCard {
-  background: rgba(255, 255, 255, 0.01);
+  background: transparent;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 4px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.25s ease;
+  transition: border-color 0.2s ease;
   height: 100%;
 }
 
 .gameCard:hover {
-  transform: translateY(-4px);
   border-color: var(--accent);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.01);
 }
 
 .gameCardCover {
@@ -486,7 +488,7 @@
 .gameCardPlaceholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(255, 75, 43, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  background: var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -509,24 +511,23 @@
   font-size: 10px;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
+  border-radius: 4px;
+  background: var(--bg);
   border: 1px solid var(--border);
-  color: #fff;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .scoreHigh {
-  border-color: #10b981;
-  color: #34d399;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .scoreMid {
-  border-color: #f59e0b;
-  color: #fbbf24;
+  border-color: var(--muted);
+  color: var(--muted);
 }
 
 .gameCardContent {
@@ -600,7 +601,7 @@
   gap: 10px 14px;
   background: rgba(255, 255, 255, 0.01);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 12px 16px;
   transition: all 0.2s ease;
 }
@@ -625,7 +626,7 @@
 .gameCompactPlaceholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(255, 75, 43, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  background: var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -708,7 +709,7 @@
 .profileCard {
   background: rgba(255, 255, 255, 0.01);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 12px 16px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
@@ -729,8 +730,8 @@
 .profileCardIcon {
   width: 38px;
   height: 38px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(20, 184, 166, 0.08) 100%);
+  border-radius: 4px;
+  background: var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -795,7 +796,7 @@
   margin-bottom: 40px;
   background: rgba(255, 255, 255, 0.01);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 24px;
 }
 
@@ -806,7 +807,7 @@
   background: rgba(255, 255, 255, 0.01);
   border: 1px solid var(--border);
   padding: 6px 14px;
-  border-radius: 20px;
+  border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -879,7 +880,7 @@
 }
 
 .paginationBtn {
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
   min-width: 32px;
@@ -888,25 +889,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 4px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   user-select: none;
 }
 
 .paginationBtn:hover:not(.paginationBtnDisabled):not(.paginationBtnActive) {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--text);
+  border-color: var(--text-heading);
 }
 
 .paginationBtnActive {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(255, 75, 43, 0.25);
+  background: var(--text-heading);
+  border-color: var(--text-heading);
+  color: var(--bg);
 }
 
 .paginationBtnDisabled {
