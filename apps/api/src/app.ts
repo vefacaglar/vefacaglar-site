@@ -3,6 +3,8 @@ import Fastify from "fastify";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import fastifyRateLimit from "@fastify/rate-limit";
+import fastifyHelmet from "@fastify/helmet";
+import fastifyCors from "@fastify/cors";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { postsRoutes } from "./modules/posts/posts.routes";
 import { pagesRoutes } from "./modules/pages/pages.routes";
@@ -17,7 +19,24 @@ import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
 import fastifyMultipart from "@fastify/multipart";
 
-export const app = Fastify({ logger: true });
+const isProduction = process.env.NODE_ENV === "production";
+
+export const app = Fastify({ logger: true, trustProxy: true });
+
+// Security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, ...)
+app.register(fastifyHelmet, {
+  contentSecurityPolicy: false,
+});
+
+// CORS — allow only the configured web origin
+const webOrigins = (process.env.WEB_URL ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.register(fastifyCors, {
+  origin: webOrigins.length > 0 ? webOrigins : false,
+  credentials: false,
+});
 
 // Register localization plugin
 registerLocalization(app);
@@ -36,38 +55,39 @@ app.register(fastifyRateLimit, {
   timeWindow: "1 minute",
 });
 
-// Register Swagger
-app.register(fastifySwagger, {
-  openapi: {
-    info: {
-      title: "Vefa Çağlar Site API",
-      description: "Personal Website API documentation",
-      version: "0.1.0",
-    },
-    servers: [
-      {
-        url: process.env.API_URL ?? "/",
+// Swagger — disabled in production to avoid exposing the admin API surface
+if (!isProduction) {
+  app.register(fastifySwagger, {
+    openapi: {
+      info: {
+        title: "Vefa Çağlar Site API",
+        description: "Personal Website API documentation",
+        version: "0.1.0",
       },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
+      servers: [
+        {
+          url: process.env.API_URL ?? "/",
+        },
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+          },
         },
       },
     },
-  },
-});
+  });
 
-// Register Swagger UI
-app.register(fastifySwaggerUi, {
-  routePrefix: "/swagger",
-  uiConfig: {
-    docExpansion: "list",
-    deepLinking: false,
-  },
-});
+  app.register(fastifySwaggerUi, {
+    routePrefix: "/swagger",
+    uiConfig: {
+      docExpansion: "list",
+      deepLinking: false,
+    },
+  });
+}
 
 app.get("/health", async () => {
   return { status: "ok" };

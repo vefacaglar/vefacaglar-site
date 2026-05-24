@@ -162,6 +162,16 @@ brew link --force libpq
   pg_dump "postgresql://user:password@host/dbname?sslmode=require" --column-inserts -F p -v -f ~/db_backup_inserts.sql
   ```
 
+### 7. Session Cleanup
+Sessions are not deleted on logout or expiry — `revoked_at` / `expires_at` columns are set instead, so the table grows over time. Run this periodically (recommended: weekly via cron, or manually) to physically delete:
+
+- sessions whose `expires_at` has already passed, and
+- sessions whose `revoked_at` is older than 30 days.
+
+```bash
+pnpm --filter @vefacaglar/db db:cleanup-sessions
+```
+
 
 ---
 
