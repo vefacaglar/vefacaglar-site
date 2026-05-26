@@ -5,6 +5,7 @@ import ProfileForm from "../components/ProfileForm";
 import PasswordForm from "../components/PasswordForm";
 import { getProfileAction } from "../actions";
 import styles from "./profile.module.css";
+import ds from "../../../lib/dashboard-strings";
 
 export const dynamic = "force-dynamic";
 
@@ -24,18 +25,18 @@ export default async function ProfilePage() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.back}>
-        <Link href="/dashboard" className="backLink">← back to dashboard</Link>
+        <Link href="/dashboard" className="backLink">{ds.profile.backToDashboard}</Link>
       </div>
 
-      <h1 className={styles.title}>Profile</h1>
+      <h1 className={styles.title}>{ds.profile.title}</h1>
 
       <section className={styles.profileSection}>
-        <h2 className={styles.sectionTitle}>Profile Information</h2>
+        <h2 className={styles.sectionTitle}>{ds.profile.profileInfo}</h2>
         <ProfileForm initialData={profile} />
       </section>
 
       <section>
-        <h2 className={styles.sectionTitle}>Change Password</h2>
+        <h2 className={styles.sectionTitle}>{ds.profile.changePassword}</h2>
         <PasswordForm />
       </section>
     </div>

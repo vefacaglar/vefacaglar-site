@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./project.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
-import { getDictionary } from "../../../dictionaries";
+import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { httpClient } from "../../../lib/httpClient";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { localizeHref } from "../../../lib/localizeHref";
@@ -29,17 +29,20 @@ interface ProjectDetail {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
+
   try {
     const res = await httpClient.get(`/api/projects/${params.slug}`);
-    if (!res.ok) return { title: "project not found" };
+    if (!res.ok) return { title: dict.project_not_found_title };
 
     const project: ProjectDetail = await res.json();
     return {
-      title: project.seoTitle || `${project.title} | vefa çağlar`,
+      title: project.seoTitle || formatMetaTitle(project.title, lang),
       description: project.seoDescription || project.summary,
     };
   } catch {
-    return { title: "vefa çağlar projects" };
+    return { title: dict.site_projects_meta_title };
   }
 }
 
@@ -76,7 +79,7 @@ export default async function Project({ params }: { params: { slug: string } }) 
     if (!project?.startedAt) return "";
     const start = formatProjectDate(project.startedAt);
     const end = project.endedAt ? formatProjectDate(project.endedAt) : dict.present;
-    return `${start} — ${end}`;
+    return `${start} ${dict.separator_dash} ${end}`;
   };
 
   const duration = getDurationString();

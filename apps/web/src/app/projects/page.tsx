@@ -21,11 +21,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();
-  const title = lang === "tr" ? "projeler — vefa çağlar" : "projects — vefa çağlar";
-  const description = lang === "tr" 
-    ? "geliştirdiğim açık kaynaklı projeler, araçlar ve deneyler." 
-    : "open source projects, tools, and side experiments.";
-  return { title, description };
+  const dict = getDictionary(lang);
+  return { title: dict.projects_meta_title, description: dict.projects_meta_description };
 }
 
 interface ProjectsProps {
@@ -72,7 +69,7 @@ export default async function Projects({ searchParams }: ProjectsProps) {
           <ul className={styles.list}>
             {projects.map((project) => (
               <li key={project.id} className={styles.listItem}>
-                <span className={styles.dash}>—</span>
+                <span className={styles.dash}>{dict.separator_dash}</span>
                 <div className={styles.itemMeta}>
                   <div>
                     <Link href={localizeHref(`/projects/${project.slug}`, lang)}>{project.title}</Link>

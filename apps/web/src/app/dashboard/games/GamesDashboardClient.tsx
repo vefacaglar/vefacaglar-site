@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import styles from "../dashboard.module.css";
 import clientStyles from "./games-client.module.css";
 import Button from "../../../components/Button";
+import ds from "../../../lib/dashboard-strings";
 import {
   createDeveloperAction,
   updateDeveloperAction,
@@ -303,7 +304,7 @@ export default function GamesDashboardClient({
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         setSelected(selected);
-        setError(errData.message || `Failed to ${isSelected ? "unlink" : "link"} ${relationType.slice(0, -1)}.`);
+        setError(errData.message || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
       }
     } catch (err) {
       setSelected(selected);
@@ -403,10 +404,10 @@ export default function GamesDashboardClient({
           populateGameForm(fresh);
         } else {
           const errData = await res.json().catch(() => ({}));
-          setError(errData.message || "Failed to load latest game data.");
+          setError(errData.message || ds.games.errors.loadFailed);
         }
       } catch {
-        setError("Server connection error.");
+        setError(ds.games.errors.serverError);
       }
     } else {
       setName(item.name);
@@ -428,11 +429,11 @@ export default function GamesDashboardClient({
     e.preventDefault();
 
     if (activeType === "game") {
-      if (!gameTitle.trim()) { setError("Title is required"); return; }
+      if (!gameTitle.trim()) { setError(ds.games.errors.titleRequired); return; }
     } else {
-      if (!name.trim()) { setError("Name is required"); return; }
+      if (!name.trim()) { setError(ds.games.errors.nameRequired); return; }
     }
-    if (!slug.trim()) { setError("Slug is required"); return; }
+    if (!slug.trim()) { setError(ds.games.errors.slugRequired); return; }
 
     setSubmitting(true);
     setError(null);
@@ -497,7 +498,7 @@ export default function GamesDashboardClient({
   };
 
   const handleDelete = async (type: EntityType, id: string, itemName: string) => {
-    if (!confirm(`Are you sure you want to delete ${type} "${itemName}"?`)) return;
+    if (!confirm(ds.games.deleteConfirm.replace("{type}", type).replace("{itemName}", itemName))) return;
 
     let res;
     if (type === "game") res = await deleteGameAction(id);
@@ -543,7 +544,7 @@ export default function GamesDashboardClient({
     return (
       <div className={clientStyles.paginationContainer}>
         <div className={clientStyles.paginationInfo}>
-          Showing {startItem}-{endItem} of {total} items
+          {ds.games.pagination.showing.replace("{start}", String(startItem)).replace("{end}", String(endItem)).replace("{total}", String(total))}
         </div>
         <div className={clientStyles.paginationControls}>
           <button
@@ -552,7 +553,7 @@ export default function GamesDashboardClient({
             onClick={() => page > 1 && handlePageChange(page - 1)}
             disabled={page === 1}
           >
-            &larr; Prev
+            {ds.games.pagination.prev}
           </button>
           {getPageNumbers().map((p, idx) => (
             <button
@@ -571,11 +572,11 @@ export default function GamesDashboardClient({
             onClick={() => page < totalPages && handlePageChange(page + 1)}
             disabled={page === totalPages}
           >
-            Next &rarr;
+            {ds.games.pagination.next}
           </button>
         </div>
         <div className={clientStyles.paginationPageSize}>
-          <span>Items per page:</span>
+          <span>{ds.games.pagination.itemsPerPage}</span>
           <select
             className={clientStyles.paginationSelect}
             value={pageSize}
@@ -603,12 +604,12 @@ export default function GamesDashboardClient({
       <div className={clientStyles.subTabsContainer}>
         {(["games", "developers", "publishers", "genres", "themes", "platforms"] as SubTab[]).map((tab) => {
           const labels: Record<SubTab, string> = {
-            games: "Games",
-            developers: "Developers",
-            publishers: "Publishers",
-            genres: "Genres",
-            themes: "Themes",
-            platforms: "Platforms",
+            games: ds.games.tabs.games,
+            developers: ds.games.tabs.developers,
+            publishers: ds.games.tabs.publishers,
+            genres: ds.games.tabs.genres,
+            themes: ds.games.tabs.themes,
+            platforms: ds.games.tabs.platforms,
           };
           const count = counts[tab];
           return (
@@ -627,12 +628,12 @@ export default function GamesDashboardClient({
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>
-            {activeSubTab === "games" && "Games Library"}
-            {activeSubTab === "developers" && "Game Developers"}
-            {activeSubTab === "publishers" && "Game Publishers"}
-            {activeSubTab === "genres" && "Game Genres"}
-            {activeSubTab === "themes" && "Game Themes"}
-            {activeSubTab === "platforms" && "Game Platforms"}
+            {activeSubTab === "games" && ds.games.sections.games}
+            {activeSubTab === "developers" && ds.games.sections.developers}
+            {activeSubTab === "publishers" && ds.games.sections.publishers}
+            {activeSubTab === "genres" && ds.games.sections.genres}
+            {activeSubTab === "themes" && ds.games.sections.themes}
+            {activeSubTab === "platforms" && ds.games.sections.platforms}
           </h2>
           <Button
             variant="accent"
@@ -644,12 +645,12 @@ export default function GamesDashboardClient({
               activeSubTab === "themes" ? "theme" : "platform"
             )}
           >
-            + New {
-              activeSubTab === "games" ? "Game" :
-              activeSubTab === "developers" ? "Developer" :
-              activeSubTab === "publishers" ? "Publisher" :
-              activeSubTab === "genres" ? "Genre" :
-              activeSubTab === "themes" ? "Theme" : "Platform"
+            {
+              activeSubTab === "games" ? ds.games.buttons.newGame :
+              activeSubTab === "developers" ? ds.games.buttons.newDeveloper :
+              activeSubTab === "publishers" ? ds.games.buttons.newPublisher :
+              activeSubTab === "genres" ? ds.games.buttons.newGenre :
+              activeSubTab === "themes" ? ds.games.buttons.newTheme : ds.games.buttons.newPlatform
             }
           </Button>
         </div>
@@ -660,10 +661,8 @@ export default function GamesDashboardClient({
             className={clientStyles.searchInput}
             placeholder={
               activeSubTab === "games"
-                ? "Search games by title or slug..."
-                : activeSubTab === "developers" || activeSubTab === "publishers"
-                  ? `Search ${activeSubTab} by name or slug...`
-                  : `Search ${activeSubTab} by name or slug...`
+                ? ds.games.search.games
+                : ds.games.search.template.replace("{type}", activeSubTab)
             }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -675,14 +674,14 @@ export default function GamesDashboardClient({
                 type="button"
                 className={`${clientStyles.viewToggleBtn} ${gamesViewMode === "grid" ? clientStyles.viewToggleBtnActive : ""}`}
                 onClick={() => { setGamesViewMode("grid"); localStorage.setItem("gamesViewMode", "grid"); }}
-                title="Grid View"
-              >Grid</button>
+                title={ds.games.buttons.gridView}
+              >{ds.games.buttons.gridView}</button>
               <button
                 type="button"
                 className={`${clientStyles.viewToggleBtn} ${gamesViewMode === "list" ? clientStyles.viewToggleBtnActive : ""}`}
                 onClick={() => { setGamesViewMode("list"); localStorage.setItem("gamesViewMode", "list"); }}
-                title="Compact Row List View"
-              >List</button>
+                title={ds.games.buttons.listView}
+              >{ds.games.buttons.listView}</button>
             </div>
           )}
         </div>
@@ -693,8 +692,8 @@ export default function GamesDashboardClient({
           {items.length === 0 && (
             <div className={clientStyles.emptyState}>
               {debouncedSearch
-                ? `No ${activeSubTab} match your search query: "${debouncedSearch}"`
-                : `No ${activeSubTab} found.`}
+                ? ds.games.empty.noMatch.replace("{type}", activeSubTab).replace("{q}", debouncedSearch)
+                : ds.games.empty.noResults.replace("{type}", activeSubTab)}
             </div>
           )}
 
@@ -714,10 +713,10 @@ export default function GamesDashboardClient({
                         {(game.metacriticScore || game.openCriticScore) && (
                           <div className={clientStyles.gameCardScores}>
                             {game.metacriticScore && (
-                              <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title="Metacritic Score">MC: {game.metacriticScore}</span>
+                              <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title={ds.games.form.metacriticScore}>{ds.games.card.metacritic} {game.metacriticScore}</span>
                             )}
                             {game.openCriticScore && (
-                              <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title="OpenCritic Score">OC: {game.openCriticScore}</span>
+                              <span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title={ds.games.form.opencriticScore}>{ds.games.card.opencrit} {game.openCriticScore}</span>
                             )}
                           </div>
                         )}
@@ -726,42 +725,42 @@ export default function GamesDashboardClient({
                         <h4 className={clientStyles.gameCardTitle} title={game.title}>{game.title}</h4>
                         {game.originalTitle && <div className={clientStyles.gameCardOriginalTitle}>{game.originalTitle}</div>}
                         <div className={clientStyles.gameCardMeta}>
-                          <span>Release: {game.releaseDate || "—"}</span>
-                          {game.hltbMainHours && <span>HLTB: {game.hltbMainHours}h</span>}
+                          <span>{ds.games.card.release} {game.releaseDate || "—"}</span>
+                          {game.hltbMainHours && <span>{ds.games.card.hltb} {game.hltbMainHours}h</span>}
                         </div>
                         <div className={clientStyles.gameCardRelations}>
                           {game.developers.length > 0 && (
                             <div className={clientStyles.relationPills}>
                               {game.developers.map((d) => (
-                                <span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>
+                                <span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`${ds.games.form.developers}: ${d.name}`}>{d.name}</span>
                               ))}
                             </div>
                           )}
                           {game.publishers.length > 0 && (
                             <div className={clientStyles.relationPills}>
                               {game.publishers.map((p) => (
-                                <span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>
+                                <span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`${ds.games.form.publishers}: ${p.name}`}>{p.name}</span>
                               ))}
                             </div>
                           )}
                           {(game.genres.length > 0 || game.platforms.length > 0 || game.themes.length > 0) && (
                             <div className={clientStyles.relationPills}>
                               {game.genres.map((g) => (
-                                <span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>
+                                <span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`${ds.games.form.genres}: ${g.name}`}>{g.name}</span>
                               ))}
                               {game.platforms.map((pl) => (
-                                <span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>
+                                <span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`${ds.games.form.platforms}: ${pl.name}`}>{pl.name}</span>
                               ))}
                               {game.themes.map((t) => (
-                                <span key={t.id} className={`${clientStyles.pill} ${clientStyles.pillTheme}`} title={`Theme: ${t.name}`}>{t.name}</span>
+                                <span key={t.id} className={`${clientStyles.pill} ${clientStyles.pillTheme}`} title={`${ds.games.form.themes}: ${t.name}`}>{t.name}</span>
                               ))}
                             </div>
                           )}
                         </div>
                       </div>
                       <div className={clientStyles.gameCardActions}>
-                        <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>Edit</Link>
-                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete("game", game.id, game.title)}>Delete</button>
+                        <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>{ds.games.buttons.edit}</Link>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete("game", game.id, game.title)}>{ds.games.buttons.delete}</button>
                       </div>
                     </div>
                   );
@@ -785,24 +784,24 @@ export default function GamesDashboardClient({
                         {game.originalTitle && <div className={clientStyles.gameCompactOriginalTitle}>{game.originalTitle}</div>}
                       </div>
                       <div className={clientStyles.gameCompactScoresCol}>
-                        {game.metacriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title="Metacritic">MC: {game.metacriticScore}</span>)}
-                        {game.openCriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title="OpenCritic">OC: {game.openCriticScore}</span>)}
+                        {game.metacriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.metacriticScore)}`} title={ds.games.form.metacriticScore}>{ds.games.card.metacritic} {game.metacriticScore}</span>)}
+                        {game.openCriticScore && (<span className={`${clientStyles.scorePill} ${getScoreColorClass(game.openCriticScore)}`} title={ds.games.form.opencriticScore}>{ds.games.card.opencrit} {game.openCriticScore}</span>)}
                       </div>
                       <div className={clientStyles.gameCompactMetaCol}>
-                        <span>Release: {game.releaseDate || "—"}</span>
-                        {game.hltbMainHours && <span>HLTB: {game.hltbMainHours}h</span>}
+                        <span>{ds.games.card.release} {game.releaseDate || "—"}</span>
+                        {game.hltbMainHours && <span>{ds.games.card.hltb} {game.hltbMainHours}h</span>}
                       </div>
                       <div className={clientStyles.gameCompactRelationsCol}>
                         <div className={clientStyles.relationPills}>
-                          {game.developers.map((d) => (<span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`Developer: ${d.name}`}>{d.name}</span>))}
-                          {game.publishers.map((p) => (<span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`Publisher: ${p.name}`}>{p.name}</span>))}
-                          {game.genres.map((g) => (<span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`Genre: ${g.name}`}>{g.name}</span>))}
-                          {game.platforms.map((pl) => (<span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`Platform: ${pl.name}`}>{pl.name}</span>))}
+                          {game.developers.map((d) => (<span key={d.id} className={`${clientStyles.pill} ${clientStyles.pillDev}`} title={`${ds.games.form.developers}: ${d.name}`}>{d.name}</span>))}
+                          {game.publishers.map((p) => (<span key={p.id} className={`${clientStyles.pill} ${clientStyles.pillPub}`} title={`${ds.games.form.publishers}: ${p.name}`}>{p.name}</span>))}
+                          {game.genres.map((g) => (<span key={g.id} className={`${clientStyles.pill} ${clientStyles.pillGenre}`} title={`${ds.games.form.genres}: ${g.name}`}>{g.name}</span>))}
+                          {game.platforms.map((pl) => (<span key={pl.id} className={`${clientStyles.pill} ${clientStyles.pillPlatform}`} title={`${ds.games.form.platforms}: ${pl.name}`}>{pl.name}</span>))}
                         </div>
                       </div>
                       <div className={clientStyles.gameCompactActionsCol}>
-                        <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>Edit</Link>
-                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete("game", game.id, game.title)}>Delete</button>
+                        <Link href={`/dashboard/games/edit/${game.id}?returnUrl=${encodeURIComponent(getReturnUrl())}`} className={styles.editLink}>{ds.games.buttons.edit}</Link>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete("game", game.id, game.title)}>{ds.games.buttons.delete}</button>
                       </div>
                     </div>
                   );
@@ -826,10 +825,10 @@ export default function GamesDashboardClient({
                       </div>
                     </div>
                     <div className={clientStyles.profileCardFooter}>
-                      <span className={clientStyles.profileCardCountry}>{it.countryCode ? `🏳️ ${it.countryCode}` : "Global"}</span>
+                      <span className={clientStyles.profileCardCountry}>{it.countryCode ? `🏳️ ${it.countryCode}` : ds.games.card.global}</span>
                       <div className={clientStyles.profileCardActions}>
-                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtn}`} onClick={() => openEditModal(t, it)}>Edit</button>
-                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete(t, it.id, it.name)}>Delete</button>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtn}`} onClick={() => openEditModal(t, it)}>{ds.games.buttons.edit}</button>
+                        <button type="button" className={`${styles.editLink} ${clientStyles.linkBtnDanger}`} onClick={() => handleDelete(t, it.id, it.name)}>{ds.games.buttons.delete}</button>
                       </div>
                     </div>
                   </div>
@@ -849,8 +848,8 @@ export default function GamesDashboardClient({
                     <span className={clientStyles.interactiveChipName}>{it.name}</span>
                     <span className={clientStyles.interactiveChipSlug}>{it.slug}</span>
                     <div className={clientStyles.interactiveChipActions}>
-                      <button type="button" className={clientStyles.chipActionBtn} onClick={() => openEditModal(t, it)} title={`Edit ${t}`}>Edit</button>
-                      <button type="button" className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`} onClick={() => handleDelete(t, it.id, it.name)} title={`Delete ${t}`}>Delete</button>
+                      <button type="button" className={clientStyles.chipActionBtn} onClick={() => openEditModal(t, it)} title={`${ds.games.buttons.edit} ${t}`}>{ds.games.buttons.edit}</button>
+                      <button type="button" className={`${clientStyles.chipActionBtn} ${clientStyles.chipActionDelete}`} onClick={() => handleDelete(t, it.id, it.name)} title={`${ds.games.buttons.delete} ${t}`}>{ds.games.buttons.delete}</button>
                     </div>
                   </div>
                 );
@@ -867,7 +866,7 @@ export default function GamesDashboardClient({
           <div className={activeType === "game" ? clientStyles.modalContentLarge : clientStyles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={clientStyles.modalHeader}>
               <h3 className={clientStyles.modalTitle}>
-                {editingItem ? `Edit ${activeType.charAt(0).toUpperCase() + activeType.slice(1)}` : `New ${activeType.charAt(0).toUpperCase() + activeType.slice(1)}`}
+                {editingItem ? ds.games.modalTitle.edit.replace("{type}", activeType) : ds.games.modalTitle.new.replace("{type}", activeType)}
               </h3>
               <button type="button" className={clientStyles.modalClose} onClick={closeModal}>&times;</button>
             </div>
@@ -877,77 +876,77 @@ export default function GamesDashboardClient({
                 {error && <div className={clientStyles.errorMsg}>{error}</div>}
                 <div className={clientStyles.formGrid}>
                   <div>
-                    <div className={clientStyles.formSectionTitle}>Core Info</div>
+                    <div className={clientStyles.formSectionTitle}>{ds.games.form.coreInfo}</div>
                     <div className={clientStyles.formGroup}>
-                      <label className={clientStyles.label} htmlFor="game-title">Title</label>
-                      <input id="game-title" type="text" className={clientStyles.input} placeholder="e.g. Elden Ring" value={gameTitle} onChange={(e) => setGameTitle(e.target.value)} disabled={submitting} required autoFocus />
+                      <label className={clientStyles.label} htmlFor="game-title">{ds.games.form.title}</label>
+                      <input id="game-title" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.title} value={gameTitle} onChange={(e) => setGameTitle(e.target.value)} disabled={submitting} required autoFocus />
                     </div>
                     <div className={clientStyles.formGroup}>
-                      <label className={clientStyles.label} htmlFor="game-slug">Slug</label>
-                      <input id="game-slug" type="text" className={clientStyles.input} placeholder="e.g. elden-ring" value={slug} onChange={(e) => setSlug(e.target.value)} disabled={submitting} required />
+                      <label className={clientStyles.label} htmlFor="game-slug">{ds.games.form.slug}</label>
+                      <input id="game-slug" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.slug} value={slug} onChange={(e) => setSlug(e.target.value)} disabled={submitting} required />
                     </div>
                     <div className={clientStyles.formGroup}>
-                      <label className={clientStyles.label} htmlFor="game-original-title">Original Title (Optional)</label>
-                      <input id="game-original-title" type="text" className={clientStyles.input} placeholder="e.g. エルデンリング" value={gameOriginalTitle} onChange={(e) => setGameOriginalTitle(e.target.value)} disabled={submitting} />
+                      <label className={clientStyles.label} htmlFor="game-original-title">{ds.games.form.originalTitle}</label>
+                      <input id="game-original-title" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.originalTitle} value={gameOriginalTitle} onChange={(e) => setGameOriginalTitle(e.target.value)} disabled={submitting} />
                     </div>
                     <div className={clientStyles.formGroup}>
-                      <label className={clientStyles.label} htmlFor="game-description">Description (Optional)</label>
-                      <textarea id="game-description" className={clientStyles.textarea} placeholder="Enter game details/summary..." value={gameDescription} onChange={(e) => setGameDescription(e.target.value)} disabled={submitting} />
+                      <label className={clientStyles.label} htmlFor="game-description">{ds.games.form.description}</label>
+                      <textarea id="game-description" className={clientStyles.textarea} placeholder={ds.games.placeholders.description} value={gameDescription} onChange={(e) => setGameDescription(e.target.value)} disabled={submitting} />
                     </div>
                     <div className={clientStyles.formGroup}>
-                      <label className={clientStyles.label} htmlFor="game-cover-image">Cover Image URL (Optional)</label>
-                      <input id="game-cover-image" type="text" className={clientStyles.input} placeholder="https://example.com/cover.jpg" value={gameCoverImageUrl} onChange={(e) => setGameCoverImageUrl(e.target.value)} disabled={submitting} />
+                      <label className={clientStyles.label} htmlFor="game-cover-image">{ds.games.form.coverImageUrl}</label>
+                      <input id="game-cover-image" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.coverImageUrl} value={gameCoverImageUrl} onChange={(e) => setGameCoverImageUrl(e.target.value)} disabled={submitting} />
                     </div>
                     <div className={clientStyles.formGroup}>
-                      <label className={clientStyles.label} htmlFor="game-release-date">Release Date (Optional)</label>
+                      <label className={clientStyles.label} htmlFor="game-release-date">{ds.games.form.releaseDate}</label>
                       <input id="game-release-date" type="date" className={clientStyles.input} value={gameReleaseDate} onChange={(e) => setGameReleaseDate(e.target.value)} disabled={submitting} />
                     </div>
                     <div className={clientStyles.rowFields}>
                       <div className={clientStyles.formGroup}>
-                        <label className={clientStyles.label} htmlFor="game-metacritic">Metacritic Score (Optional)</label>
-                        <input id="game-metacritic" type="number" min={0} max={100} className={clientStyles.input} placeholder="0-100" value={gameMetacriticScore} onChange={(e) => setGameMetacriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
+                        <label className={clientStyles.label} htmlFor="game-metacritic">{ds.games.form.metacriticScore}</label>
+                        <input id="game-metacritic" type="number" min={0} max={100} className={clientStyles.input} placeholder={ds.games.placeholders.metacriticScore} value={gameMetacriticScore} onChange={(e) => setGameMetacriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
                       </div>
                       <div className={clientStyles.formGroup}>
-                        <label className={clientStyles.label} htmlFor="game-opencritic">OpenCritic Score (Optional)</label>
-                        <input id="game-opencritic" type="number" min={0} max={100} className={clientStyles.input} placeholder="0-100" value={gameOpenCriticScore} onChange={(e) => setGameOpenCriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
+                        <label className={clientStyles.label} htmlFor="game-opencritic">{ds.games.form.opencriticScore}</label>
+                        <input id="game-opencritic" type="number" min={0} max={100} className={clientStyles.input} placeholder={ds.games.placeholders.metacriticScore} value={gameOpenCriticScore} onChange={(e) => setGameOpenCriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
                       </div>
                     </div>
                     <div className={clientStyles.rowThreeFields}>
                       <div className={clientStyles.formGroup}>
-                        <label className={clientStyles.label} htmlFor="game-hltb-main">HLTB Main (h)</label>
-                        <input id="game-hltb-main" type="text" className={clientStyles.input} placeholder="e.g. 30" value={gameHltbMainHours} onChange={(e) => setGameHltbMainHours(e.target.value)} disabled={submitting} />
+                        <label className={clientStyles.label} htmlFor="game-hltb-main">{ds.games.form.hltbMain}</label>
+                        <input id="game-hltb-main" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.hltbMain} value={gameHltbMainHours} onChange={(e) => setGameHltbMainHours(e.target.value)} disabled={submitting} />
                       </div>
                       <div className={clientStyles.formGroup}>
-                        <label className={clientStyles.label} htmlFor="game-hltb-extra">HLTB Main+Ex (h)</label>
-                        <input id="game-hltb-extra" type="text" className={clientStyles.input} placeholder="e.g. 50" value={gameHltbMainExtraHours} onChange={(e) => setGameHltbMainExtraHours(e.target.value)} disabled={submitting} />
+                        <label className={clientStyles.label} htmlFor="game-hltb-extra">{ds.games.form.hltbMainEx}</label>
+                        <input id="game-hltb-extra" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.hltbMainEx} value={gameHltbMainExtraHours} onChange={(e) => setGameHltbMainExtraHours(e.target.value)} disabled={submitting} />
                       </div>
                       <div className={clientStyles.formGroup}>
-                        <label className={clientStyles.label} htmlFor="game-hltb-comp">HLTB Comp (h)</label>
-                        <input id="game-hltb-comp" type="text" className={clientStyles.input} placeholder="e.g. 100" value={gameHltbCompletionistHours} onChange={(e) => setGameHltbCompletionistHours(e.target.value)} disabled={submitting} />
+                        <label className={clientStyles.label} htmlFor="game-hltb-comp">{ds.games.form.hltbComp}</label>
+                        <input id="game-hltb-comp" type="text" className={clientStyles.input} placeholder={ds.games.placeholders.hltbComp} value={gameHltbCompletionistHours} onChange={(e) => setGameHltbCompletionistHours(e.target.value)} disabled={submitting} />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <div className={clientStyles.formSectionTitle}>Relations</div>
+                    <div className={clientStyles.formSectionTitle}>{ds.games.form.relations}</div>
 
                     <div className={clientStyles.relationsGrid}>
                       <RelationPicker
-                        label="Developers"
+                        label={ds.games.form.developers}
                         kind="developer"
                         selected={selectedDevelopers}
                         onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")}
                         disabled={submitting}
                       />
                       <RelationPicker
-                        label="Publishers"
+                        label={ds.games.form.publishers}
                         kind="publisher"
                         selected={selectedPublishers}
                         onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")}
                         disabled={submitting}
                       />
                       <LazyRelationPicker
-                        label="Genres"
+                        label={ds.games.form.genres}
                         selected={selectedGenres}
                         allOptions={options?.genres || []}
                         onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")}
@@ -955,7 +954,7 @@ export default function GamesDashboardClient({
                         loading={optionsLoading}
                       />
                       <LazyRelationPicker
-                        label="Platforms"
+                        label={ds.games.form.platforms}
                         selected={selectedPlatforms}
                         allOptions={options?.platforms || []}
                         onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")}
@@ -963,7 +962,7 @@ export default function GamesDashboardClient({
                         loading={optionsLoading}
                       />
                       <LazyRelationPicker
-                        label="Themes"
+                        label={ds.games.form.themes}
                         selected={selectedThemes}
                         allOptions={options?.themes || []}
                         onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")}
@@ -975,47 +974,52 @@ export default function GamesDashboardClient({
                 </div>
 
                 <div className={clientStyles.editPageActions}>
-                  <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>Cancel</Button>
-                  <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : editingItem ? "Save Changes" : "Create Game"}</Button>
+                  <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>{ds.games.buttons.cancel}</Button>
+                  <Button type="submit" variant="accent" disabled={submitting}>{submitting ? ds.games.buttons.saving : editingItem ? ds.games.buttons.saveChanges : ds.games.buttons.createGame}</Button>
                 </div>
               </form>
             ) : (
               <form onSubmit={handleSubmit}>
                 {error && <div className={clientStyles.errorMsg}>{error}</div>}
                 <div className={clientStyles.formGroup}>
-                  <label className={clientStyles.label} htmlFor="item-name">Name</label>
+                  <label className={clientStyles.label} htmlFor="item-name">{ds.games.form.name}</label>
                   <input id="item-name" type="text" className={clientStyles.input}
                     placeholder={
-                      activeType === "developer" ? "Nintendo EPD, FromSoftware..."
-                      : activeType === "publisher" ? "Nintendo, Bandai Namco..."
-                      : activeType === "genre" ? "Action, RPG, Platformer..."
-                      : activeType === "theme" ? "Fantasy, Sci-Fi, Cyberpunk..."
-                      : "Nintendo Switch, PC, PlayStation 5..."
+                      activeType === "developer" ? ds.games.placeholders.developers
+                      : activeType === "publisher" ? ds.games.placeholders.publishers
+                      : activeType === "genre" ? ds.games.placeholders.genres
+                      : activeType === "theme" ? ds.games.placeholders.themes
+                      : ds.games.placeholders.platforms
                     }
                     value={name} onChange={(e) => setName(e.target.value)} disabled={submitting} required autoFocus />
                 </div>
                 <div className={clientStyles.formGroup}>
-                  <label className={clientStyles.label} htmlFor="item-slug">Slug</label>
+                  <label className={clientStyles.label} htmlFor="item-slug">{ds.games.form.slug}</label>
                   <input id="item-slug" type="text" className={clientStyles.input}
                     placeholder={
-                      activeType === "developer" ? "nintendo-epd"
-                      : activeType === "publisher" ? "nintendo"
-                      : activeType === "genre" ? "action"
-                      : activeType === "theme" ? "fantasy"
-                      : "nintendo-switch"
+                      activeType === "developer" ? ds.games.placeholders.developerSlug
+                      : activeType === "publisher" ? ds.games.placeholders.publisherSlug
+                      : activeType === "genre" ? ds.games.placeholders.genreSlug
+                      : activeType === "theme" ? ds.games.placeholders.themeSlug
+                      : ds.games.placeholders.platformSlug
                     }
                     value={slug} onChange={(e) => setSlug(e.target.value)} disabled={submitting} required />
                 </div>
                 {(activeType === "developer" || activeType === "publisher") && (
                   <div className={clientStyles.formGroup}>
-                    <label className={clientStyles.label} htmlFor="item-country">Country Code (2 letters, optional)</label>
-                    <input id="item-country" type="text" maxLength={2} className={clientStyles.input} placeholder="JP, US, TR, PL..." value={countryCode} onChange={(e) => setCountryCode(e.target.value)} disabled={submitting} />
+                    <label className={clientStyles.label} htmlFor="item-country">{ds.games.form.countryCode}</label>
+                    <input id="item-country" type="text" maxLength={2} className={clientStyles.input} placeholder={ds.games.placeholders.countryCode} value={countryCode} onChange={(e) => setCountryCode(e.target.value)} disabled={submitting} />
                   </div>
                 )}
                 <div className={clientStyles.editPageActions}>
-                  <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>Cancel</Button>
+                  <Button type="button" variant="ghost" onClick={closeModal} disabled={submitting}>{ds.games.buttons.cancel}</Button>
                   <Button type="submit" variant="accent" disabled={submitting}>
-                    {submitting ? "Saving..." : editingItem ? "Save Changes" : `Create ${activeType.charAt(0).toUpperCase() + activeType.slice(1)}`}
+                    {submitting ? ds.games.buttons.saving : editingItem ? ds.games.buttons.saveChanges :
+                      activeType === "developer" ? ds.games.buttons.createDeveloper :
+                      activeType === "publisher" ? ds.games.buttons.createPublisher :
+                      activeType === "genre" ? ds.games.buttons.createGenre :
+                      activeType === "theme" ? ds.games.buttons.createTheme : ds.games.buttons.createPlatform
+                    }
                   </Button>
                 </div>
               </form>
@@ -1088,21 +1092,21 @@ function RelationPicker({
       <input
         type="text"
         className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
-        placeholder={`Search ${label.toLowerCase()} (min 3 chars)...`}
+        placeholder={ds.games.placeholders.searchRelation.replace("{label}", label.toLowerCase())}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
       />
       <div className={clientStyles.checkboxGroupList}>
         {loading && merged.length === 0 ? (
-          <div className={clientStyles.fieldHint}>Loading…</div>
+          <div className={clientStyles.fieldHint}>{ds.games.hints.loading}</div>
         ) : merged.length === 0 ? (
           <div className={clientStyles.fieldHint}>
             {query.trim().length > 0 && query.trim().length < 3
-              ? "Type at least 3 characters."
+              ? ds.games.hints.minChars
               : query.trim().length >= 3 && debounced.trim().length < 3
-                ? "Waiting…"
-                : "No matches."}
+                ? ds.games.hints.waiting
+                : ds.games.hints.noMatches}
           </div>
         ) : (
           merged.map((it) => (
@@ -1143,7 +1147,7 @@ function LazyRelationPicker({
     return (
       <div className={clientStyles.formGroup}>
         <label className={clientStyles.label}>{label}</label>
-        <div className={clientStyles.fieldHint}>Loading options...</div>
+        <div className={clientStyles.fieldHint}>{ds.games.placeholders.loadingOptions}</div>
       </div>
     );
   }
@@ -1166,14 +1170,14 @@ function LazyRelationPicker({
       <input
         type="text"
         className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
-        placeholder={`Filter ${label.toLowerCase()}...`}
+        placeholder={ds.games.placeholders.filterRelation.replace("{label}", label.toLowerCase())}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         disabled={disabled}
       />
       <div className={clientStyles.checkboxGroupList}>
         {filtered.length === 0 ? (
-          <div className={clientStyles.fieldHint}>No options found.</div>
+          <div className={clientStyles.fieldHint}>{ds.games.placeholders.noOptions}</div>
         ) : (
           filtered.map((it) => (
             <label key={it.id} className={clientStyles.checkboxLabel}>

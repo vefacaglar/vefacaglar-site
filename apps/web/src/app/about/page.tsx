@@ -1,6 +1,7 @@
 import MarkdownPreview from "../components/MarkdownPreview";
 import styles from "./about.module.css";
 import { getActiveLanguage } from "../../lib/lang";
+import { getDictionary } from "../../dictionaries";
 import { httpClient } from "../../lib/httpClient";
 import AdminEditLink from "../../components/AdminEditLink";
 import { localizeHref } from "../../lib/localizeHref";
@@ -18,6 +19,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   let page: PageItem | null = null;
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const res = await httpClient.get("/api/pages/about", {
@@ -31,14 +34,15 @@ export async function generateMetadata() {
   }
 
   return {
-    title: page?.seoTitle || page?.title || "about",
-    description: page?.seoDescription || "about vefa çağlar",
+    title: page?.seoTitle || page?.title || dict.about,
+    description: page?.seoDescription || dict.about_meta_description,
   };
 }
 
 export default async function About() {
   let page: PageItem | null = null;
   const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const pageRes = await httpClient.get("/api/pages/about", {
@@ -53,7 +57,7 @@ export default async function About() {
 
   return (
     <div>
-      <h1>{page?.title || "about"}</h1>
+      <h1>{page?.title || dict.about}</h1>
       {page?.content && (
         <MarkdownPreview content={page.content} />
       )}

@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { changePasswordAction } from "../actions";
 import formStyles from "./form.module.css";
-
 import Button from "../../../components/Button";
+import ds from "../../../lib/dashboard-strings";
 
 export default function PasswordForm() {
   const [loading, setLoading] = useState(false);
@@ -22,13 +22,13 @@ export default function PasswordForm() {
     setSuccess(false);
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.");
+      setError(ds.profile.passwordMismatch);
       setLoading(false);
       return;
     }
 
     if (newPassword.length < 6) {
-      setError("New password must be at least 6 characters.");
+      setError(ds.profile.passwordTooShort);
       setLoading(false);
       return;
     }
@@ -57,12 +57,12 @@ export default function PasswordForm() {
 
       {success && (
         <div className="successMsg">
-          Password changed successfully.
+          {ds.profile.passwordChanged}
         </div>
       )}
 
       <div className="field">
-        <label htmlFor="currentPassword" className="label">Current Password</label>
+        <label htmlFor="currentPassword" className="label">{ds.profile.currentPassword}</label>
         <input
           id="currentPassword"
           type="password"
@@ -74,7 +74,7 @@ export default function PasswordForm() {
       </div>
 
       <div className="field">
-        <label htmlFor="newPassword" className="label">New Password</label>
+        <label htmlFor="newPassword" className="label">{ds.profile.newPassword}</label>
         <input
           id="newPassword"
           type="password"
@@ -87,7 +87,7 @@ export default function PasswordForm() {
       </div>
 
       <div className="field">
-        <label htmlFor="confirmPassword" className="label">Confirm New Password</label>
+        <label htmlFor="confirmPassword" className="label">{ds.profile.confirmPassword}</label>
         <input
           id="confirmPassword"
           type="password"
@@ -103,7 +103,7 @@ export default function PasswordForm() {
         type="submit"
         disabled={loading}
       >
-        {loading ? "Changing..." : "Change Password"}
+        {loading ? ds.profile.changing : ds.profile.changePasswordBtn}
       </Button>
     </form>
   );

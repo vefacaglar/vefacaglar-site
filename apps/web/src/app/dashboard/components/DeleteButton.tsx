@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import styles from "./DeleteButton.module.css";
+import ds from "../../../lib/dashboard-strings";
 
 interface DeleteButtonProps {
   id: string;
@@ -14,7 +15,7 @@ export default function DeleteButton({ id, type, title, onDelete }: DeleteButton
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    const message = `Are you sure you want to delete the ${type} "${title}"?`;
+    const message = ds.delete.confirm.replace("{type}", type).replace("{title}", title);
     if (!window.confirm(message)) return;
 
     setLoading(true);
@@ -31,7 +32,7 @@ export default function DeleteButton({ id, type, title, onDelete }: DeleteButton
       disabled={loading}
       className={styles.delete}
     >
-      {loading ? "Deleting..." : "Delete"}
+      {loading ? ds.delete.deleting : ds.delete.button}
     </button>
   );
 }

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./post.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
-import { getDictionary } from "../../../dictionaries";
+import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
 import AdminEditLink from "../../../components/AdminEditLink";
@@ -28,17 +28,20 @@ interface PostDetail {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
+
   try {
     const res = await httpClient.get(`/api/posts/${params.slug}`);
-    if (!res.ok) return { title: "post not found" };
+    if (!res.ok) return { title: dict.post_not_found_title };
 
     const post: PostDetail = await res.json();
     return {
-      title: post.seoTitle || `${post.title} | vefa çağlar`,
+      title: post.seoTitle || formatMetaTitle(post.title, lang),
       description: post.seoDescription || post.title,
     };
   } catch {
-    return { title: "vefa çağlar blog" };
+    return { title: dict.blog_meta_title };
   }
 }
 

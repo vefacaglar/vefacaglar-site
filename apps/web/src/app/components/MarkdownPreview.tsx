@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useLocale } from "../../components/LocaleProvider";
+import { getDictionary } from "../../dictionaries";
 import styles from "./MarkdownPreview.module.css";
 
 function useLocalizedHref(href: string): string {
@@ -30,6 +31,8 @@ interface MarkdownPreviewProps {
 }
 
 export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
+  const locale = useLocale();
+  const dict = getDictionary(locale);
   const [activeImage, setActiveImage] = React.useState<{ src: string; alt: string } | null>(null);
 
   React.useEffect(() => {
@@ -48,7 +51,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
   }, [activeImage]);
 
   if (!content.trim()) {
-    return <span className={styles.empty}>no content written yet.</span>;
+    return <span className={styles.empty}>{dict.no_content_yet}</span>;
   }
 
   const lines = content.split("\n");
@@ -173,7 +176,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
         <div key={key++} className={styles.videoWrapper}>
           <iframe
             src={`https://www.youtube.com/embed/${youtubeId}`}
-            title="youtube video player"
+            title={dict.youtube_player}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
@@ -274,7 +277,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
             <button 
               className={styles.lightboxCloseButton} 
               onClick={() => setActiveImage(null)}
-              aria-label="close image lightbox"
+              aria-label={dict.close_lightbox}
             >
               &times;
             </button>

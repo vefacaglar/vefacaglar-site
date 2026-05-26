@@ -2,6 +2,7 @@
 
 import React from "react";
 import styles from "../dashboard.module.css";
+import ds from "../../../lib/dashboard-strings";
 
 interface SimplePaginationProps {
   currentPage: number;
@@ -30,29 +31,29 @@ export default function SimplePagination({
             onClick={() => onPageChange(activePage - 1)}
             className={styles.simplePaginationButton}
           >
-            ← Prev
+            {ds.pagination.prev}
           </button>
         ) : (
-          <span className={styles.simplePaginationDisabled}>← Prev</span>
+          <span className={styles.simplePaginationDisabled}>{ds.pagination.prev}</span>
         )}
         <span className={styles.simplePaginationInfo}>
-          Page {activePage} of {totalPages || 1}
+          {ds.pagination.pageOf.replace("{activePage}", String(activePage)).replace("{totalPages}", String(totalPages || 1))}
         </span>
         {activePage < totalPages ? (
           <button
             onClick={() => onPageChange(activePage + 1)}
             className={styles.simplePaginationButton}
           >
-            Next →
+            {ds.pagination.next}
           </button>
         ) : (
-          <span className={styles.simplePaginationDisabled}>Next →</span>
+          <span className={styles.simplePaginationDisabled}>{ds.pagination.next}</span>
         )}
       </div>
 
       <div className={styles.pageSizeContainer}>
         <label htmlFor={selectId} className={styles.pageSizeLabel}>
-          Items per page:
+          {ds.pagination.itemsPerPage}
         </label>
         <select
           id={selectId}

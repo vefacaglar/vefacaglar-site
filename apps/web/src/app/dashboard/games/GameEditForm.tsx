@@ -12,6 +12,7 @@ import {
 } from "./actions";
 import type { Game, GameRelationItem } from "./GamesDashboardClient";
 import clientStyles from "./games-client.module.css";
+import ds from "../../../lib/dashboard-strings";
 
 const RELATION_PICKER_LIMIT = 50;
 
@@ -87,11 +88,11 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         setSelected(selected);
-        setError(errData.message || `Failed to ${isSelected ? "unlink" : "link"} ${relationType.slice(0, -1)}.`);
+        setError(errData.message || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
       }
     } catch {
       setSelected(selected);
-      setError("Server connection error.");
+      setError(ds.games.errors.serverError);
     }
   };
 
@@ -99,11 +100,11 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
     e.preventDefault();
 
     if (!title.trim()) {
-      setError("Title is required");
+      setError(ds.games.errors.titleRequired);
       return;
     }
     if (!slug.trim()) {
-      setError("Slug is required");
+      setError(ds.games.errors.slugRequired);
       return;
     }
 
@@ -137,81 +138,81 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
   return (
     <div className={clientStyles.editPageWrapper}>
       <div className={clientStyles.editPageBack}>
-        <Link href={returnUrl} className="backLink">← back to games</Link>
+        <Link href={returnUrl} className="backLink">{ds.games.backToGames}</Link>
       </div>
 
       <div className={clientStyles.editPageHeader}>
-        <h1 className={clientStyles.editPageTitle}>Edit Game</h1>
+        <h1 className={clientStyles.editPageTitle}>{ds.games.editGame}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className={clientStyles.editPagePanel}>
         {error && <div className={clientStyles.errorMsg}>{error}</div>}
         <div className={clientStyles.formGrid}>
           <div>
-            <div className={clientStyles.formSectionTitle}>Core Info</div>
+            <div className={clientStyles.formSectionTitle}>{ds.games.form.coreInfo}</div>
             <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-title">Title</label>
+              <label className={clientStyles.label} htmlFor="game-title">{ds.games.form.title}</label>
               <input id="game-title" type="text" className={clientStyles.input} value={title} onChange={(e) => setTitle(e.target.value)} disabled={submitting} required autoFocus />
             </div>
             <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-slug">Slug</label>
+              <label className={clientStyles.label} htmlFor="game-slug">{ds.games.form.slug}</label>
               <input id="game-slug" type="text" className={clientStyles.input} value={slug} onChange={(e) => setSlug(e.target.value)} disabled={submitting} required />
             </div>
             <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-original-title">Original Title (Optional)</label>
+              <label className={clientStyles.label} htmlFor="game-original-title">{ds.games.form.originalTitle}</label>
               <input id="game-original-title" type="text" className={clientStyles.input} value={originalTitle} onChange={(e) => setOriginalTitle(e.target.value)} disabled={submitting} />
             </div>
             <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-description">Description (Optional)</label>
+              <label className={clientStyles.label} htmlFor="game-description">{ds.games.form.description}</label>
               <textarea id="game-description" className={clientStyles.textarea} value={description} onChange={(e) => setDescription(e.target.value)} disabled={submitting} />
             </div>
             <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-cover-image">Cover Image URL (Optional)</label>
+              <label className={clientStyles.label} htmlFor="game-cover-image">{ds.games.form.coverImageUrl}</label>
               <input id="game-cover-image" type="text" className={clientStyles.input} value={coverImageUrl} onChange={(e) => setCoverImageUrl(e.target.value)} disabled={submitting} />
             </div>
             <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-release-date">Release Date (Optional)</label>
+              <label className={clientStyles.label} htmlFor="game-release-date">{ds.games.form.releaseDate}</label>
               <input id="game-release-date" type="date" className={clientStyles.input} value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} disabled={submitting} />
             </div>
             <div className={clientStyles.rowFields}>
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-metacritic">Metacritic Score (Optional)</label>
+                <label className={clientStyles.label} htmlFor="game-metacritic">{ds.games.form.metacriticScore}</label>
                 <input id="game-metacritic" type="number" min={0} max={100} className={clientStyles.input} value={metacriticScore} onChange={(e) => setMetacriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
               </div>
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-opencritic">OpenCritic Score (Optional)</label>
+                <label className={clientStyles.label} htmlFor="game-opencritic">{ds.games.form.opencriticScore}</label>
                 <input id="game-opencritic" type="number" min={0} max={100} className={clientStyles.input} value={openCriticScore} onChange={(e) => setOpenCriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
               </div>
             </div>
             <div className={clientStyles.rowThreeFields}>
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-hltb-main">HLTB Main (h)</label>
+                <label className={clientStyles.label} htmlFor="game-hltb-main">{ds.games.form.hltbMain}</label>
                 <input id="game-hltb-main" type="text" className={clientStyles.input} value={hltbMainHours} onChange={(e) => setHltbMainHours(e.target.value)} disabled={submitting} />
               </div>
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-hltb-extra">HLTB Main+Ex (h)</label>
+                <label className={clientStyles.label} htmlFor="game-hltb-extra">{ds.games.form.hltbMainEx}</label>
                 <input id="game-hltb-extra" type="text" className={clientStyles.input} value={hltbMainExtraHours} onChange={(e) => setHltbMainExtraHours(e.target.value)} disabled={submitting} />
               </div>
               <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-hltb-comp">HLTB Comp (h)</label>
+                <label className={clientStyles.label} htmlFor="game-hltb-comp">{ds.games.form.hltbComp}</label>
                 <input id="game-hltb-comp" type="text" className={clientStyles.input} value={hltbCompletionistHours} onChange={(e) => setHltbCompletionistHours(e.target.value)} disabled={submitting} />
               </div>
             </div>
           </div>
 
           <div className={clientStyles.editPageActions}>
-            <Button href={returnUrl} variant="ghost">Cancel</Button>
-            <Button type="submit" variant="accent" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</Button>
+            <Button href={returnUrl} variant="ghost">{ds.games.buttons.cancel}</Button>
+            <Button type="submit" variant="accent" disabled={submitting}>{submitting ? ds.games.buttons.saving : ds.games.buttons.saveChanges}</Button>
           </div>
 
           <div>
-            <div className={clientStyles.formSectionTitle}>Relations</div>
+            <div className={clientStyles.formSectionTitle}>{ds.games.form.relations}</div>
             <div className={clientStyles.relationsGrid}>
-              <RelationPicker label="Developers" kind="developer" selected={selectedDevelopers} onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")} disabled={submitting} />
-              <RelationPicker label="Publishers" kind="publisher" selected={selectedPublishers} onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")} disabled={submitting} />
-              <LazyRelationPicker label="Genres" selected={selectedGenres} allOptions={options?.genres || []} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} loading={optionsLoading} />
-              <LazyRelationPicker label="Platforms" selected={selectedPlatforms} allOptions={options?.platforms || []} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} loading={optionsLoading} />
-              <LazyRelationPicker label="Themes" selected={selectedThemes} allOptions={options?.themes || []} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} loading={optionsLoading} />
+              <RelationPicker label={ds.games.form.developers} kind="developer" selected={selectedDevelopers} onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")} disabled={submitting} />
+              <RelationPicker label={ds.games.form.publishers} kind="publisher" selected={selectedPublishers} onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")} disabled={submitting} />
+              <LazyRelationPicker label={ds.games.form.genres} selected={selectedGenres} allOptions={options?.genres || []} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} loading={optionsLoading} />
+              <LazyRelationPicker label={ds.games.form.platforms} selected={selectedPlatforms} allOptions={options?.platforms || []} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} loading={optionsLoading} />
+              <LazyRelationPicker label={ds.games.form.themes} selected={selectedThemes} allOptions={options?.themes || []} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} loading={optionsLoading} />
             </div>
           </div>
         </div>
@@ -276,17 +277,17 @@ function RelationPicker({
       <input
         type="text"
         className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
-        placeholder={`Search ${label.toLowerCase()} (min 3 chars)...`}
+        placeholder={ds.games.placeholders.searchRelation.replace("{label}", label.toLowerCase())}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}
       />
       <div className={clientStyles.checkboxGroupList}>
         {loading && merged.length === 0 ? (
-          <div className={clientStyles.fieldHint}>Loading…</div>
+          <div className={clientStyles.fieldHint}>{ds.games.hints.loading}</div>
         ) : merged.length === 0 ? (
           <div className={clientStyles.fieldHint}>
-            {query.trim().length > 0 && query.trim().length < 3 ? "Type at least 3 characters." : "No matches."}
+            {query.trim().length > 0 && query.trim().length < 3 ? ds.games.hints.minChars : ds.games.hints.noMatches}
           </div>
         ) : (
           merged.map((it) => (
@@ -322,7 +323,7 @@ function LazyRelationPicker({
     return (
       <div className={clientStyles.formGroup}>
         <label className={clientStyles.label}>{label}</label>
-        <div className={clientStyles.fieldHint}>Loading options...</div>
+        <div className={clientStyles.fieldHint}>{ds.games.placeholders.loadingOptions}</div>
       </div>
     );
   }
@@ -345,14 +346,14 @@ function LazyRelationPicker({
       <input
         type="text"
         className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
-        placeholder={`Filter ${label.toLowerCase()}...`}
+        placeholder={ds.games.placeholders.filterRelation.replace("{label}", label.toLowerCase())}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         disabled={disabled}
       />
       <div className={clientStyles.checkboxGroupList}>
         {filtered.length === 0 ? (
-          <div className={clientStyles.fieldHint}>No options found.</div>
+          <div className={clientStyles.fieldHint}>{ds.games.placeholders.noOptions}</div>
         ) : (
           filtered.map((it) => (
             <label key={it.id} className={clientStyles.checkboxLabel}>

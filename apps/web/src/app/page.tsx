@@ -2,7 +2,7 @@ import Link from 'next/link';
 import MarkdownPreview from "./components/MarkdownPreview";
 import styles from "./home.module.css";
 import { getActiveLanguage } from '../lib/lang';
-import { getDictionary } from '../dictionaries';
+import { getDictionary, formatMetaTitle } from '../dictionaries';
 import { localizeHref } from '../lib/localizeHref';
 import { httpClient } from '../lib/httpClient';
 
@@ -27,6 +27,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   let page: PageItem | null = null;
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
 
   try {
     const res = await httpClient.get("/api/pages/home", {
@@ -40,8 +42,8 @@ export async function generateMetadata() {
   }
 
   return {
-    title: page?.seoTitle || page?.title || "vefa çağlar",
-    description: page?.seoDescription || "personal website of vefa çağlar",
+    title: page?.seoTitle || page?.title || dict.site_title,
+    description: page?.seoDescription || dict.site_description,
   };
 }
 
@@ -78,7 +80,7 @@ export default async function Home() {
 
   return (
     <div>
-      <h1 className={styles.title}>{page?.title || "vefa çağlar"}</h1>
+      <h1 className={styles.title}>{page?.title || dict.site_title}</h1>
       
       {page?.content && (
         <div className={styles.content}>
@@ -93,7 +95,7 @@ export default async function Home() {
         <ul className={styles.list}>
           {latestPosts.map((post) => (
             <li key={post.id} className={styles.listItem}>
-              <span className={styles.dash}>—</span>
+              <span className={styles.dash}>{dict.separator_dash}</span>
               <Link href={localizeHref(`/blog/${post.slug}`, lang)}>{post.title}</Link>
             </li>
           ))}

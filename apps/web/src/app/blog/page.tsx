@@ -76,7 +76,7 @@ export default async function Blog({ searchParams }: BlogProps) {
           <ul className={styles.list}>
             {posts.map((post) => (
               <li key={post.id} className={styles.listItem}>
-                <span className={styles.dash}>—</span>
+                <span className={styles.dash}>{dict.separator_dash}</span>
                 <div className={styles.itemMeta}>
                   <Link href={localizeHref(`/blog/${post.slug}`, lang)}>{post.title}</Link>
                   {post.excerpt && <p className={styles.excerpt}>{post.excerpt}</p>}
@@ -86,7 +86,7 @@ export default async function Blog({ searchParams }: BlogProps) {
                     )}
                     {post.author && (
                       <span className={styles.author}>
-                        {" — "}
+                        {" "}{dict.separator_dash}{" "}
                         <Link href={localizeHref(`/author/${post.author.username}`, lang)}>
                           {post.author.displayName}
                         </Link>

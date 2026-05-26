@@ -7,6 +7,7 @@ import { createProjectAction, updateProjectAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
+import ds from "../../../lib/dashboard-strings";
 
 interface ProjectFormProps {
   initialData?: {
@@ -118,12 +119,12 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
     <div className={styles.wrapper}>
       <div className={styles.back}>
         <Link href={fromUrl || "/dashboard"} className="backLink">
-          {fromUrl ? "← cancel" : "← back to dashboard"}
+          {fromUrl ? ds.forms.backCancel : ds.forms.backToDashboard}
         </Link>
       </div>
 
       <h1>
-        {initialData ? "Edit Project" : "Add New Project"}
+        {initialData ? ds.forms.editProject : ds.forms.addNewProject}
       </h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
@@ -135,12 +136,12 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
 
         <div className="field">
           <div className={styles.labelRow}>
-            <label className="label">Title</label>
+            <label className="label">{ds.forms.title}</label>
             <LocalizationButton
               entityType="project"
               entityId={initialData?.id}
               field="title"
-              label="Title"
+              label={ds.forms.title}
               initialValue={title}
             />
           </div>
@@ -154,7 +155,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Slug (URL Path)</label>
+          <label className="label">{ds.forms.slug}</label>
           <input
             type="text"
             required
@@ -166,7 +167,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
 
         <div className="field">
           <div className={styles.labelRow}>
-            <label className="label">Summary (Short Description)</label>
+            <label className="label">{ds.forms.summary}</label>
             <LocalizationButton
               entityType="project"
               entityId={initialData?.id}
@@ -187,7 +188,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
 
         <div className="field">
           <div className={styles.labelRow}>
-            <label className="label">Content (Markdown / MDX)</label>
+            <label className="label">{ds.forms.content}</label>
             <LocalizationButton
               entityType="project"
               entityId={initialData?.id}
@@ -201,14 +202,14 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
             required
             value={content}
             onChange={setContent}
-            placeholder="# Project Details&#10;&#10;Write about features, challenges, and architecture in Markdown..."
+            placeholder={ds.forms.placeholders.mdxProject}
             rows={15}
           />
         </div>
 
         <div className={styles.formRow}>
           <div className={`field ${styles.formCol}`}>
-            <label className="label">Started At</label>
+            <label className="label">{ds.forms.startedAt}</label>
             <input
               type="date"
               value={startedAt}
@@ -218,7 +219,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
           </div>
 
           <div className={`field ${styles.formCol}`}>
-            <label className="label">Ended At (Optional)</label>
+            <label className="label">{ds.forms.endedAt}</label>
             <input
               type="date"
               value={endedAt}
@@ -230,19 +231,19 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
 
         <div className={styles.formRowAlignCenter}>
           <div className={`field ${styles.formCol}`}>
-            <label className="label">Publish Status</label>
+            <label className="label">{ds.forms.publishStatus}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as "draft" | "published")}
               className={styles.select}
             >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
+              <option value="draft">{ds.content.status.draft}</option>
+              <option value="published">{ds.content.status.published}</option>
             </select>
           </div>
 
           <div className={`field ${styles.formCol}`}>
-            <label className="label">Sort Order</label>
+            <label className="label">{ds.forms.sortOrder}</label>
             <input
               type="number"
               value={sortOrder}
@@ -260,55 +261,55 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
               className={styles.checkbox}
             />
             <label htmlFor="featured" className={`label ${styles.checkboxLabel}`}>
-              Featured Project
+              {ds.forms.featuredProject}
             </label>
           </div>
         </div>
 
         <div className="field">
-          <label className="label">GitHub Repo URL (Optional)</label>
+          <label className="label">{ds.forms.githubUrl}</label>
           <input
             type="url"
             value={githubUrl}
             onChange={(e) => setGithubUrl(e.target.value)}
-            placeholder="https://github.com/username/repo"
+            placeholder={ds.forms.placeholders.githubUrl}
             className="input"
           />
         </div>
 
         <div className="field">
-          <label className="label">Live Demo URL (Optional)</label>
+          <label className="label">{ds.forms.liveUrl}</label>
           <input
             type="url"
             value={liveUrl}
             onChange={(e) => setLiveUrl(e.target.value)}
-            placeholder="https://example.com"
+            placeholder={ds.forms.placeholders.liveUrl}
             className="input"
           />
         </div>
 
         <div className="field">
-          <label className="label">Cover Image URL (Optional)</label>
+          <label className="label">{ds.forms.coverImageUrl}</label>
           <input
             type="text"
             value={coverImageUrl}
             onChange={(e) => setCoverImageUrl(e.target.value)}
-            placeholder="https://example.com/image.png"
+            placeholder={ds.forms.placeholders.coverImageUrl}
             className="input"
           />
         </div>
 
         <details className={styles.seoDetails}>
-          <summary className={styles.seoSummary}>SEO Settings (Optional)</summary>
+          <summary className={styles.seoSummary}>{ds.forms.seoSettings}</summary>
           <div className={styles.seoFields}>
             <div className="field">
               <div className={styles.labelRow}>
-                <label className={styles.seoLabel}>SEO Title</label>
+                <label className={styles.seoLabel}>{ds.forms.seoTitle}</label>
                 <LocalizationButton
                   entityType="project"
                   entityId={initialData?.id}
                   field="seoTitle"
-                  label="SEO Title"
+                  label={ds.forms.seoTitle}
                   initialValue={seoTitle}
                 />
               </div>
@@ -321,12 +322,12 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
             </div>
             <div className="field">
               <div className={styles.labelRow}>
-                <label className={styles.seoLabel}>SEO Description</label>
+                <label className={styles.seoLabel}>{ds.forms.seoDescription}</label>
                 <LocalizationButton
                   entityType="project"
                   entityId={initialData?.id}
                   field="seoDescription"
-                  label="SEO Description"
+                  label={ds.forms.seoDescription}
                   initialValue={seoDescription}
                   inputType="textarea"
                 />
@@ -346,7 +347,7 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
           disabled={loading}
           className={styles.submit}
         >
-          {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Project"}
+          {loading ? ds.forms.saving : initialData ? ds.forms.saveChanges : ds.forms.publishProject}
         </button>
       </form>
     </div>

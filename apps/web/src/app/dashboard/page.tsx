@@ -6,6 +6,7 @@ import { logoutAction, deletePostAction, deletePageAction, deleteProjectAction }
 import DashboardListsContainer from "./components/DashboardListsContainer";
 import styles from "./dashboard.module.css";
 import { httpClient } from "../../lib/httpClient";
+import ds from "../../lib/dashboard-strings";
 
 interface PostItem {
   id: string;
@@ -125,14 +126,14 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   return (
     <div>
       <div className={styles.header}>
-        <h1 className={styles.title}>Dashboard</h1>
+          <h1 className={styles.title}>{ds.nav.dashboard}</h1>
         <div className={styles.actions}>
           <Link href="/dashboard/profile" className="btnGhost">
-            Profile
+            {ds.nav.profile}
           </Link>
           <form action={logoutAction}>
             <button type="submit" className="btnGhost">
-              Log Out
+              {ds.nav.logOut}
             </button>
           </form>
         </div>
@@ -140,10 +141,10 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
 
       <div className={styles.tabsContainer}>
         <Link href="/dashboard" className={`${styles.tab} ${styles.activeTab}`}>
-          Content
+          {ds.nav.tabs.content}
         </Link>
         <Link href="/dashboard/games" className={styles.tab}>
-          Games
+          {ds.nav.tabs.games}
         </Link>
       </div>
 
