@@ -40,8 +40,8 @@ export async function generateMetadata() {
   }
 
   return {
-    title: page?.seoTitle || page?.title || "Vefa Çağlar",
-    description: page?.seoDescription || "Personal website of Vefa Çağlar",
+    title: page?.seoTitle || page?.title || "vefa çağlar",
+    description: page?.seoDescription || "personal website of vefa çağlar",
   };
 }
 
@@ -78,7 +78,7 @@ export default async function Home() {
 
   return (
     <div>
-      <h1 className={styles.title}>{page?.title || "Vefa Çağlar"}</h1>
+      <h1 className={styles.title}>{page?.title || "vefa çağlar"}</h1>
       
       {page?.content && (
         <div className={styles.content}>

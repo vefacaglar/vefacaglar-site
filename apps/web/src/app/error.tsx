@@ -11,10 +11,10 @@ export default function Error({
 }) {
   return (
     <div className={styles.container}>
-      <h1>Something went wrong</h1>
-      <p>An unexpected error occurred.</p>
+      <h1>something went wrong</h1>
+      <p>an unexpected error occurred.</p>
       <Button onClick={reset} variant="ghost">
-        Try again
+        try again
       </Button>
     </div>
   );

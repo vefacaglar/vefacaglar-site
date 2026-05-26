@@ -30,27 +30,27 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
     <nav className={styles.pagination} aria-label="Pagination">
       {currentPage > 1 ? (
         <Link href={createPageUrl(currentPage - 1)} className={styles.pageButton}>
-          {isTr ? "\u2190 \u00D6nceki" : "\u2190 Previous"}
+          {isTr ? "\u2190 \u00F6nceki" : "\u2190 previous"}
         </Link>
       ) : (
         <span className={`${styles.pageButton} ${styles.disabled}`}>
-          {isTr ? "\u2190 \u00D6nceki" : "\u2190 Previous"}
+          {isTr ? "\u2190 \u00F6nceki" : "\u2190 previous"}
         </span>
       )}
 
       <div className={styles.pageInfo}>
         {isTr
-          ? `Sayfa ${currentPage} / ${totalPages}`
-          : `Page ${currentPage} of ${totalPages}`}
+          ? `sayfa ${currentPage} / ${totalPages}`
+          : `page ${currentPage} of ${totalPages}`}
       </div>
 
       {currentPage < totalPages ? (
         <Link href={createPageUrl(currentPage + 1)} className={styles.pageButton}>
-          {isTr ? "Sonraki \u2192" : "Next \u2192"}
+          {isTr ? "sonraki \u2192" : "next \u2192"}
         </Link>
       ) : (
         <span className={`${styles.pageButton} ${styles.disabled}`}>
-          {isTr ? "Sonraki \u2192" : "Next \u2192"}
+          {isTr ? "sonraki \u2192" : "next \u2192"}
         </span>
       )}
     </nav>

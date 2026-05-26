@@ -22,15 +22,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const res = await httpClient.get(`/api/pages/${params.slug}`);
-    if (!res.ok) return { title: "Page Not Found" };
+    if (!res.ok) return { title: "page not found" };
 
     const page: PageItem = await res.json();
     return {
-      title: page.seoTitle || `${page.title} | Vefa Çağlar`,
+      title: page.seoTitle || `${page.title} | vefa çağlar`,
       description: page.seoDescription || page.title,
     };
   } catch {
-    return { title: "Vefa Çağlar" };
+    return { title: "vefa çağlar" };
   }
 }
 

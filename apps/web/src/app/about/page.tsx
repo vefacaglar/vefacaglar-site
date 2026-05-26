@@ -31,8 +31,8 @@ export async function generateMetadata() {
   }
 
   return {
-    title: page?.seoTitle || page?.title || "About",
-    description: page?.seoDescription || "About Vefa Çağlar",
+    title: page?.seoTitle || page?.title || "about",
+    description: page?.seoDescription || "about vefa çağlar",
   };
 }
 
@@ -53,7 +53,7 @@ export default async function About() {
 
   return (
     <div>
-      <h1>{page?.title || "About"}</h1>
+      <h1>{page?.title || "about"}</h1>
       {page?.content && (
         <MarkdownPreview content={page.content} />
       )}

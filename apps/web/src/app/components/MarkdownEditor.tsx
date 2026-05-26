@@ -67,7 +67,7 @@ interface MarkdownEditorProps {
 export default function MarkdownEditor({
   value,
   onChange,
-  placeholder = "Write in Markdown...",
+  placeholder = "write in markdown...",
   required = false,
   rows = 15,
 }: MarkdownEditorProps) {
@@ -102,27 +102,27 @@ export default function MarkdownEditor({
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "h1":
-        replacement = `\n# ${selectedText || "Heading 1"}\n`;
+        replacement = `\n# ${selectedText || "heading 1"}\n`;
         selectionOffsetStart = 3;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "h2":
-        replacement = `\n## ${selectedText || "Heading 2"}\n`;
+        replacement = `\n## ${selectedText || "heading 2"}\n`;
         selectionOffsetStart = 4;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "h3":
-        replacement = `\n### ${selectedText || "Heading 3"}\n`;
+        replacement = `\n### ${selectedText || "heading 3"}\n`;
         selectionOffsetStart = 5;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "link":
-        replacement = `[${selectedText || "Link Text"}](https://)`;
+        replacement = `[${selectedText || "link text"}](https://)`;
         selectionOffsetStart = 1;
-        selectionOffsetEnd = (selectedText || "Link Text").length + 1;
+        selectionOffsetEnd = (selectedText || "link text").length + 1;
         break;
       case "image":
-        replacement = `![${selectedText || "Image Description"}](/uploads/image.png)`;
+        replacement = `![${selectedText || "image description"}](/uploads/image.png)`;
         selectionOffsetStart = 2;
         selectionOffsetEnd = (selectedText || "Image Description").length + 2;
         break;
@@ -132,12 +132,12 @@ export default function MarkdownEditor({
         selectionOffsetEnd = replacement.length - 5;
         break;
       case "list":
-        replacement = `\n- ${selectedText || "List item"}\n`;
+        replacement = `\n- ${selectedText || "list item"}\n`;
         selectionOffsetStart = 3;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "quote":
-        replacement = `\n> ${selectedText || "Blockquote"}\n`;
+        replacement = `\n> ${selectedText || "blockquote"}\n`;
         selectionOffsetStart = 3;
         selectionOffsetEnd = replacement.length - 1;
         break;
@@ -211,7 +211,7 @@ export default function MarkdownEditor({
     const end = textarea.selectionEnd;
 
     const filename = file.name || "image.png";
-    const placeholderText = `![Uploading ${filename}...]()`;
+    const placeholderText = `![uploading ${filename}...]()`;
 
     const beforeText = value.substring(0, start);
     const afterText = value.substring(end);
@@ -223,7 +223,7 @@ export default function MarkdownEditor({
     try {
       const token = await getSessionToken();
       if (!token) {
-        throw new Error("Unauthorized. Please log in.");
+        throw new Error("unauthorized. please log in.");
       }
 
       const compressedFile = await compressImage(file);
@@ -242,7 +242,7 @@ export default function MarkdownEditor({
       const result = await response.json();
 
       if (!response.ok || result.error || result.message) {
-        throw new Error(result.error || result.message || "Failed to upload image.");
+        throw new Error(result.error || result.message || "failed to upload image.");
       }
 
       const finalImageMarkdown = `![${filename}](${result.url})`;
@@ -260,7 +260,7 @@ export default function MarkdownEditor({
       }
     } catch (error: any) {
       console.error("Drag-and-drop upload error:", error);
-      alert(error.message || "An error occurred while uploading the image.");
+      alert(error.message || "an error occurred while uploading the image.");
 
       // Clean up placeholder
       const currentVal = textareaRef.current ? textareaRef.current.value : newValueWithPlaceholder;
@@ -283,7 +283,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("bold")}
-            title="Bold"
+            title="bold"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -292,7 +292,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("italic")}
-            title="Italic"
+            title="italic"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -302,7 +302,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("h1")}
-            title="Heading 1"
+            title="heading 1"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -311,7 +311,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("h2")}
-            title="Heading 2"
+            title="heading 2"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -320,7 +320,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("h3")}
-            title="Heading 3"
+            title="heading 3"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -330,7 +330,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("link")}
-            title="Insert Link"
+            title="insert link"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -339,7 +339,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("image")}
-            title="Insert Image"
+            title="insert image"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -349,7 +349,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("list")}
-            title="Bullet List"
+            title="bullet list"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -358,7 +358,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("quote")}
-            title="Blockquote"
+            title="blockquote"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -367,7 +367,7 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("code")}
-            title="Code Block"
+            title="code block"
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
@@ -405,7 +405,7 @@ export default function MarkdownEditor({
             onDrop={handleDrop}
             onPaste={handlePaste}
             rows={rows}
-            placeholder={isDragging ? "Drop your image here..." : isUploading ? "Uploading image..." : placeholder}
+            placeholder={isDragging ? "drop your image here..." : isUploading ? "uploading image..." : placeholder}
             disabled={isUploading}
             className={`${styles.textarea} ${isDragging ? styles.textareaDragActive : ""}`}
           />

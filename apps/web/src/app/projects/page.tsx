@@ -21,10 +21,10 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();
-  const title = lang === "tr" ? "Projeler — Vefa Çağlar" : "Projects — Vefa Çağlar";
+  const title = lang === "tr" ? "projeler — vefa çağlar" : "projects — vefa çağlar";
   const description = lang === "tr" 
-    ? "Geliştirdiğim açık kaynaklı projeler, araçlar ve deneyler." 
-    : "Open source projects, tools, and side experiments.";
+    ? "geliştirdiğim açık kaynaklı projeler, araçlar ve deneyler." 
+    : "open source projects, tools, and side experiments.";
   return { title, description };
 }
 

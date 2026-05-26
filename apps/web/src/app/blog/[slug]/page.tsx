@@ -30,15 +30,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const res = await httpClient.get(`/api/posts/${params.slug}`);
-    if (!res.ok) return { title: "Post Not Found" };
+    if (!res.ok) return { title: "post not found" };
 
     const post: PostDetail = await res.json();
     return {
-      title: post.seoTitle || `${post.title} | Vefa Çağlar`,
+      title: post.seoTitle || `${post.title} | vefa çağlar`,
       description: post.seoDescription || post.title,
     };
   } catch {
-    return { title: "Vefa Çağlar Blog" };
+    return { title: "vefa çağlar blog" };
   }
 }
 

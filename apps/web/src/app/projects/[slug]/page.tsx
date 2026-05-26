@@ -31,15 +31,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const res = await httpClient.get(`/api/projects/${params.slug}`);
-    if (!res.ok) return { title: "Project Not Found" };
+    if (!res.ok) return { title: "project not found" };
 
     const project: ProjectDetail = await res.json();
     return {
-      title: project.seoTitle || `${project.title} | Vefa Çağlar`,
+      title: project.seoTitle || `${project.title} | vefa çağlar`,
       description: project.seoDescription || project.summary,
     };
   } catch {
-    return { title: "Vefa Çağlar Projects" };
+    return { title: "vefa çağlar projects" };
   }
 }
 

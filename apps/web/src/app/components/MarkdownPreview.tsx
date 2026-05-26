@@ -48,7 +48,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
   }, [activeImage]);
 
   if (!content.trim()) {
-    return <span className={styles.empty}>No content written yet.</span>;
+    return <span className={styles.empty}>no content written yet.</span>;
   }
 
   const lines = content.split("\n");
@@ -173,7 +173,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
         <div key={key++} className={styles.videoWrapper}>
           <iframe
             src={`https://www.youtube.com/embed/${youtubeId}`}
-            title="YouTube video player"
+            title="youtube video player"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
@@ -274,7 +274,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
             <button 
               className={styles.lightboxCloseButton} 
               onClick={() => setActiveImage(null)}
-              aria-label="Close image lightbox"
+              aria-label="close image lightbox"
             >
               &times;
             </button>

@@ -23,15 +23,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { username: string } }) {
   try {
     const res = await httpClient.get(`/api/authors/${params.username}`);
-    if (!res.ok) return { title: "Author Not Found" };
+    if (!res.ok) return { title: "author not found" };
 
     const author: AuthorDetail = await res.json();
     return {
-      title: `${author.displayName} | Vefa Çağlar`,
-      description: `Posts by ${author.displayName}`,
+      title: `${author.displayName} | vefa çağlar`,
+      description: `posts by ${author.displayName}`,
     };
   } catch {
-    return { title: "Author | Vefa Çağlar" };
+    return { title: "author | vefa çağlar" };
   }
 }
 

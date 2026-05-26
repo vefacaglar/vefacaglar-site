@@ -17,9 +17,9 @@ export default function NotFound() {
   return (
     <div className={styles.container}>
       <h1>404</h1>
-      <p>{isTr ? "Sayfa bulunamadı." : "Page not found."}</p>
+      <p>{isTr ? "sayfa bulunamadı." : "page not found."}</p>
       <Link href={isTr ? "/tr" : "/"} className={styles.link}>
-        {isTr ? "Ana sayfaya dön" : "Go home"}
+        {isTr ? "ana sayfaya dön" : "go home"}
       </Link>
     </div>
   );
