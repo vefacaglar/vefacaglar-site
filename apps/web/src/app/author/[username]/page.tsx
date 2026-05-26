@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import styles from "./page.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
-import { getDictionary } from "../../../dictionaries";
+import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
 
@@ -21,17 +21,20 @@ interface AuthorDetail {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { username: string } }) {
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
+
   try {
     const res = await httpClient.get(`/api/authors/${params.username}`);
-    if (!res.ok) return { title: "Author Not Found" };
+    if (!res.ok) return { title: dict.author_not_found_title };
 
     const author: AuthorDetail = await res.json();
     return {
-      title: `${author.displayName} | Vefa Çağlar`,
-      description: `Posts by ${author.displayName}`,
+      title: formatMetaTitle(author.displayName, lang),
+      description: `${dict.posts_by} ${author.displayName}`,
     };
   } catch {
-    return { title: "Author | Vefa Çağlar" };
+    return { title: dict.author_meta_title };
   }
 }
 
@@ -78,7 +81,7 @@ export default async function AuthorPage({ params }: { params: { username: strin
         <ul className={styles.list}>
           {author.posts.map((post) => (
             <li key={post.id} className={styles.listItem}>
-              <span className={styles.dash}>—</span>
+              <span className={styles.dash}>{dict.separator_dash}</span>
               <div className={styles.itemMeta}>
                 <Link href={localizeHref(`/blog/${post.slug}`, lang)}>{post.title}</Link>
                 {post.excerpt && (

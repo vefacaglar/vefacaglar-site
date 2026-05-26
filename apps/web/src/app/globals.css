@@ -36,8 +36,16 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   line-height: 1.6;
   font-size: 15px;
+  text-transform: lowercase;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+pre,
+code,
+textarea,
+[class*="code"] {
+  text-transform: none;
 }
 
 ::-moz-selection { background: var(--border); }

@@ -2,6 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../components/MarkdownPreview";
 import { getActiveLanguage } from "../../lib/lang";
+import { getDictionary, formatMetaTitle } from "../../dictionaries";
 import { httpClient } from "../../lib/httpClient";
 import styles from "./page.module.css";
 import AdminEditLink from "../../components/AdminEditLink";
@@ -20,17 +21,20 @@ interface PageItem {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
+
   try {
     const res = await httpClient.get(`/api/pages/${params.slug}`);
-    if (!res.ok) return { title: "Page Not Found" };
+    if (!res.ok) return { title: dict.page_not_found_title };
 
     const page: PageItem = await res.json();
     return {
-      title: page.seoTitle || `${page.title} | Vefa Çağlar`,
+      title: page.seoTitle || formatMetaTitle(page.title, lang),
       description: page.seoDescription || page.title,
     };
   } catch {
-    return { title: "Vefa Çağlar" };
+    return { title: dict.site_title };
   }
 }
 

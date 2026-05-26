@@ -6,6 +6,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import DeleteButton from "./DeleteButton";
 import SimplePagination from "./SimplePagination";
 import styles from "../dashboard.module.css";
+import ds from "../../../lib/dashboard-strings";
 
 interface PostItem {
   id: string;
@@ -55,6 +56,17 @@ interface DashboardListsContainerProps {
   deletePageAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
 }
 
+const statusLabel = (status: "draft" | "published") =>
+  status === "published" ? ds.content.status.published : ds.content.status.draft;
+
+const renderTableHeaders = () => (
+  <tr>
+    <th className={styles.th}>{ds.content.table.title}</th>
+    <th className={styles.th}>{ds.content.table.status}</th>
+    <th className={styles.thRight}>{ds.content.table.actions}</th>
+  </tr>
+);
+
 export default function DashboardListsContainer({
   posts,
   postsTotal,
@@ -92,24 +104,18 @@ export default function DashboardListsContainer({
       {/* Posts Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Posts (Blog Posts)</h2>
+          <h2 className={styles.sectionTitle}>{ds.content.posts}</h2>
           <Link href="/dashboard/posts/new" className="btnAccent">
-            + New Post
+            {ds.content.newPost}
           </Link>
         </div>
 
         {postsTotal === 0 ? (
-          <p className={styles.empty}>No posts added yet.</p>
+          <p className={styles.empty}>{ds.content.noPosts}</p>
         ) : (
           <>
             <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>Title</th>
-                  <th className={styles.th}>Status</th>
-                  <th className={styles.thRight}>Actions</th>
-                </tr>
-              </thead>
+              <thead>{renderTableHeaders()}</thead>
               <tbody>
                 {posts.map((post) => (
                   <tr key={post.id} className={styles.tr}>
@@ -120,13 +126,13 @@ export default function DashboardListsContainer({
                     </td>
                     <td className={styles.td}>
                       <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {post.status === "published" ? "Published" : "Draft"}
+                        {statusLabel(post.status)}
                       </span>
                     </td>
                     <td className={styles.tdRight}>
                       <div className={styles.rowActions}>
                         <Link href={`/dashboard/posts/edit/${post.id}`} className={styles.editLink}>
-                          Edit
+                          {ds.content.edit}
                         </Link>
                         <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
                       </div>
@@ -151,37 +157,31 @@ export default function DashboardListsContainer({
       {/* Projects Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Projects</h2>
+          <h2 className={styles.sectionTitle}>{ds.content.projects}</h2>
           <Link href="/dashboard/projects/new" className="btnAccent">
-            + New Project
+            {ds.content.newProject}
           </Link>
         </div>
 
         {projectsTotal === 0 ? (
-          <p className={styles.empty}>No projects added yet.</p>
+          <p className={styles.empty}>{ds.content.noProjects}</p>
         ) : (
           <>
             <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>Title</th>
-                  <th className={styles.th}>Status</th>
-                  <th className={styles.thRight}>Actions</th>
-                </tr>
-              </thead>
+              <thead>{renderTableHeaders()}</thead>
               <tbody>
                 {projects.map((project) => (
                   <tr key={project.id} className={styles.tr}>
                     <td className={styles.td}>{project.title} (/projects/{project.slug})</td>
                     <td className={styles.td}>
                       <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {project.status === "published" ? "Published" : "Draft"}
+                        {statusLabel(project.status)}
                       </span>
                     </td>
                     <td className={styles.tdRight}>
                       <div className={styles.rowActions}>
                         <Link href={`/dashboard/projects/edit/${project.id}`} className={styles.editLink}>
-                          Edit
+                          {ds.content.edit}
                         </Link>
                         <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
                       </div>
@@ -206,37 +206,31 @@ export default function DashboardListsContainer({
       {/* Pages Section */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Pages</h2>
+          <h2 className={styles.sectionTitle}>{ds.content.pages}</h2>
           <Link href="/dashboard/pages/new" className="btnAccent">
-            + New Page
+            {ds.content.newPage}
           </Link>
         </div>
 
         {pagesTotal === 0 ? (
-          <p className={styles.empty}>No pages added yet.</p>
+          <p className={styles.empty}>{ds.content.noPages}</p>
         ) : (
           <>
             <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>Title</th>
-                  <th className={styles.th}>Status</th>
-                  <th className={styles.thRight}>Actions</th>
-                </tr>
-              </thead>
+              <thead>{renderTableHeaders()}</thead>
               <tbody>
                 {pages.map((page) => (
                   <tr key={page.id} className={styles.tr}>
                     <td className={styles.td}>{page.title} (/{page.slug})</td>
                     <td className={styles.td}>
                       <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {page.status === "published" ? "Published" : "Draft"}
+                        {statusLabel(page.status)}
                       </span>
                     </td>
                     <td className={styles.tdRight}>
                       <div className={styles.rowActions}>
                         <Link href={`/dashboard/pages/edit/${page.id}`} className={styles.editLink}>
-                          Edit
+                          {ds.content.edit}
                         </Link>
                         <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
                       </div>

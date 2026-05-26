@@ -8,6 +8,7 @@ import MarkdownEditor from "../../components/MarkdownEditor";
 import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
 import Button from "../../../components/Button";
+import ds from "../../../lib/dashboard-strings";
 
 interface PostFormProps {
   initialData?: {
@@ -96,12 +97,12 @@ export default function PostForm({ initialData }: PostFormProps) {
     <div className={styles.wrapper}>
       <div className={styles.back}>
         <Link href={fromUrl || "/dashboard"} className="backLink">
-          {fromUrl ? "← cancel" : "← back to dashboard"}
+          {fromUrl ? ds.forms.backCancel : ds.forms.backToDashboard}
         </Link>
       </div>
 
       <h1>
-        {initialData ? "Edit Post" : "Add New Post"}
+        {initialData ? ds.forms.editPost : ds.forms.addNewPost}
       </h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
@@ -113,8 +114,8 @@ export default function PostForm({ initialData }: PostFormProps) {
 
         <div className="field">
           <div className={styles.labelRow}>
-            <label className="label">Title</label>
-            <LocalizationButton entityType="post" entityId={initialData?.id} field="title" label="Title" initialValue={title} />
+            <label className="label">{ds.forms.title}</label>
+            <LocalizationButton entityType="post" entityId={initialData?.id} field="title" label={ds.forms.title} initialValue={title} />
           </div>
           <input
             type="text"
@@ -126,7 +127,7 @@ export default function PostForm({ initialData }: PostFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Slug (URL Path)</label>
+          <label className="label">{ds.forms.slug}</label>
           <input
             type="text"
             required
@@ -138,12 +139,12 @@ export default function PostForm({ initialData }: PostFormProps) {
 
         <div className="field">
           <div className={styles.labelRow}>
-            <label className="label">Excerpt</label>
+            <label className="label">{ds.forms.excerpt}</label>
             <LocalizationButton
               entityType="post"
               entityId={initialData?.id}
               field="excerpt"
-              label="Excerpt"
+              label={ds.forms.excerpt}
               initialValue={excerpt}
               inputType="textarea"
             />
@@ -158,7 +159,7 @@ export default function PostForm({ initialData }: PostFormProps) {
 
         <div className="field">
           <div className={styles.labelRow}>
-            <label className="label">Content (Markdown / MDX)</label>
+            <label className="label">{ds.forms.content}</label>
             <LocalizationButton
               entityType="post"
               entityId={initialData?.id}
@@ -172,45 +173,45 @@ export default function PostForm({ initialData }: PostFormProps) {
             required
             value={content}
             onChange={setContent}
-            placeholder="# Title&#10;&#10;Write your content in MDX/Markdown format..."
+            placeholder={ds.forms.placeholders.mdxPost}
             rows={15}
           />
         </div>
 
         <div className="field">
-          <label className="label">Cover Image URL</label>
+          <label className="label">{ds.forms.coverImageUrl}</label>
           <input
             type="text"
             value={coverImageUrl}
             onChange={(e) => setCoverImageUrl(e.target.value)}
-            placeholder="https://example.com/image.png"
+            placeholder={ds.forms.placeholders.coverImageUrl}
             className="input"
           />
         </div>
 
         <div className="field">
-          <label className="label">Publish Status</label>
+          <label className="label">{ds.forms.publishStatus}</label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as "draft" | "published")}
             className={styles.select}
           >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            <option value="draft">{ds.content.status.draft}</option>
+            <option value="published">{ds.content.status.published}</option>
           </select>
         </div>
 
         <details className={styles.seoDetails}>
-          <summary className={styles.seoSummary}>SEO Settings (Optional)</summary>
+          <summary className={styles.seoSummary}>{ds.forms.seoSettings}</summary>
           <div className={styles.seoFields}>
             <div className="field">
               <div className={styles.labelRow}>
-                <label className={styles.seoLabel}>SEO Title</label>
+                <label className={styles.seoLabel}>{ds.forms.seoTitle}</label>
                 <LocalizationButton
                   entityType="post"
                   entityId={initialData?.id}
                   field="seoTitle"
-                  label="SEO Title"
+                  label={ds.forms.seoTitle}
                   initialValue={seoTitle}
                 />
               </div>
@@ -223,12 +224,12 @@ export default function PostForm({ initialData }: PostFormProps) {
             </div>
             <div className="field">
               <div className={styles.labelRow}>
-                <label className={styles.seoLabel}>SEO Description</label>
+                <label className={styles.seoLabel}>{ds.forms.seoDescription}</label>
                 <LocalizationButton
                   entityType="post"
                   entityId={initialData?.id}
                   field="seoDescription"
-                  label="SEO Description"
+                  label={ds.forms.seoDescription}
                   initialValue={seoDescription}
                   inputType="textarea"
                 />
@@ -248,7 +249,7 @@ export default function PostForm({ initialData }: PostFormProps) {
           disabled={loading}
           className={styles.submitBtn}
         >
-          {loading ? "Saving..." : initialData ? "Save Changes" : "Publish Post"}
+          {loading ? ds.forms.saving : initialData ? ds.forms.saveChanges : ds.forms.publishPost}
         </Button>
       </form>
     </div>

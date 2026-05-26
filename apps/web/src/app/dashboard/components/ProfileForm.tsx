@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { updateProfileAction } from "../actions";
 import formStyles from "./form.module.css";
-
 import Button from "../../../components/Button";
+import ds from "../../../lib/dashboard-strings";
 
 interface ProfileFormProps {
   initialData: {
@@ -50,12 +50,12 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
 
       {success && (
         <div className="successMsg">
-          Profile updated successfully.
+          {ds.profile.updated}
         </div>
       )}
 
       <div className="field">
-        <label htmlFor="displayName" className="label">Display Name</label>
+        <label htmlFor="displayName" className="label">{ds.profile.displayName}</label>
         <input
           id="displayName"
           type="text"
@@ -67,7 +67,7 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
       </div>
 
       <div className="field">
-        <label htmlFor="email" className="label">Email</label>
+        <label htmlFor="email" className="label">{ds.profile.email}</label>
         <input
           id="email"
           type="email"
@@ -79,7 +79,7 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
       </div>
 
       <div className="field">
-        <label htmlFor="username" className="label">Username</label>
+        <label htmlFor="username" className="label">{ds.profile.username}</label>
         <input
           id="username"
           type="text"
@@ -95,7 +95,7 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
         type="submit"
         disabled={loading}
       >
-        {loading ? "Saving..." : "Save Profile"}
+        {loading ? ds.profile.saving : ds.profile.saveProfile}
       </Button>
     </form>
   );

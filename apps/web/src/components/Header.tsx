@@ -24,7 +24,7 @@ export default function Header({ dict }: HeaderProps) {
   const getBreadcrumbs = () => {
     const isHome = pagePath === "/" || pagePath === "";
     const items: Array<{ label: string; href: string | null }> = [
-      { label: "vefacaglar", href: isHome ? null : `${prefix}/` }
+      { label: dict.back_to_home, href: isHome ? null : `${prefix}/` }
     ];
 
     if (isHome) return items;

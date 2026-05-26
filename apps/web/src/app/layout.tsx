@@ -8,8 +8,8 @@ import "./globals.css";
 import styles from "./layout.module.css";
 
 export const metadata: Metadata = {
-  title: "Vefa Çağlar",
-  description: "Personal website of Vefa Çağlar",
+  title: "vefa çağlar",
+  description: "personal website of vefa çağlar",
   verification: {
     google: "nVnbCv8TKlOREhb5XkkIegzW0AImFUIHrvNokeSlJYA",
   },

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "../actions";
 import styles from "../dashboard.module.css";
 import GamesDashboardClient, { SubTab } from "./GamesDashboardClient";
+import ds from "../../../lib/dashboard-strings";
 import {
   listGamesAction,
   listDevelopersAction,
@@ -66,25 +67,25 @@ export default async function GamesDashboard({ searchParams }: PageProps) {
   return (
     <div>
       <div className={styles.header}>
-        <h1 className={styles.title}>Dashboard</h1>
+        <h1 className={styles.title}>{ds.nav.dashboard}</h1>
         <div className={styles.actions}>
           <Link href="/dashboard/profile" className="btnGhost">
-            Profile
+            {ds.nav.profile}
           </Link>
           <form action={logoutAction}>
             <button type="submit" className="btnGhost">
-              Log Out
+              {ds.nav.logOut}
             </button>
           </form>
         </div>
       </div>
 
       <div className={styles.tabsContainer}>
-        <Link href="/dashboard" className={styles.tab}>
-          Content
-        </Link>
+          <Link href="/dashboard" className={styles.tab}>
+            {ds.nav.tabs.content}
+          </Link>
         <Link href="/dashboard/games" className={`${styles.tab} ${styles.activeTab}`}>
-          Games
+          {ds.nav.tabs.games}
         </Link>
       </div>
 

@@ -1,0 +1,57 @@
+const editorStrings = {
+  toolbar: {
+    bold: "b",
+    italic: "i",
+    heading1: "h1",
+    heading2: "h2",
+    heading3: "h3",
+    link: "link",
+    image: "img",
+    list: "list",
+    quote: "quote",
+    codeBlock: "code",
+  },
+  tooltips: {
+    bold: "bold",
+    italic: "italic",
+    heading1: "heading 1",
+    heading2: "heading 2",
+    heading3: "heading 3",
+    insertLink: "insert link",
+    insertImage: "insert image",
+    bulletList: "bullet list",
+    blockquote: "blockquote",
+    codeBlock: "code block",
+  },
+  tabs: {
+    write: "write",
+    preview: "preview",
+  },
+  placeholders: {
+    editor: "write in markdown...",
+    dragImage: "drop your image here...",
+    uploading: "uploading image...",
+    uploadTemplate: "![uploading {filename}...]()",
+  },
+  insertText: {
+    bold: "bold text",
+    italic: "italic text",
+    heading1: "heading 1",
+    heading2: "heading 2",
+    heading3: "heading 3",
+    link: "link text",
+    image: "image description",
+    codeBlock: "code block",
+    list: "list item",
+    blockquote: "blockquote",
+  },
+  errors: {
+    unauthorized: "unauthorized. please log in.",
+    uploadFailed: "failed to upload image.",
+    unexpected: "an error occurred while uploading the image.",
+  },
+  fallbackFilename: "image.png",
+  divider: "|",
+} as const;
+
+export default editorStrings;

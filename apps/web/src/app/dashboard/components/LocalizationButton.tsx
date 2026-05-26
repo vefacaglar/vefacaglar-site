@@ -5,6 +5,7 @@ import { getLocalizationAction, upsertLocalizationAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "./LocalizationButton.module.css";
 import Button from "../../../components/Button";
+import ds from "../../../lib/dashboard-strings";
 
 type EntityType = "page" | "post" | "project";
 type InputType = "input" | "textarea";
@@ -79,7 +80,7 @@ export default function LocalizationButton({
 
   const handleSave = async () => {
     if (!value.trim()) {
-      setError("Please enter a translation.");
+      setError(ds.localization.error);
       return;
     }
 
@@ -111,9 +112,9 @@ export default function LocalizationButton({
         type="button"
         className={styles.trigger}
         onClick={openPopup}
-        title={`Add Turkish translation for ${label}`}
+        title={ds.localization.triggerTitle.replace("{label}", label)}
       >
-        TR
+        {ds.localization.triggerText}
       </button>
 
       {open && (
@@ -127,21 +128,21 @@ export default function LocalizationButton({
           >
             <div className={styles.header}>
               <h2 id={`localization-${entityType}-${field}`} className={styles.title}>
-                Turkish Translation: {label}
+                {ds.localization.modalTitle.replace("{label}", label)}
               </h2>
-              <button type="button" className={styles.close} onClick={close} aria-label="Close">
+              <button type="button" className={styles.close} onClick={close} aria-label={ds.localization.close}>
                 x
               </button>
             </div>
 
             <div className={styles.form}>
               {error && <div className="errorMsg">{error}</div>}
-              {success && <div className="successMsg">Localization saved.</div>}
+              {success && <div className="successMsg">{ds.localization.saved}</div>}
 
               <div className="field">
-                <label className="label">Language</label>
+                <label className="label">{ds.localization.language}</label>
                 <select value="tr" disabled className={styles.select}>
-                  <option value="tr">Turkish</option>
+                  <option value="tr">{ds.localization.languageOption}</option>
                 </select>
               </div>
 
@@ -151,7 +152,7 @@ export default function LocalizationButton({
                   <MarkdownEditor
                     value={value}
                     onChange={setValue}
-                    placeholder={loadingValue ? "Loading translation..." : `Write Turkish translation for ${label}...`}
+                    placeholder={loadingValue ? ds.localization.loadingPlaceholder : ds.localization.writePlaceholder.replace("{label}", label)}
                     rows={8}
                   />
                 ) : (
@@ -159,7 +160,7 @@ export default function LocalizationButton({
                     type="text"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder={loadingValue ? "Loading translation..." : undefined}
+                    placeholder={loadingValue ? ds.localization.loadingPlaceholder : undefined}
                     className={styles.input}
                   />
                 )}
@@ -167,10 +168,10 @@ export default function LocalizationButton({
 
               <div className={styles.actions}>
                 <Button type="button" variant="ghost" onClick={close}>
-                  Cancel
+                  {ds.localization.cancel}
                 </Button>
                 <Button type="button" variant="accent" disabled={loading || loadingValue} onClick={handleSave}>
-                  {loading ? "Saving..." : "Save"}
+                  {loading ? ds.localization.saving : ds.localization.save}
                 </Button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import MarkdownPreview from "./MarkdownPreview";
 import styles from "./MarkdownEditor.module.css";
 import { getSessionToken } from "../dashboard/actions";
+import e from "../../lib/editor-strings";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -67,7 +68,7 @@ interface MarkdownEditorProps {
 export default function MarkdownEditor({
   value,
   onChange,
-  placeholder = "Write in Markdown...",
+  placeholder = e.placeholders.editor,
   required = false,
   rows = 15,
 }: MarkdownEditorProps) {
@@ -89,55 +90,56 @@ export default function MarkdownEditor({
     let replacement = "";
     let selectionOffsetStart = 0;
     let selectionOffsetEnd = 0;
+    const insert = e.insertText;
 
     switch (type) {
       case "bold":
-        replacement = `**${selectedText || "bold text"}**`;
+        replacement = `**${selectedText || insert.bold}**`;
         selectionOffsetStart = 2;
         selectionOffsetEnd = replacement.length - 2;
         break;
       case "italic":
-        replacement = `*${selectedText || "italic text"}*`;
+        replacement = `*${selectedText || insert.italic}*`;
         selectionOffsetStart = 1;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "h1":
-        replacement = `\n# ${selectedText || "Heading 1"}\n`;
+        replacement = `\n# ${selectedText || insert.heading1}\n`;
         selectionOffsetStart = 3;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "h2":
-        replacement = `\n## ${selectedText || "Heading 2"}\n`;
+        replacement = `\n## ${selectedText || insert.heading2}\n`;
         selectionOffsetStart = 4;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "h3":
-        replacement = `\n### ${selectedText || "Heading 3"}\n`;
+        replacement = `\n### ${selectedText || insert.heading3}\n`;
         selectionOffsetStart = 5;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "link":
-        replacement = `[${selectedText || "Link Text"}](https://)`;
+        replacement = `[${selectedText || insert.link}](https://)`;
         selectionOffsetStart = 1;
-        selectionOffsetEnd = (selectedText || "Link Text").length + 1;
+        selectionOffsetEnd = (selectedText || insert.link).length + 1;
         break;
       case "image":
-        replacement = `![${selectedText || "Image Description"}](/uploads/image.png)`;
+        replacement = `![${selectedText || insert.image}](/uploads/image.png)`;
         selectionOffsetStart = 2;
-        selectionOffsetEnd = (selectedText || "Image Description").length + 2;
+        selectionOffsetEnd = (selectedText || insert.image).length + 2;
         break;
       case "code":
-        replacement = `\n\`\`\`\n${selectedText || "code block"}\n\`\`\`\n`;
+        replacement = `\n\`\`\`\n${selectedText || insert.codeBlock}\n\`\`\`\n`;
         selectionOffsetStart = 5;
         selectionOffsetEnd = replacement.length - 5;
         break;
       case "list":
-        replacement = `\n- ${selectedText || "List item"}\n`;
+        replacement = `\n- ${selectedText || insert.list}\n`;
         selectionOffsetStart = 3;
         selectionOffsetEnd = replacement.length - 1;
         break;
       case "quote":
-        replacement = `\n> ${selectedText || "Blockquote"}\n`;
+        replacement = `\n> ${selectedText || insert.blockquote}\n`;
         selectionOffsetStart = 3;
         selectionOffsetEnd = replacement.length - 1;
         break;
@@ -148,7 +150,6 @@ export default function MarkdownEditor({
     const newValue = value.substring(0, start) + replacement + value.substring(end);
     onChange(newValue);
 
-    // Wait for React to apply onChange state update, then restore focus & select
     setTimeout(() => {
       textarea.focus({ preventScroll: true });
       if (selectedText) {
@@ -210,8 +211,8 @@ export default function MarkdownEditor({
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    const filename = file.name || "image.png";
-    const placeholderText = `![Uploading ${filename}...]()`;
+    const filename = file.name || e.fallbackFilename;
+    const placeholderText = e.placeholders.uploadTemplate.replace("{filename}", filename);
 
     const beforeText = value.substring(0, start);
     const afterText = value.substring(end);
@@ -223,7 +224,7 @@ export default function MarkdownEditor({
     try {
       const token = await getSessionToken();
       if (!token) {
-        throw new Error("Unauthorized. Please log in.");
+        throw new Error(e.errors.unauthorized);
       }
 
       const compressedFile = await compressImage(file);
@@ -242,7 +243,7 @@ export default function MarkdownEditor({
       const result = await response.json();
 
       if (!response.ok || result.error || result.message) {
-        throw new Error(result.error || result.message || "Failed to upload image.");
+        throw new Error(result.error || result.message || e.errors.uploadFailed);
       }
 
       const finalImageMarkdown = `![${filename}](${result.url})`;
@@ -260,9 +261,8 @@ export default function MarkdownEditor({
       }
     } catch (error: any) {
       console.error("Drag-and-drop upload error:", error);
-      alert(error.message || "An error occurred while uploading the image.");
+      alert(error.message || e.errors.unexpected);
 
-      // Clean up placeholder
       const currentVal = textareaRef.current ? textareaRef.current.value : newValueWithPlaceholder;
       const index = currentVal.indexOf(placeholderText);
       if (index !== -1) {
@@ -276,6 +276,8 @@ export default function MarkdownEditor({
     }
   };
 
+  const { toolbar, tooltips, tabs, placeholders } = e;
+
   return (
     <div className={styles.editorContainer}>
       <div className={styles.tabBar}>
@@ -283,95 +285,95 @@ export default function MarkdownEditor({
           <button
             type="button"
             onClick={() => insertMarkdown("bold")}
-            title="Bold"
+            title={tooltips.bold}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            b
+            {toolbar.bold}
           </button>
           <button
             type="button"
             onClick={() => insertMarkdown("italic")}
-            title="Italic"
+            title={tooltips.italic}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            i
+            {toolbar.italic}
           </button>
-          <span className={styles.divider}>|</span>
+          <span className={styles.divider}>{e.divider}</span>
           <button
             type="button"
             onClick={() => insertMarkdown("h1")}
-            title="Heading 1"
+            title={tooltips.heading1}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            h1
+            {toolbar.heading1}
           </button>
           <button
             type="button"
             onClick={() => insertMarkdown("h2")}
-            title="Heading 2"
+            title={tooltips.heading2}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            h2
+            {toolbar.heading2}
           </button>
           <button
             type="button"
             onClick={() => insertMarkdown("h3")}
-            title="Heading 3"
+            title={tooltips.heading3}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            h3
+            {toolbar.heading3}
           </button>
-          <span className={styles.divider}>|</span>
+          <span className={styles.divider}>{e.divider}</span>
           <button
             type="button"
             onClick={() => insertMarkdown("link")}
-            title="Insert Link"
+            title={tooltips.insertLink}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            link
+            {toolbar.link}
           </button>
           <button
             type="button"
             onClick={() => insertMarkdown("image")}
-            title="Insert Image"
+            title={tooltips.insertImage}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            img
+            {toolbar.image}
           </button>
-          <span className={styles.divider}>|</span>
+          <span className={styles.divider}>{e.divider}</span>
           <button
             type="button"
             onClick={() => insertMarkdown("list")}
-            title="Bullet List"
+            title={tooltips.bulletList}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            list
+            {toolbar.list}
           </button>
           <button
             type="button"
             onClick={() => insertMarkdown("quote")}
-            title="Blockquote"
+            title={tooltips.blockquote}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            quote
+            {toolbar.quote}
           </button>
           <button
             type="button"
             onClick={() => insertMarkdown("code")}
-            title="Code Block"
+            title={tooltips.codeBlock}
             disabled={activeTab === "preview"}
             className={styles.toolbarBtn}
           >
-            code
+            {toolbar.codeBlock}
           </button>
         </div>
 
@@ -381,14 +383,14 @@ export default function MarkdownEditor({
             onClick={() => setActiveTab("edit")}
             className={activeTab === "edit" ? styles.tabActive : styles.tabInactive}
           >
-            write
+            {tabs.write}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("preview")}
             className={activeTab === "preview" ? styles.tabActive : styles.tabInactive}
           >
-            preview
+            {tabs.preview}
           </button>
         </div>
       </div>
@@ -405,7 +407,7 @@ export default function MarkdownEditor({
             onDrop={handleDrop}
             onPaste={handlePaste}
             rows={rows}
-            placeholder={isDragging ? "Drop your image here..." : isUploading ? "Uploading image..." : placeholder}
+            placeholder={isDragging ? placeholders.dragImage : isUploading ? placeholders.uploading : placeholder}
             disabled={isUploading}
             className={`${styles.textarea} ${isDragging ? styles.textareaDragActive : ""}`}
           />

@@ -21,7 +21,7 @@ export default function AdminEditLink({ type, id, from }: AdminEditLinkProps) {
   }
 
   const lang = getActiveLanguage();
-  const dict = getDictionary(lang) as any;
+  const dict = getDictionary(lang);
 
   let href = "";
   let label = "";
@@ -29,13 +29,13 @@ export default function AdminEditLink({ type, id, from }: AdminEditLinkProps) {
 
   if (type === "page") {
     href = `/dashboard/pages/edit/${id}${queryParam}`;
-    label = dict.edit_page || "Edit Page";
+    label = dict.edit_page;
   } else if (type === "post") {
     href = `/dashboard/posts/edit/${id}${queryParam}`;
-    label = dict.edit_post || "Edit Post";
+    label = dict.edit_post;
   } else if (type === "project") {
     href = `/dashboard/projects/edit/${id}${queryParam}`;
-    label = dict.edit_project || "Edit Project";
+    label = dict.edit_project;
   }
 
   return (

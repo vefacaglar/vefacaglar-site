@@ -5,8 +5,8 @@ import Link from "next/link";
 import { loginAction } from "../actions";
 import styles from "./login.module.css";
 import formStyles from "../components/form.module.css";
-
 import Button from "../../../components/Button";
+import ds from "../../../lib/dashboard-strings";
 
 export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
@@ -29,32 +29,32 @@ export default function AdminLogin() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.back}>
-        <Link href="/" className="backLink">← back to home</Link>
+        <Link href="/" className="backLink">{ds.login.backToHome}</Link>
       </div>
 
-      <h1 className={styles.title}>Admin Login</h1>
+      <h1 className={styles.title}>{ds.login.title}</h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className="field">
-          <label htmlFor="email" className="label">Email</label>
+          <label htmlFor="email" className="label">{ds.login.email}</label>
           <input
             id="email"
             name="email"
             type="email"
             required
-            placeholder="admin@vefacaglar.com"
+            placeholder={ds.login.emailPlaceholder}
             className="input"
           />
         </div>
 
         <div className="field">
-          <label htmlFor="password" className="label">Password</label>
+          <label htmlFor="password" className="label">{ds.login.password}</label>
           <input
             id="password"
             name="password"
             type="password"
             required
-            placeholder="••••••"
+            placeholder={ds.login.passwordPlaceholder}
             className="input"
           />
         </div>
@@ -70,7 +70,7 @@ export default function AdminLogin() {
           disabled={loading}
           className={styles.submitBtn}
         >
-          {loading ? "Signing in..." : "Sign In"}
+          {loading ? ds.login.signingIn : ds.login.signIn}
         </Button>
       </form>
     </div>
