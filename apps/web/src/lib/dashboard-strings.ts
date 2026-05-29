@@ -5,6 +5,7 @@ const dashboardStrings = {
     logOut: "log out",
     tabs: {
       content: "content",
+      packages: "packages",
       games: "games",
     },
   },
@@ -260,6 +261,25 @@ const dashboardStrings = {
     saving: "saving...",
     saved: "localization saved.",
     error: "please enter a translation.",
+  },
+
+  packages: {
+    title: "nuget packages",
+    newPackage: "+ new package",
+    noPackages: "no packages added yet.",
+    editPackage: "edit package",
+    addNewPackage: "add new package",
+    name: "package name",
+    slug: "slug (url path)",
+    description: "description",
+    nugetUrl: "nuget url (optional)",
+    githubUrl: "github url (optional)",
+    latestVersion: "latest version",
+    isActive: "active / visible on site",
+    deleteConfirm: 'are you sure you want to delete package "{name}"?',
+    saveChanges: "save changes",
+    publishPackage: "publish package",
+    saving: "saving...",
   },
 } as const;
 

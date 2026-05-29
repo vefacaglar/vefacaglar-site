@@ -13,6 +13,7 @@ import { projectsRoutes } from "./modules/projects/projects.routes";
 import { uploadsRoutes } from "./modules/uploads/uploads.routes";
 import { localizationsRoutes } from "./modules/localizations/localizations.routes";
 import { gamesRoutes } from "./modules/games/games.routes";
+import { packagesRoutes } from "./modules/packages/packages.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
@@ -128,6 +129,7 @@ app.register(projectsRoutes, { prefix: "/api/projects" });
 app.register(uploadsRoutes, { prefix: "/api/uploads" });
 app.register(localizationsRoutes, { prefix: "/api/localizations" });
 app.register(gamesRoutes, { prefix: "/api/games" });
+app.register(packagesRoutes, { prefix: "/api/packages" });
 
 export default async function handler(req: any, res: any) {
   await app.ready();

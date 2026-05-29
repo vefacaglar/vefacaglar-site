@@ -6,7 +6,7 @@ import ds from "../../../lib/dashboard-strings";
 
 interface DeleteButtonProps {
   id: string;
-  type: "post" | "page" | "project";
+  type: "post" | "page" | "project" | "package";
   title: string;
   onDelete: (id: string) => Promise<{ error?: string; success?: boolean }>;
 }

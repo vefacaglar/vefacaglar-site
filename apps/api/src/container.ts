@@ -23,6 +23,8 @@ import { DrizzleGenresRepository } from "./modules/games/genres.repository";
 import { DrizzleThemesRepository } from "./modules/games/themes.repository";
 import { DrizzlePlatformsRepository } from "./modules/games/platforms.repository";
 import { DrizzleGamesRepository } from "./modules/games/games.repository";
+import { PACKAGES_REPOSITORY } from "./modules/packages/packages.tokens";
+import { DrizzlePackagesRepository } from "./modules/packages/packages.repository";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
@@ -40,6 +42,7 @@ container.registerSingleton(GENRES_REPOSITORY, DrizzleGenresRepository);
 container.registerSingleton(THEMES_REPOSITORY, DrizzleThemesRepository);
 container.registerSingleton(PLATFORMS_REPOSITORY, DrizzlePlatformsRepository);
 container.registerSingleton(GAMES_REPOSITORY, DrizzleGamesRepository);
+container.registerSingleton(PACKAGES_REPOSITORY, DrizzlePackagesRepository);
 
 
 

@@ -84,6 +84,9 @@ export default async function GamesDashboard({ searchParams }: PageProps) {
           <Link href="/dashboard" className={styles.tab}>
             {ds.nav.tabs.content}
           </Link>
+          <Link href="/dashboard/packages" className={styles.tab}>
+            {ds.nav.tabs.packages}
+          </Link>
         <Link href="/dashboard/games" className={`${styles.tab} ${styles.activeTab}`}>
           {ds.nav.tabs.games}
         </Link>

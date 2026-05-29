@@ -143,6 +143,9 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
         <Link href="/dashboard" className={`${styles.tab} ${styles.activeTab}`}>
           {ds.nav.tabs.content}
         </Link>
+        <Link href="/dashboard/packages" className={styles.tab}>
+          {ds.nav.tabs.packages}
+        </Link>
         <Link href="/dashboard/games" className={styles.tab}>
           {ds.nav.tabs.games}
         </Link>
