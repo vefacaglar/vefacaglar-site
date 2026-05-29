@@ -8,6 +8,7 @@ export const CreatePackageRequestSchema = Type.Object({
   githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   latestVersion: Type.Optional(Type.String()),
   isActive: Type.Optional(Type.Boolean()),
+  content: Type.Optional(Type.String()),
 });
 export type CreatePackageRequest = Static<typeof CreatePackageRequestSchema>;
 
@@ -20,6 +21,7 @@ export const PackageResponseSchema = Type.Object({
   githubUrl: Type.Union([Type.String(), Type.Null()]),
   latestVersion: Type.String(),
   isActive: Type.Boolean(),
+  content: Type.String(),
   createdAt: Type.String(),
   updatedAt: Type.String(),
 });

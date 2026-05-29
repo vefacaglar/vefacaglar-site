@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createPackageAction, updatePackageAction } from "./actions";
+import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
 import ds from "../../../lib/dashboard-strings";
 
@@ -17,6 +18,7 @@ interface PackageFormProps {
     githubUrl?: string | null;
     latestVersion: string;
     isActive: boolean;
+    content?: string;
   };
 }
 
@@ -31,6 +33,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
   const [name, setName] = useState(initialData?.name || "");
   const [slug, setSlug] = useState(initialData?.slug || "");
   const [description, setDescription] = useState(initialData?.description || "");
+  const [content, setContent] = useState(initialData?.content || "");
   const [nugetUrl, setNugetUrl] = useState(initialData?.nugetUrl || "");
   const [githubUrl, setGithubUrl] = useState(initialData?.githubUrl || "");
   const [latestVersion, setLatestVersion] = useState(initialData?.latestVersion || "1.0.0");
@@ -77,6 +80,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
       githubUrl: githubUrl.trim() || undefined,
       latestVersion: latestVersion.trim() || "1.0.0",
       isActive,
+      content: content.trim(),
     };
 
     let result;
@@ -143,6 +147,15 @@ export default function PackageForm({ initialData }: PackageFormProps) {
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
             className="textarea"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">{ds.forms.content}</label>
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            placeholder={ds.forms.placeholders.mdxProject}
           />
         </div>
 

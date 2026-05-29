@@ -31,6 +31,7 @@ export class ListAdminPackagesHandler {
       githubUrl: row.githubUrl,
       latestVersion: row.latestVersion,
       isActive: row.isActive,
+      content: row.content,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));

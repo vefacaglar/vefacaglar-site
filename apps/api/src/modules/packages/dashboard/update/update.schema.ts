@@ -14,6 +14,7 @@ export const UpdatePackageRequestSchema = Type.Object({
   githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   latestVersion: Type.Optional(Type.String()),
   isActive: Type.Optional(Type.Boolean()),
+  content: Type.Optional(Type.String()),
 });
 export type UpdatePackageRequest = Static<typeof UpdatePackageRequestSchema>;
 

@@ -9,6 +9,7 @@ export const packages = pgTable('packages', {
   githubUrl: text('github_url'),
   latestVersion: text('latest_version').notNull().default('1.0.0'),
   isActive: boolean('is_active').notNull().default(true),
+  content: text('content').notNull().default(''),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
@@ -35,7 +36,8 @@ export const docs = pgTable('docs', {
   slug: text('slug').notNull(),
   title: text('title').notNull(),
   description: text('description'),
-  filePath: text('file_path').notNull(),
+  filePath: text('file_path'),
+  content: text('content').notNull().default(''),
   displayOrder: integer('display_order').notNull().default(0),
   isPublished: boolean('is_published').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),

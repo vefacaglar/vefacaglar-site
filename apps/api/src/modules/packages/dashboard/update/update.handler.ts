@@ -33,6 +33,7 @@ export class UpdatePackageHandler {
       githubUrl: body.githubUrl,
       latestVersion: body.latestVersion,
       isActive: body.isActive,
+      content: body.content,
       updatedAt: new Date(),
     });
 
@@ -45,6 +46,7 @@ export class UpdatePackageHandler {
       githubUrl: updated.githubUrl,
       latestVersion: updated.latestVersion,
       isActive: updated.isActive,
+      content: updated.content,
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
     };

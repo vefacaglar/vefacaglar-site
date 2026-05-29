@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createDocAction, updateDocAction } from "./actions";
+import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
 
 interface CategoryItem {
@@ -20,7 +21,8 @@ interface DocFormProps {
     slug: string;
     title: string;
     description?: string | null;
-    filePath: string;
+    filePath?: string | null;
+    content?: string;
     displayOrder: number;
     isPublished: boolean;
   };
@@ -39,6 +41,7 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
   const [categoryId, setCategoryId] = useState(initialData?.categoryId || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [filePath, setFilePath] = useState(initialData?.filePath || "");
+  const [content, setContent] = useState(initialData?.content || "");
   const [displayOrder, setDisplayOrder] = useState<number>(initialData?.displayOrder || 0);
   const [isPublished, setIsPublished] = useState<boolean>(initialData?.isPublished !== undefined ? initialData.isPublished : true);
 
@@ -80,7 +83,8 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
       slug: slug.trim(),
       categoryId: categoryId || null,
       description: description.trim() || null,
-      filePath: filePath.trim(),
+      filePath: filePath.trim() || null,
+      content: content.trim(),
       displayOrder: Number(displayOrder),
       isPublished,
     };
@@ -148,7 +152,6 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             className={styles.select}
-            style={{ width: "100%", padding: "8px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
           >
             <option value="">None (Uncategorized)</option>
             {categories.map((cat) => (
@@ -170,14 +173,22 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
         </div>
 
         <div className="field">
-          <label className="label">markdown file path (physical path on server)</label>
+          <label className="label">markdown file path (physical path on server, optional)</label>
           <input
             type="text"
-            required
             value={filePath}
             onChange={(e) => setFilePath(e.target.value)}
             placeholder="e.g. docs/package-name/getting-started.md"
             className="input"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">MDX Content (Direct Database Content)</label>
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            placeholder="# Page Title&#10;&#10;Write page content here in markdown/mdx format..."
           />
         </div>
 

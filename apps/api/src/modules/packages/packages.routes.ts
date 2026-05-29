@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { Type } from "@sinclair/typebox";
+import { Type, Static } from "@sinclair/typebox";
 import { container } from "../../container";
 import { CreatePackageHandler } from "./dashboard/create/create.handler";
 import { CreatePackageRequest, CreatePackageRequestSchema, PackageResponseSchema } from "./dashboard/create/create.schema";
@@ -45,7 +45,8 @@ const DocSchema = Type.Object({
   slug: Type.String(),
   title: Type.String(),
   description: Type.Union([Type.String(), Type.Null()]),
-  filePath: Type.String(),
+  filePath: Type.Union([Type.String(), Type.Null()]),
+  content: Type.String(),
   displayOrder: Type.Number(),
   isPublished: Type.Boolean(),
   createdAt: Type.String(),
@@ -57,7 +58,8 @@ const CreateDocRequestSchema = Type.Object({
   slug: Type.String(),
   categoryId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-  filePath: Type.String(),
+  filePath: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  content: Type.Optional(Type.String()),
   displayOrder: Type.Optional(Type.Number()),
   isPublished: Type.Optional(Type.Boolean()),
 });
@@ -67,10 +69,14 @@ const UpdateDocRequestSchema = Type.Object({
   slug: Type.String(),
   categoryId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-  filePath: Type.String(),
+  filePath: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  content: Type.Optional(Type.String()),
   displayOrder: Type.Optional(Type.Number()),
   isPublished: Type.Optional(Type.Boolean()),
 });
+
+type CreateDocRequest = Static<typeof CreateDocRequestSchema>;
+type UpdateDocRequest = Static<typeof UpdateDocRequestSchema>;
 
 export async function packagesRoutes(app: FastifyInstance) {
   const createHandler = container.resolve(CreatePackageHandler);
@@ -258,7 +264,7 @@ export async function packagesRoutes(app: FastifyInstance) {
     }));
   });
 
-  app.post<{ Params: { packageId: string }; Body: { title: string; slug: string; categoryId?: string | null; description?: string | null; filePath: string; displayOrder?: number; isPublished?: boolean } }>("/dashboard/:packageId/docs", {
+  app.post<{ Params: { packageId: string }; Body: CreateDocRequest }>("/dashboard/:packageId/docs", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Create a new doc for a package",
@@ -284,7 +290,8 @@ export async function packagesRoutes(app: FastifyInstance) {
       title: body.title,
       slug: body.slug,
       description: body.description ?? null,
-      filePath: body.filePath,
+      filePath: body.filePath ?? null,
+      content: body.content ?? "",
       displayOrder: body.displayOrder ?? 0,
       isPublished: body.isPublished ?? true,
     });
@@ -318,7 +325,7 @@ export async function packagesRoutes(app: FastifyInstance) {
     };
   });
 
-  app.put<{ Params: { id: string }; Body: { title: string; slug: string; categoryId?: string | null; description?: string | null; filePath: string; displayOrder?: number; isPublished?: boolean } }>("/dashboard/docs/:id", {
+  app.put<{ Params: { id: string }; Body: UpdateDocRequest }>("/dashboard/docs/:id", {
     preHandler: app.requireAdmin,
     schema: {
       description: "Update a doc",
@@ -350,7 +357,8 @@ export async function packagesRoutes(app: FastifyInstance) {
       title: body.title,
       slug: body.slug,
       description: body.description ?? null,
-      filePath: body.filePath,
+      filePath: body.filePath ?? null,
+      content: body.content ?? "",
       displayOrder: body.displayOrder ?? 0,
       isPublished: body.isPublished ?? true,
       updatedAt: new Date(),

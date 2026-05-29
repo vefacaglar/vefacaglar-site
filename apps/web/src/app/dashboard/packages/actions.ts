@@ -53,6 +53,7 @@ export async function createPackageAction(data: {
   githubUrl?: string;
   latestVersion?: string;
   isActive?: boolean;
+  content?: string;
 }) {
   const cookieStore = cookies();
   const token = cookieStore.get("session_token")?.value;
@@ -89,6 +90,7 @@ export async function updatePackageAction(
     githubUrl?: string | null;
     latestVersion?: string;
     isActive?: boolean;
+    content?: string;
   }
 ) {
   const cookieStore = cookies();
@@ -279,7 +281,8 @@ export async function createDocAction(
     slug: string;
     categoryId?: string | null;
     description?: string | null;
-    filePath: string;
+    filePath?: string | null;
+    content?: string;
     displayOrder?: number;
     isPublished?: boolean;
   }
@@ -312,7 +315,8 @@ export async function updateDocAction(
     slug: string;
     categoryId?: string | null;
     description?: string | null;
-    filePath: string;
+    filePath?: string | null;
+    content?: string;
     displayOrder?: number;
     isPublished?: boolean;
   }
