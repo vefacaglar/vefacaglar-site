@@ -1,5 +1,6 @@
 .wrapper {
   opacity: 0.9;
+  text-transform: none;
 }
 
 .empty {

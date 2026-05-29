@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createDocAction, updateDocAction } from "./actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
+import Button from "../../../components/Button";
 
 interface CategoryItem {
   id: string;
@@ -218,13 +219,12 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
           </div>
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className={styles.submit}
         >
           {loading ? "saving..." : initialData ? "save changes" : "create page"}
-        </button>
+        </Button>
       </form>
     </div>
   );

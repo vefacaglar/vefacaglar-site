@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createPackageAction, updatePackageAction } from "./actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
+import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
 
 interface PackageFormProps {
@@ -207,13 +208,12 @@ export default function PackageForm({ initialData }: PackageFormProps) {
           </div>
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className={styles.submit}
         >
           {loading ? ds.packages.saving : initialData ? ds.packages.saveChanges : ds.packages.publishPackage}
-        </button>
+        </Button>
       </form>
     </div>
   );
