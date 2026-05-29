@@ -96,11 +96,11 @@ export default async function PackageLayout({
               </a>
             </li>
           )}
-          {pkg.docs && (
+          {(pkg.docs || pkg.docsList.length > 0) && (
             <li className={styles.metaItem}>
-              <a href={pkg.docs} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
-                external docs
-              </a>
+              <Link href={`/packages/${pkg.slug}/docs`} className={styles.metaLink}>
+                documentation
+              </Link>
             </li>
           )}
         </ul>

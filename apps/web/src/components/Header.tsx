@@ -37,6 +37,12 @@ export default function Header({ dict }: HeaderProps) {
       } else {
         items.push({ label: dict.projects.toLowerCase(), href: null });
       }
+    } else if (pagePath.startsWith("/packages")) {
+      if (pagePath !== "/packages") {
+        items.push({ label: "packages", href: `${prefix}/packages` });
+      } else {
+        items.push({ label: "packages", href: null });
+      }
     } else if (pagePath.startsWith("/blog")) {
       if (pagePath !== "/blog") {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: `${prefix}/blog` });

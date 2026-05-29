@@ -76,7 +76,7 @@ export default async function PackagesPage({ searchParams }: PackagesProps) {
                   </div>
                   {pkg.description && <p className={styles.description}>{pkg.description}</p>}
                   <div className={styles.links}>
-                    <Link href={`/packages/${pkg.slug}`} className={styles.link}>
+                    <Link href={`/packages/${pkg.slug}/docs`} className={styles.link}>
                       documentation
                     </Link>
                     {pkg.nugetUrl && (
@@ -87,11 +87,6 @@ export default async function PackagesPage({ searchParams }: PackagesProps) {
                     {pkg.githubUrl && (
                       <a href={pkg.githubUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
                         github
-                      </a>
-                    )}
-                    {pkg.docs && (
-                      <a href={pkg.docs} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                        external docs
                       </a>
                     )}
                   </div>

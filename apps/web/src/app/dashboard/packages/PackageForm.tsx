@@ -186,12 +186,12 @@ export default function PackageForm({ initialData }: PackageFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Documentation Link (optional)</label>
+          <label className="label">Default Docs Page Slug (optional)</label>
           <input
-            type="url"
+            type="text"
             value={docsUrl}
             onChange={(e) => setDocsUrl(e.target.value)}
-            placeholder="https://docs.example.com or direct documentation url..."
+            placeholder="e.g. quickstart"
             className="input"
           />
         </div>
