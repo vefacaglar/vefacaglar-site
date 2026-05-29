@@ -16,6 +16,7 @@ interface PackageItem {
   description?: string | null;
   nugetUrl?: string | null;
   githubUrl?: string | null;
+  docs?: string | null;
   latestVersion: string;
   isActive: boolean;
 }

@@ -12,6 +12,7 @@ export const UpdatePackageRequestSchema = Type.Object({
   description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   nugetUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  docs: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   latestVersion: Type.Optional(Type.String()),
   isActive: Type.Optional(Type.Boolean()),
   content: Type.Optional(Type.String()),

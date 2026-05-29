@@ -20,6 +20,7 @@ interface PackageFormProps {
     latestVersion: string;
     isActive: boolean;
     content?: string;
+    docs?: string | null;
   };
 }
 
@@ -37,6 +38,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
   const [content, setContent] = useState(initialData?.content || "");
   const [nugetUrl, setNugetUrl] = useState(initialData?.nugetUrl || "");
   const [githubUrl, setGithubUrl] = useState(initialData?.githubUrl || "");
+  const [docsUrl, setDocsUrl] = useState(initialData?.docs || "");
   const [latestVersion, setLatestVersion] = useState(initialData?.latestVersion || "1.0.0");
   const [isActive, setIsActive] = useState<boolean>(initialData?.isActive !== undefined ? initialData.isActive : true);
 
@@ -79,6 +81,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
       description: description.trim() || undefined,
       nugetUrl: nugetUrl.trim() || undefined,
       githubUrl: githubUrl.trim() || undefined,
+      docs: docsUrl.trim() || undefined,
       latestVersion: latestVersion.trim() || "1.0.0",
       isActive,
       content: content.trim(),
@@ -178,6 +181,17 @@ export default function PackageForm({ initialData }: PackageFormProps) {
             value={githubUrl}
             onChange={(e) => setGithubUrl(e.target.value)}
             placeholder="https://github.com/..."
+            className="input"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Documentation Link (optional)</label>
+          <input
+            type="url"
+            value={docsUrl}
+            onChange={(e) => setDocsUrl(e.target.value)}
+            placeholder="https://docs.example.com or direct documentation url..."
             className="input"
           />
         </div>

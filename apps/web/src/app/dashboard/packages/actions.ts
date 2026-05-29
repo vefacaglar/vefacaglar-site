@@ -51,6 +51,7 @@ export async function createPackageAction(data: {
   description?: string;
   nugetUrl?: string;
   githubUrl?: string;
+  docs?: string;
   latestVersion?: string;
   isActive?: boolean;
   content?: string;
@@ -88,6 +89,7 @@ export async function updatePackageAction(
     description?: string | null;
     nugetUrl?: string | null;
     githubUrl?: string | null;
+    docs?: string | null;
     latestVersion?: string;
     isActive?: boolean;
     content?: string;

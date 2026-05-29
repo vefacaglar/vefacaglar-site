@@ -24,6 +24,7 @@ export class GetAdminPackageHandler {
       description: row.description,
       nugetUrl: row.nugetUrl,
       githubUrl: row.githubUrl,
+      docs: row.docs,
       latestVersion: row.latestVersion,
       isActive: row.isActive,
       content: row.content,
