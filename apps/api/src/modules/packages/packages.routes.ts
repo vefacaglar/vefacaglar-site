@@ -15,6 +15,12 @@ import { ErrorResponseSchema } from "../../shared/error-schema";
 import { PACKAGES_REPOSITORY } from "./packages.tokens";
 import type { IPackagesRepository } from "./packages.repository.interface";
 import { NotFoundError, ConflictError } from "../../shared/http-errors";
+import { GetPackageHandler } from "./detail/detail.handler";
+import { GetPackageParams, GetPackageParamsSchema, GetPackageResponseSchema } from "./detail/detail.schema";
+import { GetDocHandler } from "./docs/docs.handler";
+import { GetDocParams, GetDocParamsSchema, GetDocResponseSchema } from "./docs/docs.schema";
+import { ListPackagesHandler } from "./list/list.handler";
+import { ListPackagesQuery, ListPackagesQuerySchema, ListPackagesResponseSchema } from "./list/list.schema";
 
 // DocCategory Validation Schemas
 const CategorySchema = Type.Object({
@@ -84,6 +90,9 @@ export async function packagesRoutes(app: FastifyInstance) {
   const getAdminHandler = container.resolve(GetAdminPackageHandler);
   const updateHandler = container.resolve(UpdatePackageHandler);
   const deleteHandler = container.resolve(DeletePackageHandler);
+  const getPublicPackageHandler = container.resolve(GetPackageHandler);
+  const getPublicDocHandler = container.resolve(GetDocHandler);
+  const listPublicPackagesHandler = container.resolve(ListPackagesHandler);
 
   // --- NuGet Package Operations ---
 
@@ -392,4 +401,33 @@ export async function packagesRoutes(app: FastifyInstance) {
     await packagesRepo.deleteDoc(id);
     return { success: true };
   });
+
+  // --- Public Guest Operations ---
+
+  app.get<{ Params: GetPackageParams }>("/:slug", {
+    schema: {
+      description: "Get public package by slug",
+      tags: ["Packages"],
+      params: GetPackageParamsSchema,
+      response: { 200: GetPackageResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => getPublicPackageHandler.handle(request));
+
+  app.get<{ Params: GetDocParams }>("/:slug/docs/:docSlug", {
+    schema: {
+      description: "Get public package documentation page",
+      tags: ["Packages"],
+      params: GetDocParamsSchema,
+      response: { 200: GetDocResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => getPublicDocHandler.handle(request));
+
+  app.get<{ Querystring: ListPackagesQuery }>("/", {
+    schema: {
+      description: "List public active packages",
+      tags: ["Packages"],
+      querystring: ListPackagesQuerySchema,
+      response: { 200: ListPackagesResponseSchema },
+    },
+  }, (request) => listPublicPackagesHandler.handle(request));
 }

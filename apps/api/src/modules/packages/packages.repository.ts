@@ -27,10 +27,13 @@ export class DrizzlePackagesRepository implements IPackagesRepository {
     return row ?? null;
   }
 
-  async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Package[]; total: number }> {
+  async list(filter?: { page?: number; limit?: number; q?: string; isActive?: boolean }): Promise<{ items: Package[]; total: number }> {
     const conditions = [];
     if (filter?.q) {
       conditions.push(sql`(${packages.name} ILIKE ${'%' + filter.q + '%'} OR ${packages.slug} ILIKE ${'%' + filter.q + '%'})`);
+    }
+    if (filter?.isActive !== undefined) {
+      conditions.push(eq(packages.isActive, filter.isActive));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

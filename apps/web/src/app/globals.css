@@ -9,7 +9,7 @@
   --warning: #938779; /* Sophisticated warm sandstone-grey */
   --info: #6A7580;    /* Muted cool blue-slate grey */
   --on-accent: #FFFFFF;
-  --max: 640px;
+  --max: 960px;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -14,7 +14,7 @@ export interface IPackagesRepository {
   create(values: NewPackage): Promise<Package>;
   findById(id: string): Promise<Package | null>;
   findBySlug(slug: string): Promise<Package | null>;
-  list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: Package[]; total: number }>;
+  list(filter?: { page?: number; limit?: number; q?: string; isActive?: boolean }): Promise<{ items: Package[]; total: number }>;
   update(id: string, patch: Partial<NewPackage>): Promise<Package>;
   delete(id: string): Promise<void>;
 

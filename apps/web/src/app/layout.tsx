@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { TopBar } from "../components/TopBar";
 import Header from "../components/Header";
 import { LocaleProvider } from "../components/LocaleProvider";
+import WidthController from "../components/WidthController";
 import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
 import "./globals.css";
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang={lang}>
       <body>
         <LocaleProvider locale={locale}>
+          <WidthController />
           <TopBar />
           <main className={styles.main}>
             <Header dict={dict} />
