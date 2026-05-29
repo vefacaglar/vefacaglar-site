@@ -7,6 +7,7 @@ import * as usersSchema from './schema/users';
 import * as sessionsSchema from './schema/sessions';
 import * as localizationsSchema from './schema/localizations';
 import * as gamesSchema from './schema/games';
+import * as packagesSchema from './schema/packages';
 
 // Export all schemas
 export * from './schema/posts';
@@ -16,6 +17,7 @@ export * from './schema/users';
 export * from './schema/sessions';
 export * from './schema/localizations';
 export * from './schema/games';
+export * from './schema/packages';
 
 export const schema = {
   ...postsSchema,
@@ -25,6 +27,7 @@ export const schema = {
   ...sessionsSchema,
   ...localizationsSchema,
   ...gamesSchema,
+  ...packagesSchema,
 };
 
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/vefa_site';

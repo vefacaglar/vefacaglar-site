@@ -1,0 +1,54 @@
+import { pgTable, uuid, text, timestamp, boolean, integer, uniqueIndex } from 'drizzle-orm/pg-core';
+
+export const packages = pgTable('packages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  nugetUrl: text('nuget_url'),
+  githubUrl: text('github_url'),
+  latestVersion: text('latest_version').notNull().default('1.0.0'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
+export const docCategories = pgTable('doc_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  packageId: uuid('package_id')
+    .notNull()
+    .references(() => packages.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  slug: text('slug').notNull(),
+  displayOrder: integer('display_order').notNull().default(0),
+}, (table) => ({
+  packageSlugIdx: uniqueIndex('doc_categories_package_id_slug_idx').on(table.packageId, table.slug),
+}));
+
+export const docs = pgTable('docs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  packageId: uuid('package_id')
+    .notNull()
+    .references(() => packages.id, { onDelete: 'cascade' }),
+  categoryId: uuid('category_id')
+    .references(() => docCategories.id, { onDelete: 'set null' }),
+  slug: text('slug').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  filePath: text('file_path').notNull(),
+  displayOrder: integer('display_order').notNull().default(0),
+  isPublished: boolean('is_published').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+}, (table) => ({
+  packageSlugIdx: uniqueIndex('docs_package_id_slug_idx').on(table.packageId, table.slug),
+}));
+
+export type Package = typeof packages.$inferSelect;
+export type NewPackage = typeof packages.$inferInsert;
+
+export type DocCategory = typeof docCategories.$inferSelect;
+export type NewDocCategory = typeof docCategories.$inferInsert;
+
+export type Doc = typeof docs.$inferSelect;
+export type NewDoc = typeof docs.$inferInsert;
