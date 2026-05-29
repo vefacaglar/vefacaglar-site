@@ -114,33 +114,35 @@ export default function DashboardListsContainer({
           <p className={styles.empty}>{ds.content.noPosts}</p>
         ) : (
           <>
-            <table className={styles.table}>
-              <thead>{renderTableHeaders()}</thead>
-              <tbody>
-                {posts.map((post) => (
-                  <tr key={post.id} className={styles.tr}>
-                    <td className={styles.td}>
-                      <Link href={`/blog/${post.slug}`} target="_blank" className={styles.postLink}>
-                        {post.title}
-                      </Link>
-                    </td>
-                    <td className={styles.td}>
-                      <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {statusLabel(post.status)}
-                      </span>
-                    </td>
-                    <td className={styles.tdRight}>
-                      <div className={styles.rowActions}>
-                        <Link href={`/dashboard/posts/edit/${post.id}`} className={styles.editLink}>
-                          {ds.content.edit}
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>{renderTableHeaders()}</thead>
+                <tbody>
+                  {posts.map((post) => (
+                    <tr key={post.id} className={styles.tr}>
+                      <td className={styles.td}>
+                        <Link href={`/blog/${post.slug}`} target="_blank" className={styles.postLink}>
+                          {post.title}
                         </Link>
-                        <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td className={styles.td}>
+                        <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                          {statusLabel(post.status)}
+                        </span>
+                      </td>
+                      <td className={styles.tdRight}>
+                        <div className={styles.rowActions}>
+                          <Link href={`/dashboard/posts/edit/${post.id}`} className={styles.editLink}>
+                            {ds.content.edit}
+                          </Link>
+                          <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
              <SimplePagination
                currentPage={postsPage}
@@ -167,29 +169,31 @@ export default function DashboardListsContainer({
           <p className={styles.empty}>{ds.content.noProjects}</p>
         ) : (
           <>
-            <table className={styles.table}>
-              <thead>{renderTableHeaders()}</thead>
-              <tbody>
-                {projects.map((project) => (
-                  <tr key={project.id} className={styles.tr}>
-                    <td className={styles.td}>{project.title} (/projects/{project.slug})</td>
-                    <td className={styles.td}>
-                      <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {statusLabel(project.status)}
-                      </span>
-                    </td>
-                    <td className={styles.tdRight}>
-                      <div className={styles.rowActions}>
-                        <Link href={`/dashboard/projects/edit/${project.id}`} className={styles.editLink}>
-                          {ds.content.edit}
-                        </Link>
-                        <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>{renderTableHeaders()}</thead>
+                <tbody>
+                  {projects.map((project) => (
+                    <tr key={project.id} className={styles.tr}>
+                      <td className={styles.td}>{project.title} (/projects/{project.slug})</td>
+                      <td className={styles.td}>
+                        <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                          {statusLabel(project.status)}
+                        </span>
+                      </td>
+                      <td className={styles.tdRight}>
+                        <div className={styles.rowActions}>
+                          <Link href={`/dashboard/projects/edit/${project.id}`} className={styles.editLink}>
+                            {ds.content.edit}
+                          </Link>
+                          <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
              <SimplePagination
                currentPage={projectsPage}
@@ -216,29 +220,31 @@ export default function DashboardListsContainer({
           <p className={styles.empty}>{ds.content.noPages}</p>
         ) : (
           <>
-            <table className={styles.table}>
-              <thead>{renderTableHeaders()}</thead>
-              <tbody>
-                {pages.map((page) => (
-                  <tr key={page.id} className={styles.tr}>
-                    <td className={styles.td}>{page.title} (/{page.slug})</td>
-                    <td className={styles.td}>
-                      <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {statusLabel(page.status)}
-                      </span>
-                    </td>
-                    <td className={styles.tdRight}>
-                      <div className={styles.rowActions}>
-                        <Link href={`/dashboard/pages/edit/${page.id}`} className={styles.editLink}>
-                          {ds.content.edit}
-                        </Link>
-                        <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>{renderTableHeaders()}</thead>
+                <tbody>
+                  {pages.map((page) => (
+                    <tr key={page.id} className={styles.tr}>
+                      <td className={styles.td}>{page.title} (/{page.slug})</td>
+                      <td className={styles.td}>
+                        <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                          {statusLabel(page.status)}
+                        </span>
+                      </td>
+                      <td className={styles.tdRight}>
+                        <div className={styles.rowActions}>
+                          <Link href={`/dashboard/pages/edit/${page.id}`} className={styles.editLink}>
+                            {ds.content.edit}
+                          </Link>
+                          <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
              <SimplePagination
                currentPage={pagesPage}

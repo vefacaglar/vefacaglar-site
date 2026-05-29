@@ -44,6 +44,8 @@
   color: var(--muted);
   font-weight: normal;
   border-bottom: 1px solid var(--border);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .thRight {
@@ -58,11 +60,20 @@
 
 .td {
   padding: 12px 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .tdRight {
   composes: td;
   text-align: right;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 24px;
 }
 
 .postLink {

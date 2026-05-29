@@ -115,47 +115,49 @@ export default function PackagesDashboardClient({
         </p>
       ) : (
         <>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th}>{ds.packages.name}</th>
-                <th className={styles.th}>{ds.packages.latestVersion}</th>
-                <th className={styles.th}>{ds.content.table.status}</th>
-                <th className={styles.thRight}>{ds.content.table.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {packages.map((pkg) => (
-                <tr key={pkg.id} className={styles.tr}>
-                  <td className={styles.td}>
-                    <span style={{ fontWeight: 600 }}>{pkg.name}</span>
-                    <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>slug: {pkg.slug}</div>
-                  </td>
-                  <td className={styles.td}>
-                    <code style={{ fontSize: "0.9rem" }}>{pkg.latestVersion}</code>
-                  </td>
-                  <td className={styles.td}>
-                    <span className={pkg.isActive ? styles.statusPublished : styles.statusDraft}>
-                      {pkg.isActive ? "active" : "inactive"}
-                    </span>
-                  </td>
-                  <td className={styles.tdRight}>
-                    <div className={styles.rowActions}>
-                      <Link href={`/dashboard/packages/edit/${pkg.id}`} className={styles.editLink}>
-                        {ds.content.edit}
-                      </Link>
-                      <DeleteButton
-                        id={pkg.id}
-                        type="package"
-                        title={pkg.name}
-                        onDelete={deletePackageAction}
-                      />
-                    </div>
-                  </td>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>{ds.packages.name}</th>
+                  <th className={styles.th}>{ds.packages.latestVersion}</th>
+                  <th className={styles.th}>{ds.content.table.status}</th>
+                  <th className={styles.thRight}>{ds.content.table.actions}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {packages.map((pkg) => (
+                  <tr key={pkg.id} className={styles.tr}>
+                    <td className={styles.td}>
+                      <span style={{ fontWeight: 600 }}>{pkg.name}</span>
+                      <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>slug: {pkg.slug}</div>
+                    </td>
+                    <td className={styles.td}>
+                      <code style={{ fontSize: "0.9rem" }}>{pkg.latestVersion}</code>
+                    </td>
+                    <td className={styles.td}>
+                      <span className={pkg.isActive ? styles.statusPublished : styles.statusDraft}>
+                        {pkg.isActive ? "active" : "inactive"}
+                      </span>
+                    </td>
+                    <td className={styles.tdRight}>
+                      <div className={styles.rowActions}>
+                        <Link href={`/dashboard/packages/edit/${pkg.id}`} className={styles.editLink}>
+                          {ds.content.edit}
+                        </Link>
+                        <DeleteButton
+                          id={pkg.id}
+                          type="package"
+                          title={pkg.name}
+                          onDelete={deletePackageAction}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <SimplePagination
             currentPage={page}

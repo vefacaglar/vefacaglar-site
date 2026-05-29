@@ -223,53 +223,55 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
             {docs.length === 0 ? (
               <p className={styles.empty}>No documentation pages created for this package yet.</p>
             ) : (
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.th}>Title</th>
-                    <th className={styles.th}>Category</th>
-                    <th className={styles.th}>File Path</th>
-                    <th className={styles.th}>Status</th>
-                    <th className={styles.thRight}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {docs.map((doc) => (
-                    <tr key={doc.id} className={styles.tr}>
-                      <td className={styles.td}>
-                        <span style={{ fontWeight: 600 }}>{doc.title}</span>
-                        <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>slug: /{doc.slug}</div>
-                      </td>
-                      <td className={styles.td}>
-                        {getCategoryName(doc.categoryId)}
-                      </td>
-                      <td className={styles.td}>
-                        <code style={{ fontSize: "0.85rem" }}>{doc.filePath}</code>
-                      </td>
-                      <td className={styles.td}>
-                        <span className={doc.isPublished ? styles.statusPublished : styles.statusDraft}>
-                          {doc.isPublished ? "published" : "draft"}
-                        </span>
-                      </td>
-                      <td className={styles.tdRight}>
-                        <div className={styles.rowActions}>
-                          <Link href={`/dashboard/packages/edit/${packageId}/docs/edit/${doc.id}`} className={styles.editLink}>
-                            Edit
-                          </Link>
-                          <button
-                            type="button"
-                            className={styles.editLink}
-                            style={{ color: "var(--error)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                            onClick={() => handleDeleteDoc(doc.id, doc.title)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.th}>Title</th>
+                      <th className={styles.th}>Category</th>
+                      <th className={styles.th}>File Path</th>
+                      <th className={styles.th}>Status</th>
+                      <th className={styles.thRight}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {docs.map((doc) => (
+                      <tr key={doc.id} className={styles.tr}>
+                        <td className={styles.td}>
+                          <span style={{ fontWeight: 600 }}>{doc.title}</span>
+                          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>slug: /{doc.slug}</div>
+                        </td>
+                        <td className={styles.td}>
+                          {getCategoryName(doc.categoryId)}
+                        </td>
+                        <td className={styles.td}>
+                          <code style={{ fontSize: "0.85rem" }}>{doc.filePath}</code>
+                        </td>
+                        <td className={styles.td}>
+                          <span className={doc.isPublished ? styles.statusPublished : styles.statusDraft}>
+                            {doc.isPublished ? "published" : "draft"}
+                          </span>
+                        </td>
+                        <td className={styles.tdRight}>
+                          <div className={styles.rowActions}>
+                            <Link href={`/dashboard/packages/edit/${packageId}/docs/edit/${doc.id}`} className={styles.editLink}>
+                              Edit
+                            </Link>
+                            <button
+                              type="button"
+                              className={styles.editLink}
+                              style={{ color: "var(--error)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                              onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -337,111 +339,113 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
             {categories.length === 0 ? (
               <p className={styles.empty}>No categories created for this package yet.</p>
             ) : (
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.th} style={{ width: "80px" }}>Order</th>
-                    <th className={styles.th}>Title</th>
-                    <th className={styles.th}>Slug</th>
-                    <th className={styles.thRight}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categories.map((cat) => (
-                    <tr key={cat.id} className={styles.tr}>
-                      {editingCatId === cat.id ? (
-                        /* Editing State Inline Form Rows */
-                        <>
-                          <td className={styles.td}>
-                            <input
-                              type="number"
-                              required
-                              value={editCatOrder}
-                              onChange={(e) => setEditCatOrder(Number(e.target.value))}
-                              className="input"
-                              style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
-                            />
-                          </td>
-                          <td className={styles.td}>
-                            <input
-                              type="text"
-                              required
-                              value={editCatTitle}
-                              onChange={(e) => handleEditTitleChange(e.target.value)}
-                              className="input"
-                              style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
-                            />
-                          </td>
-                          <td className={styles.td}>
-                            <input
-                              type="text"
-                              required
-                              value={editCatSlug}
-                              onChange={(e) => setEditCatSlug(slugify(e.target.value))}
-                              className="input"
-                              style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
-                            />
-                          </td>
-                          <td className={styles.tdRight}>
-                            <div className={styles.rowActions}>
-                              <button
-                                type="button"
-                                className={styles.editLink}
-                                style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                onClick={() => handleUpdateCategory(cat.id)}
-                                disabled={catLoading}
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.editLink}
-                                style={{ color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                onClick={() => setEditingCatId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        /* Standard View Rows */
-                        <>
-                          <td className={styles.td} style={{ fontWeight: 600 }}>
-                            {cat.displayOrder}
-                          </td>
-                          <td className={styles.td} style={{ fontWeight: 600 }}>
-                            {cat.title}
-                          </td>
-                          <td className={styles.td}>
-                            <code>{cat.slug}</code>
-                          </td>
-                          <td className={styles.tdRight}>
-                            <div className={styles.rowActions}>
-                              <button
-                                type="button"
-                                className={styles.editLink}
-                                style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                onClick={() => startEditCategory(cat)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.editLink}
-                                style={{ color: "var(--error)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                onClick={() => handleDeleteCategory(cat.id, cat.title)}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.th} style={{ width: "80px" }}>Order</th>
+                      <th className={styles.th}>Title</th>
+                      <th className={styles.th}>Slug</th>
+                      <th className={styles.thRight}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {categories.map((cat) => (
+                      <tr key={cat.id} className={styles.tr}>
+                        {editingCatId === cat.id ? (
+                          /* Editing State Inline Form Rows */
+                          <>
+                            <td className={styles.td}>
+                              <input
+                                type="number"
+                                required
+                                value={editCatOrder}
+                                onChange={(e) => setEditCatOrder(Number(e.target.value))}
+                                className="input"
+                                style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
+                              />
+                            </td>
+                            <td className={styles.td}>
+                              <input
+                                type="text"
+                                required
+                                value={editCatTitle}
+                                onChange={(e) => handleEditTitleChange(e.target.value)}
+                                className="input"
+                                style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
+                              />
+                            </td>
+                            <td className={styles.td}>
+                              <input
+                                type="text"
+                                required
+                                value={editCatSlug}
+                                onChange={(e) => setEditCatSlug(slugify(e.target.value))}
+                                className="input"
+                                style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
+                              />
+                            </td>
+                            <td className={styles.tdRight}>
+                              <div className={styles.rowActions}>
+                                <button
+                                  type="button"
+                                  className={styles.editLink}
+                                  style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                  onClick={() => handleUpdateCategory(cat.id)}
+                                  disabled={catLoading}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.editLink}
+                                  style={{ color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                  onClick={() => setEditingCatId(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          /* Standard View Rows */
+                          <>
+                            <td className={styles.td} style={{ fontWeight: 600 }}>
+                              {cat.displayOrder}
+                            </td>
+                            <td className={styles.td} style={{ fontWeight: 600 }}>
+                              {cat.title}
+                            </td>
+                            <td className={styles.td}>
+                              <code>{cat.slug}</code>
+                            </td>
+                            <td className={styles.tdRight}>
+                              <div className={styles.rowActions}>
+                                <button
+                                  type="button"
+                                  className={styles.editLink}
+                                  style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                  onClick={() => startEditCategory(cat)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.editLink}
+                                  style={{ color: "var(--error)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                  onClick={() => handleDeleteCategory(cat.id, cat.title)}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
