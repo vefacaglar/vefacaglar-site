@@ -1,31 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap');
 
 :root {
-  --bg: #F4F3EF;
-  --text: #2D2A26;
-  --text-heading: #1A1816;
-  --muted: #7E756B;
-  --border: #DFDCD6;
-  --accent: #5C544A;
-  --success: #6B786F; /* Elegant desaturated sage-grey */
-  --warning: #938779; /* Sophisticated warm sandstone-grey */
-  --info: #6A7580;    /* Muted cool blue-slate grey */
-  --on-accent: #FFFFFF;
+  --bg: #1a1a1a; /* Premium, sleek charcoal dark background */
+  --text: #eaeaea; /* Crisp, premium off-white text for supreme contrast */
+  --text-heading: #ffffff; /* Brilliant pure white headings */
+  --muted: #8e8e8e; /* Muted off-white/light-grey */
+  --border: #2d2d2d; /* Clean, crisp charcoal borders */
+  --accent: #A89276; /* Highly desaturated, soft faded warm amber-bronze accent */
+  --success: #728477; /* Soft faded green */
+  --warning: #9F8E7D; /* Soft faded sand */
+  --info: #7087A3;
+  --on-accent: #1a1a1a;
   --max: 960px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121212;
-    --text: #EAE4D9;
-    --text-heading: #F8F5F0;
-    --muted: #9E968A;
-    --border: #262626;
-    --accent: #B5A897;
-    --success: #97A39B; /* Soft desaturated sage-grey */
-    --warning: #B3A799; /* Soft warm clay/sandstone-grey */
-    --info: #98A4AF;    /* Soft cool slate-grey */
-    --on-accent: #FFFFFF;
+    --bg: #1a1a1a; /* Consistent premium charcoal dark theme in OS dark modes */
+    --text: #eaeaea;
+    --text-heading: #ffffff;
+    --muted: #8e8e8e;
+    --border: #2d2d2d;
+    --accent: #A89276;
+    --success: #728477;
+    --warning: #9F8E7D;
+    --info: #7087A3;
+    --on-accent: #1a1a1a;
   }
 }
 
@@ -36,9 +36,10 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  line-height: 1.6;
-  font-size: 15px;
-  text-transform: lowercase;
+  line-height: 1.65;
+  font-size: 15.5px;
+  font-weight: 500; /* Thicker (Medium) weight for strong, crisp monospace presence */
+  letter-spacing: -0.03em; /* Compresses/narrows the monospace characters for a premium compact look */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
