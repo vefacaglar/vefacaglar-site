@@ -70,7 +70,7 @@ export default function PackagesDashboardClient({
   };
 
   return (
-    <section className={styles.section} style={{ opacity: isPending ? 0.7 : 1, transition: "opacity 0.2s" }}>
+    <section className={`${styles.section} ${styles.sectionTransition} ${isPending ? styles.pendingSection : ""}`}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>{ds.packages.title}</h2>
         <Link href="/dashboard/packages/new" className="btnAccent">
@@ -79,15 +79,14 @@ export default function PackagesDashboardClient({
       </div>
 
       {/* Search Bar */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: "0.5rem" }}>
+      <div className={styles.searchContainer}>
+        <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
           <input
             type="text"
             value={searchVal}
             onChange={(e) => setSearchVal(e.target.value)}
             placeholder="Search packages by name or slug..."
-            className="input"
-            style={{ flex: 1, margin: 0 }}
+            className={`input ${styles.searchInput}`}
           />
           {initialQ && (
             <button
@@ -116,48 +115,38 @@ export default function PackagesDashboardClient({
         </p>
       ) : (
         <>
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>{ds.packages.name}</th>
-                  <th className={styles.th}>{ds.packages.latestVersion}</th>
-                  <th className={styles.th}>{ds.content.table.status}</th>
-                  <th className={styles.thRight}>{ds.content.table.actions}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {packages.map((pkg) => (
-                  <tr key={pkg.id} className={styles.tr}>
-                    <td className={styles.td}>
-                      <span style={{ fontWeight: 600 }}>{pkg.name}</span>
-                      <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>slug: {pkg.slug}</div>
-                    </td>
-                    <td className={styles.td}>
-                      <code style={{ fontSize: "0.9rem" }}>{pkg.latestVersion}</code>
-                    </td>
-                    <td className={styles.td}>
-                      <span className={pkg.isActive ? styles.statusPublished : styles.statusDraft}>
-                        {pkg.isActive ? "active" : "inactive"}
-                      </span>
-                    </td>
-                    <td className={styles.tdRight}>
-                      <div className={styles.rowActions}>
-                        <Link href={`/dashboard/packages/edit/${pkg.id}`} className={styles.editLink}>
-                          {ds.content.edit}
-                        </Link>
-                        <DeleteButton
-                          id={pkg.id}
-                          type="package"
-                          title={pkg.name}
-                          onDelete={deletePackageAction}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={styles.cardsGrid}>
+            {packages.map((pkg) => (
+              <div key={pkg.id} className={styles.card}>
+                <div>
+                  <div className={styles.cardHeader}>
+                    <h3 className={styles.cardTitle}>{pkg.name}</h3>
+                    <span className={pkg.isActive ? styles.statusPublished : styles.statusDraft}>
+                      {pkg.isActive ? "active" : "inactive"}
+                    </span>
+                  </div>
+                  <div className={styles.cardMeta}>
+                    <div>slug: {pkg.slug}</div>
+                    <div className={styles.cardVersion}>
+                      <code>v{pkg.latestVersion}</code>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.cardFooter}>
+                  <div className={styles.cardActions}>
+                    <Link href={`/dashboard/packages/edit/${pkg.id}`} className={styles.editLink}>
+                      {ds.content.edit}
+                    </Link>
+                    <DeleteButton
+                      id={pkg.id}
+                      type="package"
+                      title={pkg.name}
+                      onDelete={deletePackageAction}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <SimplePagination

@@ -323,3 +323,35 @@
   align-items: center;
 }
 
+.cardVersion {
+  display: inline-block;
+  font-size: 13px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  margin-top: 8px;
+}
+
+.searchContainer {
+  margin-bottom: 24px;
+}
+
+.searchForm {
+  display: flex;
+  gap: 8px;
+}
+
+.searchInput {
+  flex: 1;
+  margin: 0;
+}
+
+.pendingSection {
+  opacity: 0.7;
+}
+
+.sectionTransition {
+  transition: opacity 0.2s ease;
+}
+
+
