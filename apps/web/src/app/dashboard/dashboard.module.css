@@ -237,3 +237,89 @@
   height: 2px;
   background-color: var(--accent);
 }
+
+/* Card layout for content lists */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 640px) {
+  .cardsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .cardsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 20px;
+  border-radius: 0; /* Strict 90-degree square corners */
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cardTitleLink {
+  color: var(--text-heading);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cardTitleLink:hover {
+  color: var(--accent);
+}
+
+.cardMeta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  word-break: break-all;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+

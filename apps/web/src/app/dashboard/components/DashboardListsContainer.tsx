@@ -114,34 +114,34 @@ export default function DashboardListsContainer({
           <p className={styles.empty}>{ds.content.noPosts}</p>
         ) : (
           <>
-            <div className={styles.tableWrapper}>
-              <table className={styles.table}>
-                <thead>{renderTableHeaders()}</thead>
-                <tbody>
-                  {posts.map((post) => (
-                    <tr key={post.id} className={styles.tr}>
-                      <td className={styles.td}>
-                        <Link href={`/blog/${post.slug}`} target="_blank" className={styles.postLink}>
+            <div className={styles.cardsGrid}>
+              {posts.map((post) => (
+                <div key={post.id} className={styles.card}>
+                  <div>
+                    <div className={styles.cardHeader}>
+                      <h3 className={styles.cardTitle}>
+                        <Link href={`/blog/${post.slug}`} target="_blank" className={styles.cardTitleLink}>
                           {post.title}
                         </Link>
-                      </td>
-                      <td className={styles.td}>
-                        <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                          {statusLabel(post.status)}
-                        </span>
-                      </td>
-                      <td className={styles.tdRight}>
-                        <div className={styles.rowActions}>
-                          <Link href={`/dashboard/posts/edit/${post.id}`} className={styles.editLink}>
-                            {ds.content.edit}
-                          </Link>
-                          <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </h3>
+                      <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                        {statusLabel(post.status)}
+                      </span>
+                    </div>
+                    <div className={styles.cardMeta}>
+                      <span>/blog/{post.slug}</span>
+                    </div>
+                  </div>
+                  <div className={styles.cardFooter}>
+                    <div className={styles.cardActions}>
+                      <Link href={`/dashboard/posts/edit/${post.id}`} className={styles.editLink}>
+                        {ds.content.edit}
+                      </Link>
+                      <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
              <SimplePagination
@@ -169,30 +169,34 @@ export default function DashboardListsContainer({
           <p className={styles.empty}>{ds.content.noProjects}</p>
         ) : (
           <>
-            <div className={styles.tableWrapper}>
-              <table className={styles.table}>
-                <thead>{renderTableHeaders()}</thead>
-                <tbody>
-                  {projects.map((project) => (
-                    <tr key={project.id} className={styles.tr}>
-                      <td className={styles.td}>{project.title} (/projects/{project.slug})</td>
-                      <td className={styles.td}>
-                        <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                          {statusLabel(project.status)}
-                        </span>
-                      </td>
-                      <td className={styles.tdRight}>
-                        <div className={styles.rowActions}>
-                          <Link href={`/dashboard/projects/edit/${project.id}`} className={styles.editLink}>
-                            {ds.content.edit}
-                          </Link>
-                          <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={styles.cardsGrid}>
+              {projects.map((project) => (
+                <div key={project.id} className={styles.card}>
+                  <div>
+                    <div className={styles.cardHeader}>
+                      <h3 className={styles.cardTitle}>
+                        <Link href={`/projects/${project.slug}`} target="_blank" className={styles.cardTitleLink}>
+                          {project.title}
+                        </Link>
+                      </h3>
+                      <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                        {statusLabel(project.status)}
+                      </span>
+                    </div>
+                    <div className={styles.cardMeta}>
+                      <span>/projects/{project.slug}</span>
+                    </div>
+                  </div>
+                  <div className={styles.cardFooter}>
+                    <div className={styles.cardActions}>
+                      <Link href={`/dashboard/projects/edit/${project.id}`} className={styles.editLink}>
+                        {ds.content.edit}
+                      </Link>
+                      <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
              <SimplePagination
@@ -220,30 +224,34 @@ export default function DashboardListsContainer({
           <p className={styles.empty}>{ds.content.noPages}</p>
         ) : (
           <>
-            <div className={styles.tableWrapper}>
-              <table className={styles.table}>
-                <thead>{renderTableHeaders()}</thead>
-                <tbody>
-                  {pages.map((page) => (
-                    <tr key={page.id} className={styles.tr}>
-                      <td className={styles.td}>{page.title} (/{page.slug})</td>
-                      <td className={styles.td}>
-                        <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                          {statusLabel(page.status)}
-                        </span>
-                      </td>
-                      <td className={styles.tdRight}>
-                        <div className={styles.rowActions}>
-                          <Link href={`/dashboard/pages/edit/${page.id}`} className={styles.editLink}>
-                            {ds.content.edit}
-                          </Link>
-                          <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={styles.cardsGrid}>
+              {pages.map((page) => (
+                <div key={page.id} className={styles.card}>
+                  <div>
+                    <div className={styles.cardHeader}>
+                      <h3 className={styles.cardTitle}>
+                        <Link href={`/${page.slug}`} target="_blank" className={styles.cardTitleLink}>
+                          {page.title}
+                        </Link>
+                      </h3>
+                      <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
+                        {statusLabel(page.status)}
+                      </span>
+                    </div>
+                    <div className={styles.cardMeta}>
+                      <span>/{page.slug}</span>
+                    </div>
+                  </div>
+                  <div className={styles.cardFooter}>
+                    <div className={styles.cardActions}>
+                      <Link href={`/dashboard/pages/edit/${page.id}`} className={styles.editLink}>
+                        {ds.content.edit}
+                      </Link>
+                      <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
              <SimplePagination
