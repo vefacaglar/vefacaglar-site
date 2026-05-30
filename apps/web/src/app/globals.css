@@ -57,9 +57,9 @@ textarea,
 a {
   color: var(--text-heading);
   text-decoration: underline;
-  text-decoration-color: var(--border);
+  text-decoration-color: var(--muted); /* Soft, elegant underline that is one tone paler than text */
   text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
+  text-underline-offset: 5px; /* Floats gracefully below the letters */
   transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 
