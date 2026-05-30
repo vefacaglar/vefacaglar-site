@@ -10,6 +10,7 @@ interface PackageItem {
   name: string;
   description: string | null;
   nugetUrl: string | null;
+  npmUrl: string | null;
   githubUrl: string | null;
   docs: string | null;
   latestVersion: string;
@@ -19,8 +20,8 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return {
-    title: "NuGet Packages | Vefa Çağlar",
-    description: "Open source NuGet packages and documentation library developed by Vefa Çağlar.",
+    title: "Packages | Vefa Çağlar",
+    description: "Open source packages and documentation library developed by Vefa Çağlar.",
   };
 }
 
@@ -56,8 +57,8 @@ export default async function PackagesPage({ searchParams }: PackagesProps) {
 
   return (
     <div>
-      <h1>nuget packages</h1>
-      <p className={styles.subtitle}>open source c# and nuget libraries for modern web applications.</p>
+      <h1>packages</h1>
+      <p className={styles.subtitle}>open source libraries and packages for modern applications.</p>
 
       {packages.length === 0 ? (
         <p className={styles.empty}>no packages published yet.</p>
@@ -82,6 +83,11 @@ export default async function PackagesPage({ searchParams }: PackagesProps) {
                     {pkg.nugetUrl && (
                       <a href={pkg.nugetUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
                         nuget
+                      </a>
+                    )}
+                    {pkg.npmUrl && (
+                      <a href={pkg.npmUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                        npm
                       </a>
                     )}
                     {pkg.githubUrl && (

@@ -10,6 +10,7 @@ interface PackageDetail {
   name: string;
   description: string | null;
   nugetUrl: string | null;
+  npmUrl: string | null;
   githubUrl: string | null;
   docs: string | null;
   latestVersion: string;
@@ -24,11 +25,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     if (!res.ok) return { title: "Package Not Found" };
     const pkg: PackageDetail = await res.json();
     return {
-      title: `${pkg.name} | NuGet Package`,
+      title: `${pkg.name} | Package`,
       description: pkg.description || `Documentation and details for ${pkg.name}`,
     };
   } catch {
-    return { title: "NuGet Package" };
+    return { title: "Package" };
   }
 }
 

@@ -26,6 +26,7 @@ interface PackageDetail {
   name: string;
   description: string | null;
   nugetUrl: string | null;
+  npmUrl: string | null;
   githubUrl: string | null;
   docs: string | null;
   latestVersion: string;
@@ -86,6 +87,13 @@ export default async function PackageLayout({
             <li className={styles.metaItem}>
               <a href={pkg.nugetUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
                 nuget
+              </a>
+            </li>
+          )}
+          {pkg.npmUrl && (
+            <li className={styles.metaItem}>
+              <a href={pkg.npmUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
+                npm
               </a>
             </li>
           )}

@@ -29,6 +29,7 @@ export class ListPackagesHandler {
       name: row.name,
       description: row.description,
       nugetUrl: row.nugetUrl,
+      npmUrl: row.npmUrl,
       githubUrl: row.githubUrl,
       docs: row.docs,
       latestVersion: row.latestVersion,

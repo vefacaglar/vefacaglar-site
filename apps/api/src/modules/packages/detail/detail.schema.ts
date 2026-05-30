@@ -27,6 +27,7 @@ export const GetPackageResponseSchema = Type.Object({
   name: Type.String(),
   description: Type.Union([Type.String(), Type.Null()]),
   nugetUrl: Type.Union([Type.String(), Type.Null()]),
+  npmUrl: Type.Union([Type.String(), Type.Null()]),
   githubUrl: Type.Union([Type.String(), Type.Null()]),
   docs: Type.Union([Type.String(), Type.Null()]),
   latestVersion: Type.String(),

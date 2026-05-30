@@ -16,6 +16,7 @@ interface PackageFormProps {
     name: string;
     description?: string | null;
     nugetUrl?: string | null;
+    npmUrl?: string | null;
     githubUrl?: string | null;
     latestVersion: string;
     isActive: boolean;
@@ -37,6 +38,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
   const [description, setDescription] = useState(initialData?.description || "");
   const [content, setContent] = useState(initialData?.content || "");
   const [nugetUrl, setNugetUrl] = useState(initialData?.nugetUrl || "");
+  const [npmUrl, setNpmUrl] = useState(initialData?.npmUrl || "");
   const [githubUrl, setGithubUrl] = useState(initialData?.githubUrl || "");
   const [docsUrl, setDocsUrl] = useState(initialData?.docs || "");
   const [latestVersion, setLatestVersion] = useState(initialData?.latestVersion || "1.0.0");
@@ -80,6 +82,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
       slug: slug.trim(),
       description: description.trim() || undefined,
       nugetUrl: nugetUrl.trim() || undefined,
+      npmUrl: npmUrl.trim() || undefined,
       githubUrl: githubUrl.trim() || undefined,
       docs: docsUrl.trim() || undefined,
       latestVersion: latestVersion.trim() || "1.0.0",
@@ -170,6 +173,17 @@ export default function PackageForm({ initialData }: PackageFormProps) {
             value={nugetUrl}
             onChange={(e) => setNugetUrl(e.target.value)}
             placeholder="https://www.nuget.org/packages/..."
+            className="input"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">{ds.packages.npmUrl}</label>
+          <input
+            type="url"
+            value={npmUrl}
+            onChange={(e) => setNpmUrl(e.target.value)}
+            placeholder="https://www.npmjs.com/package/..."
             className="input"
           />
         </div>

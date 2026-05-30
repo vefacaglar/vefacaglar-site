@@ -6,6 +6,7 @@ export const packages = pgTable('packages', {
   name: text('name').notNull(),
   description: text('description'),
   nugetUrl: text('nuget_url'),
+  npmUrl: text('npm_url'),
   githubUrl: text('github_url'),
   docs: text('docs'),
   latestVersion: text('latest_version').notNull().default('1.0.0'),

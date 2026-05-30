@@ -264,7 +264,7 @@ const dashboardStrings = {
   },
 
   packages: {
-    title: "nuget packages",
+    title: "packages",
     newPackage: "+ new package",
     noPackages: "no packages added yet.",
     editPackage: "edit package",
@@ -273,6 +273,7 @@ const dashboardStrings = {
     slug: "slug (url path)",
     description: "description",
     nugetUrl: "nuget url (optional)",
+    npmUrl: "npm url (optional)",
     githubUrl: "github url (optional)",
     latestVersion: "latest version",
     isActive: "active / visible on site",

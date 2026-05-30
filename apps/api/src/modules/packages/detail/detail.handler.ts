@@ -30,6 +30,7 @@ export class GetPackageHandler {
       name: pkg.name,
       description: pkg.description,
       nugetUrl: pkg.nugetUrl,
+      npmUrl: pkg.npmUrl,
       githubUrl: pkg.githubUrl,
       docs: pkg.docs,
       latestVersion: pkg.latestVersion,
