@@ -4,7 +4,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IProjectsRepository } from "./projects.repository.interface";
-import { mergeTranslations, LanguageProvider } from "../../shared/localization";
+import { mergeTranslations, groupTranslationsByEntity, LanguageProvider } from "../../shared/localization";
 
 export type Project = InferSelectModel<typeof projects>;
 export type NewProject = InferInsertModel<typeof projects>;
@@ -64,18 +64,11 @@ export class DrizzleProjectsRepository implements IProjectsRepository {
         eq(localizations.languageCode, lang)
       ));
 
-    const translationsMap: Record<string, { field: string; value: string }[]> = {};
-    for (const trans of allTranslations) {
-      if (!translationsMap[trans.entityId]) {
-        translationsMap[trans.entityId] = [];
-      }
-      translationsMap[trans.entityId].push(trans);
-    }
+    const translationsMap = groupTranslationsByEntity(allTranslations);
 
-    const translatedItems = rows.map((row) => {
-      const projectTranslations = translationsMap[row.id] || [];
-      return mergeTranslations(row, projectTranslations);
-    });
+    const translatedItems = rows.map((row) =>
+      mergeTranslations(row, translationsMap[row.id] ?? [])
+    );
 
     return { items: translatedItems, total };
   }

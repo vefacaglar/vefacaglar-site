@@ -5,7 +5,7 @@ import type { IPublishersRepository, Publisher } from "./publishers.repository.i
 import type { IGenresRepository, Genre } from "./genres.repository.interface";
 import type { IThemesRepository, Theme } from "./themes.repository.interface";
 import type { IPlatformsRepository, Platform } from "./platforms.repository.interface";
-import type { IGamesRepository, GameWithRelations, Game } from "./games.repository.interface";
+import type { IGamesRepository, GameWithRelations, Game, NewGame } from "./games.repository.interface";
 import { BadRequestError, NotFoundError } from "../../shared/http-errors";
 import { DbProvider } from "../../db.provider";
 
@@ -425,7 +425,7 @@ export class GameService {
       }
     }
 
-    const patch: any = {};
+    const patch: Partial<NewGame> = {};
     if (data.title !== undefined) patch.title = data.title;
     if (data.slug !== undefined) patch.slug = data.slug;
     if (data.originalTitle !== undefined) patch.originalTitle = data.originalTitle;

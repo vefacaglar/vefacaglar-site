@@ -2,8 +2,8 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { httpClient } from "../../lib/httpClient";
+import { authedRequest, authedMutation } from "../../lib/apiAction";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -71,56 +71,17 @@ export async function getSessionToken() {
 }
 
 export async function deletePostAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/posts/dashboard/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return { error: data.message || "Failed to delete post." };
-    }
-
-    revalidatePath("/dashboard");
-    revalidatePath("/blog");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete post error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
+    revalidate: ["/dashboard", "/blog"],
+    fallbackError: "Failed to delete post.",
+  });
 }
 
 export async function deletePageAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/pages/dashboard/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return { error: data.message || "Failed to delete page." };
-    }
-
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete page error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/pages/dashboard/${id}`, {
+    revalidate: ["/dashboard"],
+    fallbackError: "Failed to delete page.",
+  });
 }
 
 export async function createPostAction(data: {
@@ -133,30 +94,11 @@ export async function createPostAction(data: {
   seoTitle?: string;
   seoDescription?: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/posts/dashboard", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create post." };
-    }
-
-    revalidatePath("/dashboard");
-    revalidatePath("/blog");
-    return { success: true };
-  } catch (error) {
-    console.error("Create post error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("POST", "/api/posts/dashboard", {
+    body: data,
+    revalidate: ["/dashboard", "/blog"],
+    fallbackError: "Could not create post.",
+  });
 }
 
 export async function updatePostAction(
@@ -172,31 +114,11 @@ export async function updatePostAction(
     seoDescription?: string;
   }
 ) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/posts/dashboard/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update post." };
-    }
-
-    revalidatePath("/dashboard");
-    revalidatePath("/blog");
-    revalidatePath(`/blog/${data.slug}`);
-    return { success: true };
-  } catch (error) {
-    console.error("Update post error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", `/api/posts/dashboard/${id}`, {
+    body: data,
+    revalidate: ["/dashboard", "/blog", `/blog/${data.slug}`],
+    fallbackError: "Failed to update post.",
+  });
 }
 
 export async function createPageAction(data: {
@@ -207,29 +129,11 @@ export async function createPageAction(data: {
   seoTitle?: string;
   seoDescription?: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/pages/dashboard", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create page." };
-    }
-
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch (error) {
-    console.error("Create page error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("POST", "/api/pages/dashboard", {
+    body: data,
+    revalidate: ["/dashboard"],
+    fallbackError: "Could not create page.",
+  });
 }
 
 export async function updatePageAction(
@@ -243,55 +147,17 @@ export async function updatePageAction(
     seoDescription?: string;
   }
 ) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/pages/dashboard/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update page." };
-    }
-
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch (error) {
-    console.error("Update page error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", `/api/pages/dashboard/${id}`, {
+    body: data,
+    revalidate: ["/dashboard"],
+    fallbackError: "Failed to update page.",
+  });
 }
 
 export async function getProfileAction() {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.get("/api/auth/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return { error: data.message || "Failed to fetch profile." };
-    }
-
-    return { data: await res.json() };
-  } catch (error) {
-    console.error("Get profile error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedRequest("GET", "/api/auth/profile", {
+    fallbackError: "Failed to fetch profile.",
+  });
 }
 
 export async function updateProfileAction(data: {
@@ -299,57 +165,21 @@ export async function updateProfileAction(data: {
   username: string;
   displayName: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put("/api/auth/profile", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update profile." };
-    }
-
-    revalidatePath("/dashboard/profile");
-    return { success: true };
-  } catch (error) {
-    console.error("Update profile error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", "/api/auth/profile", {
+    body: data,
+    revalidate: ["/dashboard/profile"],
+    fallbackError: "Failed to update profile.",
+  });
 }
 
 export async function changePasswordAction(data: {
   currentPassword: string;
   newPassword: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put("/api/auth/profile/password", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to change password." };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error("Change password error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", "/api/auth/profile/password", {
+    body: data,
+    fallbackError: "Failed to change password.",
+  });
 }
 
 export async function createProjectAction(data: {
@@ -368,30 +198,11 @@ export async function createProjectAction(data: {
   startedAt?: string;
   endedAt?: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/projects/dashboard", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create project." };
-    }
-
-    revalidatePath("/dashboard");
-    revalidatePath("/projects");
-    return { success: true };
-  } catch (error) {
-    console.error("Create project error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("POST", "/api/projects/dashboard", {
+    body: data,
+    revalidate: ["/dashboard", "/projects"],
+    fallbackError: "Could not create project.",
+  });
 }
 
 export async function updateProjectAction(
@@ -413,58 +224,18 @@ export async function updateProjectAction(
     endedAt?: string;
   }
 ) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/projects/dashboard/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update project." };
-    }
-
-    revalidatePath("/dashboard");
-    revalidatePath("/projects");
-    revalidatePath(`/projects/${data.slug}`);
-    return { success: true };
-  } catch (error) {
-    console.error("Update project error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", `/api/projects/dashboard/${id}`, {
+    body: data,
+    revalidate: ["/dashboard", "/projects", `/projects/${data.slug}`],
+    fallbackError: "Failed to update project.",
+  });
 }
 
 export async function deleteProjectAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/projects/dashboard/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete project." };
-    }
-
-    revalidatePath("/dashboard");
-    revalidatePath("/projects");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete project error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/projects/dashboard/${id}`, {
+    revalidate: ["/dashboard", "/projects"],
+    fallbackError: "Failed to delete project.",
+  });
 }
 
 export async function uploadImageAction(formData: FormData) {
@@ -502,29 +273,13 @@ export async function upsertLocalizationAction(data: {
   languageCode: "tr";
   field: string;
   value: string;
-}) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/localizations", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to save localization." };
-    }
-
-    return { success: true, data: await res.json() };
-  } catch (error) {
-    console.error("Upsert localization error:", error);
-    return { error: "Server connection error." };
-  }
+}): Promise<{ error?: string; success?: true; data?: any }> {
+  const res = await authedRequest("POST", "/api/localizations", {
+    body: data,
+    fallbackError: "Failed to save localization.",
+  });
+  if ("error" in res) return { error: res.error };
+  return { success: true, data: res.data };
 }
 
 export async function getLocalizationAction(data: {
@@ -532,12 +287,7 @@ export async function getLocalizationAction(data: {
   entityId: string;
   languageCode: "tr";
   field: string;
-}) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
+}): Promise<{ error?: string; data?: any }> {
   const params = new URLSearchParams({
     entityType: data.entityType,
     entityId: data.entityId,
@@ -545,22 +295,9 @@ export async function getLocalizationAction(data: {
     field: data.field,
   });
 
-  try {
-    const res = await httpClient.get(`/api/localizations?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to load localization." };
-    }
-
-    return { data: await res.json() };
-  } catch (error) {
-    console.error("Get localization error:", error);
-    return { error: "Server connection error." };
-  }
+  const res = await authedRequest("GET", `/api/localizations?${params.toString()}`, {
+    fallbackError: "Failed to load localization.",
+  });
+  if ("error" in res) return { error: res.error };
+  return { data: res.data };
 }

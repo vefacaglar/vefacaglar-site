@@ -40,3 +40,17 @@ export function mergeTranslations<T extends Record<string, any>>(
   }
   return localized;
 }
+
+/**
+ * Groups a flat list of localization rows by entity id, so each entity's
+ * translations can be looked up in O(1) when merging.
+ */
+export function groupTranslationsByEntity(
+  rows: { entityId: string; field: string; value: string }[]
+): Record<string, { field: string; value: string }[]> {
+  const map: Record<string, { field: string; value: string }[]> = {};
+  for (const row of rows) {
+    (map[row.entityId] ??= []).push(row);
+  }
+  return map;
+}

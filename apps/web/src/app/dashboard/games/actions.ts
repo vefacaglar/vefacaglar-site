@@ -1,447 +1,149 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { httpClient } from "../../../lib/httpClient";
+import { authedRequest, authedMutation } from "../../../lib/apiAction";
+
+const REVALIDATE_GAMES = ["/dashboard/games"];
+
+// --- Developers ---
 
 export async function createDeveloperAction(data: {
   name: string;
   slug: string;
   countryCode?: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/games/developers", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create developer." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Create developer error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("POST", "/api/games/developers", {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Could not create developer.",
+  });
 }
 
 export async function updateDeveloperAction(
   id: string,
-  data: {
-    name?: string;
-    slug?: string;
-    countryCode?: string | null;
-  }
+  data: { name?: string; slug?: string; countryCode?: string | null }
 ) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/games/developers/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update developer." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Update developer error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", `/api/games/developers/${id}`, {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to update developer.",
+  });
 }
 
 export async function deleteDeveloperAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/games/developers/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete developer." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete developer error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/games/developers/${id}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to delete developer.",
+  });
 }
+
+// --- Publishers ---
 
 export async function createPublisherAction(data: {
   name: string;
   slug: string;
   countryCode?: string;
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/games/publishers", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create publisher." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Create publisher error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("POST", "/api/games/publishers", {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Could not create publisher.",
+  });
 }
 
 export async function updatePublisherAction(
   id: string,
-  data: {
-    name?: string;
-    slug?: string;
-    countryCode?: string | null;
-  }
+  data: { name?: string; slug?: string; countryCode?: string | null }
 ) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/games/publishers/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update publisher." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Update publisher error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", `/api/games/publishers/${id}`, {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to update publisher.",
+  });
 }
 
 export async function deletePublisherAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/games/publishers/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete publisher." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete publisher error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/games/publishers/${id}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to delete publisher.",
+  });
 }
 
-export async function createGenreAction(data: {
-  name: string;
-  slug: string;
-}) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
+// --- Genres ---
 
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/games/genres", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create genre." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Create genre error:", error);
-    return { error: "Server connection error." };
-  }
+export async function createGenreAction(data: { name: string; slug: string }) {
+  return authedMutation("POST", "/api/games/genres", {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Could not create genre.",
+  });
 }
 
-export async function updateGenreAction(
-  id: string,
-  data: {
-    name?: string;
-    slug?: string;
-  }
-) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/games/genres/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update genre." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Update genre error:", error);
-    return { error: "Server connection error." };
-  }
+export async function updateGenreAction(id: string, data: { name?: string; slug?: string }) {
+  return authedMutation("PUT", `/api/games/genres/${id}`, {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to update genre.",
+  });
 }
 
 export async function deleteGenreAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/games/genres/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete genre." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete genre error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/games/genres/${id}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to delete genre.",
+  });
 }
 
-export async function createThemeAction(data: {
-  name: string;
-  slug: string;
-}) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
+// --- Themes ---
 
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/games/themes", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create theme." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Create theme error:", error);
-    return { error: "Server connection error." };
-  }
+export async function createThemeAction(data: { name: string; slug: string }) {
+  return authedMutation("POST", "/api/games/themes", {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Could not create theme.",
+  });
 }
 
-export async function updateThemeAction(
-  id: string,
-  data: {
-    name?: string;
-    slug?: string;
-  }
-) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/games/themes/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update theme." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Update theme error:", error);
-    return { error: "Server connection error." };
-  }
+export async function updateThemeAction(id: string, data: { name?: string; slug?: string }) {
+  return authedMutation("PUT", `/api/games/themes/${id}`, {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to update theme.",
+  });
 }
 
 export async function deleteThemeAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/games/themes/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete theme." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete theme error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/games/themes/${id}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to delete theme.",
+  });
 }
 
-export async function createPlatformAction(data: {
-  name: string;
-  slug: string;
-}) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
+// --- Platforms ---
 
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/games/platforms", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create platform." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Create platform error:", error);
-    return { error: "Server connection error." };
-  }
+export async function createPlatformAction(data: { name: string; slug: string }) {
+  return authedMutation("POST", "/api/games/platforms", {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Could not create platform.",
+  });
 }
 
-export async function updatePlatformAction(
-  id: string,
-  data: {
-    name?: string;
-    slug?: string;
-  }
-) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/games/platforms/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update platform." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Update platform error:", error);
-    return { error: "Server connection error." };
-  }
+export async function updatePlatformAction(id: string, data: { name?: string; slug?: string }) {
+  return authedMutation("PUT", `/api/games/platforms/${id}`, {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to update platform.",
+  });
 }
 
 export async function deletePlatformAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/games/platforms/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete platform." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete platform error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/games/platforms/${id}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to delete platform.",
+  });
 }
+
+// --- Games ---
 
 export async function createGameAction(data: {
   title: string;
@@ -461,29 +163,11 @@ export async function createGameAction(data: {
   platformIds?: string[];
   themeIds?: string[];
 }) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.post("/api/games/games", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Could not create game." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Create game error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("POST", "/api/games/games", {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Could not create game.",
+  });
 }
 
 export async function updateGameAction(
@@ -502,58 +186,39 @@ export async function updateGameAction(
     hltbCompletionistHours?: string | number | null;
   }
 ) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.put(`/api/games/games/${id}`, data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to update game." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Update game error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("PUT", `/api/games/games/${id}`, {
+    body: data,
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to update game.",
+  });
 }
 
 export async function deleteGameAction(id: string) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.delete(`/api/games/games/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to delete game." };
-    }
-
-    revalidatePath("/dashboard/games");
-    return { success: true };
-  } catch (error) {
-    console.error("Delete game error:", error);
-    return { error: "Server connection error." };
-  }
+  return authedMutation("DELETE", `/api/games/games/${id}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to delete game.",
+  });
 }
 
-// --- List actions (server-side paginated/searched fetch) ---
+// --- Game relation link/unlink ---
+
+type RelationType = "developers" | "publishers" | "genres" | "platforms" | "themes";
+
+export async function linkGameRelationAction(gameId: string, relationType: RelationType, relationId: string) {
+  return authedMutation("POST", `/api/games/games/${gameId}/${relationType}/${relationId}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to link relation.",
+  });
+}
+
+export async function unlinkGameRelationAction(gameId: string, relationType: RelationType, relationId: string) {
+  return authedMutation("DELETE", `/api/games/games/${gameId}/${relationType}/${relationId}`, {
+    revalidate: REVALIDATE_GAMES,
+    fallbackError: "Failed to unlink relation.",
+  });
+}
+
+// --- List / detail proxies (server-side paginated/searched fetch) ---
 
 type ListParams = { page?: number; limit?: number; q?: string };
 type ListResult<T> = {
@@ -565,10 +230,6 @@ type ListResult<T> = {
 };
 
 async function listProxy<T>(path: string, params: ListParams): Promise<ListResult<T> | { error: string }> {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-  if (!token) return { error: "Unauthorized." };
-
   const search = new URLSearchParams();
   if (params.page !== undefined) search.set("page", String(params.page));
   if (params.limit !== undefined) search.set("limit", String(params.limit));
@@ -576,41 +237,15 @@ async function listProxy<T>(path: string, params: ListParams): Promise<ListResul
   const qs = search.toString();
   const url = qs ? `${path}?${qs}` : path;
 
-  try {
-    const res = await httpClient.get(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to fetch list." };
-    }
-    return (await res.json()) as ListResult<T>;
-  } catch (error) {
-    console.error("List fetch error:", path, error);
-    return { error: "Server connection error." };
-  }
+  const res = await authedRequest<ListResult<T>>("GET", url, { fallbackError: "Failed to fetch list." });
+  if ("error" in res) return res;
+  return res.data;
 }
 
 async function getProxy<T>(path: string): Promise<T | { error: string }> {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-  if (!token) return { error: "Unauthorized." };
-
-  try {
-    const res = await httpClient.get(path, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return { error: errData.message || "Failed to fetch." };
-    }
-    return (await res.json()) as T;
-  } catch (error) {
-    console.error("Get proxy fetch error:", path, error);
-    return { error: "Server connection error." };
-  }
+  const res = await authedRequest<T>("GET", path, { fallbackError: "Failed to fetch." });
+  if ("error" in res) return res;
+  return res.data;
 }
 
 export async function listGamesAction(params: ListParams) {
@@ -630,6 +265,9 @@ export async function listThemesAction(params: ListParams) {
 }
 export async function listPlatformsAction(params: ListParams) {
   return listProxy("/api/games/platforms", params);
+}
+export async function getGameAction(id: string) {
+  return getProxy<unknown>(`/api/games/games/${id}`);
 }
 export async function listRelationsOptionsAction() {
   return getProxy<{

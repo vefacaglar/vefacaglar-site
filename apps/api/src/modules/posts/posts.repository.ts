@@ -4,7 +4,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type { IPostsRepository } from "./posts.repository.interface";
-import { mergeTranslations, LanguageProvider } from "../../shared/localization";
+import { mergeTranslations, groupTranslationsByEntity, LanguageProvider } from "../../shared/localization";
 
 export type Post = InferSelectModel<typeof posts>;
 export type NewPost = InferInsertModel<typeof posts>;
@@ -86,18 +86,11 @@ export class DrizzlePostsRepository implements IPostsRepository {
         eq(localizations.languageCode, lang)
       ));
 
-    const translationsMap: Record<string, { field: string; value: string }[]> = {};
-    for (const trans of allTranslations) {
-      if (!translationsMap[trans.entityId]) {
-        translationsMap[trans.entityId] = [];
-      }
-      translationsMap[trans.entityId].push(trans);
-    }
+    const translationsMap = groupTranslationsByEntity(allTranslations);
 
-    const translatedItems = rows.map((row) => {
-      const postTranslations = translationsMap[row.id] || [];
-      return mergeTranslations(row, postTranslations);
-    });
+    const translatedItems = rows.map((row) =>
+      mergeTranslations(row, translationsMap[row.id] ?? [])
+    );
 
     return { items: translatedItems, total };
   }
@@ -182,17 +175,8 @@ export class DrizzlePostsRepository implements IPostsRepository {
         eq(localizations.languageCode, lang)
       ));
 
-    const translationsMap: Record<string, { field: string; value: string }[]> = {};
-    for (const trans of allTranslations) {
-      if (!translationsMap[trans.entityId]) {
-        translationsMap[trans.entityId] = [];
-      }
-      translationsMap[trans.entityId].push(trans);
-    }
+    const translationsMap = groupTranslationsByEntity(allTranslations);
 
-    return rows.map((row) => {
-      const postTranslations = translationsMap[row.id] || [];
-      return mergeTranslations(row, postTranslations);
-    });
+    return rows.map((row) => mergeTranslations(row, translationsMap[row.id] ?? []));
   }
 }

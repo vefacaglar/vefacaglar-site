@@ -9,6 +9,8 @@ import {
   listPublishersAction,
   listRelationsOptionsAction,
   updateGameAction,
+  linkGameRelationAction,
+  unlinkGameRelationAction,
 } from "./actions";
 import type { Game, GameRelationItem } from "./GamesDashboardClient";
 import clientStyles from "./games-client.module.css";
@@ -80,19 +82,13 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
 
     setSelected(next);
 
-    try {
-      const res = await fetch(`/api/games/games/${game.id}/${relationType}/${relation.id}`, {
-        method: isSelected ? "DELETE" : "POST",
-      });
+    const res = isSelected
+      ? await unlinkGameRelationAction(game.id, relationType, relation.id)
+      : await linkGameRelationAction(game.id, relationType, relation.id);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        setSelected(selected);
-        setError(errData.message || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
-      }
-    } catch {
+    if ("error" in res) {
       setSelected(selected);
-      setError(ds.games.errors.serverError);
+      setError(res.error || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
     }
   };
 

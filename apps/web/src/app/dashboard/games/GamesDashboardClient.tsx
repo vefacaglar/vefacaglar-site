@@ -25,6 +25,9 @@ import {
   deletePlatformAction,
   createGameAction,
   updateGameAction,
+  getGameAction,
+  linkGameRelationAction,
+  unlinkGameRelationAction,
   deleteGameAction,
   listGamesAction,
   listDevelopersAction,
@@ -278,7 +281,7 @@ export default function GamesDashboardClient({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Toggle a relation: optimistic local update, then hit Next.js Route Handler
+  // Toggle a relation: optimistic local update, then call the server action
   // which proxies to Fastify with the session cookie. Rolls back on failure.
   const toggleRelation = async (
     relation: GameRelationItem,
@@ -295,20 +298,13 @@ export default function GamesDashboardClient({
 
     if (!editingItem) return;
 
-    try {
-      const res = await fetch(
-        `/api/games/games/${editingItem.id}/${relationType}/${relation.id}`,
-        { method: isSelected ? "DELETE" : "POST" }
-      );
+    const res = isSelected
+      ? await unlinkGameRelationAction(editingItem.id, relationType, relation.id)
+      : await linkGameRelationAction(editingItem.id, relationType, relation.id);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        setSelected(selected);
-        setError(errData.message || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
-      }
-    } catch (err) {
+    if ("error" in res) {
       setSelected(selected);
-      setError("Server connection error.");
+      setError(res.error || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
     }
   };
 
@@ -397,17 +393,11 @@ export default function GamesDashboardClient({
       // Seed with cached row so the modal opens instantly, then refetch the
       // canonical record (with current relations) and overwrite local state.
       populateGameForm(item as Game);
-      try {
-        const res = await fetch(`/api/games/games/${item.id}`, { cache: "no-store" });
-        if (res.ok) {
-          const fresh = (await res.json()) as Game;
-          populateGameForm(fresh);
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          setError(errData.message || ds.games.errors.loadFailed);
-        }
-      } catch {
-        setError(ds.games.errors.serverError);
+      const res = await getGameAction(item.id);
+      if (res && typeof res === "object" && "error" in res) {
+        setError((res as { error: string }).error || ds.games.errors.loadFailed);
+      } else {
+        populateGameForm(res as Game);
       }
     } else {
       setName(item.name);
