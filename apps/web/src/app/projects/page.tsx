@@ -4,6 +4,7 @@ import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
 import { localizeHref } from '../../lib/localizeHref';
 import { httpClient } from '../../lib/httpClient';
+import { localizedAlternates } from '../../lib/seo';
 import Pagination from '../components/Pagination';
 
 interface ProjectItem {
@@ -22,7 +23,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata() {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
-  return { title: dict.projects_meta_title, description: dict.projects_meta_description };
+  return {
+    title: dict.projects_meta_title,
+    description: dict.projects_meta_description,
+    alternates: localizedAlternates("/projects", lang),
+  };
 }
 
 interface ProjectsProps {

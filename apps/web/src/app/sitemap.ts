@@ -25,6 +25,11 @@ function bilingual(path: string, options: Omit<Entry, "url">): Entry[] {
   ];
 }
 
+// Emit a single English-only entry (sections without a Turkish translation).
+function englishOnly(path: string, options: Omit<Entry, "url">): Entry[] {
+  return [{ url: `${baseUrl}${path}`, ...options }];
+}
+
 async function fetchJson(path: string): Promise<any | null> {
   try {
     const res = await fetch(`${apiUrl}${path}`, { cache: "no-store" });
@@ -44,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...bilingual("/about", { lastModified: now, changeFrequency: "monthly", priority: 0.8 }),
     ...bilingual("/blog", { lastModified: now, changeFrequency: "daily", priority: 0.9 }),
     ...bilingual("/projects", { lastModified: now, changeFrequency: "weekly", priority: 0.8 }),
-    ...bilingual("/packages", { lastModified: now, changeFrequency: "weekly", priority: 0.8 }),
+    ...englishOnly("/packages", { lastModified: now, changeFrequency: "weekly", priority: 0.8 }),
   ];
 
   const [postsData, pages, packagesData] = await Promise.all([
@@ -79,7 +84,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const pkg of packagesData?.items ?? []) {
     dynamicRoutes.push(
-      ...bilingual(`/packages/${pkg.slug}`, {
+      ...englishOnly(`/packages/${pkg.slug}`, {
         lastModified: parseDate(pkg.updatedAt, pkg.createdAt) ?? now,
         changeFrequency: "monthly",
         priority: 0.6,

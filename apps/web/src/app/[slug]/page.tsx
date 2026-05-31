@@ -4,6 +4,7 @@ import MarkdownPreview from "../components/MarkdownPreview";
 import { getActiveLanguage } from "../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../dictionaries";
 import { httpClient } from "../../lib/httpClient";
+import { localizedAlternates } from "../../lib/seo";
 import styles from "./page.module.css";
 import AdminEditLink from "../../components/AdminEditLink";
 import { localizeHref } from "../../lib/localizeHref";
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {
       title: page.seoTitle || formatMetaTitle(page.title, lang),
       description: page.seoDescription || page.title,
+      alternates: localizedAlternates(`/${params.slug}`, lang),
     };
   } catch {
     return { title: dict.site_title };

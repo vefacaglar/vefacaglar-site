@@ -5,6 +5,7 @@ import styles from "./project.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { httpClient } from "../../../lib/httpClient";
+import { localizedAlternates } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { localizeHref } from "../../../lib/localizeHref";
 
@@ -40,6 +41,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {
       title: project.seoTitle || formatMetaTitle(project.title, lang),
       description: project.seoDescription || project.summary,
+      alternates: localizedAlternates(`/projects/${params.slug}`, lang),
     };
   } catch {
     return { title: dict.site_projects_meta_title };

@@ -2,6 +2,8 @@ import React from "react";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../../../components/MarkdownPreview";
 import { httpClient } from "../../../../../lib/httpClient";
+import { getActiveLanguage } from "../../../../../lib/lang";
+import { localizedAlternates } from "../../../../../lib/seo";
 import styles from "./docPage.module.css";
 
 interface DocDetail {
@@ -23,6 +25,11 @@ export async function generateMetadata({ params }: { params: { slug: string; doc
     return {
       title: `${doc.title} - Documentation`,
       description: doc.description || `Documentation article for ${doc.title}`,
+      alternates: localizedAlternates(
+        `/packages/${params.slug}/docs/${params.docSlug}`,
+        getActiveLanguage(),
+        { bilingual: false }
+      ),
     };
   } catch {
     return { title: "Documentation" };

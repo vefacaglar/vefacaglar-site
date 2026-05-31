@@ -5,6 +5,7 @@ import { getActiveLanguage } from '../lib/lang';
 import { getDictionary, formatMetaTitle } from '../dictionaries';
 import { localizeHref } from '../lib/localizeHref';
 import { httpClient } from '../lib/httpClient';
+import { localizedAlternates } from '../lib/seo';
 
 interface PageItem {
   id: string;
@@ -44,6 +45,7 @@ export async function generateMetadata() {
   return {
     title: page?.seoTitle || page?.title || dict.site_title,
     description: page?.seoDescription || dict.site_description,
+    alternates: localizedAlternates("", lang),
   };
 }
 

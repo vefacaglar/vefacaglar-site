@@ -5,10 +5,12 @@ import { LocaleProvider } from "../components/LocaleProvider";
 import WidthController from "../components/WidthController";
 import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
+import { SITE_URL } from "../lib/seo";
 import "./globals.css";
 import styles from "./layout.module.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "vefa çağlar",
   description: "personal website of vefa çağlar",
   verification: {

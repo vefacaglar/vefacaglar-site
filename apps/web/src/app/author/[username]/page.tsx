@@ -5,6 +5,7 @@ import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
+import { localizedAlternates } from "../../../lib/seo";
 
 interface AuthorDetail {
   username: string;
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }: { params: { username: string 
     return {
       title: formatMetaTitle(author.displayName, lang),
       description: `${dict.posts_by} ${author.displayName}`,
+      alternates: localizedAlternates(`/author/${params.username}`, lang),
     };
   } catch {
     return { title: dict.author_meta_title };

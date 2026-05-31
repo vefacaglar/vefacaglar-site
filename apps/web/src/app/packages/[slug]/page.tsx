@@ -2,6 +2,8 @@ import React from "react";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import { httpClient } from "../../../lib/httpClient";
+import { getActiveLanguage } from "../../../lib/lang";
+import { localizedAlternates } from "../../../lib/seo";
 import styles from "./packagePage.module.css";
 
 interface PackageDetail {
@@ -27,6 +29,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {
       title: `${pkg.name} | Package`,
       description: pkg.description || `Documentation and details for ${pkg.name}`,
+      alternates: localizedAlternates(`/packages/${params.slug}`, getActiveLanguage(), {
+        bilingual: false,
+      }),
     };
   } catch {
     return { title: "Package" };

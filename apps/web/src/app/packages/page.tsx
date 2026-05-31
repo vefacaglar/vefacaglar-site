@@ -2,6 +2,8 @@ import React from "react";
 import Link from "next/link";
 import styles from "./packages.module.css";
 import { httpClient } from "../../lib/httpClient";
+import { getActiveLanguage } from "../../lib/lang";
+import { localizedAlternates } from "../../lib/seo";
 import Pagination from "../components/Pagination";
 
 interface PackageItem {
@@ -22,6 +24,7 @@ export async function generateMetadata() {
   return {
     title: "Packages | Vefa Çağlar",
     description: "Open source packages and documentation library developed by Vefa Çağlar.",
+    alternates: localizedAlternates("/packages", getActiveLanguage(), { bilingual: false }),
   };
 }
 

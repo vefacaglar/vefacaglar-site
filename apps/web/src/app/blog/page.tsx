@@ -5,6 +5,7 @@ import { getDictionary } from '../../dictionaries';
 import { localizeHref } from '../../lib/localizeHref';
 import { httpClient } from '../../lib/httpClient';
 import Pagination from '../components/Pagination';
+import { localizedAlternates } from '../../lib/seo';
 
 interface PostItem {
   id: string;
@@ -20,6 +21,15 @@ interface PostItem {
 }
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata() {
+  const lang = getActiveLanguage();
+  const dict = getDictionary(lang);
+  return {
+    title: dict.blog_meta_title,
+    alternates: localizedAlternates("/blog", lang),
+  };
+}
 
 interface BlogProps {
   searchParams: {

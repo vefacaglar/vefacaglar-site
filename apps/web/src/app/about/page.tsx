@@ -3,6 +3,7 @@ import styles from "./about.module.css";
 import { getActiveLanguage } from "../../lib/lang";
 import { getDictionary } from "../../dictionaries";
 import { httpClient } from "../../lib/httpClient";
+import { localizedAlternates } from "../../lib/seo";
 import AdminEditLink from "../../components/AdminEditLink";
 import { localizeHref } from "../../lib/localizeHref";
 
@@ -36,6 +37,7 @@ export async function generateMetadata() {
   return {
     title: page?.seoTitle || page?.title || dict.about,
     description: page?.seoDescription || dict.about_meta_description,
+    alternates: localizedAlternates("/about", lang),
   };
 }
 

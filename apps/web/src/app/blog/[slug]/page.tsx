@@ -7,6 +7,7 @@ import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { httpClient } from "../../../lib/httpClient";
+import { localizedAlternates } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 
 interface PostDetail {
@@ -39,6 +40,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {
       title: post.seoTitle || formatMetaTitle(post.title, lang),
       description: post.seoDescription || post.title,
+      alternates: localizedAlternates(`/blog/${params.slug}`, lang),
     };
   } catch {
     return { title: dict.blog_meta_title };
