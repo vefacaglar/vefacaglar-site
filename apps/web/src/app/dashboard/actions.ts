@@ -244,7 +244,11 @@ export async function uploadImageAction(formData: FormData) {
 
   if (!token) return { error: "Unauthorized." };
 
-  const API_URL = process.env.API_URL || "http://localhost:3001";
+  const API_URL = process.env.API_URL;
+
+  if (!API_URL) {
+    return { error: "API_URL environment variable is not set." };
+  }
 
   try {
     const res = await fetch(`${API_URL}/api/uploads/image`, {

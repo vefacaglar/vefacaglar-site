@@ -6,7 +6,7 @@ import styles from "./MarkdownEditor.module.css";
 import { getSessionToken } from "../dashboard/actions";
 import e from "../../lib/editor-strings";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const COMPRESS_MAX_DIMENSION = 1000;
 const COMPRESS_TARGET_BYTES = 300 * 1024;

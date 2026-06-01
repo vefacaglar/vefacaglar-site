@@ -2,7 +2,11 @@ import { MetadataRoute } from "next";
 
 export const runtime = "edge";
 
-const apiUrl = process.env.API_URL || "http://localhost:3001";
+const apiUrl = process.env.API_URL;
+
+if (!apiUrl) {
+  throw new Error("API_URL environment variable is not set.");
+}
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vefacaglar.com";
 
 type Entry = MetadataRoute.Sitemap[number];
