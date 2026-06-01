@@ -39,7 +39,7 @@ export default function PackageItemsManagement({ groupId, packages }: PackageIte
   };
 
   return (
-    <section className={`${styles.section} ${isPending ? styles.pendingSection : ""}`}>
+    <section className={`${styles.sectionWithDivider} ${isPending ? styles.pendingSection : ""}`}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>Packages in this group</h2>
         <Link href={`/dashboard/package/new?groupId=${groupId}`} className="btnAccent">

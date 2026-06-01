@@ -54,10 +54,32 @@ class HttpClient {
       }
     }
 
-    return fetch(url, {
-      ...init,
-      headers,
-    });
+    const maxRetries = 3;
+    let delay = 500;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fetch(url, {
+          ...init,
+          headers,
+        });
+      } catch (error: any) {
+        const isNetworkError =
+          error instanceof TypeError ||
+          error?.code === "ECONNREFUSED" ||
+          error?.message?.includes("fetch failed");
+
+        if (isNetworkError && attempt < maxRetries) {
+          console.warn(
+            `[HttpClient] Connection to ${url} failed (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 2;
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Fetch failed after max retries");
   }
 
   async get(path: string, init?: RequestInitWithNext): Promise<Response> {

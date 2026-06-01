@@ -369,3 +369,10 @@
   transition: opacity 0.2s ease;
 }
 
+.sectionWithDivider {
+  margin-bottom: 48px;
+  margin-top: 48px;
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+}
+
