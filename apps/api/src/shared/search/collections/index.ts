@@ -1,5 +1,5 @@
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
-import type { SearchLanguage } from "../search-indexer.interface";
+import type { SearchLanguage } from "../search.types";
 
 export function buildGamesCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
   return {

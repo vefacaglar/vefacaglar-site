@@ -1,12 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListGamesQuery, ListGamesResponse } from "./list.schema";
 import { inject, injectable } from "tsyringe";
-import { SEARCH_INDEXER } from "../../../../shared/search/search.tokens";
-import type { ISearchIndexer } from "../../../../shared/search/search-indexer.interface";
+import { SEARCH_READER } from "../../../../shared/search/search.tokens";
+import type { ISearchReader } from "../../../../shared/search/queries/search-reader.interface";
 
 @injectable()
 export class ListGamesHandler {
-  constructor(@inject(SEARCH_INDEXER) private readonly searchIndexer: ISearchIndexer) {}
+  constructor(@inject(SEARCH_READER) private readonly searchReader: ISearchReader) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListGamesQuery }>): Promise<ListGamesResponse> {
     const { page, limit, q } = request.query;
@@ -14,7 +14,7 @@ export class ListGamesHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.searchIndexer.searchGames({
+    const { items: rows, total } = await this.searchReader.searchGames({
       q,
       page: pageNum,
       limit: limitNum,

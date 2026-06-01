@@ -5,13 +5,13 @@ import * as path from "path";
 dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 
 import { container } from "../container";
-import { SEARCH_INDEXER } from "../shared/search/search.tokens";
-import type { ISearchIndexer } from "../shared/search/search-indexer.interface";
+import { SEARCH_WRITER } from "../shared/search/search.tokens";
+import type { ISearchIndexWriter } from "../shared/search/commands/search-writer.interface";
 
 async function main() {
   const drop = process.argv.includes("--drop");
 
-  const indexer = container.resolve<ISearchIndexer>(SEARCH_INDEXER);
+  const indexer = container.resolve<ISearchIndexWriter>(SEARCH_WRITER);
 
   if (!indexer.enabled) {
     console.error("[search:reindex] typesense is not configured (missing TYPESENSE_HOST or TYPESENSE_API_KEY).");

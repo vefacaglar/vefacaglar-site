@@ -1,15 +1,15 @@
 import { inject, injectable } from "tsyringe";
-import { EVENT_BUS } from "../events/events.tokens";
-import type { IEventBus } from "../events/event-bus";
-import { SEARCH_INDEXER } from "./search.tokens";
-import type { ISearchIndexer } from "./search-indexer.interface";
+import { EVENT_BUS } from "../../events/events.tokens";
+import type { IEventBus } from "../../events/event-bus";
+import { SEARCH_WRITER } from "../search.tokens";
+import type { ISearchIndexWriter } from "./search-writer.interface";
 import {
   GAME_ENTITY_CHANGED,
   GAME_ENTITY_REMOVED,
   type GameEntityChangedEvent,
   type GameEntityRemovedEvent,
   type GameEntityKind,
-} from "../../modules/games/games.events";
+} from "../../../modules/games/games.events";
 
 /**
  * Keeps the Typesense read model in sync with games-domain commands by reacting
@@ -25,7 +25,7 @@ export class SearchEventSubscriber {
 
   constructor(
     @inject(EVENT_BUS) private readonly eventBus: IEventBus,
-    @inject(SEARCH_INDEXER) private readonly indexer: ISearchIndexer
+    @inject(SEARCH_WRITER) private readonly indexer: ISearchIndexWriter
   ) {
     this.indexers = {
       game: (id) => this.indexer.indexGame(id),

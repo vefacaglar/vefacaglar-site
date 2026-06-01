@@ -25,11 +25,12 @@ import { DrizzlePlatformsRepository } from "./modules/games/platforms.repository
 import { DrizzleGamesRepository } from "./modules/games/games.repository";
 import { PACKAGES_REPOSITORY } from "./modules/packages/packages.tokens";
 import { DrizzlePackagesRepository } from "./modules/packages/packages.repository";
-import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_INDEXER } from "./shared/search/search.tokens";
+import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
 import { createTypesenseClient, createDisabledTypesenseClient, readTypesenseConfig } from "./shared/search/typesense.client";
 import { createRedisClient, createDisabledRedisClient, readRedisConfig } from "./shared/search/redis.client";
-import { TypesenseSearchIndexer } from "./shared/search/typesense-indexer.service";
-import { SearchEventSubscriber } from "./shared/search/search-event-subscriber";
+import { TypesenseSearchReader } from "./shared/search/queries/typesense-search-reader";
+import { TypesenseSearchWriter } from "./shared/search/commands/typesense-search-writer";
+import { SearchEventSubscriber } from "./shared/search/commands/search-event-subscriber";
 import { EVENT_BUS } from "./shared/events/events.tokens";
 import { InProcessEventBus } from "./shared/events/in-process-event-bus";
 
@@ -63,7 +64,10 @@ container.registerInstance(
   redisConfig ? createRedisClient(redisConfig) : createDisabledRedisClient()
 );
 
-container.registerSingleton(SEARCH_INDEXER, TypesenseSearchIndexer);
+// CQRS segregation: read and write sides are separate implementations behind
+// distinct, narrow tokens.
+container.registerSingleton(SEARCH_READER, TypesenseSearchReader);
+container.registerSingleton(SEARCH_WRITER, TypesenseSearchWriter);
 
 container.registerSingleton(EVENT_BUS, InProcessEventBus);
 

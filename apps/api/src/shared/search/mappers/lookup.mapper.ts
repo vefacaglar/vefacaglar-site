@@ -3,7 +3,7 @@ import type { Publisher } from "../../../modules/games/publishers.repository.int
 import type { Genre } from "../../../modules/games/genres.repository.interface";
 import type { Platform } from "../../../modules/games/platforms.repository.interface";
 import type { Theme } from "../../../modules/games/themes.repository.interface";
-import type { SearchLanguage } from "../search-indexer.interface";
+import type { SearchLanguage } from "../search.types";
 
 export type LookupTranslations = { field: string; value: string }[];
 

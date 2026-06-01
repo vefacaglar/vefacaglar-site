@@ -1,5 +1,5 @@
 import Typesense, { Client as TypesenseClient } from "typesense";
-import type { SearchLanguage } from "./search-indexer.interface";
+import type { SearchLanguage } from "./search.types";
 
 export interface TypesenseConfig {
   enabled: boolean;
