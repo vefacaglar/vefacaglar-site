@@ -143,7 +143,7 @@ export default function GamesDashboardClient({
 
   const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const debouncedSearch = useDebounced(searchQuery, 300);
+  const debouncedSearch = useDebounced(searchQuery, 700);
 
   // Derivate values from props
   const activeSubTab = initialTab;
@@ -152,10 +152,15 @@ export default function GamesDashboardClient({
   const items = initialItems;
   const total = initialTotal;
 
-  // Sync searchQuery when URL query changes (e.g. browser back/forward)
+  // Sync searchQuery when URL query changes (e.g. browser back/forward),
+  // but never overwrite the user's input while they are actively typing —
+  // a stale URL response from an earlier debounce tick would otherwise
+  // clobber the text the user just typed.
   useEffect(() => {
-    setSearchQuery(initialSearch);
-  }, [initialSearch]);
+    if (searchQuery === debouncedSearch) {
+      setSearchQuery(initialSearch);
+    }
+  }, [initialSearch, searchQuery, debouncedSearch]);
 
   // Tab badge counts
   const [counts, setCounts] = useState<Partial<Record<SubTab, number>>>({
@@ -180,7 +185,7 @@ export default function GamesDashboardClient({
     
     const q = updatedParams.q !== undefined ? updatedParams.q : searchQuery;
     if (q.trim()) {
-      params.set("q", q.trim());
+      params.set("q", q);
     }
 
     startTransition(() => {
