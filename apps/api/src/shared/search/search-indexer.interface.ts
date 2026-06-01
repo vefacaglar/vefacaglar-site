@@ -1,9 +1,11 @@
 import type { GameWithRelations } from "../../modules/games/games.repository.interface";
-import type { Developer, NewDeveloper } from "../../modules/games/developers.repository.interface";
-import type { Publisher, NewPublisher } from "../../modules/games/publishers.repository.interface";
-import type { Genre, NewGenre } from "../../modules/games/genres.repository.interface";
-import type { Platform, NewPlatform } from "../../modules/games/platforms.repository.interface";
-import type { Theme, NewTheme } from "../../modules/games/themes.repository.interface";
+import type { Developer } from "../../modules/games/developers.repository.interface";
+import type { Publisher } from "../../modules/games/publishers.repository.interface";
+import type { Genre } from "../../modules/games/genres.repository.interface";
+import type { Platform } from "../../modules/games/platforms.repository.interface";
+import type { Theme } from "../../modules/games/themes.repository.interface";
+
+export type SearchLanguage = "en" | "tr";
 
 export interface SearchResult<T> {
   items: T[];
@@ -17,12 +19,6 @@ export interface SearchQuery {
 }
 
 export type GameSearchItem = GameWithRelations;
-export type LookupSearchItem =
-  | Developer
-  | Publisher
-  | Genre
-  | Platform
-  | Theme;
 
 export interface ISearchIndexer {
   readonly enabled: boolean;
@@ -50,4 +46,4 @@ export interface ISearchIndexer {
   reindexAll(options: { drop: boolean }): Promise<void>;
 }
 
-export type { GameWithRelations, Developer, NewDeveloper, Publisher, NewPublisher, Genre, NewGenre, Platform, NewPlatform, Theme, NewTheme };
+export type { GameWithRelations, Developer, Publisher, Genre, Platform, Theme };

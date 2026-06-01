@@ -1,4 +1,5 @@
 import Typesense, { Client as TypesenseClient } from "typesense";
+import type { SearchLanguage } from "./search-indexer.interface";
 
 export interface TypesenseConfig {
   enabled: boolean;
@@ -6,6 +7,26 @@ export interface TypesenseConfig {
   port: number;
   protocol: "http" | "https";
   apiKey: string;
+  languages: SearchLanguage[];
+}
+
+const SUPPORTED_LANGUAGES: readonly SearchLanguage[] = ["en", "tr"];
+
+export function readTypesenseLanguages(): SearchLanguage[] {
+  const raw = process.env.TYPESENSE_LANGUAGES;
+  if (!raw) return ["en"];
+
+  const requested = raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const valid = requested.filter((lang): lang is SearchLanguage =>
+    (SUPPORTED_LANGUAGES as readonly string[]).includes(lang)
+  );
+
+  if (valid.length === 0) {
+    console.warn(`[search] TYPESENSE_LANGUAGES contains no valid values, defaulting to "en"`);
+    return ["en"];
+  }
+
+  return valid;
 }
 
 export function readTypesenseConfig(): TypesenseConfig {
@@ -14,6 +35,7 @@ export function readTypesenseConfig(): TypesenseConfig {
   const protocol = process.env.TYPESENSE_PROTOCOL as "http" | "https" | undefined;
   const apiKey = process.env.TYPESENSE_API_KEY;
   const publicUrl = process.env.TYPESENSE_PUBLIC_URL;
+  const languages = readTypesenseLanguages();
 
   let host = explicitHost;
   let resolvedProtocol: "http" | "https" = protocol === "http" ? "http" : "https";
@@ -39,6 +61,7 @@ export function readTypesenseConfig(): TypesenseConfig {
       port: 0,
       protocol: resolvedProtocol,
       apiKey: "",
+      languages,
     };
   }
 
@@ -56,6 +79,7 @@ export function readTypesenseConfig(): TypesenseConfig {
     port: Number.isFinite(port) ? port : 443,
     protocol: resolvedProtocol,
     apiKey,
+    languages,
   };
 }
 

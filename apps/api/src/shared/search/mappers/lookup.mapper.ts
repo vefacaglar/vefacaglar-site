@@ -3,6 +3,9 @@ import type { Publisher } from "../../../modules/games/publishers.repository.int
 import type { Genre } from "../../../modules/games/genres.repository.interface";
 import type { Platform } from "../../../modules/games/platforms.repository.interface";
 import type { Theme } from "../../../modules/games/themes.repository.interface";
+import type { SearchLanguage } from "../search-indexer.interface";
+
+export type LookupTranslations = { field: string; value: string }[];
 
 export interface DeveloperDoc {
   id: string;
@@ -52,10 +55,23 @@ function toUnixSeconds(value: Date | string | null | undefined): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-export function toDeveloperDoc(row: Developer): DeveloperDoc {
+function pickName(
+  raw: string,
+  translations: LookupTranslations
+): string {
+  if (translations.length === 0) return raw;
+  const tr = translations.find((t) => t.field === "name");
+  return tr ? tr.value : raw;
+}
+
+export function toDeveloperDoc(
+  row: Developer,
+  lang: SearchLanguage,
+  translations: LookupTranslations = []
+): DeveloperDoc {
   return {
     id: row.id,
-    name: row.name,
+    name: pickName(row.name, translations),
     slug: row.slug,
     countryCode: row.countryCode ?? undefined,
     createdAt: toUnixSeconds(row.createdAt),
@@ -63,10 +79,14 @@ export function toDeveloperDoc(row: Developer): DeveloperDoc {
   };
 }
 
-export function toPublisherDoc(row: Publisher): PublisherDoc {
+export function toPublisherDoc(
+  row: Publisher,
+  lang: SearchLanguage,
+  translations: LookupTranslations = []
+): PublisherDoc {
   return {
     id: row.id,
-    name: row.name,
+    name: pickName(row.name, translations),
     slug: row.slug,
     countryCode: row.countryCode ?? undefined,
     createdAt: toUnixSeconds(row.createdAt),
@@ -74,30 +94,42 @@ export function toPublisherDoc(row: Publisher): PublisherDoc {
   };
 }
 
-export function toGenreDoc(row: Genre): GenreDoc {
+export function toGenreDoc(
+  row: Genre,
+  lang: SearchLanguage,
+  translations: LookupTranslations = []
+): GenreDoc {
   return {
     id: row.id,
-    name: row.name,
+    name: pickName(row.name, translations),
     slug: row.slug,
     createdAt: toUnixSeconds(row.createdAt),
     updatedAt: row.updatedAt ? toUnixSeconds(row.updatedAt) : undefined,
   };
 }
 
-export function toPlatformDoc(row: Platform): PlatformDoc {
+export function toPlatformDoc(
+  row: Platform,
+  lang: SearchLanguage,
+  translations: LookupTranslations = []
+): PlatformDoc {
   return {
     id: row.id,
-    name: row.name,
+    name: pickName(row.name, translations),
     slug: row.slug,
     createdAt: toUnixSeconds(row.createdAt),
     updatedAt: row.updatedAt ? toUnixSeconds(row.updatedAt) : undefined,
   };
 }
 
-export function toThemeDoc(row: Theme): ThemeDoc {
+export function toThemeDoc(
+  row: Theme,
+  lang: SearchLanguage,
+  translations: LookupTranslations = []
+): ThemeDoc {
   return {
     id: row.id,
-    name: row.name,
+    name: pickName(row.name, translations),
     slug: row.slug,
     createdAt: toUnixSeconds(row.createdAt),
     updatedAt: row.updatedAt ? toUnixSeconds(row.updatedAt) : undefined,

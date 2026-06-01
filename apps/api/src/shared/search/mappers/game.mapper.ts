@@ -1,4 +1,7 @@
 import type { GameWithRelations } from "../../../modules/games/games.repository.interface";
+import type { SearchLanguage } from "../search-indexer.interface";
+
+export type GameTranslations = { field: string; value: string }[];
 
 export interface GameDoc {
   id: string;
@@ -38,13 +41,27 @@ function toUnixSeconds(value: Date | string | null | undefined): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-export function toGameDoc(game: GameWithRelations): GameDoc {
+function pickTranslation<T extends string | null | undefined>(
+  raw: T,
+  translations: GameTranslations,
+  field: string
+): T {
+  if (translations.length === 0) return raw;
+  const tr = translations.find((t) => t.field === field);
+  return tr ? (tr.value as T) : raw;
+}
+
+export function toGameDoc(
+  game: GameWithRelations,
+  lang: SearchLanguage,
+  translations: GameTranslations = []
+): GameDoc {
   return {
     id: game.id,
     slug: game.slug,
-    title: game.title,
+    title: pickTranslation(game.title, translations, "title"),
     originalTitle: game.originalTitle ?? undefined,
-    description: game.description ?? undefined,
+    description: pickTranslation(game.description, translations, "description") ?? undefined,
     coverImageUrl: game.coverImageUrl ?? undefined,
     releaseDate: game.releaseDate ?? undefined,
     metacriticScore: game.metacriticScore ?? undefined,
