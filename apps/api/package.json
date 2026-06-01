@@ -6,7 +6,9 @@
     "dev": "ts-node-dev src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "search:reindex": "ts-node-dev --no-deps --no-notify --quiet src/scripts/search-reindex.ts"
+    "search:reindex": "ts-node-dev --no-deps --no-notify --quiet src/scripts/search-reindex.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
@@ -29,6 +31,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
   }
 }
