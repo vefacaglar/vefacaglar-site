@@ -1,52 +1,44 @@
 import { cache } from "react";
 import { httpClient } from "./httpClient";
 
-export const getHomePage = cache(async () => {
-  const res = await httpClient.get("/api/pages/home");
-  return res.ok ? res.json() : null;
-});
+// Build must not depend on the API being reachable. The web app may be built and
+// deployed while the API is still down; once the API comes up, ISR (revalidate)
+// regenerates pages with real data. So any fetch failure here — a non-ok response
+// or a network error (ECONNREFUSED at build time) — resolves to null instead of
+// throwing, which would otherwise abort static generation and fail the build.
+async function fetchJson<T = any>(path: string): Promise<T | null> {
+  try {
+    const res = await httpClient.get(path);
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch (error) {
+    console.error(`Data fetch failed for ${path}:`, error);
+    return null;
+  }
+}
 
-export const getPage = cache(async (slug: string) => {
-  const res = await httpClient.get(`/api/pages/${slug}`);
-  return res.ok ? res.json() : null;
-});
+export const getHomePage = cache(() => fetchJson("/api/pages/home"));
 
-export const getPost = cache(async (slug: string) => {
-  const res = await httpClient.get(`/api/posts/${slug}`);
-  return res.ok ? res.json() : null;
-});
+export const getPage = cache((slug: string) => fetchJson(`/api/pages/${slug}`));
 
-export const getProject = cache(async (slug: string) => {
-  const res = await httpClient.get(`/api/projects/${slug}`);
-  return res.ok ? res.json() : null;
-});
+export const getPost = cache((slug: string) => fetchJson(`/api/posts/${slug}`));
 
-export const getPackage = cache(async (slug: string) => {
-  const res = await httpClient.get(`/api/packages/${slug}`);
-  return res.ok ? res.json() : null;
-});
+export const getProject = cache((slug: string) => fetchJson(`/api/projects/${slug}`));
 
-export const getPackageDoc = cache(async (slug: string, docSlug: string) => {
-  const res = await httpClient.get(`/api/packages/${slug}/docs/${docSlug}`);
-  return res.ok ? res.json() : null;
-});
+export const getPackage = cache((slug: string) => fetchJson(`/api/packages/${slug}`));
 
-export const getAuthor = cache(async (username: string) => {
-  const res = await httpClient.get(`/api/authors/${username}`);
-  return res.ok ? res.json() : null;
-});
+export const getPackageDoc = cache((slug: string, docSlug: string) =>
+  fetchJson(`/api/packages/${slug}/docs/${docSlug}`)
+);
 
-export const getPublicPosts = cache(async (page: number) => {
-  const res = await httpClient.get(`/api/posts?page=${page}&limit=10`);
-  return res.ok ? res.json() : null;
-});
+export const getAuthor = cache((username: string) => fetchJson(`/api/authors/${username}`));
 
-export const getPublicProjects = cache(async (page: number) => {
-  const res = await httpClient.get(`/api/projects?page=${page}&limit=10`);
-  return res.ok ? res.json() : null;
-});
+export const getPublicPosts = cache((page: number) => fetchJson(`/api/posts?page=${page}&limit=10`));
 
-export const getPublicPackages = cache(async (page: number) => {
-  const res = await httpClient.get(`/api/packages?page=${page}&limit=10`);
-  return res.ok ? res.json() : null;
-});
+export const getPublicProjects = cache((page: number) =>
+  fetchJson(`/api/projects?page=${page}&limit=10`)
+);
+
+export const getPublicPackages = cache((page: number) =>
+  fetchJson(`/api/packages?page=${page}&limit=10`)
+);
