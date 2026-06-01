@@ -1,11 +1,11 @@
 import { inject, injectable } from "tsyringe";
 import { Client as TypesenseClient } from "typesense";
-import type { Developer } from "../../../modules/games/developers.repository.interface";
-import type { Publisher } from "../../../modules/games/publishers.repository.interface";
-import type { Genre } from "../../../modules/games/genres.repository.interface";
-import type { Platform } from "../../../modules/games/platforms.repository.interface";
-import type { Theme } from "../../../modules/games/themes.repository.interface";
-import type { GameWithRelations } from "../../../modules/games/games.repository.interface";
+import type { Developer } from "../../../modules/catalog/developers.repository.interface";
+import type { Publisher } from "../../../modules/catalog/publishers.repository.interface";
+import type { Genre } from "../../../modules/catalog/genres.repository.interface";
+import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
+import type { Theme } from "../../../modules/catalog/themes.repository.interface";
+import type { GameWithRelations } from "../../../modules/catalog/games.repository.interface";
 import {
   DEVELOPERS_REPOSITORY,
   PUBLISHERS_REPOSITORY,
@@ -13,13 +13,13 @@ import {
   PLATFORMS_REPOSITORY,
   THEMES_REPOSITORY,
   GAMES_REPOSITORY,
-} from "../../../modules/games/games.tokens";
-import type { IDevelopersRepository } from "../../../modules/games/developers.repository.interface";
-import type { IPublishersRepository } from "../../../modules/games/publishers.repository.interface";
-import type { IGenresRepository } from "../../../modules/games/genres.repository.interface";
-import type { IPlatformsRepository } from "../../../modules/games/platforms.repository.interface";
-import type { IThemesRepository } from "../../../modules/games/themes.repository.interface";
-import type { IGamesRepository } from "../../../modules/games/games.repository.interface";
+} from "../../../modules/catalog/catalog.tokens";
+import type { IDevelopersRepository } from "../../../modules/catalog/developers.repository.interface";
+import type { IPublishersRepository } from "../../../modules/catalog/publishers.repository.interface";
+import type { IGenresRepository } from "../../../modules/catalog/genres.repository.interface";
+import type { IPlatformsRepository } from "../../../modules/catalog/platforms.repository.interface";
+import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
+import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import { LOCALIZATIONS_REPOSITORY } from "../../../modules/localizations/localizations.tokens";
 import type { ILocalizationsRepository } from "../../../modules/localizations/localizations.repository.interface";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";

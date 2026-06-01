@@ -9,11 +9,11 @@ import {
   type GameEntityChangedEvent,
   type GameEntityRemovedEvent,
   type GameEntityKind,
-} from "../../../modules/games/games.events";
+} from "../../../modules/catalog/catalog.events";
 
 /**
  * Keeps the Typesense read model in sync with games-domain commands by reacting
- * to domain events. The write side (GameService) only publishes events; this
+ * to domain events. The write side (GameCatalogService) only publishes events; this
  * subscriber owns the index/remove mapping, so the command path has no
  * knowledge of search. Indexer calls are best-effort (they swallow their own
  * errors), and the event bus additionally isolates handler failures.

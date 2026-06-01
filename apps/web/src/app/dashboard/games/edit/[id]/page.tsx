@@ -22,7 +22,7 @@ export default async function EditGame({
 
   let game: Game | null = null;
   try {
-    const res = await httpClient.get(`/api/games/games/${params.id}`, {
+    const res = await httpClient.get(`/api/catalog/games/${params.id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

@@ -1,4 +1,4 @@
-import type { GameWithRelations } from "../../../modules/games/games.repository.interface";
+import type { GameWithRelations } from "../../../modules/catalog/games.repository.interface";
 import type { SearchLanguage } from "../search.types";
 
 export type GameTranslations = { field: string; value: string }[];

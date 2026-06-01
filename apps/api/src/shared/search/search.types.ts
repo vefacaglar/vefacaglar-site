@@ -1,9 +1,9 @@
-import type { GameWithRelations } from "../../modules/games/games.repository.interface";
-import type { Developer } from "../../modules/games/developers.repository.interface";
-import type { Publisher } from "../../modules/games/publishers.repository.interface";
-import type { Genre } from "../../modules/games/genres.repository.interface";
-import type { Platform } from "../../modules/games/platforms.repository.interface";
-import type { Theme } from "../../modules/games/themes.repository.interface";
+import type { GameWithRelations } from "../../modules/catalog/games.repository.interface";
+import type { Developer } from "../../modules/catalog/developers.repository.interface";
+import type { Publisher } from "../../modules/catalog/publishers.repository.interface";
+import type { Genre } from "../../modules/catalog/genres.repository.interface";
+import type { Platform } from "../../modules/catalog/platforms.repository.interface";
+import type { Theme } from "../../modules/catalog/themes.repository.interface";
 
 export type SearchLanguage = "en" | "tr";
 
