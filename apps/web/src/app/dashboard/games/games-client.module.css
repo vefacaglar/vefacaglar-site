@@ -275,6 +275,10 @@
   border: none;
   cursor: pointer;
   font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  display: inline;
   padding: 0;
 }
 
@@ -283,6 +287,10 @@
   border: none;
   cursor: pointer;
   font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  display: inline;
   padding: 0;
   color: var(--accent);
 }
