@@ -25,7 +25,7 @@ interface PackagesProps {
 export default async function PackagesPage({ searchParams }: PackagesProps) {
   const page = searchParams.page ? Number(searchParams.page) : 1;
   const data = await getPublicPackages(page);
-  const packages = (data?.items ?? []) as {
+  const packageGroups = (data?.items ?? []) as {
     id: string;
     slug: string;
     name: string;
@@ -35,46 +35,37 @@ export default async function PackagesPage({ searchParams }: PackagesProps) {
     githubUrl: string | null;
     docs: string | null;
     latestVersion: string;
+    packageCount: number;
   }[];
   const totalPages = data?.totalPages ?? 0;
 
   return (
     <div>
       <h1>packages</h1>
-      <p className={styles.subtitle}>open source libraries and packages for modern applications.</p>
+      <p className={styles.subtitle}>open source package groups and documentation.</p>
 
-      {packages.length === 0 ? (
-        <p className={styles.empty}>no packages published yet.</p>
+      {packageGroups.length === 0 ? (
+        <p className={styles.empty}>no package groups published yet.</p>
       ) : (
         <>
           <ul className={styles.list}>
-            {packages.map((pkg) => (
-              <li key={pkg.id} className={styles.listItem}>
+            {packageGroups.map((group) => (
+              <li key={group.id} className={styles.listItem}>
                 <span className={styles.dash}>—</span>
                 <div className={styles.itemMeta}>
                   <div>
-                    <Link href={`/packages/${pkg.slug}`} className={styles.packageName}>
-                      {pkg.name}
+                    <Link href={`/packages/${group.slug}`} className={styles.packageName}>
+                      {group.name}
                     </Link>
-                    <span className={styles.versionBadge}>v{pkg.latestVersion}</span>
+                    <span className={styles.versionBadge}>{group.packageCount} packages</span>
                   </div>
-                  {pkg.description && <p className={styles.description}>{pkg.description}</p>}
+                  {group.description && <p className={styles.description}>{group.description}</p>}
                   <div className={styles.links}>
-                    <Link href={`/packages/${pkg.slug}/docs`} className={styles.link}>
+                    <Link href={`/packages/${group.slug}/docs`} className={styles.link}>
                       documentation
                     </Link>
-                    {pkg.nugetUrl && (
-                      <a href={pkg.nugetUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                        nuget
-                      </a>
-                    )}
-                    {pkg.npmUrl && (
-                      <a href={pkg.npmUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                        npm
-                      </a>
-                    )}
-                    {pkg.githubUrl && (
-                      <a href={pkg.githubUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {group.githubUrl && (
+                      <a href={group.githubUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
                         github
                       </a>
                     )}

@@ -33,6 +33,7 @@ export class ListPackagesHandler {
       githubUrl: row.githubUrl,
       docs: row.docs,
       latestVersion: row.latestVersion,
+      packageCount: row.packageCount,
     }));
 
     return {
