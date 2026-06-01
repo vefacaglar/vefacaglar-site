@@ -1,26 +1,28 @@
 import "reflect-metadata";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ListPostsHandler } from "./list.handler";
-import type { IPostsRepository } from "../posts.repository.interface";
+import type { ISearchReader } from "../../../shared/search/queries/search-reader.interface";
 import { FastifyRequest } from "fastify";
 
+function makeReader(): Record<keyof ISearchReader, any> {
+  return {
+    searchGames: vi.fn(),
+    searchPosts: vi.fn(),
+    searchDevelopers: vi.fn(),
+    searchPublishers: vi.fn(),
+    searchGenres: vi.fn(),
+    searchPlatforms: vi.fn(),
+    searchThemes: vi.fn(),
+  };
+}
+
 describe("ListPostsHandler", () => {
-  let mockRepo: Record<keyof IPostsRepository, any>;
+  let mockReader: Record<keyof ISearchReader, any>;
   let handler: ListPostsHandler;
 
   beforeEach(() => {
-    mockRepo = {
-      create: vi.fn(),
-      findById: vi.fn(),
-      findBySlugWithAuthor: vi.fn(),
-      listWithAuthor: vi.fn(),
-      listRawWithAuthor: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      listPublishedByAuthorId: vi.fn(),
-    };
-
-    handler = new ListPostsHandler(mockRepo as unknown as IPostsRepository);
+    mockReader = makeReader();
+    handler = new ListPostsHandler(mockReader as unknown as ISearchReader);
   });
 
   it("should successfully list posts with provided query parameters", async () => {
@@ -34,27 +36,26 @@ describe("ListPostsHandler", () => {
         coverImageUrl: "https://example.com/cover1.jpg",
         seoTitle: "First Post SEO",
         seoDescription: "First Post SEO Desc",
-        publishedAt: new Date("2026-06-01T12:00:00.000Z"),
-        createdAt: new Date("2026-06-01T10:00:00.000Z"),
-        updatedAt: new Date("2026-06-01T11:00:00.000Z"),
-        authorUsername: "vefa",
-        authorDisplayName: "Vefa Çağlar",
+        publishedAt: "2026-06-01T12:00:00.000Z",
+        createdAt: "2026-06-01T10:00:00.000Z",
+        updatedAt: "2026-06-01T11:00:00.000Z",
+        author: { username: "vefa", displayName: "Vefa Çağlar" },
       },
     ];
 
-    mockRepo.listWithAuthor.mockResolvedValue({
+    mockReader.searchPosts.mockResolvedValue({
       items: mockPosts,
       total: 1,
     });
 
     const mockRequest = {
-      query: { page: 2, limit: 5 },
-    } as unknown as FastifyRequest<{ Querystring: { page?: number; limit?: number } }>;
+      query: { page: 2, limit: 5, q: "hello" },
+    } as unknown as FastifyRequest<{ Querystring: { page?: number; limit?: number; q?: string } }>;
 
     const result = await handler.handle(mockRequest);
 
-    expect(mockRepo.listWithAuthor).toHaveBeenCalledWith({
-      status: "published",
+    expect(mockReader.searchPosts).toHaveBeenCalledWith({
+      q: "hello",
       page: 2,
       limit: 5,
     });
@@ -73,10 +74,7 @@ describe("ListPostsHandler", () => {
           publishedAt: "2026-06-01T12:00:00.000Z",
           createdAt: "2026-06-01T10:00:00.000Z",
           updatedAt: "2026-06-01T11:00:00.000Z",
-          author: {
-            username: "vefa",
-            displayName: "Vefa Çağlar",
-          },
+          author: { username: "vefa", displayName: "Vefa Çağlar" },
         },
       ],
       total: 1,
@@ -87,19 +85,19 @@ describe("ListPostsHandler", () => {
   });
 
   it("should use fallback default values when page and limit query parameters are missing", async () => {
-    mockRepo.listWithAuthor.mockResolvedValue({
+    mockReader.searchPosts.mockResolvedValue({
       items: [],
       total: 0,
     });
 
     const mockRequest = {
       query: {},
-    } as unknown as FastifyRequest<{ Querystring: { page?: number; limit?: number } }>;
+    } as unknown as FastifyRequest<{ Querystring: { page?: number; limit?: number; q?: string } }>;
 
     const result = await handler.handle(mockRequest);
 
-    expect(mockRepo.listWithAuthor).toHaveBeenCalledWith({
-      status: "published",
+    expect(mockReader.searchPosts).toHaveBeenCalledWith({
+      q: undefined,
       page: 1,
       limit: 10,
     });
@@ -124,20 +122,19 @@ describe("ListPostsHandler", () => {
       seoTitle: null,
       seoDescription: null,
       publishedAt: null,
-      createdAt: new Date("2026-06-01T10:00:00.000Z"),
-      updatedAt: new Date("2026-06-01T10:00:00.000Z"),
-      authorUsername: null,
-      authorDisplayName: null,
+      createdAt: "2026-06-01T10:00:00.000Z",
+      updatedAt: "2026-06-01T10:00:00.000Z",
+      author: null,
     };
 
-    mockRepo.listWithAuthor.mockResolvedValue({
+    mockReader.searchPosts.mockResolvedValue({
       items: [mockPostWithoutAuthor],
       total: 1,
     });
 
     const mockRequest = {
       query: {},
-    } as unknown as FastifyRequest<{ Querystring: { page?: number; limit?: number } }>;
+    } as unknown as FastifyRequest<{ Querystring: { page?: number; limit?: number; q?: string } }>;
 
     const result = await handler.handle(mockRequest);
 

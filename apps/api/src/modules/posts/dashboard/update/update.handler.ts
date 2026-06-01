@@ -4,10 +4,16 @@ import { injectable, inject } from "tsyringe";
 import { POSTS_REPOSITORY } from "../../posts.tokens";
 import type { IPostsRepository } from "../../posts.repository.interface";
 import { NotFoundError } from "../../../../shared/http-errors";
+import { EVENT_BUS } from "../../../../shared/events/events.tokens";
+import type { IEventBus } from "../../../../shared/events/event-bus";
+import { postChanged } from "../../posts.events";
 
 @injectable()
 export class UpdatePostHandler {
-  constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
+  constructor(
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository,
+    @inject(EVENT_BUS) private readonly eventBus: IEventBus
+  ) {}
 
   async handle(
     request: FastifyRequest<{ Params: UpdatePostParams; Body: UpdatePostRequest }>
@@ -42,6 +48,12 @@ export class UpdatePostHandler {
       publishedAt,
       updatedAt: new Date(),
     });
+
+    try {
+      await this.eventBus.publish(postChanged(id));
+    } catch {
+      // best-effort
+    }
 
     return {
       id: updatedPost.id,

@@ -54,6 +54,8 @@ const dictionaries = {
     not_found_title: "404",
     post_by: "post by",
     separator_dash: "—",
+    blog_search_placeholder: "search posts…",
+    no_results: "no posts match your search.",
   },
   tr: {
     blog: "son yazılar",
@@ -110,6 +112,8 @@ const dictionaries = {
     not_found_title: "404",
     post_by: "yazı:",
     separator_dash: "—",
+    blog_search_placeholder: "yazılarda ara…",
+    no_results: "aramayla eşleşen yazı bulunamadı.",
   }
 };
 

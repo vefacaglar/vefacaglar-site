@@ -1,26 +1,25 @@
 import { FastifyRequest } from "fastify";
 import { ListPostsQuery, ListPostsResponse } from "./list.schema";
+import type { PostSearchItem } from "../../../shared/search/mappers/post.mapper";
 import { injectable, inject } from "tsyringe";
-import { POSTS_REPOSITORY } from "../posts.tokens";
-import type { IPostsRepository } from "../posts.repository.interface";
+import { SEARCH_READER } from "../../../shared/search/search.tokens";
+import type { ISearchReader } from "../../../shared/search/queries/search-reader.interface";
 
 @injectable()
 export class ListPostsHandler {
-  constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
+  constructor(@inject(SEARCH_READER) private readonly searchReader: ISearchReader) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPostsQuery }>): Promise<ListPostsResponse> {
-    const { page, limit } = request.query;
+    const { page, limit, q } = request.query;
 
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const filter = {
-      status: "published" as const,
+    const { items: rows, total } = await this.searchReader.searchPosts({
+      q,
       page: pageNum,
       limit: limitNum,
-    };
-
-    const { items: rows, total } = await this.postsRepo.listWithAuthor(filter);
+    });
     const totalPages = Math.ceil(total / limitNum);
 
     const items = rows.map((row) => ({
@@ -28,16 +27,14 @@ export class ListPostsHandler {
       slug: row.slug,
       title: row.title,
       excerpt: row.excerpt,
-      status: row.status as "draft" | "published",
+      status: "published" as const,
       coverImageUrl: row.coverImageUrl,
       seoTitle: row.seoTitle,
       seoDescription: row.seoDescription,
-      publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
-      author: row.authorUsername && row.authorDisplayName
-        ? { username: row.authorUsername, displayName: row.authorDisplayName }
-        : null,
+      publishedAt: row.publishedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      author: row.author,
     }));
 
     return {

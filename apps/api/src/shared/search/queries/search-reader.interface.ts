@@ -2,6 +2,7 @@ import type {
   SearchQuery,
   SearchResult,
   GameSearchItem,
+  PostSearchItem,
   Developer,
   Publisher,
   Genre,
@@ -15,6 +16,7 @@ import type {
  */
 export interface ISearchReader {
   searchGames(query: SearchQuery): Promise<SearchResult<GameSearchItem>>;
+  searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>>;
   searchDevelopers(query: SearchQuery): Promise<SearchResult<Developer>>;
   searchPublishers(query: SearchQuery): Promise<SearchResult<Publisher>>;
   searchGenres(query: SearchQuery): Promise<SearchResult<Genre>>;

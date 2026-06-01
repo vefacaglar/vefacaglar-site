@@ -14,20 +14,23 @@ import {
   THEMES_REPOSITORY,
   GAMES_REPOSITORY,
 } from "../../../modules/catalog/catalog.tokens";
+import { POSTS_REPOSITORY } from "../../../modules/posts/posts.tokens";
 import type { IDevelopersRepository } from "../../../modules/catalog/developers.repository.interface";
 import type { IPublishersRepository } from "../../../modules/catalog/publishers.repository.interface";
 import type { IGenresRepository } from "../../../modules/catalog/genres.repository.interface";
 import type { IPlatformsRepository } from "../../../modules/catalog/platforms.repository.interface";
 import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
+import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, type TypesenseConfig } from "../search.tokens";
 import type { Redis as RedisClient } from "ioredis";
 import type { ISearchReader } from "./search-reader.interface";
-import type { SearchQuery, SearchResult, SearchLanguage } from "../search.types";
+import type { SearchQuery, SearchResult, SearchLanguage, PostSearchItem } from "../search.types";
 import { LanguageProvider } from "../../localization";
 import { RedisCircuitBreaker } from "../circuit-breaker";
 import { withTimeout } from "../with-timeout";
 import { gameWithRelationsFromDoc, type GameDoc } from "../mappers/game.mapper";
+import { postFromDoc, type PostDoc } from "../mappers/post.mapper";
 import {
   developerFromDoc,
   publisherFromDoc,
@@ -43,12 +46,6 @@ import {
 
 const SEARCH_TIMEOUT_MS = 3000;
 
-/**
- * Query side: serves dashboard list searches from Typesense, with a Postgres
- * fallback guarded by a Redis circuit breaker. The request language is resolved
- * per-request via LanguageProvider (AsyncLocalStorage) to pick the right
- * per-language collection.
- */
 @injectable()
 export class TypesenseSearchReader implements ISearchReader {
   private readonly enabled: boolean;
@@ -66,6 +63,7 @@ export class TypesenseSearchReader implements ISearchReader {
     @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository,
     private readonly languageProvider: LanguageProvider
   ) {
     this.enabled = typesenseConfig.enabled;
@@ -74,13 +72,21 @@ export class TypesenseSearchReader implements ISearchReader {
     this.breaker = new RedisCircuitBreaker(redis);
   }
 
-  // --- Public search methods (lang comes from AsyncLocalStorage via LanguageProvider) ---
+  // --- Public search methods ---
 
   searchGames(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
     return this.runSearch(
       () => this.runGamesSearch(query),
       () => this.fallbackGamesSearch(query),
       "games"
+    );
+  }
+
+  searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
+    return this.runSearch(
+      () => this.runPostsSearch(query),
+      () => this.fallbackPostsSearch(query),
+      "posts"
     );
   }
 
@@ -155,7 +161,7 @@ export class TypesenseSearchReader implements ISearchReader {
     }
   }
 
-  // --- Private: search runners (per current request lang) ---
+  // --- Private: search runners ---
 
   private async runGamesSearch(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
     const lang = this.getLang();
@@ -168,6 +174,22 @@ export class TypesenseSearchReader implements ISearchReader {
     const hits = (res.hits ?? []) as Array<{ document: GameDoc }>;
     return {
       items: hits.map((h) => gameWithRelationsFromDoc(h.document)),
+      total: (res.found as number) ?? 0,
+    };
+  }
+
+  private async runPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
+    const lang = this.getLang();
+    const res = await this.typesense.collections(`posts_${lang}`).documents().search({
+      q: query.q?.trim() || "*",
+      query_by: "title,content",
+      query_by_weights: "4,1",
+      page: query.page ?? 1,
+      per_page: query.limit ?? 10,
+    });
+    const hits = (res.hits ?? []) as Array<{ document: PostDoc }>;
+    return {
+      items: hits.map((h) => postFromDoc(h.document)),
       total: (res.found as number) ?? 0,
     };
   }
@@ -247,10 +269,34 @@ export class TypesenseSearchReader implements ISearchReader {
     };
   }
 
-  // --- Private: Postgres fallbacks (lang-agnostic, fall back uses raw DB row) ---
+  // --- Private: Postgres fallbacks ---
 
   private fallbackGamesSearch(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
     return this.gamesRepo.list({ q: query.q, page: query.page, limit: query.limit });
+  }
+
+  private fallbackPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
+    return this.postsRepo.listWithAuthor({ status: "published", q: query.q, page: query.page, limit: query.limit }).then(
+      ({ items, total }) => ({
+        items: items.map((row) => ({
+          id: row.id,
+          slug: row.slug,
+          title: row.title,
+          excerpt: row.excerpt ?? null,
+          status: "published" as const,
+          coverImageUrl: row.coverImageUrl ?? null,
+          seoTitle: row.seoTitle ?? null,
+          seoDescription: row.seoDescription ?? null,
+          publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
+          author: row.authorUsername && row.authorDisplayName
+            ? { username: row.authorUsername, displayName: row.authorDisplayName }
+            : null,
+        })),
+        total,
+      })
+    );
   }
 
   private fallbackDevelopersSearch(query: SearchQuery): Promise<SearchResult<Developer>> {

@@ -3,10 +3,16 @@ import { CreatePostRequest, PostResponse } from "./create.schema";
 import { injectable, inject } from "tsyringe";
 import { POSTS_REPOSITORY } from "../../posts.tokens";
 import type { IPostsRepository } from "../../posts.repository.interface";
+import { EVENT_BUS } from "../../../../shared/events/events.tokens";
+import type { IEventBus } from "../../../../shared/events/event-bus";
+import { postChanged } from "../../posts.events";
 
 @injectable()
 export class CreatePostHandler {
-  constructor(@inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository) {}
+  constructor(
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository,
+    @inject(EVENT_BUS) private readonly eventBus: IEventBus
+  ) {}
 
   async handle(request: FastifyRequest<{ Body: CreatePostRequest }>): Promise<PostResponse> {
     const user = request.user!;
@@ -27,6 +33,12 @@ export class CreatePostHandler {
       publishedAt,
       authorId: user.id,
     });
+
+    try {
+      await this.eventBus.publish(postChanged(newPost.id));
+    } catch {
+      // best-effort; indexer will catch up via reindex
+    }
 
     return {
       id: newPost.id,

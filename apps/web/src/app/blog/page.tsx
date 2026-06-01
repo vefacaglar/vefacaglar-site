@@ -6,6 +6,7 @@ import { localizeHref } from '../../lib/localizeHref';
 import Pagination from '../components/Pagination';
 import { localizedAlternates } from '../../lib/seo';
 import { getPublicPosts } from '../../lib/data';
+import BlogSearch from './BlogSearch';
 
 export const revalidate = 60;
 
@@ -21,15 +22,17 @@ export async function generateMetadata() {
 interface BlogProps {
   searchParams: {
     page?: string;
+    q?: string;
   };
 }
 
 export default async function Blog({ searchParams }: BlogProps) {
   const page = searchParams.page ? Number(searchParams.page) : 1;
+  const query = searchParams.q || "";
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
 
-  const data = await getPublicPosts(page);
+  const data = await getPublicPosts(page, query || undefined);
   const posts = (data?.items ?? []) as {
     id: string;
     slug: string;
@@ -56,8 +59,10 @@ export default async function Blog({ searchParams }: BlogProps) {
       <h1>{dict.blog}</h1>
       <p className={styles.subtitle}>{dict.blog_subtitle}</p>
 
+      <BlogSearch initialQuery={query} />
+
       {posts.length === 0 ? (
-        <p className={styles.empty}>{dict.no_posts}</p>
+        <p className={styles.noResults}>{dict.no_results}</p>
       ) : (
         <>
           <ul className={styles.list}>

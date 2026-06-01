@@ -10,24 +10,23 @@ import {
   type GameEntityRemovedEvent,
   type GameEntityKind,
 } from "../../../modules/catalog/catalog.events";
+import {
+  POST_ENTITY_CHANGED,
+  POST_ENTITY_REMOVED,
+  type PostEntityChangedEvent,
+  type PostEntityRemovedEvent,
+} from "../../../modules/posts/posts.events";
 
-/**
- * Keeps the Typesense read model in sync with games-domain commands by reacting
- * to domain events. The write side (GameCatalogService) only publishes events; this
- * subscriber owns the index/remove mapping, so the command path has no
- * knowledge of search. Indexer calls are best-effort (they swallow their own
- * errors), and the event bus additionally isolates handler failures.
- */
 @injectable()
 export class SearchEventSubscriber {
-  private readonly indexers: Record<GameEntityKind, (id: string) => Promise<void>>;
-  private readonly removers: Record<GameEntityKind, (id: string) => Promise<void>>;
+  private readonly gameIndexers: Record<GameEntityKind, (id: string) => Promise<void>>;
+  private readonly gameRemovers: Record<GameEntityKind, (id: string) => Promise<void>>;
 
   constructor(
     @inject(EVENT_BUS) private readonly eventBus: IEventBus,
     @inject(SEARCH_WRITER) private readonly indexer: ISearchIndexWriter
   ) {
-    this.indexers = {
+    this.gameIndexers = {
       game: (id) => this.indexer.indexGame(id),
       developer: (id) => this.indexer.indexDeveloper(id),
       publisher: (id) => this.indexer.indexPublisher(id),
@@ -35,7 +34,7 @@ export class SearchEventSubscriber {
       platform: (id) => this.indexer.indexPlatform(id),
       theme: (id) => this.indexer.indexTheme(id),
     };
-    this.removers = {
+    this.gameRemovers = {
       game: (id) => this.indexer.removeGame(id),
       developer: (id) => this.indexer.removeDeveloper(id),
       publisher: (id) => this.indexer.removePublisher(id),
@@ -47,10 +46,17 @@ export class SearchEventSubscriber {
 
   register(): void {
     this.eventBus.subscribe<GameEntityChangedEvent>(GAME_ENTITY_CHANGED, (event) =>
-      this.indexers[event.kind](event.id)
+      this.gameIndexers[event.kind](event.id)
     );
     this.eventBus.subscribe<GameEntityRemovedEvent>(GAME_ENTITY_REMOVED, (event) =>
-      this.removers[event.kind](event.id)
+      this.gameRemovers[event.kind](event.id)
+    );
+
+    this.eventBus.subscribe<PostEntityChangedEvent>(POST_ENTITY_CHANGED, (event) =>
+      this.indexer.indexPost(event.id)
+    );
+    this.eventBus.subscribe<PostEntityRemovedEvent>(POST_ENTITY_REMOVED, (event) =>
+      this.indexer.removePost(event.id)
     );
   }
 }

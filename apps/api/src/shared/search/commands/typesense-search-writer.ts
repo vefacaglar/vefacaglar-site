@@ -6,6 +6,7 @@ import type { Genre } from "../../../modules/catalog/genres.repository.interface
 import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../../modules/catalog/themes.repository.interface";
 import type { GameWithRelations } from "../../../modules/catalog/games.repository.interface";
+import type { PostWithAuthor } from "../../../modules/posts/posts.repository";
 import {
   DEVELOPERS_REPOSITORY,
   PUBLISHERS_REPOSITORY,
@@ -14,12 +15,14 @@ import {
   THEMES_REPOSITORY,
   GAMES_REPOSITORY,
 } from "../../../modules/catalog/catalog.tokens";
+import { POSTS_REPOSITORY } from "../../../modules/posts/posts.tokens";
 import type { IDevelopersRepository } from "../../../modules/catalog/developers.repository.interface";
 import type { IPublishersRepository } from "../../../modules/catalog/publishers.repository.interface";
 import type { IGenresRepository } from "../../../modules/catalog/genres.repository.interface";
 import type { IPlatformsRepository } from "../../../modules/catalog/platforms.repository.interface";
 import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
+import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
 import { LOCALIZATIONS_REPOSITORY } from "../../../modules/localizations/localizations.tokens";
 import type { ILocalizationsRepository } from "../../../modules/localizations/localizations.repository.interface";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";
@@ -27,6 +30,7 @@ import { buildAllCollectionSchemas } from "../collections";
 import type { ISearchIndexWriter } from "./search-writer.interface";
 import type { SearchLanguage } from "../search.types";
 import { toGameDoc } from "../mappers/game.mapper";
+import { toPostDoc } from "../mappers/post.mapper";
 import {
   toDeveloperDoc,
   toPublisherDoc,
@@ -46,12 +50,6 @@ type LookupEntity = "developer" | "publisher" | "genre" | "platform" | "theme";
 type LookupRow = Developer | Publisher | Genre | Platform | Theme;
 type LookupDoc = DeveloperDoc | PublisherDoc | GenreDoc | PlatformDoc | ThemeDoc;
 
-/**
- * Command side: keeps the Typesense index in sync with the write model. Indexes
- * every configured language (translations are read from the localizations table
- * for non-base languages). All operations are best-effort: failures are logged,
- * never thrown, so they cannot break the command that triggered them.
- */
 @injectable()
 export class TypesenseSearchWriter implements ISearchIndexWriter {
   readonly enabled: boolean;
@@ -67,6 +65,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository,
     @inject(LOCALIZATIONS_REPOSITORY) private readonly localizationsRepo: ILocalizationsRepository
   ) {
     this.enabled = typesenseConfig.enabled;
@@ -78,7 +77,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     return this.languages.length > 1 && lang !== this.baseLanguage;
   }
 
-  // --- Public index methods (iterate configured languages; skip translations for base) ---
+  // --- Public index methods ---
 
   async indexGame(id: string): Promise<void> {
     if (!this.enabled) return;
@@ -101,6 +100,30 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
     } catch (err) {
       console.error(`[search] failed to index game ${id}:`, (err as Error).message);
+    }
+  }
+
+  async indexPost(id: string): Promise<void> {
+    if (!this.enabled) return;
+    try {
+      const post = await this.postsRepo.findByIdWithAuthor(id);
+      if (!post || post.status !== "published") {
+        await this.removePost(id);
+        return;
+      }
+      for (const lang of this.languages) {
+        const translations = this.needsTranslations(lang)
+          ? await this.localizationsRepo.findByEntity("post", id, lang)
+          : [];
+        const doc = toPostDoc(post, lang, translations);
+        try {
+          await this.typesense.collections(`posts_${lang}`).documents().upsert(doc);
+        } catch (err) {
+          console.error(`[search] failed to upsert post ${id} (${lang}):`, (err as Error).message);
+        }
+      }
+    } catch (err) {
+      console.error(`[search] failed to index post ${id}:`, (err as Error).message);
     }
   }
 
@@ -207,11 +230,16 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
   }
 
-  // --- Public remove methods (remove from all configured languages) ---
+  // --- Public remove methods ---
 
   async removeGame(id: string): Promise<void> {
     if (!this.enabled) return;
     await this.removeFromAllLanguages("games", id);
+  }
+
+  async removePost(id: string): Promise<void> {
+    if (!this.enabled) return;
+    await this.removeFromAllLanguages("posts", id);
   }
 
   async removeDeveloper(id: string): Promise<void> {
@@ -300,6 +328,22 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
     console.log(`[search] reindexed ${gameCount} games`);
 
+    const allPublishedPosts = await this.fetchAllPublishedPosts();
+    let postCount = 0;
+    for (let i = 0; i < allPublishedPosts.length; i += IMPORT_BATCH_SIZE) {
+      const slice = allPublishedPosts.slice(i, i + IMPORT_BATCH_SIZE);
+      const sliceIds = slice.map((p) => p.id);
+      for (const lang of this.languages) {
+        const translationsByEntity = this.needsTranslations(lang)
+          ? await this.localizationsRepo.findByEntities("post", sliceIds, lang)
+          : {};
+        const docs = slice.map((post) => toPostDoc(post, lang, translationsByEntity[post.id] ?? []));
+        await this.bulkImportDocs(`posts_${lang}`, docs);
+      }
+      postCount += slice.length;
+    }
+    console.log(`[search] reindexed ${postCount} published posts`);
+
     for (const builder of this.lookupReindexBuilders()) {
       const allRows = await builder.fetchAll();
       let count = 0;
@@ -326,6 +370,20 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     while (true) {
       const { items } = await this.gamesRepo.list({ page, limit: pageSize });
       for (const g of items) all.push(g);
+      if (items.length < pageSize) break;
+      page++;
+      if (page > 50) break;
+    }
+    return all;
+  }
+
+  private async fetchAllPublishedPosts(): Promise<PostWithAuthor[]> {
+    const pageSize = 500;
+    let page = 1;
+    const all: PostWithAuthor[] = [];
+    while (true) {
+      const { items } = await this.postsRepo.listRawWithAuthor({ status: "published", page, limit: pageSize });
+      for (const p of items) all.push(p);
       if (items.length < pageSize) break;
       page++;
       if (page > 50) break;

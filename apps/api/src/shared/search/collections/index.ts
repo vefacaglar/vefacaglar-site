@@ -111,6 +111,28 @@ export function buildThemesCollectionSchema(lang: SearchLanguage): CollectionCre
   };
 }
 
+export function buildPostsCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+  return {
+    name: `posts_${lang}`,
+    fields: [
+      { name: "id", type: "string" },
+      { name: "slug", type: "string", facet: true },
+      { name: "title", type: "string" },
+      { name: "excerpt", type: "string", optional: true },
+      { name: "content", type: "string", optional: true },
+      { name: "coverImageUrl", type: "string", optional: true },
+      { name: "seoTitle", type: "string", optional: true },
+      { name: "seoDescription", type: "string", optional: true },
+      { name: "authorUsername", type: "string", optional: true },
+      { name: "authorDisplayName", type: "string", optional: true },
+      { name: "publishedAt", type: "int64" },
+      { name: "createdAt", type: "int64" },
+      { name: "updatedAt", type: "int64", optional: true },
+    ],
+    default_sorting_field: "publishedAt",
+  };
+}
+
 export function buildAllCollectionSchemas(languages: SearchLanguage[]): CollectionCreateSchema[] {
   const schemas: CollectionCreateSchema[] = [];
   for (const lang of languages) {
@@ -120,6 +142,7 @@ export function buildAllCollectionSchemas(languages: SearchLanguage[]): Collecti
     schemas.push(buildGenresCollectionSchema(lang));
     schemas.push(buildPlatformsCollectionSchema(lang));
     schemas.push(buildThemesCollectionSchema(lang));
+    schemas.push(buildPostsCollectionSchema(lang));
   }
   return schemas;
 }

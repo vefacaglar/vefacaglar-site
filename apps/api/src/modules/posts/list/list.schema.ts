@@ -4,6 +4,7 @@ import { PostResponseSchema } from "../dashboard/create/create.schema";
 export const ListPostsQuerySchema = Type.Object({
   page: Type.Optional(Type.Number()),
   limit: Type.Optional(Type.Number()),
+  q: Type.Optional(Type.String()),
 });
 
 export type ListPostsQuery = Static<typeof ListPostsQuerySchema>;

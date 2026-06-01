@@ -37,7 +37,11 @@ export const getPackageDoc = cache((slug: string, docSlug: string) =>
 
 export const getAuthor = cache((username: string) => fetchJson(`/api/authors/${username}`));
 
-export const getPublicPosts = cache((page: number) => fetchJson(`/api/posts?page=${page}&limit=10`));
+export const getPublicPosts = cache((page: number, q?: string) => {
+  const params = new URLSearchParams({ page: String(page), limit: "10" });
+  if (q) params.set("q", q);
+  return fetchJson(`/api/posts?${params.toString()}`);
+});
 
 export const getPublicProjects = cache((page: number) =>
   fetchJson(`/api/projects?page=${page}&limit=10`)

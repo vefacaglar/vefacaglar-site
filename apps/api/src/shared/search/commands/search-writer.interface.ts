@@ -7,6 +7,7 @@ export interface ISearchIndexWriter {
   readonly enabled: boolean;
 
   indexGame(id: string): Promise<void>;
+  indexPost(id: string): Promise<void>;
   indexDeveloper(id: string): Promise<void>;
   indexPublisher(id: string): Promise<void>;
   indexGenre(id: string): Promise<void>;
@@ -14,6 +15,7 @@ export interface ISearchIndexWriter {
   indexTheme(id: string): Promise<void>;
 
   removeGame(id: string): Promise<void>;
+  removePost(id: string): Promise<void>;
   removeDeveloper(id: string): Promise<void>;
   removePublisher(id: string): Promise<void>;
   removeGenre(id: string): Promise<void>;

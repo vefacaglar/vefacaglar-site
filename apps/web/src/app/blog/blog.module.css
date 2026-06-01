@@ -61,3 +61,28 @@
 .author a:hover {
   text-decoration: underline;
 }
+
+.searchForm {
+  margin-bottom: 32px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--text);
+}
+
+.noResults {
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 8px;
+}

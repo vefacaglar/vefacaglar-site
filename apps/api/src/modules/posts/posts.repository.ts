@@ -36,6 +36,33 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return row ?? null;
   }
 
+  async findByIdWithAuthor(id: string): Promise<PostWithAuthor | null> {
+    const [row] = await this.dbProvider.client
+      .select({
+        id: posts.id,
+        slug: posts.slug,
+        title: posts.title,
+        excerpt: posts.excerpt,
+        content: posts.content,
+        status: posts.status,
+        coverImageUrl: posts.coverImageUrl,
+        seoTitle: posts.seoTitle,
+        seoDescription: posts.seoDescription,
+        publishedAt: posts.publishedAt,
+        authorId: posts.authorId,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        authorUsername: users.username,
+        authorDisplayName: users.displayName,
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.authorId, users.id))
+      .where(eq(posts.id, id))
+      .limit(1);
+
+    return row ?? null;
+  }
+
   async findBySlugWithAuthor(slug: string): Promise<PostWithAuthor | null> {
     const lang = this.langProvider.getLanguage();
     const [row] = await this.dbProvider.client
@@ -75,7 +102,7 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return mergeTranslations(row, translations);
   }
 
-  async listWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostListItem[]; total: number }> {
+  async listWithAuthor(filter?: { status?: "draft" | "published"; q?: string; page?: number; limit?: number }): Promise<{ items: PostListItem[]; total: number }> {
     const lang = this.langProvider.getLanguage();
     const { items: rows, total } = await this.listRawWithAuthor(filter);
 
@@ -100,8 +127,14 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return { items: translatedItems, total };
   }
 
-  async listRawWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostListItem[]; total: number }> {
+  async listRawWithAuthor(filter?: { status?: "draft" | "published"; q?: string; page?: number; limit?: number }): Promise<{ items: PostWithAuthor[]; total: number }> {
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
+    if (filter?.q) {
+      const searchTerm = `%${filter.q}%`;
+      conditions.push(
+        sql`(${posts.title} ILIKE ${searchTerm} OR ${posts.excerpt} ILIKE ${searchTerm} OR ${posts.content} ILIKE ${searchTerm})`
+      );
+    }
     const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
 
     let dataQuery = this.dbProvider.client
@@ -110,6 +143,7 @@ export class DrizzlePostsRepository implements IPostsRepository {
         slug: posts.slug,
         title: posts.title,
         excerpt: posts.excerpt,
+        content: posts.content,
         status: posts.status,
         coverImageUrl: posts.coverImageUrl,
         seoTitle: posts.seoTitle,

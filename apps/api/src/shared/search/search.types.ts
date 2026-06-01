@@ -4,6 +4,7 @@ import type { Publisher } from "../../modules/catalog/publishers.repository.inte
 import type { Genre } from "../../modules/catalog/genres.repository.interface";
 import type { Platform } from "../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../modules/catalog/themes.repository.interface";
+import type { PostSearchItem } from "./mappers/post.mapper";
 
 export type SearchLanguage = "en" | "tr";
 
@@ -20,4 +21,4 @@ export interface SearchQuery {
 
 export type GameSearchItem = GameWithRelations;
 
-export type { GameWithRelations, Developer, Publisher, Genre, Platform, Theme };
+export type { GameWithRelations, Developer, Publisher, Genre, Platform, Theme, PostSearchItem };
