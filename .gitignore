@@ -55,3 +55,4 @@ docker-compose.override.yml
 tmp/
 .commandcode/taste/taste.md
 .claude/settings.local.json
+.kilo/plans/1780307649197-nimble-knight.md
