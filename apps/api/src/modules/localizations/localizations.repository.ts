@@ -1,5 +1,5 @@
 import { localizations } from "@vefacaglar/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -50,5 +50,45 @@ export class DrizzleLocalizationsRepository implements ILocalizationsRepository 
       .returning();
 
     return row;
+  }
+
+  async findByEntity(
+    entityType: string,
+    entityId: string,
+    languageCode: string
+  ): Promise<{ field: string; value: string }[]> {
+    const rows = await this.dbProvider.client
+      .select({ field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, entityType),
+        eq(localizations.entityId, entityId),
+        eq(localizations.languageCode, languageCode)
+      ));
+
+    return rows;
+  }
+
+  async findByEntities(
+    entityType: string,
+    entityIds: string[],
+    languageCode: string
+  ): Promise<Record<string, { field: string; value: string }[]>> {
+    if (entityIds.length === 0) return {};
+    const rows = await this.dbProvider.client
+      .select({ entityId: localizations.entityId, field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, entityType),
+        inArray(localizations.entityId, entityIds),
+        eq(localizations.languageCode, languageCode)
+      ));
+
+    const map: Record<string, { field: string; value: string }[]> = {};
+    for (const id of entityIds) map[id] = [];
+    for (const row of rows) {
+      (map[row.entityId] ??= []).push({ field: row.field, value: row.value });
+    }
+    return map;
   }
 }

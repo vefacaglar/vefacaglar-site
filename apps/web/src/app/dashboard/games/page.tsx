@@ -36,8 +36,9 @@ export default async function GamesDashboard({ searchParams }: PageProps) {
 
   // Parse parameters
   const tab = (searchParams.tab || "games") as SubTab;
-  const page = Number(searchParams.page) || 1;
-  const limit = Number(searchParams.limit) || 12;
+  const isNoPaginationTab = tab === "genres" || tab === "themes" || tab === "platforms";
+  const page = isNoPaginationTab ? 1 : (Number(searchParams.page) || 1);
+  const limit = isNoPaginationTab ? 250 : (Number(searchParams.limit) || 12);
   const q = searchParams.q || "";
 
   const params = { page, limit, q };

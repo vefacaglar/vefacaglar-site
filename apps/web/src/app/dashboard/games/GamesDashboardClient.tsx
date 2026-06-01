@@ -168,12 +168,19 @@ export default function GamesDashboardClient({
   // Handle updates to URL searchParams
   const navigateTo = useCallback((updatedParams: { tab?: SubTab; page?: number; limit?: number; q?: string }) => {
     const params = new URLSearchParams();
-    params.set("tab", updatedParams.tab !== undefined ? updatedParams.tab : initialTab);
-    params.set("page", String(updatedParams.page !== undefined ? updatedParams.page : initialPage));
+    const targetTab = updatedParams.tab !== undefined ? updatedParams.tab : initialTab;
+    params.set("tab", targetTab);
     
-    const limit = updatedParams.limit !== undefined ? updatedParams.limit : initialLimit;
-    if (limit !== 12) {
-      params.set("limit", String(limit));
+    const isNoPaginationTab = targetTab === "genres" || targetTab === "themes" || targetTab === "platforms";
+    if (isNoPaginationTab) {
+      params.set("page", "1");
+      params.set("limit", "250");
+    } else {
+      params.set("page", String(updatedParams.page !== undefined ? updatedParams.page : initialPage));
+      const limit = updatedParams.limit !== undefined ? updatedParams.limit : initialLimit;
+      if (limit !== 12) {
+        params.set("limit", String(limit));
+      }
     }
     
     const q = updatedParams.q !== undefined ? updatedParams.q : searchQuery;
@@ -182,7 +189,7 @@ export default function GamesDashboardClient({
     }
 
     startTransition(() => {
-      router.push(`/dashboard/games?${params.toString()}`);
+      router.push(`/dashboard/games?${params.toString()}`, { scroll: false });
     });
   }, [initialTab, initialPage, initialLimit, searchQuery, router]);
 
@@ -203,7 +210,7 @@ export default function GamesDashboardClient({
 
   // Tab change
   const handleTabChange = (newTab: SubTab) => {
-    navigateTo({ tab: newTab, page: 1 });
+    navigateTo({ tab: newTab, page: 1, q: "", limit: 12 });
   };
 
   // Page change
@@ -501,6 +508,7 @@ export default function GamesDashboardClient({
   };
 
   const renderPagination = () => {
+    if (activeSubTab === "genres" || activeSubTab === "themes" || activeSubTab === "platforms") return null;
     const totalPages = Math.ceil(total / pageSize) || 1;
     if (totalPages <= 1) return null;
 

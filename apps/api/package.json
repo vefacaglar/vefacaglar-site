@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "ts-node-dev src/server.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "search:reindex": "ts-node-dev --no-deps --no-notify --quiet src/scripts/search-reindex.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
@@ -20,8 +21,10 @@
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.0.0",
     "file-type": "^16.5.4",
+    "ioredis": "^5.11.0",
     "reflect-metadata": "^0.2.2",
-    "tsyringe": "^4.10.0"
+    "tsyringe": "^4.10.0",
+    "typesense": "^3.0.6"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

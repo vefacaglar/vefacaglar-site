@@ -8,6 +8,9 @@ import type { IPlatformsRepository, Platform } from "./platforms.repository.inte
 import type { IGamesRepository, GameWithRelations, Game, NewGame } from "./games.repository.interface";
 import { BadRequestError, NotFoundError } from "../../shared/http-errors";
 import { DbProvider } from "../../db.provider";
+import { EVENT_BUS } from "../../shared/events/events.tokens";
+import type { IEventBus } from "../../shared/events/event-bus";
+import { entityChanged, entityRemoved, type GameEntityKind } from "./games.events";
 
 @injectable()
 export class GameService {
@@ -18,8 +21,19 @@ export class GameService {
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
     @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
-    private readonly dbProvider: DbProvider
+    private readonly dbProvider: DbProvider,
+    @inject(EVENT_BUS) private readonly eventBus: IEventBus
   ) {}
+
+  // --- Domain event helpers ---
+
+  private emitChanged(kind: GameEntityKind, id: string): Promise<void> {
+    return this.eventBus.publish(entityChanged(kind, id));
+  }
+
+  private emitRemoved(kind: GameEntityKind, id: string): Promise<void> {
+    return this.eventBus.publish(entityRemoved(kind, id));
+  }
 
   // --- Developer CRUD Methods ---
 
@@ -28,11 +42,13 @@ export class GameService {
     if (existing) {
       throw new BadRequestError("Developer with this slug already exists.");
     }
-    return this.developersRepo.create({
+    const created = await this.developersRepo.create({
       name: data.name,
       slug: data.slug,
       countryCode: data.countryCode || null,
     });
+    await this.emitChanged("developer", created.id);
+    return created;
   }
 
   async getDeveloperById(id: string): Promise<Developer> {
@@ -68,12 +84,14 @@ export class GameService {
       }
     }
 
-    return this.developersRepo.update(id, {
+    const updated = await this.developersRepo.update(id, {
       name: data.name,
       slug: data.slug,
       countryCode: data.countryCode !== undefined ? (data.countryCode || null) : undefined,
       updatedAt: new Date(),
     });
+    await this.emitChanged("developer", id);
+    return updated;
   }
 
   async deleteDeveloper(id: string): Promise<void> {
@@ -82,6 +100,7 @@ export class GameService {
       throw new NotFoundError("Developer not found.");
     }
     await this.developersRepo.delete(id);
+    await this.emitRemoved("developer", id);
   }
 
   // --- Publisher CRUD Methods ---
@@ -91,11 +110,13 @@ export class GameService {
     if (existing) {
       throw new BadRequestError("Publisher with this slug already exists.");
     }
-    return this.publishersRepo.create({
+    const created = await this.publishersRepo.create({
       name: data.name,
       slug: data.slug,
       countryCode: data.countryCode || null,
     });
+    await this.emitChanged("publisher", created.id);
+    return created;
   }
 
   async getPublisherById(id: string): Promise<Publisher> {
@@ -131,12 +152,14 @@ export class GameService {
       }
     }
 
-    return this.publishersRepo.update(id, {
+    const updated = await this.publishersRepo.update(id, {
       name: data.name,
       slug: data.slug,
       countryCode: data.countryCode !== undefined ? (data.countryCode || null) : undefined,
       updatedAt: new Date(),
     });
+    await this.emitChanged("publisher", id);
+    return updated;
   }
 
   async deletePublisher(id: string): Promise<void> {
@@ -145,6 +168,7 @@ export class GameService {
       throw new NotFoundError("Publisher not found.");
     }
     await this.publishersRepo.delete(id);
+    await this.emitRemoved("publisher", id);
   }
 
   // --- Genre CRUD Methods ---
@@ -154,10 +178,12 @@ export class GameService {
     if (existing) {
       throw new BadRequestError("Genre with this slug already exists.");
     }
-    return this.genresRepo.create({
+    const created = await this.genresRepo.create({
       name: data.name,
       slug: data.slug,
     });
+    await this.emitChanged("genre", created.id);
+    return created;
   }
 
   async getGenreById(id: string): Promise<Genre> {
@@ -193,11 +219,13 @@ export class GameService {
       }
     }
 
-    return this.genresRepo.update(id, {
+    const updated = await this.genresRepo.update(id, {
       name: data.name,
       slug: data.slug,
       updatedAt: new Date(),
     });
+    await this.emitChanged("genre", id);
+    return updated;
   }
 
   async deleteGenre(id: string): Promise<void> {
@@ -206,6 +234,7 @@ export class GameService {
       throw new NotFoundError("Genre not found.");
     }
     await this.genresRepo.delete(id);
+    await this.emitRemoved("genre", id);
   }
 
   // --- Theme CRUD Methods ---
@@ -215,10 +244,12 @@ export class GameService {
     if (existing) {
       throw new BadRequestError("Theme with this slug already exists.");
     }
-    return this.themesRepo.create({
+    const created = await this.themesRepo.create({
       name: data.name,
       slug: data.slug,
     });
+    await this.emitChanged("theme", created.id);
+    return created;
   }
 
   async getThemeById(id: string): Promise<Theme> {
@@ -254,11 +285,13 @@ export class GameService {
       }
     }
 
-    return this.themesRepo.update(id, {
+    const updated = await this.themesRepo.update(id, {
       name: data.name,
       slug: data.slug,
       updatedAt: new Date(),
     });
+    await this.emitChanged("theme", id);
+    return updated;
   }
 
   async deleteTheme(id: string): Promise<void> {
@@ -267,6 +300,7 @@ export class GameService {
       throw new NotFoundError("Theme not found.");
     }
     await this.themesRepo.delete(id);
+    await this.emitRemoved("theme", id);
   }
 
   // --- Platform CRUD Methods ---
@@ -276,10 +310,12 @@ export class GameService {
     if (existing) {
       throw new BadRequestError("Platform with this slug already exists.");
     }
-    return this.platformsRepo.create({
+    const created = await this.platformsRepo.create({
       name: data.name,
       slug: data.slug,
     });
+    await this.emitChanged("platform", created.id);
+    return created;
   }
 
   async getPlatformById(id: string): Promise<Platform> {
@@ -315,11 +351,13 @@ export class GameService {
       }
     }
 
-    return this.platformsRepo.update(id, {
+    const updated = await this.platformsRepo.update(id, {
       name: data.name,
       slug: data.slug,
       updatedAt: new Date(),
     });
+    await this.emitChanged("platform", id);
+    return updated;
   }
 
   async deletePlatform(id: string): Promise<void> {
@@ -328,6 +366,7 @@ export class GameService {
       throw new NotFoundError("Platform not found.");
     }
     await this.platformsRepo.delete(id);
+    await this.emitRemoved("platform", id);
   }
 
   // --- Game CRUD Methods ---
@@ -359,7 +398,7 @@ export class GameService {
       throw new BadRequestError("Game with this slug already exists.");
     }
 
-    return this.gamesRepo.create(
+    const game = await this.gamesRepo.create(
       {
         title: data.title,
         slug: data.slug,
@@ -375,6 +414,8 @@ export class GameService {
       },
       relations
     );
+    await this.emitChanged("game", game.id);
+    return game;
   }
 
   async getGameById(id: string): Promise<GameWithRelations> {
@@ -428,10 +469,10 @@ export class GameService {
     const patch: Partial<NewGame> = {};
     if (data.title !== undefined) patch.title = data.title;
     if (data.slug !== undefined) patch.slug = data.slug;
-    if (data.originalTitle !== undefined) patch.originalTitle = data.originalTitle;
-    if (data.description !== undefined) patch.description = data.description;
-    if (data.coverImageUrl !== undefined) patch.coverImageUrl = data.coverImageUrl;
-    if (data.releaseDate !== undefined) patch.releaseDate = data.releaseDate;
+    if (data.originalTitle !== undefined) patch.originalTitle = data.originalTitle || null;
+    if (data.description !== undefined) patch.description = data.description || null;
+    if (data.coverImageUrl !== undefined) patch.coverImageUrl = data.coverImageUrl || null;
+    if (data.releaseDate !== undefined) patch.releaseDate = data.releaseDate || null;
     if (data.metacriticScore !== undefined) patch.metacriticScore = data.metacriticScore;
     if (data.openCriticScore !== undefined) patch.openCriticScore = data.openCriticScore;
     if (data.hltbMainHours !== undefined) patch.hltbMainHours = data.hltbMainHours ? String(data.hltbMainHours) : null;
@@ -440,7 +481,9 @@ export class GameService {
 
     patch.updatedAt = new Date();
 
-    return this.gamesRepo.update(id, patch);
+    const updated = await this.gamesRepo.update(id, patch);
+    await this.emitChanged("game", id);
+    return updated;
   }
 
   async deleteGame(id: string): Promise<void> {
@@ -449,6 +492,7 @@ export class GameService {
       throw new NotFoundError("Game not found.");
     }
     await this.gamesRepo.delete(id);
+    await this.emitRemoved("game", id);
   }
 
   // --- Game Relation Link/Unlink ---
@@ -463,11 +507,13 @@ export class GameService {
     const dev = await this.developersRepo.findById(developerId);
     if (!dev) throw new NotFoundError("Developer not found.");
     await this.gamesRepo.linkDeveloper(gameId, developerId);
+    await this.emitChanged("game", gameId);
   }
 
   async unlinkGameDeveloper(gameId: string, developerId: string): Promise<void> {
     await this.assertGameExists(gameId);
     await this.gamesRepo.unlinkDeveloper(gameId, developerId);
+    await this.emitChanged("game", gameId);
   }
 
   async linkGamePublisher(gameId: string, publisherId: string): Promise<void> {
@@ -475,11 +521,13 @@ export class GameService {
     const pub = await this.publishersRepo.findById(publisherId);
     if (!pub) throw new NotFoundError("Publisher not found.");
     await this.gamesRepo.linkPublisher(gameId, publisherId);
+    await this.emitChanged("game", gameId);
   }
 
   async unlinkGamePublisher(gameId: string, publisherId: string): Promise<void> {
     await this.assertGameExists(gameId);
     await this.gamesRepo.unlinkPublisher(gameId, publisherId);
+    await this.emitChanged("game", gameId);
   }
 
   async linkGameGenre(gameId: string, genreId: string): Promise<void> {
@@ -487,11 +535,13 @@ export class GameService {
     const genre = await this.genresRepo.findById(genreId);
     if (!genre) throw new NotFoundError("Genre not found.");
     await this.gamesRepo.linkGenre(gameId, genreId);
+    await this.emitChanged("game", gameId);
   }
 
   async unlinkGameGenre(gameId: string, genreId: string): Promise<void> {
     await this.assertGameExists(gameId);
     await this.gamesRepo.unlinkGenre(gameId, genreId);
+    await this.emitChanged("game", gameId);
   }
 
   async linkGamePlatform(gameId: string, platformId: string): Promise<void> {
@@ -499,11 +549,13 @@ export class GameService {
     const platform = await this.platformsRepo.findById(platformId);
     if (!platform) throw new NotFoundError("Platform not found.");
     await this.gamesRepo.linkPlatform(gameId, platformId);
+    await this.emitChanged("game", gameId);
   }
 
   async unlinkGamePlatform(gameId: string, platformId: string): Promise<void> {
     await this.assertGameExists(gameId);
     await this.gamesRepo.unlinkPlatform(gameId, platformId);
+    await this.emitChanged("game", gameId);
   }
 
   async linkGameTheme(gameId: string, themeId: string): Promise<void> {
@@ -511,11 +563,13 @@ export class GameService {
     const theme = await this.themesRepo.findById(themeId);
     if (!theme) throw new NotFoundError("Theme not found.");
     await this.gamesRepo.linkTheme(gameId, themeId);
+    await this.emitChanged("game", gameId);
   }
 
   async unlinkGameTheme(gameId: string, themeId: string): Promise<void> {
     await this.assertGameExists(gameId);
     await this.gamesRepo.unlinkTheme(gameId, themeId);
+    await this.emitChanged("game", gameId);
   }
 
   async getRelationsOptions(): Promise<{ genres: Genre[]; platforms: Platform[]; themes: Theme[] }> {

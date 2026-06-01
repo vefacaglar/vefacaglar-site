@@ -1,11 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListPlatformsQuery, ListPlatformsResponse } from "./list.schema";
-import { injectable } from "tsyringe";
-import { GameService } from "../../games.service";
+import { inject, injectable } from "tsyringe";
+import { SEARCH_READER } from "../../../../shared/search/search.tokens";
+import type { ISearchReader } from "../../../../shared/search/queries/search-reader.interface";
 
 @injectable()
 export class ListPlatformsHandler {
-  constructor(private readonly gameService: GameService) {}
+  constructor(@inject(SEARCH_READER) private readonly searchReader: ISearchReader) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPlatformsQuery }>): Promise<ListPlatformsResponse> {
     const { page, limit, q } = request.query;
@@ -13,10 +14,10 @@ export class ListPlatformsHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.gameService.listPlatforms({
+    const { items: rows, total } = await this.searchReader.searchPlatforms({
+      q,
       page: pageNum,
       limit: limitNum,
-      q,
     });
 
     const totalPages = Math.ceil(total / limitNum);

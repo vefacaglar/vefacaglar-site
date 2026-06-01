@@ -16,7 +16,14 @@
         "IMAGEKIT_PUBLIC_KEY",
         "IMAGEKIT_PRIVATE_KEY",
         "IMAGEKIT_FOLDER",
-        "IMAGEKIT_URL_ENDPOINT"
+        "IMAGEKIT_URL_ENDPOINT",
+        "TYPESENSE_HOST",
+        "TYPESENSE_PORT",
+        "TYPESENSE_PROTOCOL",
+        "TYPESENSE_API_KEY",
+        "TYPESENSE_PUBLIC_URL",
+        "TYPESENSE_LANGUAGES",
+        "REDIS_URL"
       ],
       "outputs": [
         ".next/**",
