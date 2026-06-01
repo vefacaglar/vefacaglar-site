@@ -32,6 +32,7 @@ export const PublicPackageItemSchema = Type.Object({
   githubUrl: Type.Union([Type.String(), Type.Null()]),
   latestVersion: Type.String(),
   isActive: Type.Boolean(),
+  content: Type.String(),
 });
 
 export const GetPackageResponseSchema = Type.Object({

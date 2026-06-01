@@ -29,6 +29,7 @@ export const packages = pgTable('packages', {
   githubUrl: text('github_url'),
   latestVersion: text('latest_version').notNull().default('1.0.0'),
   isActive: boolean('is_active').notNull().default(true),
+  content: text('content').notNull().default(''),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => ({

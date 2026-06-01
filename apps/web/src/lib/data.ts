@@ -27,6 +27,10 @@ export const getProject = cache((slug: string) => fetchJson(`/api/projects/${slu
 
 export const getPackage = cache((slug: string) => fetchJson(`/api/packages/${slug}`));
 
+export const getPackageItem = cache((groupSlug: string, packageSlug: string) =>
+  fetchJson(`/api/packages/${groupSlug}/${packageSlug}`)
+);
+
 export const getPackageDoc = cache((slug: string, docSlug: string) =>
   fetchJson(`/api/packages/${slug}/docs/${docSlug}`)
 );

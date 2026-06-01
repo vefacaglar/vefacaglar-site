@@ -85,6 +85,13 @@
       "when": 1780335581181,
       "tag": "0011_package-groups",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780337256250,
+      "tag": "0012_package-item-content",
+      "breakpoints": true
     }
   ]
 }

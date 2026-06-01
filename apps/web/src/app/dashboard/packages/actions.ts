@@ -229,6 +229,7 @@ export async function createPackageItemAction(
     githubUrl?: string | null;
     latestVersion?: string;
     isActive?: boolean;
+    content?: string;
   }
 ) {
   const cookieStore = cookies();
@@ -265,6 +266,7 @@ export async function updatePackageItemAction(
     githubUrl?: string | null;
     latestVersion?: string;
     isActive?: boolean;
+    content?: string;
   }
 ) {
   const cookieStore = cookies();

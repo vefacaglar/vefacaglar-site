@@ -145,6 +145,15 @@ export class DrizzlePackagesRepository implements IPackagesRepository {
     return row ?? null;
   }
 
+  async findPackageItemByGroupAndSlug(groupId: string, slug: string): Promise<PackageItem | null> {
+    const [row] = await this.dbProvider.client
+      .select()
+      .from(packages)
+      .where(and(eq(packages.groupId, groupId), eq(packages.slug, slug)))
+      .limit(1);
+    return row ?? null;
+  }
+
   // --- DocCategory Operations ---
 
   async createCategory(values: NewDocCategory): Promise<DocCategory> {

@@ -31,6 +31,7 @@ export interface IPackagesRepository {
   deletePackageItem(id: string): Promise<void>;
   findPackageItemById(id: string): Promise<PackageItem | null>;
   findPackageItemBySlug(slug: string): Promise<PackageItem | null>;
+  findPackageItemByGroupAndSlug(groupId: string, slug: string): Promise<PackageItem | null>;
 
   createCategory(values: NewDocCategory): Promise<DocCategory>;
   listCategories(groupId: string): Promise<DocCategory[]>;

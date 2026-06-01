@@ -19,6 +19,8 @@ import { GetPackageHandler } from "./detail/detail.handler";
 import { GetPackageParams, GetPackageParamsSchema, GetPackageResponseSchema } from "./detail/detail.schema";
 import { GetDocHandler } from "./docs/docs.handler";
 import { GetDocParams, GetDocParamsSchema, GetDocResponseSchema } from "./docs/docs.schema";
+import { GetPackageItemHandler } from "./package-detail/package-detail.handler";
+import { GetPackageItemParams, GetPackageItemParamsSchema, GetPackageItemResponseSchema } from "./package-detail/package-detail.schema";
 import { ListPackagesHandler } from "./list/list.handler";
 import { ListPackagesQuery, ListPackagesQuerySchema, ListPackagesResponseSchema } from "./list/list.schema";
 
@@ -70,6 +72,7 @@ const PackageItemSchema = Type.Object({
   githubUrl: Type.Union([Type.String(), Type.Null()]),
   latestVersion: Type.String(),
   isActive: Type.Boolean(),
+  content: Type.String(),
   createdAt: Type.String(),
   updatedAt: Type.String(),
 });
@@ -83,6 +86,7 @@ const CreatePackageItemRequestSchema = Type.Object({
   githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   latestVersion: Type.Optional(Type.String()),
   isActive: Type.Optional(Type.Boolean()),
+  content: Type.Optional(Type.String()),
 });
 
 const UpdatePackageItemRequestSchema = Type.Object({
@@ -95,6 +99,7 @@ const UpdatePackageItemRequestSchema = Type.Object({
   githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   latestVersion: Type.Optional(Type.String()),
   isActive: Type.Optional(Type.Boolean()),
+  content: Type.Optional(Type.String()),
 });
 
 const CreateDocRequestSchema = Type.Object({
@@ -132,6 +137,7 @@ export async function packagesRoutes(app: FastifyInstance) {
   const deleteHandler = container.resolve(DeletePackageHandler);
   const getPublicPackageHandler = container.resolve(GetPackageHandler);
   const getPublicDocHandler = container.resolve(GetDocHandler);
+  const getPublicPackageItemHandler = container.resolve(GetPackageItemHandler);
   const listPublicPackagesHandler = container.resolve(ListPackagesHandler);
 
   // --- NuGet Package Operations ---
@@ -248,6 +254,7 @@ export async function packagesRoutes(app: FastifyInstance) {
       githubUrl: body.githubUrl ?? null,
       latestVersion: body.latestVersion ?? "1.0.0",
       isActive: body.isActive ?? true,
+      content: body.content ?? "",
     });
 
     return {
@@ -299,6 +306,7 @@ export async function packagesRoutes(app: FastifyInstance) {
       githubUrl: body.githubUrl ?? null,
       latestVersion: body.latestVersion ?? "1.0.0",
       isActive: body.isActive ?? true,
+      content: body.content ?? "",
       updatedAt: new Date(),
     });
 
@@ -603,6 +611,15 @@ export async function packagesRoutes(app: FastifyInstance) {
   });
 
   // --- Public Guest Operations ---
+
+  app.get<{ Params: GetPackageItemParams }>("/:groupSlug/:packageSlug", {
+    schema: {
+      description: "Get public package item by group and package slug",
+      tags: ["Packages"],
+      params: GetPackageItemParamsSchema,
+      response: { 200: GetPackageItemResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => getPublicPackageItemHandler.handle(request));
 
   app.get<{ Params: GetPackageParams }>("/:slug", {
     schema: {

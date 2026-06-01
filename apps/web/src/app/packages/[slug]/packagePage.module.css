@@ -40,6 +40,11 @@
   border-bottom: 1px solid var(--border);
 }
 
+.packageItemLink {
+  font-weight: bold;
+  color: var(--text-heading);
+}
+
 .version {
   margin-left: 8px;
   color: var(--muted);
@@ -53,6 +58,41 @@
 }
 
 .links a {
+  color: var(--accent);
+}
+
+.backLinkRow {
+  margin-bottom: 24px;
+}
+
+.backLink {
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+
+.detailList {
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
+.detailRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.detailRow dt {
+  color: var(--muted);
+}
+
+.detailRow dd {
+  margin: 0;
+}
+
+.detailRow a {
   color: var(--accent);
 }
 

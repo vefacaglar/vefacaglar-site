@@ -49,6 +49,7 @@ export class GetPackageHandler {
           githubUrl: item.githubUrl,
           latestVersion: item.latestVersion,
           isActive: item.isActive,
+          content: item.content,
         })),
       categories: categories.map((cat) => ({
         id: cat.id,

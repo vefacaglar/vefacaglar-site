@@ -1,5 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
@@ -44,7 +45,9 @@ export default async function PackagePage({ params }: { params: { slug: string }
             {pkg.packages.map((item: any) => (
               <li key={item.id} className={styles.packageItem}>
                 <div>
-                  <strong>{item.name}</strong>
+                  <Link href={`/packages/${pkg.slug}/${item.slug}`} className={styles.packageItemLink}>
+                    {item.name}
+                  </Link>
                   <span className={styles.version}>v{item.latestVersion}</span>
                 </div>
                 <div className={styles.links}>

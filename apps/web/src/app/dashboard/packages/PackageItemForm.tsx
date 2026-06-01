@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Button from "../../../components/Button";
 import styles from "../components/form.module.css";
+import MarkdownEditor from "../../components/MarkdownEditor";
 import { createPackageItemAction, updatePackageItemAction } from "./actions";
 
 interface PackageGroupOption {
@@ -26,6 +27,7 @@ interface PackageItemFormProps {
     githubUrl?: string | null;
     latestVersion: string;
     isActive: boolean;
+    content?: string;
   };
 }
 
@@ -74,6 +76,7 @@ export default function PackageItemForm({ groups, initialGroupId, initialData }:
   const [nugetUrl, setNugetUrl] = useState(initialData?.nugetUrl || "");
   const [npmUrl, setNpmUrl] = useState(initialData?.npmUrl || "");
   const [githubUrl, setGithubUrl] = useState(initialData?.githubUrl || "");
+  const [content, setContent] = useState(initialData?.content || "");
   const [latestVersion, setLatestVersion] = useState(initialData?.latestVersion || "1.0.0");
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
 
@@ -106,6 +109,7 @@ export default function PackageItemForm({ groups, initialGroupId, initialData }:
       githubUrl: githubUrl.trim() || null,
       latestVersion: latestVersion.trim() || "1.0.0",
       isActive,
+      content: content.trim(),
     };
 
     const result = initialData
@@ -174,6 +178,15 @@ export default function PackageItemForm({ groups, initialGroupId, initialData }:
         <div className="field">
           <label className="label">github url</label>
           <input value={githubUrl} onChange={(event) => setGithubUrl(event.target.value)} className="input" />
+        </div>
+
+        <div className="field">
+          <label className="label">content</label>
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            placeholder="# Package details&#10;&#10;Write package-specific details here..."
+          />
         </div>
 
         <div className={styles.formRowAlignCenter}>
