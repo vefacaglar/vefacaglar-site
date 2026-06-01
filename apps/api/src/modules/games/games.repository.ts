@@ -36,77 +36,75 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const db = this.dbProvider.client;
     const gameIds = gameRows.map((g) => g.id);
 
-    const devRows = await db
-      .select({
-        gameId: gameDevelopers.gameId,
-        id: developers.id,
-        name: developers.name,
-        slug: developers.slug,
-        countryCode: developers.countryCode,
-        createdAt: developers.createdAt,
-        updatedAt: developers.updatedAt,
-      })
-      .from(gameDevelopers)
-      .innerJoin(developers, eq(gameDevelopers.developerId, developers.id))
-      .where(inArray(gameDevelopers.gameId, gameIds))
-      .orderBy(developers.name);
-
-    const pubRows = await db
-      .select({
-        gameId: gamePublishers.gameId,
-        id: publishers.id,
-        name: publishers.name,
-        slug: publishers.slug,
-        countryCode: publishers.countryCode,
-        createdAt: publishers.createdAt,
-        updatedAt: publishers.updatedAt,
-      })
-      .from(gamePublishers)
-      .innerJoin(publishers, eq(gamePublishers.publisherId, publishers.id))
-      .where(inArray(gamePublishers.gameId, gameIds))
-      .orderBy(publishers.name);
-
-    const genRows = await db
-      .select({
-        gameId: gameGenres.gameId,
-        id: genres.id,
-        name: genres.name,
-        slug: genres.slug,
-        createdAt: genres.createdAt,
-        updatedAt: genres.updatedAt,
-      })
-      .from(gameGenres)
-      .innerJoin(genres, eq(gameGenres.genreId, genres.id))
-      .where(inArray(gameGenres.gameId, gameIds))
-      .orderBy(genres.name);
-
-    const platRows = await db
-      .select({
-        gameId: gamePlatforms.gameId,
-        id: platforms.id,
-        name: platforms.name,
-        slug: platforms.slug,
-        createdAt: platforms.createdAt,
-        updatedAt: platforms.updatedAt,
-      })
-      .from(gamePlatforms)
-      .innerJoin(platforms, eq(gamePlatforms.platformId, platforms.id))
-      .where(inArray(gamePlatforms.gameId, gameIds))
-      .orderBy(platforms.name);
-
-    const themeRows = await db
-      .select({
-        gameId: gameThemes.gameId,
-        id: themes.id,
-        name: themes.name,
-        slug: themes.slug,
-        createdAt: themes.createdAt,
-        updatedAt: themes.updatedAt,
-      })
-      .from(gameThemes)
-      .innerJoin(themes, eq(gameThemes.themeId, themes.id))
-      .where(inArray(gameThemes.gameId, gameIds))
-      .orderBy(themes.name);
+    const [devRows, pubRows, genRows, platRows, themeRows] = await Promise.all([
+      db
+        .select({
+          gameId: gameDevelopers.gameId,
+          id: developers.id,
+          name: developers.name,
+          slug: developers.slug,
+          countryCode: developers.countryCode,
+          createdAt: developers.createdAt,
+          updatedAt: developers.updatedAt,
+        })
+        .from(gameDevelopers)
+        .innerJoin(developers, eq(gameDevelopers.developerId, developers.id))
+        .where(inArray(gameDevelopers.gameId, gameIds))
+        .orderBy(developers.name),
+      db
+        .select({
+          gameId: gamePublishers.gameId,
+          id: publishers.id,
+          name: publishers.name,
+          slug: publishers.slug,
+          countryCode: publishers.countryCode,
+          createdAt: publishers.createdAt,
+          updatedAt: publishers.updatedAt,
+        })
+        .from(gamePublishers)
+        .innerJoin(publishers, eq(gamePublishers.publisherId, publishers.id))
+        .where(inArray(gamePublishers.gameId, gameIds))
+        .orderBy(publishers.name),
+      db
+        .select({
+          gameId: gameGenres.gameId,
+          id: genres.id,
+          name: genres.name,
+          slug: genres.slug,
+          createdAt: genres.createdAt,
+          updatedAt: genres.updatedAt,
+        })
+        .from(gameGenres)
+        .innerJoin(genres, eq(gameGenres.genreId, genres.id))
+        .where(inArray(gameGenres.gameId, gameIds))
+        .orderBy(genres.name),
+      db
+        .select({
+          gameId: gamePlatforms.gameId,
+          id: platforms.id,
+          name: platforms.name,
+          slug: platforms.slug,
+          createdAt: platforms.createdAt,
+          updatedAt: platforms.updatedAt,
+        })
+        .from(gamePlatforms)
+        .innerJoin(platforms, eq(gamePlatforms.platformId, platforms.id))
+        .where(inArray(gamePlatforms.gameId, gameIds))
+        .orderBy(platforms.name),
+      db
+        .select({
+          gameId: gameThemes.gameId,
+          id: themes.id,
+          name: themes.name,
+          slug: themes.slug,
+          createdAt: themes.createdAt,
+          updatedAt: themes.updatedAt,
+        })
+        .from(gameThemes)
+        .innerJoin(themes, eq(gameThemes.themeId, themes.id))
+        .where(inArray(gameThemes.gameId, gameIds))
+        .orderBy(themes.name),
+    ]);
 
     const groupByGame = <T extends { gameId: string }>(rows: T[]) => {
       const map = new Map<string, Omit<T, "gameId">[]>();
@@ -226,26 +224,38 @@ export class DrizzleGamesRepository implements IGamesRepository {
       .from(games)
       .$dynamic();
     if (whereExpr) countQuery.where(whereExpr);
-    const [countResult] = await countQuery;
 
-    const total = Number(countResult?.count || 0);
-
-    let query = this.dbProvider.client
-      .select()
+    let dataQuery = this.dbProvider.client
+      .select({
+        id: games.id,
+        slug: games.slug,
+        title: games.title,
+        originalTitle: games.originalTitle,
+        coverImageUrl: games.coverImageUrl,
+        releaseDate: games.releaseDate,
+        metacriticScore: games.metacriticScore,
+        openCriticScore: games.openCriticScore,
+        hltbMainHours: games.hltbMainHours,
+        hltbMainExtraHours: games.hltbMainExtraHours,
+        hltbCompletionistHours: games.hltbCompletionistHours,
+        createdAt: games.createdAt,
+        updatedAt: games.updatedAt,
+      })
       .from(games)
       .orderBy(desc(games.createdAt))
       .$dynamic();
 
-    if (whereExpr) query = query.where(whereExpr);
+    if (whereExpr) dataQuery = dataQuery.where(whereExpr);
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;
-      query = query.limit(filter.limit).offset(offset);
+      dataQuery = dataQuery.limit(filter.limit).offset(offset);
     }
 
-    const rows = await query;
+    const [countResult, rows] = await Promise.all([countQuery, dataQuery]);
+    const total = Number(countResult[0]?.count || 0);
 
-    const items = await this.attachRelations(rows);
+    const items = await this.attachRelations(rows as Game[]);
     return { items, total };
   }
 

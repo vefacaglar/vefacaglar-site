@@ -18,7 +18,7 @@ export const PostResponseSchema = Type.Object({
   slug: Type.String(),
   title: Type.String(),
   excerpt: Type.Union([Type.String(), Type.Null()]),
-  content: Type.String(),
+  content: Type.Optional(Type.String()),
   status: Type.Union([Type.Literal("draft"), Type.Literal("published")]),
   coverImageUrl: Type.Union([Type.String(), Type.Null()]),
   seoTitle: Type.Union([Type.String(), Type.Null()]),

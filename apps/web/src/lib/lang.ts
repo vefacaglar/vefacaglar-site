@@ -1,6 +1,7 @@
+import { cache } from "react";
 import { cookies, headers } from "next/headers";
 
-export function getActiveLanguage(): string {
+export const getActiveLanguage = cache((): string => {
   try {
     const localeHeader = headers().get("x-locale");
     if (localeHeader === "tr" || localeHeader === "en") {
@@ -21,4 +22,4 @@ export function getActiveLanguage(): string {
   }
 
   return "en";
-}
+});

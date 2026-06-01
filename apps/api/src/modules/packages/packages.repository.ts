@@ -3,10 +3,11 @@ import { and, desc, asc, eq, sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
-import type { IPackagesRepository, DocCategory, NewDocCategory, Doc, NewDoc } from "./packages.repository.interface";
+import type { IPackagesRepository, DocCategory, NewDocCategory, Doc, NewDoc, PackageListItem } from "./packages.repository.interface";
 
 export type Package = InferSelectModel<typeof packages>;
 export type NewPackage = InferInsertModel<typeof packages>;
+export type { PackageListItem };
 
 @injectable()
 export class DrizzlePackagesRepository implements IPackagesRepository {
@@ -27,7 +28,7 @@ export class DrizzlePackagesRepository implements IPackagesRepository {
     return row ?? null;
   }
 
-  async list(filter?: { page?: number; limit?: number; q?: string; isActive?: boolean }): Promise<{ items: Package[]; total: number }> {
+  async list(filter?: { page?: number; limit?: number; q?: string; isActive?: boolean }): Promise<{ items: PackageListItem[]; total: number }> {
     const conditions = [];
     if (filter?.q) {
       conditions.push(sql`(${packages.name} ILIKE ${'%' + filter.q + '%'} OR ${packages.slug} ILIKE ${'%' + filter.q + '%'})`);
@@ -38,15 +39,21 @@ export class DrizzlePackagesRepository implements IPackagesRepository {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [countResult] = await this.dbProvider.client
-      .select({ count: sql<number>`count(*)` })
-      .from(packages)
-      .where(whereClause);
-
-    const total = Number(countResult?.count || 0);
-
-    let query = this.dbProvider.client
-      .select()
+    let dataQuery = this.dbProvider.client
+      .select({
+        id: packages.id,
+        slug: packages.slug,
+        name: packages.name,
+        description: packages.description,
+        nugetUrl: packages.nugetUrl,
+        npmUrl: packages.npmUrl,
+        githubUrl: packages.githubUrl,
+        docs: packages.docs,
+        latestVersion: packages.latestVersion,
+        isActive: packages.isActive,
+        createdAt: packages.createdAt,
+        updatedAt: packages.updatedAt,
+      })
       .from(packages)
       .where(whereClause)
       .orderBy(desc(packages.createdAt))
@@ -54,10 +61,17 @@ export class DrizzlePackagesRepository implements IPackagesRepository {
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;
-      query = query.limit(filter.limit).offset(offset);
+      dataQuery = dataQuery.limit(filter.limit).offset(offset);
     }
 
-    const items = await query;
+    const countQuery = this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(packages)
+      .where(whereClause);
+
+    const [countResult, items] = await Promise.all([countQuery, dataQuery]);
+    const total = Number(countResult[0]?.count || 0);
+
     return { items, total };
   }
 

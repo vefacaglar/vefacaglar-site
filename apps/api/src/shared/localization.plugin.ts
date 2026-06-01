@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -7,31 +7,21 @@ declare module "fastify" {
   }
 }
 
-export const languageStorage = new AsyncLocalStorage<string>();
+export const requestStorage = new AsyncLocalStorage<FastifyRequest>();
+
+function detectLang(rawLang: unknown): string {
+  if (typeof rawLang !== "string") return "en";
+  const clean = rawLang.trim().toLowerCase();
+  if (clean.startsWith("tr")) return "tr";
+  if (clean.startsWith("en")) return "en";
+  return "en";
+}
 
 export function registerLocalization(app: FastifyInstance): void {
-  // Add a decorator to FastifyRequest to hold the active language
   app.decorateRequest("lang", "en");
 
-  // Global preHandler hook to parse active language from headers, defaulting to 'en'
-  app.addHook("preHandler", (request, reply, done) => {
-    const rawLang = request.headers["language"];
-    let detectedLang = "en";
-
-    if (typeof rawLang === "string") {
-      const cleanLang = rawLang.trim().toLowerCase();
-      if (cleanLang.startsWith("tr")) {
-        detectedLang = "tr";
-      } else if (cleanLang.startsWith("en")) {
-        detectedLang = "en";
-      }
-    }
-
-    request.lang = detectedLang;
-
-    // Run the rest of the request lifecycle within the AsyncLocalStorage context
-    languageStorage.run(detectedLang, () => {
-      done();
-    });
+  app.addHook("onRequest", (request, _reply, done) => {
+    request.lang = detectLang(request.headers["language"]);
+    requestStorage.run(request, () => done());
   });
 }

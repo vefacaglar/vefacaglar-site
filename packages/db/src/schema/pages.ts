@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, index } from 'drizzle-orm/pg-core';
 
 export const pages = pgTable('pages', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -11,4 +11,6 @@ export const pages = pgTable('pages', {
   publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-});
+}, (table) => ({
+  statusPublishedIdx: index('pages_status_published_at_idx').on(table.status, table.publishedAt),
+}));

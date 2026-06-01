@@ -72,14 +72,14 @@ export async function getSessionToken() {
 
 export async function deletePostAction(id: string) {
   return authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
-    revalidate: ["/dashboard", "/blog"],
+    revalidate: ["/dashboard", "/blog", "/sitemap.xml"],
     fallbackError: "Failed to delete post.",
   });
 }
 
 export async function deletePageAction(id: string) {
   return authedMutation("DELETE", `/api/pages/dashboard/${id}`, {
-    revalidate: ["/dashboard"],
+    revalidate: ["/dashboard", "/", "/about", "/[slug]", "/sitemap.xml"],
     fallbackError: "Failed to delete page.",
   });
 }
@@ -96,7 +96,7 @@ export async function createPostAction(data: {
 }) {
   return authedMutation("POST", "/api/posts/dashboard", {
     body: data,
-    revalidate: ["/dashboard", "/blog"],
+    revalidate: ["/dashboard", "/blog", "/sitemap.xml"],
     fallbackError: "Could not create post.",
   });
 }
@@ -116,7 +116,7 @@ export async function updatePostAction(
 ) {
   return authedMutation("PUT", `/api/posts/dashboard/${id}`, {
     body: data,
-    revalidate: ["/dashboard", "/blog", `/blog/${data.slug}`],
+    revalidate: ["/blog", `/blog/${data.slug}`, "/sitemap.xml"],
     fallbackError: "Failed to update post.",
   });
 }
@@ -131,7 +131,7 @@ export async function createPageAction(data: {
 }) {
   return authedMutation("POST", "/api/pages/dashboard", {
     body: data,
-    revalidate: ["/dashboard"],
+    revalidate: ["/dashboard", "/", "/about", "/[slug]", "/sitemap.xml"],
     fallbackError: "Could not create page.",
   });
 }
@@ -149,7 +149,7 @@ export async function updatePageAction(
 ) {
   return authedMutation("PUT", `/api/pages/dashboard/${id}`, {
     body: data,
-    revalidate: ["/dashboard"],
+    revalidate: ["/", "/about", `/${data.slug}`, "/sitemap.xml"],
     fallbackError: "Failed to update page.",
   });
 }
@@ -200,7 +200,7 @@ export async function createProjectAction(data: {
 }) {
   return authedMutation("POST", "/api/projects/dashboard", {
     body: data,
-    revalidate: ["/dashboard", "/projects"],
+    revalidate: ["/dashboard", "/projects", "/sitemap.xml"],
     fallbackError: "Could not create project.",
   });
 }
@@ -226,14 +226,14 @@ export async function updateProjectAction(
 ) {
   return authedMutation("PUT", `/api/projects/dashboard/${id}`, {
     body: data,
-    revalidate: ["/dashboard", "/projects", `/projects/${data.slug}`],
+    revalidate: ["/projects", `/projects/${data.slug}`, "/sitemap.xml"],
     fallbackError: "Failed to update project.",
   });
 }
 
 export async function deleteProjectAction(id: string) {
   return authedMutation("DELETE", `/api/projects/dashboard/${id}`, {
-    revalidate: ["/dashboard", "/projects"],
+    revalidate: ["/dashboard", "/projects", "/sitemap.xml"],
     fallbackError: "Failed to delete project.",
   });
 }
@@ -276,6 +276,7 @@ export async function upsertLocalizationAction(data: {
 }): Promise<{ error?: string; success?: true; data?: any }> {
   const res = await authedRequest("POST", "/api/localizations", {
     body: data,
+    revalidate: ["/", "/blog", "/projects", "/about", "/sitemap.xml"],
     fallbackError: "Failed to save localization.",
   });
   if ("error" in res) return { error: res.error };

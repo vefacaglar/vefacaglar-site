@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 // Game Status Enum Values
@@ -110,7 +110,11 @@ export const userGames = pgTable('user_games', {
   finishedCompletionist: boolean('finished_completionist').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }),
-});
+}, (table) => ({
+  userIdIdx: index('user_games_user_id_idx').on(table.userId),
+  gameIdIdx: index('user_games_game_id_idx').on(table.gameId),
+  userIdStatusIdx: index('user_games_user_id_status_idx').on(table.userId, table.status),
+}));
 
 // --- Join Tables ---
 

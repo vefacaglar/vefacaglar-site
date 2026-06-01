@@ -4,61 +4,31 @@ import styles from "./page.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
-import { httpClient } from "../../../lib/httpClient";
 import { localizedAlternates } from "../../../lib/seo";
+import { getAuthor } from "../../../lib/data";
 
-interface AuthorDetail {
-  username: string;
-  displayName: string;
-  posts: {
-    id: string;
-    slug: string;
-    title: string;
-    excerpt: string | null;
-    publishedAt: string | null;
-  }[];
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
 
 export async function generateMetadata({ params }: { params: { username: string } }) {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const author = await getAuthor(params.username);
 
-  try {
-    const res = await httpClient.get(`/api/authors/${params.username}`);
-    if (!res.ok) return { title: dict.author_not_found_title };
+  if (!author) return { title: dict.author_not_found_title };
 
-    const author: AuthorDetail = await res.json();
-    return {
-      title: formatMetaTitle(author.displayName, lang),
-      description: `${dict.posts_by} ${author.displayName}`,
-      alternates: localizedAlternates(`/author/${params.username}`, lang),
-    };
-  } catch {
-    return { title: dict.author_meta_title };
-  }
+  return {
+    title: formatMetaTitle(author.displayName, lang),
+    description: `${dict.posts_by} ${author.displayName}`,
+    alternates: localizedAlternates(`/author/${params.username}`, lang),
+  };
 }
 
 export default async function AuthorPage({ params }: { params: { username: string } }) {
-  let author: AuthorDetail | null = null;
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const author = await getAuthor(params.username);
 
-  try {
-    const res = await httpClient.get(`/api/authors/${params.username}`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      author = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch author:", error);
-  }
-
-  if (!author) {
-    notFound();
-  }
+  if (!author) notFound();
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
@@ -81,7 +51,7 @@ export default async function AuthorPage({ params }: { params: { username: strin
         <p className={styles.empty}>{dict.no_posts_by_author}</p>
       ) : (
         <ul className={styles.list}>
-          {author.posts.map((post) => (
+          {author.posts.map((post: { id: string; slug: string; title: string; excerpt: string | null; publishedAt: string | null }) => (
             <li key={post.id} className={styles.listItem}>
               <span className={styles.dash}>{dict.separator_dash}</span>
               <div className={styles.itemMeta}>

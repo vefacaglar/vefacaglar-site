@@ -3,22 +3,11 @@ import styles from "./projects.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
 import { localizeHref } from '../../lib/localizeHref';
-import { httpClient } from '../../lib/httpClient';
-import { localizedAlternates } from '../../lib/seo';
 import Pagination from '../components/Pagination';
+import { localizedAlternates } from '../../lib/seo';
+import { getPublicProjects } from '../../lib/data';
 
-interface ProjectItem {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string;
-  featured: boolean;
-  githubUrl?: string | null;
-  liveUrl?: string | null;
-  createdAt: string;
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();
@@ -38,29 +27,21 @@ interface ProjectsProps {
 
 export default async function Projects({ searchParams }: ProjectsProps) {
   const page = searchParams.page ? Number(searchParams.page) : 1;
-  let projectsData = {
-    items: [] as ProjectItem[],
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 0,
-  };
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
 
-  try {
-    const res = await httpClient.get(`/api/projects?page=${page}&limit=10`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      projectsData = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch public projects:", error);
-  }
-
-  const projects = projectsData.items || [];
-  const totalPages = projectsData.totalPages || 0;
+  const data = await getPublicProjects(page);
+  const projects = (data?.items ?? []) as {
+    id: string;
+    slug: string;
+    title: string;
+    summary: string;
+    featured: boolean;
+    githubUrl?: string | null;
+    liveUrl?: string | null;
+    createdAt: string;
+  }[];
+  const totalPages = data?.totalPages ?? 0;
 
   return (
     <div>
@@ -88,20 +69,20 @@ export default async function Projects({ searchParams }: ProjectsProps) {
                   {(project.githubUrl || project.liveUrl) && (
                     <div className={styles.links}>
                       {project.githubUrl && (
-                        <a 
-                          href={project.githubUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <a
+                          href={project.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className={styles.link}
                         >
                           {dict.source_code}
                         </a>
                       )}
                       {project.liveUrl && (
-                        <a 
-                          href={project.liveUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <a
+                          href={project.liveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className={styles.link}
                         >
                           {dict.live_demo}

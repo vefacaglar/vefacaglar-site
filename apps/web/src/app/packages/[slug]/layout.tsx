@@ -1,41 +1,10 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { httpClient } from "../../../lib/httpClient";
 import styles from "./packageLayout.module.css";
+import { getPackage } from "../../../lib/data";
 
-interface SidebarCategory {
-  id: string;
-  title: string;
-  slug: string;
-  displayOrder: number;
-}
-
-interface SidebarDoc {
-  id: string;
-  categoryId: string | null;
-  slug: string;
-  title: string;
-  description: string | null;
-  displayOrder: number;
-}
-
-interface PackageDetail {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  nugetUrl: string | null;
-  npmUrl: string | null;
-  githubUrl: string | null;
-  docs: string | null;
-  latestVersion: string;
-  content: string;
-  categories: SidebarCategory[];
-  docsList: SidebarDoc[];
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function PackageLayout({
   children,
@@ -44,33 +13,17 @@ export default async function PackageLayout({
   children: React.ReactNode;
   params: { slug: string };
 }) {
-  let pkg: PackageDetail | null = null;
+  const pkg = await getPackage(params.slug);
+  if (!pkg) notFound();
 
-  try {
-    const res = await httpClient.get(`/api/packages/${params.slug}`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      pkg = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch package details for layout:", error);
-  }
-
-  if (!pkg) {
-    notFound();
-  }
-
-  // Sort categories and docs by displayOrder
   const sortedCategories = [...pkg.categories].sort((a, b) => a.displayOrder - b.displayOrder);
   const sortedDocs = [...pkg.docsList].sort((a, b) => a.displayOrder - b.displayOrder);
 
-  // Group docs by category
-  const uncategorizedDocs = sortedDocs.filter((doc) => !doc.categoryId);
+  const uncategorizedDocs = sortedDocs.filter((doc: { categoryId: string | null }) => !doc.categoryId);
   const docsByCategory = sortedCategories.reduce((acc, cat) => {
-    acc[cat.id] = sortedDocs.filter((doc) => doc.categoryId === cat.id);
+    acc[cat.id] = sortedDocs.filter((doc: { categoryId: string | null }) => doc.categoryId === cat.id);
     return acc;
-  }, {} as Record<string, SidebarDoc[]>);
+  }, {} as Record<string, typeof sortedDocs>);
 
   return (
     <div className={styles.container}>
@@ -113,10 +66,9 @@ export default async function PackageLayout({
           )}
         </ul>
 
-        {/* Documentation TOC */}
         <div className={styles.tocSection}>
           <div className={styles.tocTitle}>Documentation</div>
-          
+
           {uncategorizedDocs.length > 0 && (
             <ul className={styles.tocList} style={{ marginBottom: "16px" }}>
               {uncategorizedDocs.map((doc) => (
@@ -138,7 +90,7 @@ export default async function PackageLayout({
                   {cat.title}
                 </div>
                 <ul className={styles.tocList}>
-                  {catDocs.map((doc) => (
+                  {catDocs.map((doc: { id: string; slug: string; title: string }) => (
                     <li key={doc.id} className={styles.tocItem}>
                       <Link href={`/packages/${pkg!.slug}/docs/${doc.slug}`} className={styles.tocItemLink}>
                         {doc.title}

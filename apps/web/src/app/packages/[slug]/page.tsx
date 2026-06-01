@@ -1,67 +1,36 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
-import { httpClient } from "../../../lib/httpClient";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import styles from "./packagePage.module.css";
+import { getPackage } from "../../../lib/data";
 
-interface PackageDetail {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  nugetUrl: string | null;
-  npmUrl: string | null;
-  githubUrl: string | null;
-  docs: string | null;
-  latestVersion: string;
-  content: string;
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  try {
-    const res = await httpClient.get(`/api/packages/${params.slug}`);
-    if (!res.ok) return { title: "Package Not Found" };
-    const pkg: PackageDetail = await res.json();
-    return {
-      title: `${pkg.name} | Package`,
-      description: pkg.description || `Documentation and details for ${pkg.name}`,
-      alternates: localizedAlternates(`/packages/${params.slug}`, getActiveLanguage(), {
-        bilingual: false,
-      }),
-    };
-  } catch {
-    return { title: "Package" };
-  }
+  const pkg = await getPackage(params.slug);
+  if (!pkg) return { title: "Package Not Found" };
+
+  return {
+    title: `${pkg.name} | Package`,
+    description: pkg.description || `Documentation and details for ${pkg.name}`,
+    alternates: localizedAlternates(`/packages/${params.slug}`, getActiveLanguage(), {
+      bilingual: false,
+    }),
+  };
 }
 
 export default async function PackagePage({ params }: { params: { slug: string } }) {
-  let pkg: PackageDetail | null = null;
-
-  try {
-    const res = await httpClient.get(`/api/packages/${params.slug}`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      pkg = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch package details for page:", error);
-  }
-
-  if (!pkg) {
-    notFound();
-  }
+  const pkg = await getPackage(params.slug);
+  if (!pkg) notFound();
 
   return (
     <div>
       <h1 className={styles.title}>
         {pkg.name}
       </h1>
-      
+
       {pkg.description && (
         <p className={styles.description}>
           {pkg.description}

@@ -23,6 +23,13 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      { protocol: "https", hostname: "ik.imagekit.io" },
+      { protocol: "https", hostname: "**.imagekit.io" },
+    ],
+  },
   async headers() {
     return [
       {

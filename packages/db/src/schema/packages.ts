@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, integer, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean, integer, uniqueIndex, index } from 'drizzle-orm/pg-core';
 
 export const packages = pgTable('packages', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,7 +14,9 @@ export const packages = pgTable('packages', {
   content: text('content').notNull().default(''),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-});
+}, (table) => ({
+  isActiveCreatedIdx: index('packages_is_active_created_at_idx').on(table.isActive, table.createdAt),
+}));
 
 export const docCategories = pgTable('doc_categories', {
   id: uuid('id').primaryKey().defaultRandom(),

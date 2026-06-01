@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, index } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const posts = pgTable('posts', {
@@ -15,4 +15,7 @@ export const posts = pgTable('posts', {
   authorId: uuid('author_id').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-});
+}, (table) => ({
+  statusPublishedIdx: index('posts_status_published_at_idx').on(table.status, table.publishedAt),
+  authorStatusIdx: index('posts_author_id_status_idx').on(table.authorId, table.status),
+}));

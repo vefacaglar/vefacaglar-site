@@ -8,6 +8,7 @@ import { mergeTranslations, groupTranslationsByEntity, LanguageProvider } from "
 
 export type Page = InferSelectModel<typeof pages>;
 export type NewPage = InferInsertModel<typeof pages>;
+export type PageListItem = Omit<Page, "content">;
 
 @injectable()
 export class DrizzlePagesRepository implements IPagesRepository {
@@ -43,7 +44,7 @@ export class DrizzlePagesRepository implements IPagesRepository {
     return mergeTranslations(row, translations);
   }
 
-  async list(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Page[]; total: number }> {
+  async list(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PageListItem[]; total: number }> {
     const lang = this.langProvider.getLanguage();
     const { items: rows, total } = await this.listRaw(filter);
 
@@ -68,29 +69,40 @@ export class DrizzlePagesRepository implements IPagesRepository {
     return { items: translatedItems, total };
   }
 
-  async listRaw(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: Page[]; total: number }> {
+  async listRaw(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PageListItem[]; total: number }> {
     const conditions = filter?.status ? [eq(pages.status, filter.status)] : [];
+    const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [countResult] = await this.dbProvider.client
-      .select({ count: sql<number>`count(*)` })
+    let dataQuery = this.dbProvider.client
+      .select({
+        id: pages.id,
+        slug: pages.slug,
+        title: pages.title,
+        status: pages.status,
+        seoTitle: pages.seoTitle,
+        seoDescription: pages.seoDescription,
+        publishedAt: pages.publishedAt,
+        createdAt: pages.createdAt,
+        updatedAt: pages.updatedAt,
+      })
       .from(pages)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
-
-    const total = Number(countResult?.count || 0);
-
-    let query = this.dbProvider.client
-      .select()
-      .from(pages)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(whereExpr)
       .orderBy(desc(pages.publishedAt), desc(pages.createdAt))
       .$dynamic();
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;
-      query = query.limit(filter.limit).offset(offset);
+      dataQuery = dataQuery.limit(filter.limit).offset(offset);
     }
 
-    const items = await query;
+    const countQuery = this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(pages)
+      .where(whereExpr);
+
+    const [countResult, items] = await Promise.all([countQuery, dataQuery]);
+    const total = Number(countResult[0]?.count || 0);
+
     return { items, total };
   }
 

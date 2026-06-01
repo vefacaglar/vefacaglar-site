@@ -3,24 +3,11 @@ import styles from "./blog.module.css";
 import { getActiveLanguage } from '../../lib/lang';
 import { getDictionary } from '../../dictionaries';
 import { localizeHref } from '../../lib/localizeHref';
-import { httpClient } from '../../lib/httpClient';
 import Pagination from '../components/Pagination';
 import { localizedAlternates } from '../../lib/seo';
+import { getPublicPosts } from '../../lib/data';
 
-interface PostItem {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt?: string | null;
-  publishedAt?: string | null;
-  createdAt: string;
-  author?: {
-    username: string;
-    displayName: string;
-  } | null;
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();
@@ -42,27 +29,17 @@ export default async function Blog({ searchParams }: BlogProps) {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
 
-  let postsData = {
-    items: [] as PostItem[],
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 0,
-  };
-
-  try {
-    const res = await httpClient.get(`/api/posts?page=${page}&limit=10`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      postsData = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch public blog posts:", error);
-  }
-
-  const posts = postsData.items || [];
-  const totalPages = postsData.totalPages || 0;
+  const data = await getPublicPosts(page);
+  const posts = (data?.items ?? []) as {
+    id: string;
+    slug: string;
+    title: string;
+    excerpt?: string | null;
+    publishedAt?: string | null;
+    createdAt: string;
+    author?: { username: string; displayName: string } | null;
+  }[];
+  const totalPages = data?.totalPages ?? 0;
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";

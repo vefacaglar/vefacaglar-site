@@ -10,11 +10,13 @@ export type NewDocCategory = InferInsertModel<typeof docCategories>;
 export type Doc = InferSelectModel<typeof docs>;
 export type NewDoc = InferInsertModel<typeof docs>;
 
+export type PackageListItem = Omit<Package, "content">;
+
 export interface IPackagesRepository {
   create(values: NewPackage): Promise<Package>;
   findById(id: string): Promise<Package | null>;
   findBySlug(slug: string): Promise<Package | null>;
-  list(filter?: { page?: number; limit?: number; q?: string; isActive?: boolean }): Promise<{ items: Package[]; total: number }>;
+  list(filter?: { page?: number; limit?: number; q?: string; isActive?: boolean }): Promise<{ items: PackageListItem[]; total: number }>;
   update(id: string, patch: Partial<NewPackage>): Promise<Package>;
   delete(id: string): Promise<void>;
 

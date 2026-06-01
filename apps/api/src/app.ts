@@ -13,6 +13,12 @@ import { projectsRoutes } from "./modules/projects/projects.routes";
 import { uploadsRoutes } from "./modules/uploads/uploads.routes";
 import { localizationsRoutes } from "./modules/localizations/localizations.routes";
 import { gamesRoutes } from "./modules/games/games.routes";
+import { developersRoutes } from "./modules/games/developers.routes";
+import { publishersRoutes } from "./modules/games/publishers.routes";
+import { genresRoutes } from "./modules/games/genres.routes";
+import { themesRoutes } from "./modules/games/themes.routes";
+import { platformsRoutes } from "./modules/games/platforms.routes";
+import { gameRelationsRoutes } from "./modules/games/relations.routes";
 import { packagesRoutes } from "./modules/packages/packages.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
@@ -128,7 +134,13 @@ app.register(authorsRoutes, { prefix: "/api/authors" });
 app.register(projectsRoutes, { prefix: "/api/projects" });
 app.register(uploadsRoutes, { prefix: "/api/uploads" });
 app.register(localizationsRoutes, { prefix: "/api/localizations" });
+app.register(developersRoutes, { prefix: "/api/games" });
+app.register(publishersRoutes, { prefix: "/api/games" });
+app.register(genresRoutes, { prefix: "/api/games" });
+app.register(themesRoutes, { prefix: "/api/games" });
+app.register(platformsRoutes, { prefix: "/api/games" });
 app.register(gamesRoutes, { prefix: "/api/games" });
+app.register(gameRelationsRoutes, { prefix: "/api/games" });
 app.register(packagesRoutes, { prefix: "/api/packages" });
 
 export default async function handler(req: any, res: any) {

@@ -1,72 +1,37 @@
 import React from "react";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./project.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
-import { httpClient } from "../../../lib/httpClient";
 import { localizedAlternates } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { localizeHref } from "../../../lib/localizeHref";
+import { getProject } from "../../../lib/data";
 
-interface ProjectDetail {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string;
-  content: string;
-  featured: boolean;
-  githubUrl?: string | null;
-  liveUrl?: string | null;
-  coverImageUrl?: string | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-  startedAt?: string | null;
-  endedAt?: string | null;
-  publishedAt?: string | null;
-  createdAt: string;
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const project = await getProject(params.slug);
 
-  try {
-    const res = await httpClient.get(`/api/projects/${params.slug}`);
-    if (!res.ok) return { title: dict.project_not_found_title };
+  if (!project) return { title: dict.project_not_found_title };
 
-    const project: ProjectDetail = await res.json();
-    return {
-      title: project.seoTitle || formatMetaTitle(project.title, lang),
-      description: project.seoDescription || project.summary,
-      alternates: localizedAlternates(`/projects/${params.slug}`, lang),
-    };
-  } catch {
-    return { title: dict.site_projects_meta_title };
-  }
+  return {
+    title: project.seoTitle || formatMetaTitle(project.title, lang),
+    description: project.seoDescription || project.summary,
+    alternates: localizedAlternates(`/projects/${params.slug}`, lang),
+  };
 }
 
 export default async function Project({ params }: { params: { slug: string } }) {
-  let project: ProjectDetail | null = null;
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const project = await getProject(params.slug);
 
-  try {
-    const res = await httpClient.get(`/api/projects/${params.slug}`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      project = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch project by slug:", error);
-  }
-
-  if (!project) {
-    notFound();
-  }
+  if (!project) notFound();
 
   const formatProjectDate = (dateString?: string | null) => {
     if (!dateString) return "";
@@ -98,24 +63,24 @@ export default async function Project({ params }: { params: { slug: string } }) 
           )}
         </h1>
         {duration && <div className={styles.dates}>{duration}</div>}
-        
+
         {(project.githubUrl || project.liveUrl) && (
           <div className={styles.links}>
             {project.githubUrl && (
-              <a 
-                href={project.githubUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={project.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={styles.link}
               >
                 {dict.source_code}
               </a>
             )}
             {project.liveUrl && (
-              <a 
-                href={project.liveUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={styles.link}
               >
                 {dict.live_demo}
@@ -127,9 +92,13 @@ export default async function Project({ params }: { params: { slug: string } }) 
 
       {project.coverImageUrl && (
         <div className={styles.cover}>
-          <img
+          <Image
             src={project.coverImageUrl}
             alt={project.title}
+            width={1280}
+            height={720}
+            priority
+            sizes="(max-width: 768px) 100vw, 768px"
             className={styles.coverImg}
           />
         </div>

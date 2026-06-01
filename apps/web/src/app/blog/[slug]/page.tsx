@@ -1,71 +1,38 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import MarkdownPreview from "../../components/MarkdownPreview";
 import styles from "./post.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
-import { httpClient } from "../../../lib/httpClient";
 import { localizedAlternates } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
+import { getPost } from "../../../lib/data";
 
-interface PostDetail {
-  id: string;
-  slug: string;
-  title: string;
-  content: string;
-  coverImageUrl?: string | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-  publishedAt?: string | null;
-  createdAt: string;
-  author?: {
-    username: string;
-    displayName: string;
-  } | null;
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const post = await getPost(params.slug);
 
-  try {
-    const res = await httpClient.get(`/api/posts/${params.slug}`);
-    if (!res.ok) return { title: dict.post_not_found_title };
+  if (!post) return { title: dict.post_not_found_title };
 
-    const post: PostDetail = await res.json();
-    return {
-      title: post.seoTitle || formatMetaTitle(post.title, lang),
-      description: post.seoDescription || post.title,
-      alternates: localizedAlternates(`/blog/${params.slug}`, lang),
-    };
-  } catch {
-    return { title: dict.blog_meta_title };
-  }
+  return {
+    title: post.seoTitle || formatMetaTitle(post.title, lang),
+    description: post.seoDescription || post.title,
+    alternates: localizedAlternates(`/blog/${params.slug}`, lang),
+  };
 }
 
 export default async function BlogPost({ params }: { params: { slug: string } }) {
-  let post: PostDetail | null = null;
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);
+  const post = await getPost(params.slug);
 
-  try {
-    const res = await httpClient.get(`/api/posts/${params.slug}`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      post = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch blog post by slug:", error);
-  }
-
-  if (!post) {
-    notFound();
-  }
+  if (!post) notFound();
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return "";
@@ -98,9 +65,13 @@ export default async function BlogPost({ params }: { params: { slug: string } })
 
       {post.coverImageUrl && (
         <div className={styles.cover}>
-          <img
+          <Image
             src={post.coverImageUrl}
             alt={post.title}
+            width={1280}
+            height={720}
+            priority
+            sizes="(max-width: 768px) 100vw, 768px"
             className={styles.coverImg}
           />
         </div>

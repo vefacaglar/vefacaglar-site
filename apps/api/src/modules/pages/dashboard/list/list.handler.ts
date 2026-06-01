@@ -26,7 +26,6 @@ export class ListAdminPagesHandler {
       id: page.id,
       slug: page.slug,
       title: page.title,
-      content: page.content,
       status: page.status as "draft" | "published",
       seoTitle: page.seoTitle,
       seoDescription: page.seoDescription,

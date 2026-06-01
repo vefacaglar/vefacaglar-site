@@ -32,6 +32,13 @@ export const schema = {
 
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/vefa_site';
 
-const queryClient = postgres(databaseUrl);
+const queryClient = postgres(databaseUrl, {
+  max: Number(process.env.PG_POOL_MAX ?? 10),
+  idle_timeout: 20,
+  max_lifetime: 30 * 60,
+  keep_alive: 30,
+  prepare: false,
+  connection: { application_name: "vefa-api" },
+});
 export const db = drizzle(queryClient, { schema });
 export type DbType = typeof db;

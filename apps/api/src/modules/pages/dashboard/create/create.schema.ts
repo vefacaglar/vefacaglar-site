@@ -15,7 +15,7 @@ export const PageResponseSchema = Type.Object({
   id: Type.String(),
   slug: Type.String(),
   title: Type.String(),
-  content: Type.String(),
+  content: Type.Optional(Type.String()),
   status: Type.Union([Type.Literal("draft"), Type.Literal("published")]),
   seoTitle: Type.Union([Type.String(), Type.Null()]),
   seoDescription: Type.Union([Type.String(), Type.Null()]),

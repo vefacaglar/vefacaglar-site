@@ -24,7 +24,7 @@ export const ProjectResponseSchema = Type.Object({
   slug: Type.String(),
   title: Type.String(),
   summary: Type.String(),
-  content: Type.String(),
+  content: Type.Optional(Type.String()),
   status: Type.Union([Type.Literal("draft"), Type.Literal("published")]),
   featured: Type.Boolean(),
   sortOrder: Type.Integer(),

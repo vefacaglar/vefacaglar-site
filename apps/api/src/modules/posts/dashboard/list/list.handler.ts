@@ -27,7 +27,6 @@ export class ListAdminPostsHandler {
       slug: row.slug,
       title: row.title,
       excerpt: row.excerpt,
-      content: row.content,
       status: row.status as "draft" | "published",
       coverImageUrl: row.coverImageUrl,
       seoTitle: row.seoTitle,

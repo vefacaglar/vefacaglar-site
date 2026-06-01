@@ -19,7 +19,7 @@ export const GameResponseSchema = Type.Object({
   slug: Type.String(),
   title: Type.String(),
   originalTitle: Type.Union([Type.String(), Type.Null()]),
-  description: Type.Union([Type.String(), Type.Null()]),
+  description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   coverImageUrl: Type.Union([Type.String(), Type.Null()]),
   releaseDate: Type.Union([Type.String(), Type.Null()]),
   metacriticScore: Type.Union([Type.Integer(), Type.Null()]),
@@ -29,7 +29,7 @@ export const GameResponseSchema = Type.Object({
   hltbCompletionistHours: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
   updatedAt: Type.Union([Type.String(), Type.Null()]),
-  
+
   developers: Type.Array(GameRelationItemSchema),
   publishers: Type.Array(GameRelationItemSchema),
   genres: Type.Array(GameRelationItemSchema),

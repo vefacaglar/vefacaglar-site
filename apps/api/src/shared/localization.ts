@@ -1,5 +1,5 @@
 import { injectable } from "tsyringe";
-import { languageStorage } from "./localization.plugin";
+import { requestStorage } from "./localization.plugin";
 import enDict from "./locales/en.json";
 import trDict from "./locales/tr.json";
 
@@ -11,7 +11,7 @@ const locales: Record<string, Record<string, string>> = {
 @injectable()
 export class LanguageProvider {
   getLanguage(): string {
-    return languageStorage.getStore() || "en";
+    return requestStorage.getStore()?.lang ?? "en";
   }
 }
 

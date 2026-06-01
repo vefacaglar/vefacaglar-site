@@ -2,6 +2,13 @@ import { getActiveLanguage } from "./lang";
 
 const API_URL = process.env.API_URL || "http://localhost:3001";
 
+type NextFetchRequestConfig = {
+  revalidate?: number | false;
+  tags?: string[];
+};
+
+type RequestInitWithNext = RequestInit & { next?: NextFetchRequestConfig };
+
 class HttpClient {
   private getUrl(path: string): string {
     return path.startsWith("http://") || path.startsWith("https://")
@@ -9,18 +16,24 @@ class HttpClient {
       : `${API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   }
 
-  private async request(path: string, init?: RequestInit): Promise<Response> {
+  private isAuthed(init?: RequestInitWithNext): boolean {
+    if (!init?.headers) return false;
+    if (init.headers instanceof Headers) return init.headers.has("Authorization");
+    if (Array.isArray(init.headers)) {
+      return init.headers.some(([k]) => k.toLowerCase() === "authorization");
+    }
+    return Object.keys(init.headers).some((k) => k.toLowerCase() === "authorization");
+  }
+
+  private async request(path: string, init?: RequestInitWithNext): Promise<Response> {
     const url = this.getUrl(path);
     const headers = new Headers(init?.headers);
 
-    // Automatically inject active language if not explicitly provided
     if (!headers.has("language")) {
       const lang = getActiveLanguage();
       headers.set("language", lang);
     }
 
-    // In a server-side context (e.g. Server Actions, Server Components),
-    // forward the client's real IP address to the API.
     if (typeof window === "undefined") {
       try {
         const { headers: nextHeaders } = require("next/headers");
@@ -34,7 +47,6 @@ class HttpClient {
           headers.set("x-forwarded-for", realIp);
         }
       } catch (e) {
-        // Silence errors if called outside of a request context (e.g., static generation/build time)
       }
     }
 
@@ -44,8 +56,17 @@ class HttpClient {
     });
   }
 
-  async get(path: string, init?: RequestInit): Promise<Response> {
-    return this.request(path, { ...init, method: "GET" });
+  async get(path: string, init?: RequestInitWithNext): Promise<Response> {
+    const authed = this.isAuthed(init);
+    const cacheInit: RequestInitWithNext = authed
+      ? { ...init, cache: "no-store", next: undefined }
+      : {
+          ...init,
+          cache: init?.cache ?? "force-cache",
+          next: init?.next ?? { revalidate: 300 },
+        };
+
+    return this.request(path, { ...cacheInit, method: "GET" });
   }
 
   async post(path: string, body?: any, init?: RequestInit): Promise<Response> {

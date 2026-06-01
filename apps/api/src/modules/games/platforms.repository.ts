@@ -34,24 +34,23 @@ export class DrizzlePlatformsRepository implements IPlatformsRepository {
       .from(platforms)
       .$dynamic();
     if (whereExpr) countQuery.where(whereExpr);
-    const [countResult] = await countQuery;
 
-    const total = Number(countResult?.count || 0);
-
-    let query = this.dbProvider.client
+    let dataQuery = this.dbProvider.client
       .select()
       .from(platforms)
       .orderBy(asc(platforms.name))
       .$dynamic();
 
-    if (whereExpr) query = query.where(whereExpr);
+    if (whereExpr) dataQuery = dataQuery.where(whereExpr);
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;
-      query = query.limit(filter.limit).offset(offset);
+      dataQuery = dataQuery.limit(filter.limit).offset(offset);
     }
 
-    const items = await query;
+    const [countResult, items] = await Promise.all([countQuery, dataQuery]);
+    const total = Number(countResult[0]?.count || 0);
+
     return { items, total };
   }
 

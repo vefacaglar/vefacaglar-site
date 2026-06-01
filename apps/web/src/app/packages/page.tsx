@@ -1,24 +1,12 @@
 import React from "react";
 import Link from "next/link";
 import styles from "./packages.module.css";
-import { httpClient } from "../../lib/httpClient";
 import { getActiveLanguage } from "../../lib/lang";
 import { localizedAlternates } from "../../lib/seo";
 import Pagination from "../components/Pagination";
+import { getPublicPackages } from "../../lib/data";
 
-interface PackageItem {
-  id: string;
-  slug: string;
-  name: string;
-  description: string | null;
-  nugetUrl: string | null;
-  npmUrl: string | null;
-  githubUrl: string | null;
-  docs: string | null;
-  latestVersion: string;
-}
-
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata() {
   return {
@@ -36,27 +24,19 @@ interface PackagesProps {
 
 export default async function PackagesPage({ searchParams }: PackagesProps) {
   const page = searchParams.page ? Number(searchParams.page) : 1;
-  let packagesData = {
-    items: [] as PackageItem[],
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 0,
-  };
-
-  try {
-    const res = await httpClient.get(`/api/packages?page=${page}&limit=10`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      packagesData = await res.json();
-    }
-  } catch (error) {
-    console.error("Failed to fetch public packages:", error);
-  }
-
-  const packages = packagesData.items || [];
-  const totalPages = packagesData.totalPages || 0;
+  const data = await getPublicPackages(page);
+  const packages = (data?.items ?? []) as {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    nugetUrl: string | null;
+    npmUrl: string | null;
+    githubUrl: string | null;
+    docs: string | null;
+    latestVersion: string;
+  }[];
+  const totalPages = data?.totalPages ?? 0;
 
   return (
     <div>

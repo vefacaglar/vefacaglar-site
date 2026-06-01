@@ -8,6 +8,8 @@ import styles from "./dashboard.module.css";
 import { httpClient } from "../../lib/httpClient";
 import ds from "../../lib/dashboard-strings";
 
+export const dynamic = "force-dynamic";
+
 interface PostItem {
   id: string;
   slug: string;
@@ -32,7 +34,11 @@ interface ProjectItem {
   createdAt: string;
 }
 
-export const dynamic = "force-dynamic";
+interface ListResponse<T> {
+  items?: T[];
+  total?: number;
+  totalPages?: number;
+}
 
 interface PageProps {
   searchParams: {
@@ -60,68 +66,17 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   const pagesPage = Number(searchParams.pagesPage) || 1;
   const pagesLimit = Number(searchParams.pagesLimit) || 10;
 
-  // Fetch posts (including drafts)
-  let posts: PostItem[] = [];
-  let postsTotal = 0;
-  let postsTotalPages = 0;
-  try {
-    const res = await httpClient.get(`/api/posts/dashboard?page=${postsPage}&limit=${postsLimit}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-    if (res.ok) {
-      const data = await res.json();
-      posts = data.items || [];
-      postsTotal = data.total || 0;
-      postsTotalPages = data.totalPages || 0;
-    }
-  } catch (error) {
-    console.error("Failed to fetch posts in dashboard:", error);
-  }
+  const headers = { Authorization: `Bearer ${token}` };
 
-  // Fetch pages (including drafts)
-  let pages: PageItem[] = [];
-  let pagesTotal = 0;
-  let pagesTotalPages = 0;
-  try {
-    const res = await httpClient.get(`/api/pages/dashboard?page=${pagesPage}&limit=${pagesLimit}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-    if (res.ok) {
-      const data = await res.json();
-      pages = data.items || [];
-      pagesTotal = data.total || 0;
-      pagesTotalPages = data.totalPages || 0;
-    }
-  } catch (error) {
-    console.error("Failed to fetch pages in dashboard:", error);
-  }
+  const [postsRes, pagesRes, projectsRes] = await Promise.all([
+    httpClient.get(`/api/posts/dashboard?page=${postsPage}&limit=${postsLimit}`, { headers }).catch(() => null),
+    httpClient.get(`/api/pages/dashboard?page=${pagesPage}&limit=${pagesLimit}`, { headers }).catch(() => null),
+    httpClient.get(`/api/projects/dashboard?page=${projectsPage}&limit=${projectsLimit}`, { headers }).catch(() => null),
+  ]);
 
-  // Fetch projects (including drafts)
-  let projects: ProjectItem[] = [];
-  let projectsTotal = 0;
-  let projectsTotalPages = 0;
-  try {
-    const res = await httpClient.get(`/api/projects/dashboard?page=${projectsPage}&limit=${projectsLimit}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-    if (res.ok) {
-      const data = await res.json();
-      projects = data.items || [];
-      projectsTotal = data.total || 0;
-      projectsTotalPages = data.totalPages || 0;
-    }
-  } catch (error) {
-    console.error("Failed to fetch projects in dashboard:", error);
-  }
+  const postsData: ListResponse<PostItem> = postsRes?.ok ? await postsRes.json() : {};
+  const pagesData: ListResponse<PageItem> = pagesRes?.ok ? await pagesRes.json() : {};
+  const projectsData: ListResponse<ProjectItem> = projectsRes?.ok ? await projectsRes.json() : {};
 
   return (
     <div>
@@ -152,21 +107,21 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
       </div>
 
       <DashboardListsContainer
-        posts={posts}
-        postsTotal={postsTotal}
+        posts={postsData.items ?? []}
+        postsTotal={postsData.total ?? 0}
         postsPage={postsPage}
         postsLimit={postsLimit}
-        postsTotalPages={postsTotalPages}
-        projects={projects}
-        projectsTotal={projectsTotal}
+        postsTotalPages={postsData.totalPages ?? 0}
+        projects={projectsData.items ?? []}
+        projectsTotal={projectsData.total ?? 0}
         projectsPage={projectsPage}
         projectsLimit={projectsLimit}
-        projectsTotalPages={projectsTotalPages}
-        pages={pages}
-        pagesTotal={pagesTotal}
+        projectsTotalPages={projectsData.totalPages ?? 0}
+        pages={pagesData.items ?? []}
+        pagesTotal={pagesData.total ?? 0}
         pagesPage={pagesPage}
         pagesLimit={pagesLimit}
-        pagesTotalPages={pagesTotalPages}
+        pagesTotalPages={pagesData.totalPages ?? 0}
         deletePostAction={deletePostAction}
         deleteProjectAction={deleteProjectAction}
         deletePageAction={deletePageAction}

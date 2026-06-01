@@ -28,7 +28,6 @@ export class ListProjectsHandler {
       slug: row.slug,
       title: row.title,
       summary: row.summary,
-      content: row.content,
       status: row.status as "draft" | "published",
       featured: row.featured,
       sortOrder: row.sortOrder,

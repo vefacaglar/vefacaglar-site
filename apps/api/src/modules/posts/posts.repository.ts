@@ -9,6 +9,11 @@ import { mergeTranslations, groupTranslationsByEntity, LanguageProvider } from "
 export type Post = InferSelectModel<typeof posts>;
 export type NewPost = InferInsertModel<typeof posts>;
 
+export type PostListItem = Omit<Post, "content"> & {
+  authorUsername: string | null;
+  authorDisplayName: string | null;
+};
+
 export type PostWithAuthor = Post & {
   authorUsername: string | null;
   authorDisplayName: string | null;
@@ -70,7 +75,7 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return mergeTranslations(row, translations);
   }
 
-  async listWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostWithAuthor[]; total: number }> {
+  async listWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostListItem[]; total: number }> {
     const lang = this.langProvider.getLanguage();
     const { items: rows, total } = await this.listRawWithAuthor(filter);
 
@@ -95,23 +100,16 @@ export class DrizzlePostsRepository implements IPostsRepository {
     return { items: translatedItems, total };
   }
 
-  async listRawWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostWithAuthor[]; total: number }> {
+  async listRawWithAuthor(filter?: { status?: "draft" | "published"; page?: number; limit?: number }): Promise<{ items: PostListItem[]; total: number }> {
     const conditions = filter?.status ? [eq(posts.status, filter.status)] : [];
+    const whereExpr = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [countResult] = await this.dbProvider.client
-      .select({ count: sql<number>`count(*)` })
-      .from(posts)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
-
-    const total = Number(countResult?.count || 0);
-
-    let query = this.dbProvider.client
+    let dataQuery = this.dbProvider.client
       .select({
         id: posts.id,
         slug: posts.slug,
         title: posts.title,
         excerpt: posts.excerpt,
-        content: posts.content,
         status: posts.status,
         coverImageUrl: posts.coverImageUrl,
         seoTitle: posts.seoTitle,
@@ -125,16 +123,23 @@ export class DrizzlePostsRepository implements IPostsRepository {
       })
       .from(posts)
       .leftJoin(users, eq(posts.authorId, users.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(whereExpr)
       .orderBy(desc(posts.publishedAt), desc(posts.createdAt))
       .$dynamic();
 
     if (filter?.page !== undefined && filter?.limit !== undefined) {
       const offset = (filter.page - 1) * filter.limit;
-      query = query.limit(filter.limit).offset(offset);
+      dataQuery = dataQuery.limit(filter.limit).offset(offset);
     }
 
-    const items = await query;
+    const countQuery = this.dbProvider.client
+      .select({ count: sql<number>`count(*)` })
+      .from(posts)
+      .where(whereExpr);
+
+    const [countResult, items] = await Promise.all([countQuery, dataQuery]);
+    const total = Number(countResult[0]?.count || 0);
+
     return { items, total };
   }
 

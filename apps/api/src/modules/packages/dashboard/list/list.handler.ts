@@ -33,7 +33,6 @@ export class ListAdminPackagesHandler {
       docs: row.docs,
       latestVersion: row.latestVersion,
       isActive: row.isActive,
-      content: row.content,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));
