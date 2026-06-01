@@ -9,7 +9,7 @@ import styles from "./blog.module.css";
 
 export default function BlogSearch({ initialQuery = "" }: { initialQuery?: string }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const locale = useLocale();
   const dict = getDictionary(locale);
   const query = initialQuery;
