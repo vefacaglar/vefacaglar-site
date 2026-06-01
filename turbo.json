@@ -5,6 +5,19 @@
       "dependsOn": [
         "^build"
       ],
+      "env": [
+        "API_URL",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_SITE_URL",
+        "WEB_URL",
+        "DATABASE_URL",
+        "PG_POOL_MAX",
+        "API_PORT",
+        "IMAGEKIT_PUBLIC_KEY",
+        "IMAGEKIT_PRIVATE_KEY",
+        "IMAGEKIT_FOLDER",
+        "IMAGEKIT_URL_ENDPOINT"
+      ],
       "outputs": [
         ".next/**",
         "!next/cache/**",
