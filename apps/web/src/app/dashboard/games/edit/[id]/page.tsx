@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { httpClient } from "../../../../../lib/httpClient";
 import GameEditForm from "../../GameEditForm";
-import type { Game } from "../../GamesDashboardClient";
+import type { Game } from "../../types";
 
 export const dynamic = "force-dynamic";
 

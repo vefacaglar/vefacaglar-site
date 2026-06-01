@@ -1,0 +1,127 @@
+.gamesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.gameCard {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease;
+  height: 100%;
+}
+
+.gameCard:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.gameCardCover {
+  height: 150px;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.gameCardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.gameCard:hover .gameCardImage {
+  transform: scale(1.05);
+}
+
+.gameCardPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: 0.1em;
+}
+
+.gameCardScores {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.gameCardContent {
+  padding: 18px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gameCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-heading);
+  line-height: 1.3;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gameCardOriginalTitle {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: -4px;
+}
+
+.gameCardMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.gameCardRelations {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gameCardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.linkBtnDanger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  display: inline;
+  padding: 0;
+  color: var(--accent);
+}

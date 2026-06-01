@@ -1,52 +1,53 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Button from "../../../components/Button";
+import { Game, GameRelationItem, RelationKind } from "./types";
+import { toggleRelation } from "./relations";
 import {
   listDevelopersAction,
   listPublishersAction,
   listRelationsOptionsAction,
   updateGameAction,
-  linkGameRelationAction,
-  unlinkGameRelationAction,
 } from "./actions";
-import type { Game, GameRelationItem } from "./GamesDashboardClient";
-import clientStyles from "./games-client.module.css";
+import styles from "./edit-page.module.css";
+import formsStyles from "./components/forms.module.css";
+import GameFieldsForm, { GameFieldsState } from "./components/GameFieldsForm";
+import RelationsGrid from "./components/RelationsGrid";
 import ds from "../../../lib/dashboard-strings";
 
-const RELATION_PICKER_LIMIT = 50;
-
-function useDebounced<T>(value: T, delay = 300): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
+function gameToFields(game: Game): GameFieldsState {
+  return {
+    title: game.title,
+    slug: game.slug,
+    originalTitle: game.originalTitle || "",
+    description: game.description || "",
+    coverImageUrl: game.coverImageUrl || "",
+    releaseDate: game.releaseDate || "",
+    metacriticScore: game.metacriticScore ?? "",
+    openCriticScore: game.openCriticScore ?? "",
+    hltbMainHours: game.hltbMainHours || "",
+    hltbMainExtraHours: game.hltbMainExtraHours || "",
+    hltbCompletionistHours: game.hltbCompletionistHours || "",
+  };
 }
 
-export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: { game: Game; returnUrl?: string }) {
+export default function GameEditForm({
+  game,
+  returnUrl = "/dashboard/games",
+}: {
+  game: Game;
+  returnUrl?: string;
+}) {
   const router = useRouter();
-  const [title, setTitle] = useState(game.title);
-  const [slug, setSlug] = useState(game.slug);
-  const [originalTitle, setOriginalTitle] = useState(game.originalTitle || "");
-  const [description, setDescription] = useState(game.description || "");
-  const [coverImageUrl, setCoverImageUrl] = useState(game.coverImageUrl || "");
-  const [releaseDate, setReleaseDate] = useState(game.releaseDate || "");
-  const [metacriticScore, setMetacriticScore] = useState<number | "">(game.metacriticScore ?? "");
-  const [openCriticScore, setOpenCriticScore] = useState<number | "">(game.openCriticScore ?? "");
-  const [hltbMainHours, setHltbMainHours] = useState<string | number>(game.hltbMainHours || "");
-  const [hltbMainExtraHours, setHltbMainExtraHours] = useState<string | number>(game.hltbMainExtraHours || "");
-  const [hltbCompletionistHours, setHltbCompletionistHours] = useState<string | number>(game.hltbCompletionistHours || "");
-
+  const [fields, setFields] = useState<GameFieldsState>(gameToFields(game));
   const [selectedDevelopers, setSelectedDevelopers] = useState<GameRelationItem[]>(game.developers);
   const [selectedPublishers, setSelectedPublishers] = useState<GameRelationItem[]>(game.publishers);
   const [selectedGenres, setSelectedGenres] = useState<GameRelationItem[]>(game.genres);
   const [selectedPlatforms, setSelectedPlatforms] = useState<GameRelationItem[]>(game.platforms);
   const [selectedThemes, setSelectedThemes] = useState<GameRelationItem[]>(game.themes);
-
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -69,37 +70,36 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
     });
   }, []);
 
-  const toggleRelation = async (
-    relation: GameRelationItem,
-    selected: GameRelationItem[],
-    setSelected: (rs: GameRelationItem[]) => void,
-    relationType: "developers" | "publishers" | "genres" | "platforms" | "themes"
-  ) => {
-    const isSelected = selected.some((s) => s.id === relation.id);
-    const next = isSelected
-      ? selected.filter((s) => s.id !== relation.id)
-      : [...selected, relation];
+  const updateField = <K extends keyof GameFieldsState>(key: K, value: GameFieldsState[K]) => {
+    setFields((prev) => ({ ...prev, [key]: value }));
+  };
 
-    setSelected(next);
-
-    const res = isSelected
-      ? await unlinkGameRelationAction(game.id, relationType, relation.id)
-      : await linkGameRelationAction(game.id, relationType, relation.id);
-
-    if ("error" in res) {
-      setSelected(selected);
-      setError(res.error || ds.games.errors.linkFailed.replace("{relationType}", relationType.slice(0, -1)));
-    }
+  const handleToggleRelation = (kind: RelationKind, rel: GameRelationItem) => {
+    const stateMap: Record<RelationKind, { selected: GameRelationItem[]; setSelected: React.Dispatch<React.SetStateAction<GameRelationItem[]>> }> = {
+      developers: { selected: selectedDevelopers, setSelected: setSelectedDevelopers },
+      publishers: { selected: selectedPublishers, setSelected: setSelectedPublishers },
+      genres: { selected: selectedGenres, setSelected: setSelectedGenres },
+      platforms: { selected: selectedPlatforms, setSelected: setSelectedPlatforms },
+      themes: { selected: selectedThemes, setSelected: setSelectedThemes },
+    };
+    const entry = stateMap[kind];
+    void toggleRelation({
+      relation: rel,
+      selected: entry.selected,
+      setSelected: entry.setSelected,
+      relationType: kind,
+      gameId: game.id,
+      setError,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!title.trim()) {
+    if (!fields.title.trim()) {
       setError(ds.games.errors.titleRequired);
       return;
     }
-    if (!slug.trim()) {
+    if (!fields.slug.trim()) {
       setError(ds.games.errors.slugRequired);
       return;
     }
@@ -108,17 +108,17 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
     setError(null);
 
     const res = await updateGameAction(game.id, {
-      title: title.trim(),
-      slug: slug.trim(),
-      originalTitle: originalTitle.trim() ? originalTitle.trim() : null,
-      description: description.trim() ? description.trim() : null,
-      coverImageUrl: coverImageUrl.trim() ? coverImageUrl.trim() : null,
-      releaseDate: releaseDate.trim() ? releaseDate.trim() : null,
-      metacriticScore: metacriticScore !== "" ? Number(metacriticScore) : null,
-      openCriticScore: openCriticScore !== "" ? Number(openCriticScore) : null,
-      hltbMainHours: hltbMainHours !== "" ? String(hltbMainHours) : null,
-      hltbMainExtraHours: hltbMainExtraHours !== "" ? String(hltbMainExtraHours) : null,
-      hltbCompletionistHours: hltbCompletionistHours !== "" ? String(hltbCompletionistHours) : null,
+      title: fields.title.trim(),
+      slug: fields.slug.trim(),
+      originalTitle: fields.originalTitle.trim() || null,
+      description: fields.description.trim() || null,
+      coverImageUrl: fields.coverImageUrl.trim() || null,
+      releaseDate: fields.releaseDate.trim() || null,
+      metacriticScore: fields.metacriticScore !== "" ? Number(fields.metacriticScore) : null,
+      openCriticScore: fields.openCriticScore !== "" ? Number(fields.openCriticScore) : null,
+      hltbMainHours: fields.hltbMainHours !== "" ? String(fields.hltbMainHours) : null,
+      hltbMainExtraHours: fields.hltbMainExtraHours !== "" ? String(fields.hltbMainExtraHours) : null,
+      hltbCompletionistHours: fields.hltbCompletionistHours !== "" ? String(fields.hltbCompletionistHours) : null,
     });
 
     if (res.error) {
@@ -132,238 +132,45 @@ export default function GameEditForm({ game, returnUrl = "/dashboard/games" }: {
   };
 
   return (
-    <div className={clientStyles.editPageWrapper}>
-      <div className={clientStyles.editPageBack}>
+    <div className={styles.editPageWrapper}>
+      <div className={styles.editPageBack}>
         <Link href={returnUrl} className="backLink">{ds.games.backToGames}</Link>
       </div>
 
-      <div className={clientStyles.editPageHeader}>
-        <h1 className={clientStyles.editPageTitle}>{ds.games.editGame}</h1>
+      <div className={styles.editPageHeader}>
+        <h1 className={styles.editPageTitle}>{ds.games.editGame}</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className={clientStyles.editPagePanel}>
-        {error && <div className={clientStyles.errorMsg}>{error}</div>}
-        <div className={clientStyles.formGrid}>
-          <div>
-            <div className={clientStyles.formSectionTitle}>{ds.games.form.coreInfo}</div>
-            <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-title">{ds.games.form.title}</label>
-              <input id="game-title" type="text" className={clientStyles.input} value={title} onChange={(e) => setTitle(e.target.value)} disabled={submitting} required autoFocus />
-            </div>
-            <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-slug">{ds.games.form.slug}</label>
-              <input id="game-slug" type="text" className={clientStyles.input} value={slug} onChange={(e) => setSlug(e.target.value)} disabled={submitting} required />
-            </div>
-            <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-original-title">{ds.games.form.originalTitle}</label>
-              <input id="game-original-title" type="text" className={clientStyles.input} value={originalTitle} onChange={(e) => setOriginalTitle(e.target.value)} disabled={submitting} />
-            </div>
-            <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-description">{ds.games.form.description}</label>
-              <textarea id="game-description" className={clientStyles.textarea} value={description} onChange={(e) => setDescription(e.target.value)} disabled={submitting} />
-            </div>
-            <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-cover-image">{ds.games.form.coverImageUrl}</label>
-              <input id="game-cover-image" type="text" className={clientStyles.input} value={coverImageUrl} onChange={(e) => setCoverImageUrl(e.target.value)} disabled={submitting} />
-            </div>
-            <div className={clientStyles.formGroup}>
-              <label className={clientStyles.label} htmlFor="game-release-date">{ds.games.form.releaseDate}</label>
-              <input id="game-release-date" type="date" className={clientStyles.input} value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} disabled={submitting} />
-            </div>
-            <div className={clientStyles.rowFields}>
-              <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-metacritic">{ds.games.form.metacriticScore}</label>
-                <input id="game-metacritic" type="number" min={0} max={100} className={clientStyles.input} value={metacriticScore} onChange={(e) => setMetacriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
-              </div>
-              <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-opencritic">{ds.games.form.opencriticScore}</label>
-                <input id="game-opencritic" type="number" min={0} max={100} className={clientStyles.input} value={openCriticScore} onChange={(e) => setOpenCriticScore(e.target.value === "" ? "" : Number(e.target.value))} disabled={submitting} />
-              </div>
-            </div>
-            <div className={clientStyles.rowThreeFields}>
-              <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-hltb-main">{ds.games.form.hltbMain}</label>
-                <input id="game-hltb-main" type="text" className={clientStyles.input} value={hltbMainHours} onChange={(e) => setHltbMainHours(e.target.value)} disabled={submitting} />
-              </div>
-              <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-hltb-extra">{ds.games.form.hltbMainEx}</label>
-                <input id="game-hltb-extra" type="text" className={clientStyles.input} value={hltbMainExtraHours} onChange={(e) => setHltbMainExtraHours(e.target.value)} disabled={submitting} />
-              </div>
-              <div className={clientStyles.formGroup}>
-                <label className={clientStyles.label} htmlFor="game-hltb-comp">{ds.games.form.hltbComp}</label>
-                <input id="game-hltb-comp" type="text" className={clientStyles.input} value={hltbCompletionistHours} onChange={(e) => setHltbCompletionistHours(e.target.value)} disabled={submitting} />
-              </div>
-            </div>
-          </div>
-
-          <div className={clientStyles.editPageActions}>
-            <Button href={returnUrl} variant="ghost">{ds.games.buttons.cancel}</Button>
-            <Button type="submit" variant="accent" disabled={submitting}>{submitting ? ds.games.buttons.saving : ds.games.buttons.saveChanges}</Button>
-          </div>
-
-          <div>
-            <div className={clientStyles.formSectionTitle}>{ds.games.form.relations}</div>
-            <div className={clientStyles.relationsGrid}>
-              <RelationPicker label={ds.games.form.developers} kind="developer" selected={selectedDevelopers} onToggle={(rel) => toggleRelation(rel, selectedDevelopers, setSelectedDevelopers, "developers")} disabled={submitting} />
-              <RelationPicker label={ds.games.form.publishers} kind="publisher" selected={selectedPublishers} onToggle={(rel) => toggleRelation(rel, selectedPublishers, setSelectedPublishers, "publishers")} disabled={submitting} />
-              <LazyRelationPicker label={ds.games.form.genres} selected={selectedGenres} allOptions={options?.genres || []} onToggle={(rel) => toggleRelation(rel, selectedGenres, setSelectedGenres, "genres")} disabled={submitting} loading={optionsLoading} />
-              <LazyRelationPicker label={ds.games.form.platforms} selected={selectedPlatforms} allOptions={options?.platforms || []} onToggle={(rel) => toggleRelation(rel, selectedPlatforms, setSelectedPlatforms, "platforms")} disabled={submitting} loading={optionsLoading} />
-              <LazyRelationPicker label={ds.games.form.themes} selected={selectedThemes} allOptions={options?.themes || []} onToggle={(rel) => toggleRelation(rel, selectedThemes, setSelectedThemes, "themes")} disabled={submitting} loading={optionsLoading} />
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} className={styles.editPagePanel}>
+        {error && <div className={formsStyles.errorMsg}>{error}</div>}
+        <div className={formsStyles.formGrid}>
+          <GameFieldsForm
+            values={fields}
+            onChange={updateField}
+            disabled={submitting}
+            showPlaceholders={false}
+          />
+          <RelationsGrid
+            toggle={handleToggleRelation}
+            fetchDevelopers={(p) => listDevelopersAction(p)}
+            fetchPublishers={(p) => listPublishersAction(p)}
+            isLoading={optionsLoading}
+            options={options}
+            selectedDevelopers={selectedDevelopers}
+            selectedPublishers={selectedPublishers}
+            selectedGenres={selectedGenres}
+            selectedPlatforms={selectedPlatforms}
+            selectedThemes={selectedThemes}
+            disabled={submitting}
+          />
+        </div>
+        <div className={formsStyles.formActions}>
+          <Button href={returnUrl} variant="ghost">{ds.games.buttons.cancel}</Button>
+          <Button type="submit" variant="accent" disabled={submitting}>
+            {submitting ? ds.games.buttons.saving : ds.games.buttons.saveChanges}
+          </Button>
         </div>
       </form>
-    </div>
-  );
-}
-
-function RelationPicker({
-  label,
-  kind,
-  selected,
-  onToggle,
-  disabled,
-}: {
-  label: string;
-  kind: "developer" | "publisher";
-  selected: GameRelationItem[];
-  onToggle: (rel: GameRelationItem) => void;
-  disabled?: boolean;
-}) {
-  const [query, setQuery] = useState("");
-  const debounced = useDebounced(query, 2000);
-  const [results, setResults] = useState<GameRelationItem[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const reqRef = useRef(0);
-  useEffect(() => {
-    const trimmed = debounced.trim();
-    if (trimmed.length < 3) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-
-    const action =
-      kind === "developer" ? listDevelopersAction :
-      listPublishersAction;
-
-    const reqId = ++reqRef.current;
-    setLoading(true);
-    action({ page: 1, limit: RELATION_PICKER_LIMIT, q: trimmed }).then((res: any) => {
-      if (reqId !== reqRef.current) return;
-      if ("error" in res) {
-        setResults([]);
-      } else {
-        setResults(res.items.map((it: any) => ({ id: it.id, name: it.name, slug: it.slug })));
-      }
-      setLoading(false);
-    });
-  }, [debounced, kind]);
-
-  const selectedIds = new Set(selected.map((s) => s.id));
-  const merged = [
-    ...selected,
-    ...results.filter((r) => !selectedIds.has(r.id)),
-  ];
-
-  return (
-    <div className={clientStyles.formGroup}>
-      <label className={clientStyles.label}>{label}</label>
-      <input
-        type="text"
-        className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
-        placeholder={ds.games.placeholders.searchRelation.replace("{label}", label.toLowerCase())}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        disabled={disabled}
-      />
-      <div className={clientStyles.checkboxGroupList}>
-        {loading && merged.length === 0 ? (
-          <div className={clientStyles.fieldHint}>{ds.games.hints.loading}</div>
-        ) : merged.length === 0 ? (
-          <div className={clientStyles.fieldHint}>
-            {query.trim().length > 0 && query.trim().length < 3 ? ds.games.hints.minChars : ds.games.hints.noMatches}
-          </div>
-        ) : (
-          merged.map((it) => (
-            <label key={it.id} className={clientStyles.checkboxLabel}>
-              <input type="checkbox" checked={selectedIds.has(it.id)} onChange={() => onToggle(it)} disabled={disabled} />
-              {it.name}
-            </label>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function LazyRelationPicker({
-  label,
-  selected,
-  allOptions,
-  onToggle,
-  disabled,
-  loading,
-}: {
-  label: string;
-  selected: GameRelationItem[];
-  allOptions: GameRelationItem[];
-  onToggle: (rel: GameRelationItem) => void;
-  disabled?: boolean;
-  loading?: boolean;
-}) {
-  const [search, setSearch] = useState("");
-
-  if (loading) {
-    return (
-      <div className={clientStyles.formGroup}>
-        <label className={clientStyles.label}>{label}</label>
-        <div className={clientStyles.fieldHint}>{ds.games.placeholders.loadingOptions}</div>
-      </div>
-    );
-  }
-
-  const selectedIds = new Set(selected.map((s) => s.id));
-
-  // Place selected ones at the top, then filter by search query (case insensitive)
-  const sortedOptions = [
-    ...selected,
-    ...allOptions.filter((opt) => !selectedIds.has(opt.id)),
-  ];
-
-  const filtered = sortedOptions.filter((opt) =>
-    opt.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div className={clientStyles.formGroup}>
-      <label className={clientStyles.label}>{label}</label>
-      <input
-        type="text"
-        className={`${clientStyles.input} ${clientStyles.searchInputBottom}`}
-        placeholder={ds.games.placeholders.filterRelation.replace("{label}", label.toLowerCase())}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        disabled={disabled}
-      />
-      <div className={clientStyles.checkboxGroupList}>
-        {filtered.length === 0 ? (
-          <div className={clientStyles.fieldHint}>{ds.games.placeholders.noOptions}</div>
-        ) : (
-          filtered.map((it) => (
-            <label key={it.id} className={clientStyles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={selectedIds.has(it.id)}
-                onChange={() => onToggle(it)}
-                disabled={disabled}
-              />
-              {it.name}
-            </label>
-          ))
-        )}
-      </div>
     </div>
   );
 }

@@ -1,0 +1,60 @@
+.subTabsContainer {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+  padding-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.subTabsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.subTabButton {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 0 12px 0;
+  margin-bottom: -13px;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.subTabButton:hover {
+  color: var(--text);
+}
+
+.subTabButtonActive {
+  color: var(--text-heading);
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+}
+
+.subTabBadge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--border);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.subTabButtonActive .subTabBadge {
+  background: rgba(200, 98, 64, 0.15);
+  color: var(--accent);
+}
+
+@media (max-width: 400px) {
+  .subTabsContainer {
+    gap: 16px;
+  }
+}

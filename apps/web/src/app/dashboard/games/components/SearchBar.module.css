@@ -1,0 +1,71 @@
+.searchBarContainer {
+  margin-bottom: 28px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.searchForm {
+  display: flex;
+  flex: 1;
+  min-width: 250px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  border-radius: 0;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--text-heading);
+}
+
+.viewToggleBtnGroup {
+  display: flex;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 2px;
+  gap: 2px;
+}
+
+.viewToggleBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.viewToggleBtnActive {
+  background: var(--border);
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.viewToggleBtn:hover:not(.viewToggleBtnActive) {
+  color: var(--text-heading);
+}
+
+@media (max-width: 400px) {
+  .searchBarContainer {
+    gap: 10px;
+  }
+}

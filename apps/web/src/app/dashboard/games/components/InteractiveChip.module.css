@@ -1,0 +1,66 @@
+.interactiveChipsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 40px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 24px;
+}
+
+.interactiveChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.interactiveChipName {
+  color: var(--text-heading);
+}
+
+.interactiveChipSlug {
+  font-size: 10px;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+  font-style: italic;
+}
+
+.interactiveChipActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+.chipActionBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.chipActionBtn:hover {
+  color: var(--text-heading);
+}
+
+.chipActionDelete:hover {
+  color: var(--accent);
+}

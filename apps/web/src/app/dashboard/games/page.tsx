@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logoutAction } from "../actions";
 import styles from "../dashboard.module.css";
-import GamesDashboardClient, { SubTab } from "./GamesDashboardClient";
+import GamesDashboardClient from "./GamesDashboardClient";
+import { SubTab } from "./types";
 import ds from "../../../lib/dashboard-strings";
 import {
   listGamesAction,

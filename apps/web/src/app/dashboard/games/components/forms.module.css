@@ -1,0 +1,103 @@
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.input {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--text-heading);
+}
+
+.textarea {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.textarea:focus {
+  border-color: var(--text-heading);
+}
+
+.rowFields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.rowThreeFields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.errorMsg {
+  color: var(--accent);
+  font-size: 13px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(255, 75, 43, 0.08);
+  border-radius: 4px;
+  border-left: 3px solid var(--accent);
+}
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.relationsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.formSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-heading);
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.formActions {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.formActions > * {
+  flex: 1;
+}

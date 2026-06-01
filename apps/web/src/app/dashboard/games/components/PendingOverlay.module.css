@@ -1,0 +1,10 @@
+.pendingOverlay {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.pendingOverlayActive {
+  opacity: 0.6;
+  pointer-events: none;
+}
