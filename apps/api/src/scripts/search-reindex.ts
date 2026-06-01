@@ -20,7 +20,6 @@ async function main() {
 
   console.log(`[search:reindex] starting (drop=${drop})...`);
   const start = Date.now();
-  console.log(`[search:reindex] creating collections...`);
   await indexer.reindexAll({ drop });
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);
   console.log(`[search:reindex] done in ${elapsed}s`);

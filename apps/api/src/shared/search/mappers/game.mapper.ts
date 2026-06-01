@@ -1,5 +1,4 @@
 import type { GameWithRelations } from "../../../modules/games/games.repository.interface";
-import type { SearchLanguage } from "../search-indexer.interface";
 
 export interface GameDoc {
   id: string;
@@ -39,40 +38,8 @@ function toUnixSeconds(value: Date | string | null | undefined): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-function applyTranslation<T extends string | null | undefined>(
-  raw: T,
-  translations: { field: string; value: string }[],
-  fieldName: string
-): T {
-  const tr = translations.find((t) => t.field === fieldName);
-  return (tr ? (tr.value as T) : raw);
-}
-
-function applyTranslationOptional<T extends string | null | undefined>(
-  raw: T,
-  translations: { field: string; value: string }[],
-  fieldName: string
-): T | undefined {
-  const tr = translations.find((t) => t.field === fieldName);
-  if (tr) return tr.value as T;
-  return raw ?? undefined;
-}
-
-function applyTranslationNullable<T extends string | null | undefined>(
-  raw: T,
-  translations: { field: string; value: string }[],
-  fieldName: string
-): T {
-  const tr = translations.find((t) => t.field === fieldName);
-  return (tr ? (tr.value as T) : raw);
-}
-
-export function toGameDoc(
-  game: GameWithRelations,
-  lang: SearchLanguage,
-  translations: { field: string; value: string }[] = []
-): GameDoc {
-  const base: GameDoc = {
+export function toGameDoc(game: GameWithRelations): GameDoc {
+  return {
     id: game.id,
     slug: game.slug,
     title: game.title,
@@ -102,20 +69,6 @@ export function toGameDoc(
     themeSlugs: game.themes.map((t) => t.slug),
     createdAt: toUnixSeconds(game.createdAt),
     updatedAt: game.updatedAt ? toUnixSeconds(game.updatedAt) : undefined,
-  };
-
-  if (lang === "en" || translations.length === 0) {
-    return base;
-  }
-
-  return {
-    ...base,
-    title: applyTranslation(base.title, translations, "title"),
-    originalTitle: applyTranslationOptional(base.originalTitle, translations, "originalTitle"),
-    description: applyTranslationOptional(base.description, translations, "description"),
-    hltbMainHours: applyTranslationNullable(base.hltbMainHours, translations, "hltbMainHours"),
-    hltbMainExtraHours: applyTranslationNullable(base.hltbMainExtraHours, translations, "hltbMainExtraHours"),
-    hltbCompletionistHours: applyTranslationNullable(base.hltbCompletionistHours, translations, "hltbCompletionistHours"),
   };
 }
 

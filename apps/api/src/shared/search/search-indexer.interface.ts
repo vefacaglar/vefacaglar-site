@@ -5,8 +5,6 @@ import type { Genre, NewGenre } from "../../modules/games/genres.repository.inte
 import type { Platform, NewPlatform } from "../../modules/games/platforms.repository.interface";
 import type { Theme, NewTheme } from "../../modules/games/themes.repository.interface";
 
-export type SearchLanguage = "en" | "tr";
-
 export interface SearchResult<T> {
   items: T[];
   total: number;
@@ -28,12 +26,12 @@ export type LookupSearchItem =
 
 export interface ISearchIndexer {
   readonly enabled: boolean;
-  searchGames(query: SearchQuery, lang: SearchLanguage): Promise<SearchResult<GameSearchItem>>;
-  searchDevelopers(query: SearchQuery, lang: SearchLanguage): Promise<SearchResult<Developer>>;
-  searchPublishers(query: SearchQuery, lang: SearchLanguage): Promise<SearchResult<Publisher>>;
-  searchGenres(query: SearchQuery, lang: SearchLanguage): Promise<SearchResult<Genre>>;
-  searchPlatforms(query: SearchQuery, lang: SearchLanguage): Promise<SearchResult<Platform>>;
-  searchThemes(query: SearchQuery, lang: SearchLanguage): Promise<SearchResult<Theme>>;
+  searchGames(query: SearchQuery): Promise<SearchResult<GameSearchItem>>;
+  searchDevelopers(query: SearchQuery): Promise<SearchResult<Developer>>;
+  searchPublishers(query: SearchQuery): Promise<SearchResult<Publisher>>;
+  searchGenres(query: SearchQuery): Promise<SearchResult<Genre>>;
+  searchPlatforms(query: SearchQuery): Promise<SearchResult<Platform>>;
+  searchThemes(query: SearchQuery): Promise<SearchResult<Theme>>;
 
   indexGame(id: string): Promise<void>;
   indexDeveloper(id: string): Promise<void>;

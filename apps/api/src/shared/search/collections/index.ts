@@ -1,32 +1,27 @@
-import { buildGamesCollectionSchema } from "./games.collection";
-import { buildDevelopersCollectionSchema } from "./developers.collection";
-import { buildPublishersCollectionSchema } from "./publishers.collection";
-import { buildGenresCollectionSchema } from "./genres.collection";
-import { buildPlatformsCollectionSchema } from "./platforms.collection";
-import { buildThemesCollectionSchema } from "./themes.collection";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
-import type { SearchLanguage } from "../search-indexer.interface";
-
-export const LANGUAGES: SearchLanguage[] = ["en", "tr"];
+import { GAMES_COLLECTION } from "./games.collection";
+import { DEVELOPERS_COLLECTION } from "./developers.collection";
+import { PUBLISHERS_COLLECTION } from "./publishers.collection";
+import { GENRES_COLLECTION } from "./genres.collection";
+import { PLATFORMS_COLLECTION } from "./platforms.collection";
+import { THEMES_COLLECTION } from "./themes.collection";
 
 export function buildAllCollectionSchemas(): CollectionCreateSchema[] {
-  const schemas: CollectionCreateSchema[] = [];
-  for (const lang of LANGUAGES) {
-    schemas.push(buildGamesCollectionSchema(lang));
-    schemas.push(buildDevelopersCollectionSchema(lang));
-    schemas.push(buildPublishersCollectionSchema(lang));
-    schemas.push(buildGenresCollectionSchema(lang));
-    schemas.push(buildPlatformsCollectionSchema(lang));
-    schemas.push(buildThemesCollectionSchema(lang));
-  }
-  return schemas;
+  return [
+    GAMES_COLLECTION,
+    DEVELOPERS_COLLECTION,
+    PUBLISHERS_COLLECTION,
+    GENRES_COLLECTION,
+    PLATFORMS_COLLECTION,
+    THEMES_COLLECTION,
+  ];
 }
 
-export const COLLECTION_NAME_BUILDERS = {
-  games: buildGamesCollectionSchema,
-  developers: buildDevelopersCollectionSchema,
-  publishers: buildPublishersCollectionSchema,
-  genres: buildGenresCollectionSchema,
-  platforms: buildPlatformsCollectionSchema,
-  themes: buildThemesCollectionSchema,
-} as const;
+export const ALL_COLLECTION_NAMES = [
+  GAMES_COLLECTION.name,
+  DEVELOPERS_COLLECTION.name,
+  PUBLISHERS_COLLECTION.name,
+  GENRES_COLLECTION.name,
+  PLATFORMS_COLLECTION.name,
+  THEMES_COLLECTION.name,
+] as const;

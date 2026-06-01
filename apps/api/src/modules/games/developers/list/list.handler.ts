@@ -14,10 +14,11 @@ export class ListDevelopersHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.searchIndexer.searchDevelopers(
-      { q, page: pageNum, limit: limitNum },
-      request.lang === "tr" ? "tr" : "en"
-    );
+    const { items: rows, total } = await this.searchIndexer.searchDevelopers({
+      q,
+      page: pageNum,
+      limit: limitNum,
+    });
 
     const totalPages = Math.ceil(total / limitNum);
 
