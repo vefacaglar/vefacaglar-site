@@ -38,3 +38,19 @@
   cursor: not-allowed;
   pointer-events: none;
 }
+
+@media (max-width: 480px) {
+  .pagination {
+    gap: 8px;
+  }
+  
+  .pageButton {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  
+  .pageInfo {
+    font-size: 12px;
+  }
+}
+

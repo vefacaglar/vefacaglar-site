@@ -543,27 +543,39 @@ export default function GamesDashboardClient({
             className={`${clientStyles.paginationBtn} ${page === 1 ? clientStyles.paginationBtnDisabled : ""}`}
             onClick={() => page > 1 && handlePageChange(page - 1)}
             disabled={page === 1}
+            title={ds.games.pagination.prev}
           >
-            {ds.games.pagination.prev}
+            <span className={clientStyles.paginationBtnArrow}>←</span>
+            <span className={clientStyles.paginationBtnText}> {ds.games.pagination.prev.replace("←", "").trim()}</span>
           </button>
-          {getPageNumbers().map((p, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className={`${clientStyles.paginationBtn} ${p === page ? clientStyles.paginationBtnActive : ""} ${p === "..." ? clientStyles.paginationBtnDisabled : ""}`}
-              onClick={() => typeof p === "number" && handlePageChange(p)}
-              disabled={p === "..."}
-            >
-              {p}
-            </button>
-          ))}
+          
+          <div className={clientStyles.paginationPagesList}>
+            {getPageNumbers().map((p, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`${clientStyles.paginationBtn} ${p === page ? clientStyles.paginationBtnActive : ""} ${p === "..." ? clientStyles.paginationBtnDisabled : ""}`}
+                onClick={() => typeof p === "number" && handlePageChange(p)}
+                disabled={p === "..."}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          <span className={clientStyles.paginationMobileInfo}>
+            {page} / {totalPages}
+          </span>
+
           <button
             type="button"
             className={`${clientStyles.paginationBtn} ${page === totalPages ? clientStyles.paginationBtnDisabled : ""}`}
             onClick={() => page < totalPages && handlePageChange(page + 1)}
             disabled={page === totalPages}
+            title={ds.games.pagination.next}
           >
-            {ds.games.pagination.next}
+            <span className={clientStyles.paginationBtnText}>{ds.games.pagination.next.replace("→", "").trim()} </span>
+            <span className={clientStyles.paginationBtnArrow}>→</span>
           </button>
         </div>
         <div className={clientStyles.paginationPageSize}>
