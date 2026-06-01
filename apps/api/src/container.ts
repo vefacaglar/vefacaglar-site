@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { container } from "tsyringe";
 import { db } from "@vefacaglar/db";
 import { DB_CONNECTION } from "./db.tokens";
@@ -24,6 +25,10 @@ import { DrizzlePlatformsRepository } from "./modules/games/platforms.repository
 import { DrizzleGamesRepository } from "./modules/games/games.repository";
 import { PACKAGES_REPOSITORY } from "./modules/packages/packages.tokens";
 import { DrizzlePackagesRepository } from "./modules/packages/packages.repository";
+import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_INDEXER } from "./shared/search/search.tokens";
+import { createTypesenseClient, createDisabledTypesenseClient, readTypesenseConfig } from "./shared/search/typesense.client";
+import { createRedisClient, createDisabledRedisClient, readRedisConfig } from "./shared/search/redis.client";
+import { TypesenseSearchIndexer } from "./shared/search/typesense-indexer.service";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
@@ -42,6 +47,19 @@ container.registerSingleton(PLATFORMS_REPOSITORY, DrizzlePlatformsRepository);
 container.registerSingleton(GAMES_REPOSITORY, DrizzleGamesRepository);
 container.registerSingleton(PACKAGES_REPOSITORY, DrizzlePackagesRepository);
 
+const typesenseConfig = readTypesenseConfig();
+container.registerInstance(TYPESENSE_CONFIG, typesenseConfig);
+container.registerInstance(
+  TYPESENSE_CLIENT,
+  typesenseConfig.enabled ? createTypesenseClient(typesenseConfig) : createDisabledTypesenseClient()
+);
 
+const redisConfig = readRedisConfig();
+container.registerInstance(
+  REDIS_CLIENT,
+  redisConfig ? createRedisClient(redisConfig) : createDisabledRedisClient()
+);
+
+container.registerSingleton(SEARCH_INDEXER, TypesenseSearchIndexer);
 
 export { container };

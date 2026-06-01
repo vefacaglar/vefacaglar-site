@@ -1,11 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListGamesQuery, ListGamesResponse } from "./list.schema";
-import { injectable } from "tsyringe";
-import { GameService } from "../../games.service";
+import { inject, injectable } from "tsyringe";
+import { SEARCH_INDEXER } from "../../../../shared/search/search.tokens";
+import type { ISearchIndexer } from "../../../../shared/search/search-indexer.interface";
 
 @injectable()
 export class ListGamesHandler {
-  constructor(private readonly gameService: GameService) {}
+  constructor(@inject(SEARCH_INDEXER) private readonly searchIndexer: ISearchIndexer) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListGamesQuery }>): Promise<ListGamesResponse> {
     const { page, limit, q } = request.query;
@@ -13,11 +14,10 @@ export class ListGamesHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.gameService.listGames({
-      page: pageNum,
-      limit: limitNum,
-      q,
-    });
+    const { items: rows, total } = await this.searchIndexer.searchGames(
+      { q, page: pageNum, limit: limitNum },
+      request.lang === "tr" ? "tr" : "en"
+    );
 
     const totalPages = Math.ceil(total / limitNum);
 
@@ -36,12 +36,12 @@ export class ListGamesHandler {
       hltbCompletionistHours: row.hltbCompletionistHours,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
-      
-      developers: row.developers.map(d => ({ id: d.id, name: d.name, slug: d.slug })),
-      publishers: row.publishers.map(p => ({ id: p.id, name: p.name, slug: p.slug })),
-      genres: row.genres.map(g => ({ id: g.id, name: g.name, slug: g.slug })),
-      platforms: row.platforms.map(pl => ({ id: pl.id, name: pl.name, slug: pl.slug })),
-      themes: row.themes.map(t => ({ id: t.id, name: t.name, slug: t.slug })),
+
+      developers: row.developers.map((d) => ({ id: d.id, name: d.name, slug: d.slug })),
+      publishers: row.publishers.map((p) => ({ id: p.id, name: p.name, slug: p.slug })),
+      genres: row.genres.map((g) => ({ id: g.id, name: g.name, slug: g.slug })),
+      platforms: row.platforms.map((pl) => ({ id: pl.id, name: pl.name, slug: pl.slug })),
+      themes: row.themes.map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
     }));
 
     return {

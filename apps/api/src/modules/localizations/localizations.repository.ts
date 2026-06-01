@@ -51,4 +51,21 @@ export class DrizzleLocalizationsRepository implements ILocalizationsRepository 
 
     return row;
   }
+
+  async findByEntity(
+    entityType: string,
+    entityId: string,
+    languageCode: string
+  ): Promise<{ field: string; value: string }[]> {
+    const rows = await this.dbProvider.client
+      .select({ field: localizations.field, value: localizations.value })
+      .from(localizations)
+      .where(and(
+        eq(localizations.entityType, entityType),
+        eq(localizations.entityId, entityId),
+        eq(localizations.languageCode, languageCode)
+      ));
+
+    return rows;
+  }
 }

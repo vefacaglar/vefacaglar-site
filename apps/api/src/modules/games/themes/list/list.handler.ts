@@ -1,11 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListThemesQuery, ListThemesResponse } from "./list.schema";
-import { injectable } from "tsyringe";
-import { GameService } from "../../games.service";
+import { inject, injectable } from "tsyringe";
+import { SEARCH_INDEXER } from "../../../../shared/search/search.tokens";
+import type { ISearchIndexer } from "../../../../shared/search/search-indexer.interface";
 
 @injectable()
 export class ListThemesHandler {
-  constructor(private readonly gameService: GameService) {}
+  constructor(@inject(SEARCH_INDEXER) private readonly searchIndexer: ISearchIndexer) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListThemesQuery }>): Promise<ListThemesResponse> {
     const { page, limit, q } = request.query;
@@ -13,11 +14,10 @@ export class ListThemesHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.gameService.listThemes({
-      page: pageNum,
-      limit: limitNum,
-      q,
-    });
+    const { items: rows, total } = await this.searchIndexer.searchThemes(
+      { q, page: pageNum, limit: limitNum },
+      request.lang === "tr" ? "tr" : "en"
+    );
 
     const totalPages = Math.ceil(total / limitNum);
 

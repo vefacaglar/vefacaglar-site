@@ -1,11 +1,12 @@
 import { FastifyRequest } from "fastify";
 import { ListPublishersQuery, ListPublishersResponse } from "./list.schema";
-import { injectable } from "tsyringe";
-import { GameService } from "../../games.service";
+import { inject, injectable } from "tsyringe";
+import { SEARCH_INDEXER } from "../../../../shared/search/search.tokens";
+import type { ISearchIndexer } from "../../../../shared/search/search-indexer.interface";
 
 @injectable()
 export class ListPublishersHandler {
-  constructor(private readonly gameService: GameService) {}
+  constructor(@inject(SEARCH_INDEXER) private readonly searchIndexer: ISearchIndexer) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListPublishersQuery }>): Promise<ListPublishersResponse> {
     const { page, limit, q } = request.query;
@@ -13,11 +14,10 @@ export class ListPublishersHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.gameService.listPublishers({
-      page: pageNum,
-      limit: limitNum,
-      q,
-    });
+    const { items: rows, total } = await this.searchIndexer.searchPublishers(
+      { q, page: pageNum, limit: limitNum },
+      request.lang === "tr" ? "tr" : "en"
+    );
 
     const totalPages = Math.ceil(total / limitNum);
 
