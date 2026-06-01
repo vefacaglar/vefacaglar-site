@@ -21,7 +21,10 @@ Database (Drizzle, against the `DATABASE_URL` in root `.env`):
 - `pnpm --filter @vefacaglar/db db:seed` — seed default admin (`admin@vefacaglar.com` / `123`, scrypt-hashed).
 - `pnpm --filter @vefacaglar/db db:studio` — Drizzle Studio UI.
 
-No test runner is configured.
+Testing (Vitest, `apps/api`):
+- `pnpm test` — run all workspace tests via Turborepo.
+- `pnpm --filter api test` — run API tests once.
+- `pnpm --filter api test:watch` — watch mode.
 
 ## Architecture
 
@@ -58,5 +61,6 @@ From `AGENTS.md` — these are firm constraints, not suggestions:
   - **Colors & Palette**: Always use variables from `globals.css` (`var(--bg)`, `var(--text)`, `var(--text-heading)`, `var(--muted)`, `var(--border)`, `var(--accent)`). Never hardcode hex/rgb colors.
   - **Buttons**: Must strictly use standard classes from `globals.css`: `btnAccent` (primary) and `btnGhost` (secondary).
   - **No Rounded Corners (Sharp Flat Aesthetic)**: All buttons, links styled as buttons, inputs, textareas, selectors, pagination controls, editor tabs, and interactive chips must have sharp, flat 90-degree square corners (`border-radius: 0;`). Never add rounded corners (`border-radius` > 0) to standard components.
+- **Testing (`apps/api`, Vitest)**: The unit under test is the **Handler**. Colocate specs next to the handler as `<feature>.handler.spec.ts` — never a separate `__tests__/` or root `test/` dir. Start each spec with `import "reflect-metadata";`, instantiate the handler directly (`new Handler(mockRepo)`) bypassing the `tsyringe` container, and mock all repository/service deps as `Record<keyof IRepository, any>` with `vi.fn()` — tests must never touch a real DB, Drizzle, or the network. Do not unit-test thin routes, TypeBox schemas, or repositories. Use `*.spec.ts` (not `*.test.ts`). Keep the build guards intact: `tsconfig.json` excludes `**/*.spec.ts` + `vitest.config.ts`, and `vitest.config.ts` pins `include` to `src/**/*.spec.ts`.
 - Do **not** add Tailwind, heavy UI libraries, authentication, or database logic unless explicitly requested.
 - All user-facing UI text, code/comments/logs, and git commit messages must be in **English**.

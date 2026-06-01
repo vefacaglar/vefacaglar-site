@@ -13,6 +13,7 @@ Welcome to the personal developer website and API monorepo of Vefa Çağlar. Thi
 - **Database / ORM:** [Drizzle ORM](https://orm.drizzle.team/) & [Drizzle Kit](https://orm.drizzle.team/docs/kit-overview) (`packages/db`)
 - **Shared Utilities:** TypeScript shared package (`packages/shared`)
 - **Validation:** [TypeBox](https://github.com/sinclairzx81/typebox) (Runtime Validation & Schema Serialization)
+- **Testing:** [Vitest](https://vitest.dev/) (Handler-level unit tests in `apps/api`)
 - **Search & Indexing Engine:** [Typesense](https://typesense.org/) (for ultra-fast, typo-tolerant searches across games, developers, publishers, genres, platforms, and themes)
 - **State & Resiliency Cache:** [Redis](https://redis.io/) (used for circuit breaker health state persistence across serverless invocations)
 - **API Documentation:** OpenAPI/Swagger (`@fastify/swagger` & `@fastify/swagger-ui`)
@@ -60,11 +61,26 @@ Search across game-related entities (games, developers, publishers, genres, plat
 
 ---
 
+## 🧪 Testing
+
+The API (`apps/api`) is covered by **Vitest** unit tests that follow the Feature Folder / Handler conventions:
+
+- **The unit is the Handler.** Tests target Handler classes — their input→output logic: query/param parsing, default values, response shaping (e.g. `Date → ISO string`), and thrown `HttpError`s such as `NotFoundError`.
+- **Colocated specs.** Each test lives next to the file it covers, inside the same feature folder, named `<feature>.handler.spec.ts` (e.g. `src/modules/posts/list/list.handler.spec.ts`). There is no separate `__tests__/` or root `test/` directory.
+- **No DI container, no real I/O.** Handlers are instantiated directly (`new Handler(mockRepo)`), bypassing `tsyringe`. Every repository/service dependency is mocked with `vi.fn()`; tests never touch a real database, Drizzle, or the network.
+- **Out of scope for unit tests:** thin route dispatchers (`*.routes.ts`), TypeBox schemas (`*.schema.ts`), and repositories/services that perform direct DB access.
+- **Build isolation.** Specs are excluded from the production build (`tsconfig.json`) and Vitest only scans `src/**/*.spec.ts` (`apps/api/vitest.config.ts`), so test code never leaks into `dist/`.
+
+Run them with `pnpm test` (all workspaces) or `pnpm --filter api test` (API only) — see [Running Tests](#run-tests).
+
+---
+
 ## 📌 Development Conventions
 
 - **Language:** All visible UI text, source code comments, logs, and Git commit messages **must be in English**.
 - **Simplicity:** Keep the implementation minimal. No heavy UI libraries unless necessary.
 - **Verification:** Always use `pnpm typecheck` to verify codebase correctness non-destructively. Avoid running `pnpm build` during active local development as it breaks Next.js HMR.
+- **Testing:** API logic is covered by **Vitest** unit tests. See the [Testing](#-testing) section below for the conventions (Handler-level, colocated, mocked repositories).
 
 ---
 
@@ -114,6 +130,19 @@ Run typescript verification and code style checking across all packages:
 ```bash
 pnpm typecheck
 pnpm lint
+```
+
+### Run Tests
+Execute the Vitest unit test suites across all workspaces:
+```bash
+# All workspaces (via Turborepo)
+pnpm test
+
+# API only
+pnpm --filter api test
+
+# API watch mode
+pnpm --filter api test:watch
 ```
 
 ### Search Indexing CLI

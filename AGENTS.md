@@ -94,6 +94,19 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
 
 Never hand-write migration SQL files. Always edit the Drizzle schema in `packages/db/src/schema/` and generate the migration with `pnpm --filter @vefacaglar/db db:generate`. Editing a generated file is only allowed to insert a data/backfill step (e.g. `UPDATE` between `ADD COLUMN` and `SET NOT NULL`) — never to rewrite the DDL Drizzle produced.
 
+## Testing (`apps/api`)
+
+Unit tests use **Vitest**. The conventions below are firm constraints, not suggestions.
+
+- **Colocation**: Tests live **next to the file they cover**, inside the same feature folder, named `<feature>.handler.spec.ts` (e.g. `src/modules/posts/list/list.handler.spec.ts`). Never create a separate `__tests__/` or root-level `test/` directory — that breaks the Feature Folder layout.
+- **The unit is the Handler**: Unit tests target Handler classes — their input→output logic (query/param parsing, default values, response shaping such as `Date → ISO string`, and thrown `HttpError`s like `NotFoundError`). This is where the business logic lives.
+- **No DI container, no real DB**: Instantiate the handler directly (`new ListPostsHandler(mockRepo)`), bypassing the `tsyringe` container. Mock every repository/service dependency — tests must **never** touch a real database, Drizzle, or the network. Mock repos as `Record<keyof IRepository, any>` with each method as `vi.fn()`.
+- **`reflect-metadata`**: Every spec must start with `import "reflect-metadata";` (the handlers use decorators).
+- **Do NOT unit-test**: thin route dispatchers (`*.routes.ts`), TypeBox schemas (`*.schema.ts`), or repositories/services that perform direct DB access. The repository/DB layer is out of scope for unit tests.
+- **File naming**: Use `*.spec.ts` consistently. Do not mix in `*.test.ts`.
+- **Build isolation**: Specs are excluded from the production build via `tsconfig.json` (`exclude: ["**/*.spec.ts", "vitest.config.ts"]`) and Vitest only scans `src/**/*.spec.ts` (pinned in `apps/api/vitest.config.ts`). Do not remove these guards — without them, compiled `dist/**/*.spec.js` files leak into the bundle and get double-run.
+- **Commands**: `pnpm test` (all workspaces via Turborepo), `pnpm --filter api test` (API only), `pnpm --filter api test:watch` (watch mode).
+
 ## Development & Verification Guidelines
 
 To verify code changes (syntax and TypeScript correctness) without disrupting the active local development server (`pnpm dev` / `next dev`):

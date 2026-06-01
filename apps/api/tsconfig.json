@@ -10,5 +10,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true
-  }
+  },
+  "exclude": ["**/*.spec.ts", "vitest.config.ts"]
 }
