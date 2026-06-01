@@ -31,7 +31,7 @@ export class GetDocHandler {
 
     return {
       id: doc.id,
-      packageId: doc.packageId,
+      groupId: doc.groupId,
       categoryId: doc.categoryId,
       slug: doc.slug,
       title: doc.title,

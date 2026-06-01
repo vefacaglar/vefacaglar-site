@@ -25,7 +25,7 @@ import { ListPackagesQuery, ListPackagesQuerySchema, ListPackagesResponseSchema 
 // DocCategory Validation Schemas
 const CategorySchema = Type.Object({
   id: Type.String(),
-  packageId: Type.String(),
+  groupId: Type.String(),
   title: Type.String(),
   slug: Type.String(),
   displayOrder: Type.Number(),
@@ -46,7 +46,7 @@ const UpdateCategoryRequestSchema = Type.Object({
 // Doc Validation Schemas
 const DocSchema = Type.Object({
   id: Type.String(),
-  packageId: Type.String(),
+  groupId: Type.String(),
   categoryId: Type.Union([Type.String(), Type.Null()]),
   slug: Type.String(),
   title: Type.String(),
@@ -57,6 +57,44 @@ const DocSchema = Type.Object({
   isPublished: Type.Boolean(),
   createdAt: Type.String(),
   updatedAt: Type.String(),
+});
+
+const PackageItemSchema = Type.Object({
+  id: Type.String(),
+  groupId: Type.String(),
+  slug: Type.String(),
+  name: Type.String(),
+  description: Type.Union([Type.String(), Type.Null()]),
+  nugetUrl: Type.Union([Type.String(), Type.Null()]),
+  npmUrl: Type.Union([Type.String(), Type.Null()]),
+  githubUrl: Type.Union([Type.String(), Type.Null()]),
+  latestVersion: Type.String(),
+  isActive: Type.Boolean(),
+  createdAt: Type.String(),
+  updatedAt: Type.String(),
+});
+
+const CreatePackageItemRequestSchema = Type.Object({
+  slug: Type.String(),
+  name: Type.String(),
+  description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  nugetUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  npmUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  latestVersion: Type.Optional(Type.String()),
+  isActive: Type.Optional(Type.Boolean()),
+});
+
+const UpdatePackageItemRequestSchema = Type.Object({
+  groupId: Type.String(),
+  slug: Type.String(),
+  name: Type.String(),
+  description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  nugetUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  npmUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  githubUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  latestVersion: Type.Optional(Type.String()),
+  isActive: Type.Optional(Type.Boolean()),
 });
 
 const CreateDocRequestSchema = Type.Object({
@@ -83,6 +121,8 @@ const UpdateDocRequestSchema = Type.Object({
 
 type CreateDocRequest = Static<typeof CreateDocRequestSchema>;
 type UpdateDocRequest = Static<typeof UpdateDocRequestSchema>;
+type CreatePackageItemRequest = Static<typeof CreatePackageItemRequestSchema>;
+type UpdatePackageItemRequest = Static<typeof UpdatePackageItemRequestSchema>;
 
 export async function packagesRoutes(app: FastifyInstance) {
   const createHandler = container.resolve(CreatePackageHandler);
@@ -152,6 +192,166 @@ export async function packagesRoutes(app: FastifyInstance) {
     },
   }, (request) => deleteHandler.handle(request));
 
+  // --- Child Package Operations ---
+
+  app.get<{ Params: { groupId: string } }>("/dashboard/:groupId/package-items", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "List packages inside a package group",
+      tags: ["Packages"],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ groupId: Type.String() }),
+      response: { 200: Type.Array(PackageItemSchema), 401: ErrorResponseSchema },
+    },
+  }, async (request) => {
+    const packagesRepo = container.resolve<IPackagesRepository>(PACKAGES_REPOSITORY);
+    const rows = await packagesRepo.listPackageItems(request.params.groupId);
+    return rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    }));
+  });
+
+  app.post<{ Params: { groupId: string }; Body: CreatePackageItemRequest }>("/dashboard/:groupId/package-items", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "Create a package inside a package group",
+      tags: ["Packages"],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ groupId: Type.String() }),
+      body: CreatePackageItemRequestSchema,
+      response: { 200: PackageItemSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema, 409: ErrorResponseSchema },
+    },
+  }, async (request) => {
+    const packagesRepo = container.resolve<IPackagesRepository>(PACKAGES_REPOSITORY);
+    const { groupId } = request.params;
+    const body = request.body;
+
+    const group = await packagesRepo.findById(groupId);
+    if (!group) {
+      throw new NotFoundError("err_package_not_found");
+    }
+
+    const existing = await packagesRepo.findPackageItemBySlug(body.slug);
+    if (existing) {
+      throw new ConflictError("err_slug_already_exists");
+    }
+
+    const row = await packagesRepo.createPackageItem({
+      groupId,
+      slug: body.slug,
+      name: body.name,
+      description: body.description ?? null,
+      nugetUrl: body.nugetUrl ?? null,
+      npmUrl: body.npmUrl ?? null,
+      githubUrl: body.githubUrl ?? null,
+      latestVersion: body.latestVersion ?? "1.0.0",
+      isActive: body.isActive ?? true,
+    });
+
+    return {
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  });
+
+  app.put<{ Params: { id: string }; Body: UpdatePackageItemRequest }>("/dashboard/package-items/:id", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "Update a package inside a package group",
+      tags: ["Packages"],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ id: Type.String() }),
+      body: UpdatePackageItemRequestSchema,
+      response: { 200: PackageItemSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema, 409: ErrorResponseSchema },
+    },
+  }, async (request) => {
+    const packagesRepo = container.resolve<IPackagesRepository>(PACKAGES_REPOSITORY);
+    const { id } = request.params;
+    const body = request.body;
+
+    const current = await packagesRepo.findPackageItemById(id);
+    if (!current) {
+      throw new NotFoundError("err_package_not_found");
+    }
+
+    const group = await packagesRepo.findById(body.groupId);
+    if (!group) {
+      throw new NotFoundError("err_package_not_found");
+    }
+
+    if (body.slug !== current.slug) {
+      const existing = await packagesRepo.findPackageItemBySlug(body.slug);
+      if (existing && existing.id !== id) {
+        throw new ConflictError("err_slug_already_exists");
+      }
+    }
+
+    const row = await packagesRepo.updatePackageItem(id, {
+      groupId: body.groupId,
+      slug: body.slug,
+      name: body.name,
+      description: body.description ?? null,
+      nugetUrl: body.nugetUrl ?? null,
+      npmUrl: body.npmUrl ?? null,
+      githubUrl: body.githubUrl ?? null,
+      latestVersion: body.latestVersion ?? "1.0.0",
+      isActive: body.isActive ?? true,
+      updatedAt: new Date(),
+    });
+
+    return {
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  });
+
+  app.get<{ Params: { id: string } }>("/dashboard/package-items/:id", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "Get a package inside a package group",
+      tags: ["Packages"],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ id: Type.String() }),
+      response: { 200: PackageItemSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, async (request) => {
+    const packagesRepo = container.resolve<IPackagesRepository>(PACKAGES_REPOSITORY);
+    const row = await packagesRepo.findPackageItemById(request.params.id);
+    if (!row) {
+      throw new NotFoundError("err_package_not_found");
+    }
+
+    return {
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  });
+
+  app.delete<{ Params: { id: string } }>("/dashboard/package-items/:id", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "Delete a package inside a package group",
+      tags: ["Packages"],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ id: Type.String() }),
+      response: { 200: Type.Object({ success: Type.Boolean() }), 401: ErrorResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, async (request) => {
+    const packagesRepo = container.resolve<IPackagesRepository>(PACKAGES_REPOSITORY);
+    const item = await packagesRepo.findPackageItemById(request.params.id);
+    if (!item) {
+      throw new NotFoundError("err_package_not_found");
+    }
+
+    await packagesRepo.deletePackageItem(request.params.id);
+    return { success: true };
+  });
+
   // --- DocCategory Operations ---
 
   app.get<{ Params: { packageId: string } }>("/dashboard/:packageId/categories", {
@@ -189,7 +389,7 @@ export async function packagesRoutes(app: FastifyInstance) {
     }
 
     return packagesRepo.createCategory({
-      packageId,
+      groupId: packageId,
       title: body.title,
       slug: body.slug,
       displayOrder: body.displayOrder ?? 0,
@@ -217,7 +417,7 @@ export async function packagesRoutes(app: FastifyInstance) {
     }
 
     if (body.slug !== category.slug) {
-      const existing = await packagesRepo.findCategoryBySlug(category.packageId, body.slug);
+      const existing = await packagesRepo.findCategoryBySlug(category.groupId, body.slug);
       if (existing && existing.id !== id) {
         throw new ConflictError("err_slug_already_exists");
       }
@@ -294,7 +494,7 @@ export async function packagesRoutes(app: FastifyInstance) {
     }
 
     const row = await packagesRepo.createDoc({
-      packageId,
+      groupId: packageId,
       categoryId: body.categoryId ?? null,
       title: body.title,
       slug: body.slug,
@@ -355,7 +555,7 @@ export async function packagesRoutes(app: FastifyInstance) {
     }
 
     if (body.slug !== doc.slug) {
-      const existing = await packagesRepo.findDocBySlug(doc.packageId, body.slug);
+      const existing = await packagesRepo.findDocBySlug(doc.groupId, body.slug);
       if (existing && existing.id !== id) {
         throw new ConflictError("err_slug_already_exists");
       }

@@ -21,6 +21,19 @@ export const PublicDocItemSchema = Type.Object({
   displayOrder: Type.Number(),
 });
 
+export const PublicPackageItemSchema = Type.Object({
+  id: Type.String(),
+  groupId: Type.String(),
+  slug: Type.String(),
+  name: Type.String(),
+  description: Type.Union([Type.String(), Type.Null()]),
+  nugetUrl: Type.Union([Type.String(), Type.Null()]),
+  npmUrl: Type.Union([Type.String(), Type.Null()]),
+  githubUrl: Type.Union([Type.String(), Type.Null()]),
+  latestVersion: Type.String(),
+  isActive: Type.Boolean(),
+});
+
 export const GetPackageResponseSchema = Type.Object({
   id: Type.String(),
   slug: Type.String(),
@@ -32,6 +45,7 @@ export const GetPackageResponseSchema = Type.Object({
   docs: Type.Union([Type.String(), Type.Null()]),
   latestVersion: Type.String(),
   content: Type.String(),
+  packages: Type.Array(PublicPackageItemSchema),
   categories: Type.Array(PublicDocCategorySchema),
   docsList: Type.Array(PublicDocItemSchema),
 });

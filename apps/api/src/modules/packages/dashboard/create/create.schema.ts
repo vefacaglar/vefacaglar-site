@@ -25,6 +25,7 @@ export const PackageResponseSchema = Type.Object({
   docs: Type.Union([Type.String(), Type.Null()]),
   latestVersion: Type.String(),
   isActive: Type.Boolean(),
+  packageCount: Type.Optional(Type.Number()),
   content: Type.Optional(Type.String()),
   createdAt: Type.String(),
   updatedAt: Type.String(),

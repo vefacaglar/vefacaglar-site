@@ -17,7 +17,8 @@ export class GetPackageHandler {
       throw new NotFoundError("err_package_not_found");
     }
 
-    const [categories, docs] = await Promise.all([
+    const [packageItems, categories, docs] = await Promise.all([
+      this.packagesRepo.listPackageItems(pkg.id),
       this.packagesRepo.listCategories(pkg.id),
       this.packagesRepo.listDocs(pkg.id),
     ]);
@@ -29,12 +30,26 @@ export class GetPackageHandler {
       slug: pkg.slug,
       name: pkg.name,
       description: pkg.description,
-      nugetUrl: pkg.nugetUrl,
-      npmUrl: pkg.npmUrl,
+      nugetUrl: null,
+      npmUrl: null,
       githubUrl: pkg.githubUrl,
       docs: pkg.docs,
       latestVersion: pkg.latestVersion,
       content: pkg.content,
+      packages: packageItems
+        .filter((item) => item.isActive)
+        .map((item) => ({
+          id: item.id,
+          groupId: item.groupId,
+          slug: item.slug,
+          name: item.name,
+          description: item.description,
+          nugetUrl: item.nugetUrl,
+          npmUrl: item.npmUrl,
+          githubUrl: item.githubUrl,
+          latestVersion: item.latestVersion,
+          isActive: item.isActive,
+        })),
       categories: categories.map((cat) => ({
         id: cat.id,
         title: cat.title,

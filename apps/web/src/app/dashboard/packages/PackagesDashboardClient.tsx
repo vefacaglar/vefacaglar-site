@@ -20,6 +20,7 @@ interface PackageItem {
   docs?: string | null;
   latestVersion: string;
   isActive: boolean;
+  packageCount?: number;
 }
 
 interface PackagesDashboardClientProps {
@@ -72,9 +73,9 @@ export default function PackagesDashboardClient({
   return (
     <section className={`${styles.section} ${styles.sectionTransition} ${isPending ? styles.pendingSection : ""}`}>
       <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>{ds.packages.title}</h2>
+        <h2 className={styles.sectionTitle}>Package groups</h2>
         <Link href="/dashboard/packages/new" className="btnAccent">
-          {ds.packages.newPackage}
+          New group
         </Link>
       </div>
 
@@ -85,7 +86,7 @@ export default function PackagesDashboardClient({
             type="text"
             value={searchVal}
             onChange={(e) => setSearchVal(e.target.value)}
-            placeholder="Search packages by name or slug..."
+            placeholder="Search groups by name or slug..."
             className={`input ${styles.searchInput}`}
           />
           {initialQ && (
@@ -111,7 +112,7 @@ export default function PackagesDashboardClient({
 
       {total === 0 ? (
         <p className={styles.empty}>
-          {initialQ ? `No packages match your search query: "${initialQ}"` : ds.packages.noPackages}
+          {initialQ ? `No package groups match your search query: "${initialQ}"` : "No package groups yet."}
         </p>
       ) : (
         <>
@@ -127,6 +128,7 @@ export default function PackagesDashboardClient({
                   </div>
                   <div className={styles.cardMeta}>
                     <div>slug: {pkg.slug}</div>
+                    <div>{pkg.packageCount ?? 0} packages</div>
                     <div className={styles.cardVersion}>
                       <code>v{pkg.latestVersion}</code>
                     </div>
@@ -134,13 +136,18 @@ export default function PackagesDashboardClient({
                 </div>
                 <div className={styles.cardFooter}>
                   <div className={styles.cardActions}>
-                    <Link href={`/dashboard/packages/edit/${pkg.id}`} className={styles.editLink}>
+                    <Link href={`/dashboard/package-groups/${pkg.id}`} className={styles.editLink}>
                       {ds.content.edit}
                     </Link>
                     <DeleteButton
                       id={pkg.id}
                       type="package"
                       title={pkg.name}
+                      confirmMessage={
+                        (pkg.packageCount ?? 0) > 0
+                          ? `This package group has ${pkg.packageCount} package${pkg.packageCount === 1 ? "" : "s"} linked to it. Deleting it will also delete those packages and group documentation. Continue?`
+                          : undefined
+                      }
                       onDelete={deletePackageAction}
                     />
                   </div>

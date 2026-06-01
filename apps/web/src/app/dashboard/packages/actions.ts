@@ -45,6 +45,31 @@ export async function listPackagesAction(params: ListParams) {
   return listProxy<any>("/api/packages/dashboard", params);
 }
 
+export async function listPackageGroupsAction(params: ListParams = {}) {
+  return listProxy<any>("/api/packages/dashboard", params);
+}
+
+export async function getPackageGroupAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.get(`/api/packages/dashboard/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to get package group details." };
+    }
+    return await res.json();
+  } catch (error) {
+    console.error("Get package group error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
 export async function createPackageAction(data: {
   name: string;
   slug: string;
@@ -148,6 +173,143 @@ export async function deletePackageAction(id: string) {
   }
 }
 
+// --- Child Package Actions ---
+
+export async function listPackageItemsAction(groupId: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.get(`/api/packages/dashboard/${groupId}/package-items`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to list package items." };
+    }
+    return await res.json() as any[];
+  } catch (error) {
+    console.error("List package items error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function getPackageItemAction(id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.get(`/api/packages/dashboard/package-items/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to get package item details." };
+    }
+    return await res.json();
+  } catch (error) {
+    console.error("Get package item error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function createPackageItemAction(
+  groupId: string,
+  data: {
+    groupId: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    nugetUrl?: string | null;
+    npmUrl?: string | null;
+    githubUrl?: string | null;
+    latestVersion?: string;
+    isActive?: boolean;
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.post(`/api/packages/dashboard/${groupId}/package-items`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to create package item." };
+    }
+    revalidatePath(`/dashboard/packages/edit/${groupId}`);
+    revalidatePath(`/dashboard/package-groups/${groupId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Create package item error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function updatePackageItemAction(
+  groupId: string,
+  id: string,
+  data: {
+    groupId: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+    nugetUrl?: string | null;
+    npmUrl?: string | null;
+    githubUrl?: string | null;
+    latestVersion?: string;
+    isActive?: boolean;
+  }
+) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.put(`/api/packages/dashboard/package-items/${id}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to update package item." };
+    }
+    revalidatePath(`/dashboard/packages/edit/${groupId}`);
+    revalidatePath(`/dashboard/package-groups/${groupId}`);
+    revalidatePath(`/dashboard/package-groups/${data.groupId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Update package item error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
+export async function deletePackageItemAction(groupId: string, id: string) {
+  const cookieStore = cookies();
+  const token = cookieStore.get("session_token")?.value;
+  if (!token) return { error: "Unauthorized." };
+
+  try {
+    const res = await httpClient.delete(`/api/packages/dashboard/package-items/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return { error: errData.message || "Failed to delete package item." };
+    }
+    revalidatePath(`/dashboard/packages/edit/${groupId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Delete package item error:", error);
+    return { error: "Server connection error." };
+  }
+}
+
 // --- Category Actions ---
 
 export async function listCategoriesAction(packageId: string) {
@@ -185,6 +347,7 @@ export async function createCategoryAction(packageId: string, data: { title: str
       return { error: errData.message || "Failed to create category." };
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
+    revalidatePath(`/dashboard/package-groups/${packageId}`);
     return { success: true };
   } catch (error) {
     console.error("Create category error:", error);
@@ -206,6 +369,7 @@ export async function updateCategoryAction(packageId: string, id: string, data: 
       return { error: errData.message || "Failed to update category." };
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
+    revalidatePath(`/dashboard/package-groups/${packageId}`);
     return { success: true };
   } catch (error) {
     console.error("Update category error:", error);
@@ -227,6 +391,7 @@ export async function deleteCategoryAction(packageId: string, id: string) {
       return { error: errData.message || "Failed to delete category." };
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
+    revalidatePath(`/dashboard/package-groups/${packageId}`);
     return { success: true };
   } catch (error) {
     console.error("Delete category error:", error);
@@ -304,6 +469,7 @@ export async function createDocAction(
       return { error: errData.message || "Failed to create documentation page." };
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
+    revalidatePath(`/dashboard/package-groups/${packageId}`);
     return { success: true };
   } catch (error) {
     console.error("Create doc error:", error);
@@ -338,6 +504,7 @@ export async function updateDocAction(
       return { error: errData.message || "Failed to update documentation page." };
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
+    revalidatePath(`/dashboard/package-groups/${packageId}`);
     return { success: true };
   } catch (error) {
     console.error("Update doc error:", error);
@@ -359,6 +526,7 @@ export async function deleteDocAction(packageId: string, id: string) {
       return { error: errData.message || "Failed to delete documentation page." };
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
+    revalidatePath(`/dashboard/package-groups/${packageId}`);
     return { success: true };
   } catch (error) {
     console.error("Delete doc error:", error);

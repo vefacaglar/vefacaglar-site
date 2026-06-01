@@ -37,6 +37,39 @@ export default async function PackagePage({ params }: { params: { slug: string }
         </p>
       )}
 
+      {pkg.packages && pkg.packages.length > 0 && (
+        <section className={styles.packageList}>
+          <h2 className={styles.sectionTitle}>Packages</h2>
+          <ul className={styles.packageItems}>
+            {pkg.packages.map((item: any) => (
+              <li key={item.id} className={styles.packageItem}>
+                <div>
+                  <strong>{item.name}</strong>
+                  <span className={styles.version}>v{item.latestVersion}</span>
+                </div>
+                <div className={styles.links}>
+                  {item.nugetUrl && (
+                    <a href={item.nugetUrl} target="_blank" rel="noopener noreferrer">
+                      nuget
+                    </a>
+                  )}
+                  {item.npmUrl && (
+                    <a href={item.npmUrl} target="_blank" rel="noopener noreferrer">
+                      npm
+                    </a>
+                  )}
+                  {item.githubUrl && (
+                    <a href={item.githubUrl} target="_blank" rel="noopener noreferrer">
+                      github
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {pkg.content ? (
         <div className={styles.contentWrapper}>
           <MarkdownPreview content={pkg.content} />

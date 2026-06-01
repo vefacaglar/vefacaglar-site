@@ -9,7 +9,7 @@ export type GetDocParams = Static<typeof GetDocParamsSchema>;
 
 export const GetDocResponseSchema = Type.Object({
   id: Type.String(),
-  packageId: Type.String(),
+  groupId: Type.String(),
   categoryId: Type.Union([Type.String(), Type.Null()]),
   slug: Type.String(),
   title: Type.String(),

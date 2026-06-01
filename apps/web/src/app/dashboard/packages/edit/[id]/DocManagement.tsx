@@ -215,7 +215,7 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
           <div>
             <div className={styles.sectionHeader} style={{ marginBottom: "1rem" }}>
               <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>Manage markdown manuals and articles</span>
-              <Link href={`/dashboard/packages/edit/${packageId}/docs/new`} className="btnAccent" style={{ fontSize: "0.85rem", padding: "6px 12px" }}>
+              <Link href={`/dashboard/package-groups/${packageId}/docs/new`} className="btnAccent" style={{ fontSize: "0.85rem", padding: "6px 12px" }}>
                 + Add Doc Page
               </Link>
             </div>
@@ -254,7 +254,7 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
                         </td>
                         <td className={styles.tdRight}>
                           <div className={styles.rowActions}>
-                            <Link href={`/dashboard/packages/edit/${packageId}/docs/edit/${doc.id}`} className={styles.editLink}>
+                            <Link href={`/dashboard/package-groups/${packageId}/docs/edit/${doc.id}`} className={styles.editLink}>
                               Edit
                             </Link>
                             <button

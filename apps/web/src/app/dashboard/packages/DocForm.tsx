@@ -101,7 +101,7 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
       setError(result.error);
       setLoading(false);
     } else {
-      router.push(fromUrl || `/dashboard/packages/edit/${packageId}`);
+      router.push(fromUrl || `/dashboard/package-groups/${packageId}`);
       router.refresh();
     }
   };
@@ -109,7 +109,7 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
   return (
     <div className={styles.wrapper}>
       <div className={styles.back}>
-        <Link href={fromUrl || `/dashboard/packages/edit/${packageId}`} className="backLink">
+        <Link href={fromUrl || `/dashboard/package-groups/${packageId}`} className="backLink">
           {fromUrl ? "← cancel" : "← back to package"}
         </Link>
       </div>

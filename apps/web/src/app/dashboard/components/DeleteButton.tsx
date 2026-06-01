@@ -8,14 +8,15 @@ interface DeleteButtonProps {
   id: string;
   type: "post" | "page" | "project" | "package";
   title: string;
+  confirmMessage?: string;
   onDelete: (id: string) => Promise<{ error?: string; success?: boolean }>;
 }
 
-export default function DeleteButton({ id, type, title, onDelete }: DeleteButtonProps) {
+export default function DeleteButton({ id, type, title, confirmMessage, onDelete }: DeleteButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    const message = ds.delete.confirm.replace("{type}", type).replace("{title}", title);
+    const message = confirmMessage || ds.delete.confirm.replace("{type}", type).replace("{title}", title);
     if (!window.confirm(message)) return;
 
     setLoading(true);

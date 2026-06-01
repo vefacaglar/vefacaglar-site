@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 
 interface LegacyEditPackagePageProps {
   params: {
-    id: string;
+    packageId: string;
   };
 }
 
 export default function LegacyEditPackagePage({ params }: LegacyEditPackagePageProps) {
-  redirect(`/dashboard/package-groups/${params.id}`);
+  redirect(`/dashboard/package/${params.packageId}`);
 }

@@ -16,6 +16,46 @@
   margin-top: 32px;
 }
 
+.packageList {
+  margin: 32px 0;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.packageItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.packageItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.version {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.links a {
+  color: var(--accent);
+}
+
 .emptyText {
   color: var(--muted);
 }
