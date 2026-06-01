@@ -11,6 +11,7 @@ import {
   deleteCategoryAction,
   deleteDocAction
 } from "../../actions";
+import { useConfirm } from "../../../components/ConfirmProvider";
 
 interface CategoryItem {
   id: string;
@@ -38,6 +39,7 @@ interface DocManagementProps {
 export default function DocManagement({ packageId, categories, docs }: DocManagementProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
   // Tab state: 'docs' | 'categories'
   const [subTab, setSubTab] = useState<"docs" | "categories">("docs");
@@ -153,7 +155,7 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
   };
 
   const handleDeleteCategory = async (catId: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete category "${title}"? Associated documents will be uncategorized.`)) return;
+    if (!await confirm(`Are you sure you want to delete category "${title}"? Associated documents will be uncategorized.`, { title: "delete category" })) return;
 
     const res = await deleteCategoryAction(packageId, catId);
     if (res && res.error) {
@@ -166,7 +168,7 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
   };
 
   const handleDeleteDoc = async (docId: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete documentation page "${title}"?`)) return;
+    if (!await confirm(`Are you sure you want to delete documentation page "${title}"?`, { title: "delete documentation page" })) return;
 
     const res = await deleteDocAction(packageId, docId);
     if (res && res.error) {

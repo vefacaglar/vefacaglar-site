@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../../../dashboard.module.css";
 import { deletePackageItemAction } from "../../actions";
+import { useConfirm } from "../../../components/ConfirmProvider";
 
 interface PackageItem {
   id: string;
@@ -26,9 +27,10 @@ export default function PackageItemsManagement({ groupId, packages }: PackageIte
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const handleDelete = async (item: PackageItem) => {
-    if (!confirm(`Are you sure you want to delete package "${item.name}"?`)) return;
+    if (!await confirm(`Are you sure you want to delete package "${item.name}"?`, { title: "delete package" })) return;
 
     const result = await deletePackageItemAction(groupId, item.id);
     if (result && result.error) {

@@ -7,6 +7,7 @@ import styles from "../dashboard.module.css";
 import clientStyles from "./games-client.module.css";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
+import { useConfirm } from "../components/ConfirmProvider";
 import {
   createDeveloperAction,
   updateDeveloperAction,
@@ -85,8 +86,8 @@ export interface GameRelationItem {
 
 export interface Game {
   id: string;
-  slug: string;
   title: string;
+  slug: string;
   originalTitle: string | null;
   description: string | null;
   coverImageUrl: string | null;
@@ -107,7 +108,7 @@ export interface Game {
 }
 
 export type SubTab = "games" | "developers" | "publishers" | "genres" | "themes" | "platforms";
-type EntityType = "game" | "developer" | "publisher" | "genre" | "theme" | "platform";
+export type EntityType = "game" | "developer" | "publisher" | "genre" | "theme" | "platform";
 // Tiny debounce hook
 function useDebounced<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -139,6 +140,7 @@ export default function GamesDashboardClient({
 }: GamesDashboardClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const customConfirm = useConfirm();
 
   const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -488,7 +490,10 @@ export default function GamesDashboardClient({
   };
 
   const handleDelete = async (type: EntityType, id: string, itemName: string) => {
-    if (!confirm(ds.games.deleteConfirm.replace("{type}", type).replace("{itemName}", itemName))) return;
+    if (!await customConfirm(
+      ds.games.deleteConfirm.replace("{type}", type).replace("{itemName}", itemName),
+      { title: ds.games.modalTitle.edit.replace("{type}", type) }
+    )) return;
 
     let res;
     if (type === "game") res = await deleteGameAction(id);
