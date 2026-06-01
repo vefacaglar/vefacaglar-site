@@ -29,6 +29,9 @@ import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_INDEXER } from
 import { createTypesenseClient, createDisabledTypesenseClient, readTypesenseConfig } from "./shared/search/typesense.client";
 import { createRedisClient, createDisabledRedisClient, readRedisConfig } from "./shared/search/redis.client";
 import { TypesenseSearchIndexer } from "./shared/search/typesense-indexer.service";
+import { SearchEventSubscriber } from "./shared/search/search-event-subscriber";
+import { EVENT_BUS } from "./shared/events/events.tokens";
+import { InProcessEventBus } from "./shared/events/in-process-event-bus";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
@@ -61,5 +64,10 @@ container.registerInstance(
 );
 
 container.registerSingleton(SEARCH_INDEXER, TypesenseSearchIndexer);
+
+container.registerSingleton(EVENT_BUS, InProcessEventBus);
+
+// Wire up synchronous, in-process domain-event subscribers.
+container.resolve(SearchEventSubscriber).register();
 
 export { container };
