@@ -62,7 +62,7 @@ export default async function Blog({ searchParams }: BlogProps) {
       <BlogSearch initialQuery={query} />
 
       {posts.length === 0 ? (
-        <p className={styles.noResults}>{dict.no_results}</p>
+        <p className={styles.noResults}>{query ? dict.no_results : dict.no_posts}</p>
       ) : (
         <>
           <ul className={styles.list}>

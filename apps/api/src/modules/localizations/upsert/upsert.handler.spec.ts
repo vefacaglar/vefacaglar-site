@@ -2,9 +2,12 @@ import "reflect-metadata";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UpsertLocalizationHandler } from "./upsert.handler";
 import type { ILocalizationsRepository } from "../localizations.repository.interface";
+import type { IEventBus } from "../../../shared/events/event-bus";
+import { POST_ENTITY_CHANGED } from "../../posts/posts.events";
 
 describe("UpsertLocalizationHandler", () => {
   let mockRepo: Record<keyof ILocalizationsRepository, any>;
+  let mockEventBus: Record<keyof IEventBus, any>;
   let handler: UpsertLocalizationHandler;
 
   beforeEach(() => {
@@ -14,7 +17,14 @@ describe("UpsertLocalizationHandler", () => {
       findByEntity: vi.fn(),
       findByEntities: vi.fn(),
     };
-    handler = new UpsertLocalizationHandler(mockRepo as unknown as ILocalizationsRepository);
+    mockEventBus = {
+      publish: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn(),
+    };
+    handler = new UpsertLocalizationHandler(
+      mockRepo as unknown as ILocalizationsRepository,
+      mockEventBus as unknown as IEventBus
+    );
   });
 
   it("should pass all fields to repository.upsert and map the result", async () => {
@@ -55,6 +65,55 @@ describe("UpsertLocalizationHandler", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
     });
+  });
+
+  it("should publish a postChanged event when a post translation is upserted", async () => {
+    mockRepo.upsert.mockResolvedValue({
+      id: "loc-1",
+      entityType: "post",
+      entityId: "p-1",
+      languageCode: "tr",
+      field: "content",
+      value: "Yerelleştirilmiş içerik",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await handler.handle({
+      entityType: "post",
+      entityId: "p-1",
+      languageCode: "tr",
+      field: "content",
+      value: "Yerelleştirilmiş içerik",
+    });
+
+    expect(mockEventBus.publish).toHaveBeenCalledWith({
+      type: POST_ENTITY_CHANGED,
+      id: "p-1",
+    });
+  });
+
+  it("should not publish any event for non-post entity types", async () => {
+    mockRepo.upsert.mockResolvedValue({
+      id: "loc-3",
+      entityType: "page",
+      entityId: "pg-1",
+      languageCode: "tr",
+      field: "title",
+      value: "Başlık",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await handler.handle({
+      entityType: "page",
+      entityId: "pg-1",
+      languageCode: "tr",
+      field: "title",
+      value: "Başlık",
+    });
+
+    expect(mockEventBus.publish).not.toHaveBeenCalled();
   });
 
   it("should support all entity types", async () => {
