@@ -469,10 +469,10 @@ export class GameService {
     const patch: Partial<NewGame> = {};
     if (data.title !== undefined) patch.title = data.title;
     if (data.slug !== undefined) patch.slug = data.slug;
-    if (data.originalTitle !== undefined) patch.originalTitle = data.originalTitle;
-    if (data.description !== undefined) patch.description = data.description;
-    if (data.coverImageUrl !== undefined) patch.coverImageUrl = data.coverImageUrl;
-    if (data.releaseDate !== undefined) patch.releaseDate = data.releaseDate;
+    if (data.originalTitle !== undefined) patch.originalTitle = data.originalTitle || null;
+    if (data.description !== undefined) patch.description = data.description || null;
+    if (data.coverImageUrl !== undefined) patch.coverImageUrl = data.coverImageUrl || null;
+    if (data.releaseDate !== undefined) patch.releaseDate = data.releaseDate || null;
     if (data.metacriticScore !== undefined) patch.metacriticScore = data.metacriticScore;
     if (data.openCriticScore !== undefined) patch.openCriticScore = data.openCriticScore;
     if (data.hltbMainHours !== undefined) patch.hltbMainHours = data.hltbMainHours ? String(data.hltbMainHours) : null;
