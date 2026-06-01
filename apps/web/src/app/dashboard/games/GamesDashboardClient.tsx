@@ -108,7 +108,6 @@ export interface Game {
 
 export type SubTab = "games" | "developers" | "publishers" | "genres" | "themes" | "platforms";
 type EntityType = "game" | "developer" | "publisher" | "genre" | "theme" | "platform";
-
 // Tiny debounce hook
 function useDebounced<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -143,7 +142,6 @@ export default function GamesDashboardClient({
 
   const [gamesViewMode, setGamesViewMode] = useState<"grid" | "list">("list");
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const debouncedSearch = useDebounced(searchQuery, 700);
 
   // Derivate values from props
   const activeSubTab = initialTab;
@@ -152,15 +150,10 @@ export default function GamesDashboardClient({
   const items = initialItems;
   const total = initialTotal;
 
-  // Sync searchQuery when URL query changes (e.g. browser back/forward),
-  // but never overwrite the user's input while they are actively typing —
-  // a stale URL response from an earlier debounce tick would otherwise
-  // clobber the text the user just typed.
+  // Sync searchQuery when URL query changes (e.g. browser back/forward, tab changes)
   useEffect(() => {
-    if (searchQuery === debouncedSearch) {
-      setSearchQuery(initialSearch);
-    }
-  }, [initialSearch, searchQuery, debouncedSearch]);
+    setSearchQuery(initialSearch);
+  }, [initialSearch]);
 
   // Tab badge counts
   const [counts, setCounts] = useState<Partial<Record<SubTab, number>>>({
@@ -206,12 +199,7 @@ export default function GamesDashboardClient({
     return `/dashboard/games?${params.toString()}`;
   }, [activeSubTab, page, pageSize, searchQuery]);
 
-  // Trigger search URL update on debounced change
-  useEffect(() => {
-    if (debouncedSearch !== initialSearch) {
-      navigateTo({ page: 1, q: debouncedSearch });
-    }
-  }, [debouncedSearch, initialSearch, navigateTo]);
+
 
   // Tab change
   const handleTabChange = (newTab: SubTab) => {
@@ -651,17 +639,25 @@ export default function GamesDashboardClient({
         </div>
 
         <div className={clientStyles.searchBarContainer}>
-          <input
-            type="text"
-            className={clientStyles.searchInput}
-            placeholder={
-              activeSubTab === "games"
-                ? ds.games.search.games
-                : ds.games.search.template.replace("{type}", activeSubTab)
-            }
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigateTo({ page: 1, q: searchQuery });
+            }}
+            className={clientStyles.searchForm}
+          >
+            <input
+              type="text"
+              className={clientStyles.searchInput}
+              placeholder={
+                activeSubTab === "games"
+                  ? ds.games.search.games
+                  : ds.games.search.template.replace("{type}", activeSubTab)
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </form>
 
           {activeSubTab === "games" && (
             <div className={clientStyles.viewToggleBtnGroup}>
@@ -686,8 +682,8 @@ export default function GamesDashboardClient({
         >
           {items.length === 0 && (
             <div className={clientStyles.emptyState}>
-              {debouncedSearch
-                ? ds.games.empty.noMatch.replace("{type}", activeSubTab).replace("{q}", debouncedSearch)
+              {initialSearch
+                ? ds.games.empty.noMatch.replace("{type}", activeSubTab).replace("{q}", initialSearch)
                 : ds.games.empty.noResults.replace("{type}", activeSubTab)}
             </div>
           )}
