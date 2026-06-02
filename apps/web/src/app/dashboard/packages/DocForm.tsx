@@ -15,6 +15,7 @@ interface CategoryItem {
 
 interface DocFormProps {
   packageId: string;
+  groupSlug?: string;
   categories: CategoryItem[];
   initialData?: {
     id: string;
@@ -29,7 +30,7 @@ interface DocFormProps {
   };
 }
 
-export default function DocForm({ packageId, categories, initialData }: DocFormProps) {
+export default function DocForm({ packageId, groupSlug, categories, initialData }: DocFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromUrl = searchParams.get("from");
@@ -92,9 +93,9 @@ export default function DocForm({ packageId, categories, initialData }: DocFormP
 
     let result;
     if (initialData) {
-      result = await updateDocAction(packageId, initialData.id, payload);
+      result = await updateDocAction(packageId, initialData.id, payload, groupSlug);
     } else {
-      result = await createDocAction(packageId, payload);
+      result = await createDocAction(packageId, payload, groupSlug);
     }
 
     if (result && result.error) {

@@ -55,11 +55,13 @@ export default async function PackageGroupPage({ params }: PackageGroupPageProps
     notFound();
   }
 
+  const groupSlug = packageGroup.slug;
+
   return (
     <div>
       <PackageForm initialData={packageGroup} />
-      <PackageItemsManagement groupId={params.id} packages={packageItems} />
-      <DocManagement packageId={params.id} categories={categories} docs={docs} />
+      <PackageItemsManagement groupId={params.id} groupSlug={groupSlug} packages={packageItems} />
+      <DocManagement packageId={params.id} groupSlug={groupSlug} categories={categories} docs={docs} />
     </div>
   );
 }

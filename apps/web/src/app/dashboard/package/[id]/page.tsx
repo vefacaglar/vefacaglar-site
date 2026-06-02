@@ -26,10 +26,12 @@ export default async function PackagePage({ params }: PackagePageProps) {
   ]);
 
   const groups = groupsRes && "items" in groupsRes ? groupsRes.items : [];
+  const group = groups.find((g: any) => g.id === packageRes.groupId);
+  const groupSlug = group?.slug;
 
   if (!packageRes || "error" in packageRes || groups.length === 0) {
     notFound();
   }
 
-  return <PackageItemForm groups={groups} initialData={packageRes} />;
+  return <PackageItemForm groups={groups} groupSlug={groupSlug} initialData={packageRes} />;
 }

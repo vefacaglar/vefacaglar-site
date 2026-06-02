@@ -20,10 +20,11 @@ interface PackageItem {
 
 interface PackageItemsManagementProps {
   groupId: string;
+  groupSlug?: string;
   packages: PackageItem[];
 }
 
-export default function PackageItemsManagement({ groupId, packages }: PackageItemsManagementProps) {
+export default function PackageItemsManagement({ groupId, groupSlug, packages }: PackageItemsManagementProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function PackageItemsManagement({ groupId, packages }: PackageIte
   const handleDelete = async (item: PackageItem) => {
     if (!await confirm(`Are you sure you want to delete package "${item.name}"?`, { title: "delete package" })) return;
 
-    const result = await deletePackageItemAction(groupId, item.id);
+    const result = await deletePackageItemAction(groupId, item.id, groupSlug);
     if (result && result.error) {
       setError(result.error);
       return;
@@ -44,9 +45,9 @@ export default function PackageItemsManagement({ groupId, packages }: PackageIte
     <section className={`${styles.sectionWithDivider} ${isPending ? styles.pendingSection : ""}`}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>Packages in this group</h2>
-        <Link href={`/dashboard/package/new?groupId=${groupId}`} className="btnAccent">
-          Add package
-        </Link>
+          <Link href={`/dashboard/package/new?groupId=${groupId}&groupSlug=${groupSlug}`} className="btnAccent">
+            Add package
+          </Link>
       </div>
 
       {error && <div className="errorMsg">{error}</div>}

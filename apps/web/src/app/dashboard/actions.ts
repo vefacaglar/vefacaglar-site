@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { httpClient } from "../../lib/httpClient";
 import { authedRequest, authedMutation } from "../../lib/apiAction";
+import { revalidateBlogPages, revalidateProjectPages, revalidatePagePages } from "../../lib/revalidator";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -71,17 +72,23 @@ export async function getSessionToken() {
 }
 
 export async function deletePostAction(id: string) {
-  return authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
-    revalidate: ["/dashboard", "/blog", "/sitemap.xml"],
+  const result = await authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
     fallbackError: "Failed to delete post.",
   });
+  if (result.success) {
+    await revalidateBlogPages();
+  }
+  return result;
 }
 
 export async function deletePageAction(id: string) {
-  return authedMutation("DELETE", `/api/pages/dashboard/${id}`, {
-    revalidate: ["/dashboard", "/", "/about", "/[slug]", "/sitemap.xml"],
+  const result = await authedMutation("DELETE", `/api/pages/dashboard/${id}`, {
     fallbackError: "Failed to delete page.",
   });
+  if (result.success) {
+    await revalidatePagePages();
+  }
+  return result;
 }
 
 export async function createPostAction(data: {
@@ -94,11 +101,14 @@ export async function createPostAction(data: {
   seoTitle?: string;
   seoDescription?: string;
 }) {
-  return authedMutation("POST", "/api/posts/dashboard", {
+  const result = await authedMutation("POST", "/api/posts/dashboard", {
     body: data,
-    revalidate: ["/dashboard", "/blog", "/sitemap.xml"],
     fallbackError: "Could not create post.",
   });
+  if (result.success) {
+    await revalidateBlogPages();
+  }
+  return result;
 }
 
 export async function updatePostAction(
@@ -114,11 +124,14 @@ export async function updatePostAction(
     seoDescription?: string;
   }
 ) {
-  return authedMutation("PUT", `/api/posts/dashboard/${id}`, {
+  const result = await authedMutation("PUT", `/api/posts/dashboard/${id}`, {
     body: data,
-    revalidate: ["/blog", `/blog/${data.slug}`, "/sitemap.xml"],
     fallbackError: "Failed to update post.",
   });
+  if (result.success) {
+    await revalidateBlogPages(data.slug);
+  }
+  return result;
 }
 
 export async function createPageAction(data: {
@@ -129,11 +142,14 @@ export async function createPageAction(data: {
   seoTitle?: string;
   seoDescription?: string;
 }) {
-  return authedMutation("POST", "/api/pages/dashboard", {
+  const result = await authedMutation("POST", "/api/pages/dashboard", {
     body: data,
-    revalidate: ["/dashboard", "/", "/about", "/[slug]", "/sitemap.xml"],
     fallbackError: "Could not create page.",
   });
+  if (result.success) {
+    await revalidatePagePages();
+  }
+  return result;
 }
 
 export async function updatePageAction(
@@ -147,11 +163,14 @@ export async function updatePageAction(
     seoDescription?: string;
   }
 ) {
-  return authedMutation("PUT", `/api/pages/dashboard/${id}`, {
+  const result = await authedMutation("PUT", `/api/pages/dashboard/${id}`, {
     body: data,
-    revalidate: ["/", "/about", `/${data.slug}`, "/sitemap.xml"],
     fallbackError: "Failed to update page.",
   });
+  if (result.success) {
+    await revalidatePagePages(data.slug);
+  }
+  return result;
 }
 
 export async function getProfileAction() {
@@ -198,11 +217,14 @@ export async function createProjectAction(data: {
   startedAt?: string;
   endedAt?: string;
 }) {
-  return authedMutation("POST", "/api/projects/dashboard", {
+  const result = await authedMutation("POST", "/api/projects/dashboard", {
     body: data,
-    revalidate: ["/dashboard", "/projects", "/sitemap.xml"],
     fallbackError: "Could not create project.",
   });
+  if (result.success) {
+    await revalidateProjectPages();
+  }
+  return result;
 }
 
 export async function updateProjectAction(
@@ -224,18 +246,24 @@ export async function updateProjectAction(
     endedAt?: string;
   }
 ) {
-  return authedMutation("PUT", `/api/projects/dashboard/${id}`, {
+  const result = await authedMutation("PUT", `/api/projects/dashboard/${id}`, {
     body: data,
-    revalidate: ["/projects", `/projects/${data.slug}`, "/sitemap.xml"],
     fallbackError: "Failed to update project.",
   });
+  if (result.success) {
+    await revalidateProjectPages(data.slug);
+  }
+  return result;
 }
 
 export async function deleteProjectAction(id: string) {
-  return authedMutation("DELETE", `/api/projects/dashboard/${id}`, {
-    revalidate: ["/dashboard", "/projects", "/sitemap.xml"],
+  const result = await authedMutation("DELETE", `/api/projects/dashboard/${id}`, {
     fallbackError: "Failed to delete project.",
   });
+  if (result.success) {
+    await revalidateProjectPages();
+  }
+  return result;
 }
 
 export async function uploadImageAction(formData: FormData) {
@@ -280,10 +308,13 @@ export async function upsertLocalizationAction(data: {
 }): Promise<{ error?: string; success?: true; data?: any }> {
   const res = await authedRequest("POST", "/api/localizations", {
     body: data,
-    revalidate: ["/", "/blog", "/projects", "/about", "/sitemap.xml"],
+    revalidate: [],
     fallbackError: "Failed to save localization.",
   });
   if ("error" in res) return { error: res.error };
+  await revalidatePagePages();
+  await revalidateBlogPages();
+  await revalidateProjectPages();
   return { success: true, data: res.data };
 }
 

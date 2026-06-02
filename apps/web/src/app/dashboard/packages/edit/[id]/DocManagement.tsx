@@ -32,11 +32,12 @@ interface DocItem {
 
 interface DocManagementProps {
   packageId: string;
+  groupSlug?: string;
   categories: CategoryItem[];
   docs: DocItem[];
 }
 
-export default function DocManagement({ packageId, categories, docs }: DocManagementProps) {
+export default function DocManagement({ packageId, groupSlug, categories, docs }: DocManagementProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const confirm = useConfirm();
@@ -170,7 +171,7 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
   const handleDeleteDoc = async (docId: string, title: string) => {
     if (!await confirm(`Are you sure you want to delete documentation page "${title}"?`, { title: "delete documentation page" })) return;
 
-    const res = await deleteDocAction(packageId, docId);
+    const res = await deleteDocAction(packageId, docId, groupSlug);
     if (res && res.error) {
       alert(res.error);
     } else {
@@ -217,7 +218,7 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
           <div>
             <div className={styles.sectionHeader} style={{ marginBottom: "1rem" }}>
               <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>Manage markdown manuals and articles</span>
-              <Link href={`/dashboard/package-groups/${packageId}/docs/new`} className="btnAccent" style={{ fontSize: "0.85rem", padding: "6px 12px" }}>
+              <Link href={`/dashboard/package-groups/${packageId}/docs/new?groupSlug=${groupSlug}`} className="btnAccent" style={{ fontSize: "0.85rem", padding: "6px 12px" }}>
                 + Add Doc Page
               </Link>
             </div>
@@ -259,12 +260,12 @@ export default function DocManagement({ packageId, categories, docs }: DocManage
                             <Link href={`/dashboard/package-groups/${packageId}/docs/edit/${doc.id}`} className={styles.editLink}>
                               Edit
                             </Link>
-                            <button
-                              type="button"
-                              className={styles.editLink}
-                              style={{ color: "var(--error)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                              onClick={() => handleDeleteDoc(doc.id, doc.title)}
-                            >
+                              <button
+                                type="button"
+                                className={styles.editLink}
+                                style={{ color: "var(--error)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                              >
                               Delete
                             </button>
                           </div>

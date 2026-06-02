@@ -2,7 +2,7 @@ import React from "react";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import DocForm from "../../../../../DocForm";
-import { listCategoriesAction, getDocAction } from "../../../../../actions";
+import { listCategoriesAction, getDocAction, getPackageGroupAction } from "../../../../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +23,13 @@ export default async function EditDocPage({ params }: EditDocPageProps) {
 
   let categories: any[] = [];
   let docData = null;
+  let groupSlug: string | undefined;
 
   try {
-    const [categoriesRes, docRes] = await Promise.all([
+    const [categoriesRes, docRes, groupRes] = await Promise.all([
       listCategoriesAction(params.id),
       getDocAction(params.docId),
+      getPackageGroupAction(params.id),
     ]);
 
     if (categoriesRes && Array.isArray(categoriesRes)) {
@@ -35,6 +37,9 @@ export default async function EditDocPage({ params }: EditDocPageProps) {
     }
     if (docRes && !("error" in docRes)) {
       docData = docRes;
+    }
+    if (groupRes && !("error" in groupRes)) {
+      groupSlug = groupRes.slug;
     }
   } catch (error) {
     console.error("Failed to load edit doc page data:", error);
@@ -44,5 +49,5 @@ export default async function EditDocPage({ params }: EditDocPageProps) {
     notFound();
   }
 
-  return <DocForm packageId={params.id} categories={categories} initialData={docData} />;
+  return <DocForm packageId={params.id} groupSlug={groupSlug} categories={categories} initialData={docData} />;
 }

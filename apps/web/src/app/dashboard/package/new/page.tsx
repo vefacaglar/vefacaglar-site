@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 interface NewPackagePageProps {
   searchParams: {
     groupId?: string;
+    groupSlug?: string;
   };
 }
 
@@ -22,10 +23,11 @@ export default async function NewPackagePage({ searchParams }: NewPackagePagePro
 
   const groupsRes = await listPackageGroupsAction({ limit: 100 });
   const groups = groupsRes && "items" in groupsRes ? groupsRes.items : [];
+  const groupSlug = searchParams.groupSlug || groups.find((g: any) => g.id === searchParams.groupId)?.slug;
 
   if (groups.length === 0) {
     notFound();
   }
 
-  return <PackageItemForm groups={groups} initialGroupId={searchParams.groupId} />;
+  return <PackageItemForm groups={groups} initialGroupId={searchParams.groupId} groupSlug={groupSlug} />;
 }

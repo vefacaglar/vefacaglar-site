@@ -16,6 +16,7 @@ interface PackageGroupOption {
 interface PackageItemFormProps {
   groups: PackageGroupOption[];
   initialGroupId?: string;
+  groupSlug?: string;
   initialData?: {
     id: string;
     groupId: string;
@@ -62,7 +63,7 @@ function slugify(text: string) {
     .replace(/-+$/, "");
 }
 
-export default function PackageItemForm({ groups, initialGroupId, initialData }: PackageItemFormProps) {
+export default function PackageItemForm({ groups, initialGroupId, groupSlug, initialData }: PackageItemFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromUrl = searchParams.get("from");
@@ -113,8 +114,8 @@ export default function PackageItemForm({ groups, initialGroupId, initialData }:
     };
 
     const result = initialData
-      ? await updatePackageItemAction(initialData.groupId, initialData.id, payload)
-      : await createPackageItemAction(groupId, payload);
+      ? await updatePackageItemAction(initialData.groupId, initialData.id, payload, groupSlug)
+      : await createPackageItemAction(groupId, payload, groupSlug);
 
     if (result && result.error) {
       setError(result.error);
