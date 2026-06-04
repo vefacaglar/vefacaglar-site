@@ -11,7 +11,6 @@ import { localizedAlternates } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { getPost } from "../../../lib/data";
 
-export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const lang = getActiveLanguage();

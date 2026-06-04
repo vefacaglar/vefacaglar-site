@@ -4,7 +4,6 @@ import Link from "next/link";
 import styles from "./packageLayout.module.css";
 import { getPackage } from "../../../lib/data";
 
-export const revalidate = 300;
 
 export default async function PackageLayout({
   children,

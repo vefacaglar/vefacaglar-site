@@ -7,7 +7,6 @@ import { localizeHref } from "../../../lib/localizeHref";
 import { localizedAlternates } from "../../../lib/seo";
 import { getAuthor } from "../../../lib/data";
 
-export const revalidate = 600;
 
 export async function generateMetadata({ params }: { params: { username: string } }) {
   const lang = getActiveLanguage();

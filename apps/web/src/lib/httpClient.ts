@@ -89,7 +89,7 @@ class HttpClient {
       : {
           ...init,
           cache: init?.cache ?? "force-cache",
-          next: init?.next ?? { revalidate: 300 },
+          next: init?.next ?? { revalidate: 60 },
         };
 
     return this.request(path, { ...cacheInit, method: "GET" });

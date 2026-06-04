@@ -7,7 +7,6 @@ import { localizedAlternates } from "../../../lib/seo";
 import styles from "./packagePage.module.css";
 import { getPackage } from "../../../lib/data";
 
-export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const pkg = await getPackage(params.slug);

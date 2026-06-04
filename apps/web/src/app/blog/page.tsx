@@ -8,7 +8,6 @@ import { localizedAlternates } from '../../lib/seo';
 import { getPublicPosts } from '../../lib/data';
 import BlogSearch from './BlogSearch';
 
-export const revalidate = 60;
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();

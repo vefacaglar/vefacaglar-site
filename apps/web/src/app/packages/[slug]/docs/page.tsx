@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getPackage } from "../../../../lib/data";
 
-export const revalidate = 300;
 
 export default async function PackageDocsPage({
   params,

@@ -7,7 +7,6 @@ import { getPackageItem } from "../../../../lib/data";
 import MarkdownPreview from "../../../components/MarkdownPreview";
 import styles from "../packagePage.module.css";
 
-export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string; packageSlug: string } }) {
   const pkg = await getPackageItem(params.slug, params.packageSlug);

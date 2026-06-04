@@ -9,7 +9,6 @@ import AdminEditLink from "../../components/AdminEditLink";
 import { localizeHref } from "../../lib/localizeHref";
 import { getPage } from "../../lib/data";
 
-export const revalidate = 3600;
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   const lang = getActiveLanguage();

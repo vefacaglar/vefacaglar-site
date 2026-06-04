@@ -6,7 +6,6 @@ import { localizedAlternates } from "../../../../../lib/seo";
 import styles from "./docPage.module.css";
 import { getPackageDoc } from "../../../../../lib/data";
 
-export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: { slug: string; docSlug: string } }) {
   const doc = await getPackageDoc(params.slug, params.docSlug);

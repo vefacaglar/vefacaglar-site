@@ -7,7 +7,6 @@ import Pagination from '../components/Pagination';
 import { localizedAlternates } from '../../lib/seo';
 import { getPublicProjects } from '../../lib/data';
 
-export const revalidate = 300;
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();
