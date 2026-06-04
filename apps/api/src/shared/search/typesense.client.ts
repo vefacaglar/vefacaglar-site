@@ -93,7 +93,13 @@ export function createTypesenseClient(config: TypesenseConfig): TypesenseClient 
       },
     ],
     apiKey: config.apiKey,
-    connectionTimeoutSeconds: 2,
+    connectionTimeoutSeconds: 5,
+    // Serverless instances make their first Typesense call on a cold HTTPS
+    // connection. Without retries a single slow connect silently fails the
+    // upsert (the writer swallows the error), so a freshly published/updated
+    // post never reaches the index. Retry transient failures before giving up.
+    numRetries: 3,
+    retryIntervalSeconds: 0.5,
   });
 }
 
