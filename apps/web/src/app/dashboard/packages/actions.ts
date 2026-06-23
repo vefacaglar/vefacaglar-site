@@ -3,7 +3,6 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { httpClient } from "../../../lib/httpClient";
-import { revalidatePackagePages } from "../../../lib/revalidator";
 
 type ListParams = { page?: number; limit?: number; q?: string };
 type ListResult<T> = {
@@ -101,7 +100,6 @@ export async function createPackageAction(data: {
     }
 
     revalidatePath("/dashboard/packages");
-    await revalidatePackagePages();
     return { success: true };
   } catch (error) {
     console.error("Create package error:", error);
@@ -142,7 +140,6 @@ export async function updatePackageAction(
     }
 
     revalidatePath("/dashboard/packages");
-    await revalidatePackagePages(data.slug);
     return { success: true };
   } catch (error) {
     console.error("Update package error:", error);
@@ -169,7 +166,6 @@ export async function deletePackageAction(id: string, slug?: string) {
     }
 
     revalidatePath("/dashboard/packages");
-    await revalidatePackagePages(slug);
     return { success: true };
   } catch (error) {
     console.error("Delete package error:", error);
@@ -251,7 +247,6 @@ export async function createPackageItemAction(
     }
     revalidatePath(`/dashboard/packages/edit/${groupId}`);
     revalidatePath(`/dashboard/package-groups/${groupId}`);
-    await revalidatePackagePages(groupSlug);
     return { success: true };
   } catch (error) {
     console.error("Create package item error:", error);
@@ -291,7 +286,6 @@ export async function updatePackageItemAction(
     revalidatePath(`/dashboard/packages/edit/${groupId}`);
     revalidatePath(`/dashboard/package-groups/${groupId}`);
     revalidatePath(`/dashboard/package-groups/${data.groupId}`);
-    await revalidatePackagePages(groupSlug);
     return { success: true };
   } catch (error) {
     console.error("Update package item error:", error);
@@ -317,7 +311,6 @@ export async function deletePackageItemAction(
       return { error: errData.message || "Failed to delete package item." };
     }
     revalidatePath(`/dashboard/packages/edit/${groupId}`);
-    await revalidatePackagePages(groupSlug);
     return { success: true };
   } catch (error) {
     console.error("Delete package item error:", error);
@@ -486,7 +479,6 @@ export async function createDocAction(
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
-    await revalidatePackagePages(groupSlug);
     return { success: true };
   } catch (error) {
     console.error("Create doc error:", error);
@@ -523,7 +515,6 @@ export async function updateDocAction(
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
-    await revalidatePackagePages(groupSlug);
     return { success: true };
   } catch (error) {
     console.error("Update doc error:", error);
@@ -550,7 +541,6 @@ export async function deleteDocAction(
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
-    await revalidatePackagePages(groupSlug);
     return { success: true };
   } catch (error) {
     console.error("Delete doc error:", error);

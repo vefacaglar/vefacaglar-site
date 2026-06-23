@@ -2,10 +2,10 @@ import { cache } from "react";
 import { httpClient } from "./httpClient";
 
 // Build must not depend on the API being reachable. The web app may be built and
-// deployed while the API is still down; once the API comes up, ISR (revalidate)
-// regenerates pages with real data. So any fetch failure here — a non-ok response
-// or a network error (ECONNREFUSED at build time) — resolves to null instead of
-// throwing, which would otherwise abort static generation and fail the build.
+// deployed while the API is still down; public pages render dynamically (no-store)
+// and fetch real data on each request once the API is up. So any fetch failure
+// here — a non-ok response or a network error (ECONNREFUSED) — resolves to null
+// instead of throwing, which would otherwise abort rendering.
 async function fetchJson<T = any>(path: string): Promise<T | null> {
   try {
     const res = await httpClient.get(path);

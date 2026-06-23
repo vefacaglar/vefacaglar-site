@@ -4,7 +4,6 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { httpClient } from "../../lib/httpClient";
 import { authedRequest, authedMutation } from "../../lib/apiAction";
-import { revalidateBlogPages, revalidateProjectPages, revalidatePagePages } from "../../lib/revalidator";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -75,9 +74,6 @@ export async function deletePostAction(id: string) {
   const result = await authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
     fallbackError: "Failed to delete post.",
   });
-  if (result.success) {
-    await revalidateBlogPages();
-  }
   return result;
 }
 
@@ -85,9 +81,6 @@ export async function deletePageAction(id: string) {
   const result = await authedMutation("DELETE", `/api/pages/dashboard/${id}`, {
     fallbackError: "Failed to delete page.",
   });
-  if (result.success) {
-    await revalidatePagePages();
-  }
   return result;
 }
 
@@ -105,9 +98,6 @@ export async function createPostAction(data: {
     body: data,
     fallbackError: "Could not create post.",
   });
-  if (result.success) {
-    await revalidateBlogPages();
-  }
   return result;
 }
 
@@ -128,9 +118,6 @@ export async function updatePostAction(
     body: data,
     fallbackError: "Failed to update post.",
   });
-  if (result.success) {
-    await revalidateBlogPages(data.slug);
-  }
   return result;
 }
 
@@ -146,9 +133,6 @@ export async function createPageAction(data: {
     body: data,
     fallbackError: "Could not create page.",
   });
-  if (result.success) {
-    await revalidatePagePages();
-  }
   return result;
 }
 
@@ -167,9 +151,6 @@ export async function updatePageAction(
     body: data,
     fallbackError: "Failed to update page.",
   });
-  if (result.success) {
-    await revalidatePagePages(data.slug);
-  }
   return result;
 }
 
@@ -221,9 +202,6 @@ export async function createProjectAction(data: {
     body: data,
     fallbackError: "Could not create project.",
   });
-  if (result.success) {
-    await revalidateProjectPages();
-  }
   return result;
 }
 
@@ -250,9 +228,6 @@ export async function updateProjectAction(
     body: data,
     fallbackError: "Failed to update project.",
   });
-  if (result.success) {
-    await revalidateProjectPages(data.slug);
-  }
   return result;
 }
 
@@ -260,9 +235,6 @@ export async function deleteProjectAction(id: string) {
   const result = await authedMutation("DELETE", `/api/projects/dashboard/${id}`, {
     fallbackError: "Failed to delete project.",
   });
-  if (result.success) {
-    await revalidateProjectPages();
-  }
   return result;
 }
 
@@ -312,9 +284,6 @@ export async function upsertLocalizationAction(data: {
     fallbackError: "Failed to save localization.",
   });
   if ("error" in res) return { error: res.error };
-  await revalidatePagePages();
-  await revalidateBlogPages();
-  await revalidateProjectPages();
   return { success: true, data: res.data };
 }
 

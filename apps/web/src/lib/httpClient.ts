@@ -20,15 +20,6 @@ class HttpClient {
       : `${API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   }
 
-  private isAuthed(init?: RequestInitWithNext): boolean {
-    if (!init?.headers) return false;
-    if (init.headers instanceof Headers) return init.headers.has("Authorization");
-    if (Array.isArray(init.headers)) {
-      return init.headers.some(([k]) => k.toLowerCase() === "authorization");
-    }
-    return Object.keys(init.headers).some((k) => k.toLowerCase() === "authorization");
-  }
-
   private async request(path: string, init?: RequestInitWithNext): Promise<Response> {
     const url = this.getUrl(path);
     const headers = new Headers(init?.headers);
@@ -83,16 +74,11 @@ class HttpClient {
   }
 
   async get(path: string, init?: RequestInitWithNext): Promise<Response> {
-    const authed = this.isAuthed(init);
-    const cacheInit: RequestInitWithNext = authed
-      ? { ...init, cache: "no-store", next: undefined }
-      : {
-          ...init,
-          cache: init?.cache ?? "force-cache",
-          next: init?.next ?? { revalidate: 60 },
-        };
-
-    return this.request(path, { ...cacheInit, method: "GET" });
+    // Public pages render dynamically: every request hits the API so content
+    // (and notFound) always reflects the current backend state. We intentionally
+    // do not use ISR (force-cache + revalidate) here — a cached page or 404 would
+    // otherwise stop hitting the API until the next revalidation.
+    return this.request(path, { ...init, cache: "no-store", next: undefined, method: "GET" });
   }
 
   async post(path: string, body?: any, init?: RequestInit): Promise<Response> {
