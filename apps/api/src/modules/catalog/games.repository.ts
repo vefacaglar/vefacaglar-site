@@ -283,6 +283,50 @@ export class DrizzleGamesRepository implements IGamesRepository {
     await this.dbProvider.client.delete(games).where(eq(games.id, id));
   }
 
+  async findGameIdsByRelation(
+    relation: "developer" | "publisher" | "genre" | "platform" | "theme",
+    relatedId: string
+  ): Promise<string[]> {
+    const db = this.dbProvider.client;
+    switch (relation) {
+      case "developer": {
+        const rows = await db
+          .select({ gameId: gameDevelopers.gameId })
+          .from(gameDevelopers)
+          .where(eq(gameDevelopers.developerId, relatedId));
+        return rows.map((r) => r.gameId);
+      }
+      case "publisher": {
+        const rows = await db
+          .select({ gameId: gamePublishers.gameId })
+          .from(gamePublishers)
+          .where(eq(gamePublishers.publisherId, relatedId));
+        return rows.map((r) => r.gameId);
+      }
+      case "genre": {
+        const rows = await db
+          .select({ gameId: gameGenres.gameId })
+          .from(gameGenres)
+          .where(eq(gameGenres.genreId, relatedId));
+        return rows.map((r) => r.gameId);
+      }
+      case "platform": {
+        const rows = await db
+          .select({ gameId: gamePlatforms.gameId })
+          .from(gamePlatforms)
+          .where(eq(gamePlatforms.platformId, relatedId));
+        return rows.map((r) => r.gameId);
+      }
+      case "theme": {
+        const rows = await db
+          .select({ gameId: gameThemes.gameId })
+          .from(gameThemes)
+          .where(eq(gameThemes.themeId, relatedId));
+        return rows.map((r) => r.gameId);
+      }
+    }
+  }
+
   async linkDeveloper(gameId: string, developerId: string): Promise<void> {
     await this.dbProvider.client
       .insert(gameDevelopers)

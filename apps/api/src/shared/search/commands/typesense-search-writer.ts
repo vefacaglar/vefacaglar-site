@@ -213,6 +213,21 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         console.error(`[search] failed to upsert ${entityName} ${id} (${lang}):`, (err as Error).message);
       }
     }
+
+    // Game documents denormalize lookup names (developerNames, genreNames, …),
+    // so a rename must cascade to every game that references this lookup.
+    await this.reindexGamesForLookup(entityName, id);
+  }
+
+  private async reindexGamesForLookup(relation: LookupEntity, id: string): Promise<void> {
+    try {
+      const gameIds = await this.gamesRepo.findGameIdsByRelation(relation, id);
+      for (const gameId of gameIds) {
+        await this.indexGame(gameId);
+      }
+    } catch (err) {
+      console.error(`[search] failed to cascade-reindex games for ${relation} ${id}:`, (err as Error).message);
+    }
   }
 
   private toLookupDoc(
@@ -396,7 +411,21 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
   private async bulkImportDocs(collectionName: string, docs: object[]): Promise<void> {
     if (docs.length === 0) return;
     try {
-      await this.typesense.collections(collectionName).documents().import(docs, { action: "upsert" });
+      const results = await this.typesense
+        .collections(collectionName)
+        .documents()
+        .import(docs, { action: "upsert" });
+      // Typesense reports per-document outcomes in the results array without
+      // throwing, so partial failures are otherwise silent. Surface them.
+      const failures = Array.isArray(results)
+        ? results.filter((r) => r && (r as { success?: boolean }).success === false)
+        : [];
+      if (failures.length > 0) {
+        const firstError = (failures[0] as { error?: string }).error ?? "unknown";
+        console.error(
+          `[search] bulk import ${collectionName}: ${failures.length}/${docs.length} documents failed. First error: ${firstError}`
+        );
+      }
     } catch (err) {
       console.error(`[search] bulk import ${collectionName} failed:`, (err as Error).message);
     }

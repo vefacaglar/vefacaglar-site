@@ -34,6 +34,15 @@ export interface IGamesRepository {
   update(id: string, patch: Partial<NewGame>): Promise<GameWithRelations>;
   delete(id: string): Promise<void>;
 
+  /**
+   * Returns the ids of all games linked to the given lookup entity. Used to
+   * cascade-reindex denormalized game documents when a lookup is renamed.
+   */
+  findGameIdsByRelation(
+    relation: "developer" | "publisher" | "genre" | "platform" | "theme",
+    relatedId: string
+  ): Promise<string[]>;
+
   linkDeveloper(gameId: string, developerId: string): Promise<void>;
   unlinkDeveloper(gameId: string, developerId: string): Promise<void>;
   linkPublisher(gameId: string, publisherId: string): Promise<void>;
