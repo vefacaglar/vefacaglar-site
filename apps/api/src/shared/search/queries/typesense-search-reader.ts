@@ -326,6 +326,10 @@ export class TypesenseSearchReader implements ISearchReader {
     if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("network")) return true;
     if (msg.includes("collection") && msg.includes("not found")) return true;
     const status = (err as { httpStatus?: number }).httpStatus;
+    // 404 means the collection itself is missing (e.g. the index host restarted
+    // with an empty disk) — the client reports it as a generic "Not found."
+    // without naming the collection, so match on status too.
+    if (status === 404) return true;
     if (typeof status === "number" && status >= 500) return true;
     return false;
   }
