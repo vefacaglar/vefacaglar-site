@@ -73,8 +73,7 @@ export class ProfileHandler {
     const user = request.user!;
     const session = request.session!;
 
-    const isValid = verifyPassword(body.currentPassword, user.passwordHash);
-    if (!isValid) {
+    if (!user.passwordHash || !verifyPassword(body.currentPassword, user.passwordHash)) {
       throw new BadRequestError("Current password is incorrect.");
     }
 

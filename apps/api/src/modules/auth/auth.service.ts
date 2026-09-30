@@ -55,11 +55,14 @@ export class AuthService {
       throw new UnauthorizedError("Invalid email or password.");
     }
 
-    const isValid = verifyPassword(password, user.passwordHash);
-    if (!isValid) {
+    if (!user.passwordHash || !verifyPassword(password, user.passwordHash)) {
       throw new UnauthorizedError("Invalid email or password.");
     }
 
+    return this.createSession(user);
+  }
+
+  async createSession(user: User): Promise<LoginResult> {
     const token = randomBytes(32).toString("hex");
     const tokenHash = hashToken(token);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

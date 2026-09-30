@@ -6,6 +6,7 @@ import PasswordForm from "../components/PasswordForm";
 import { getProfileAction } from "../actions";
 import styles from "./profile.module.css";
 import ds from "../../../lib/dashboard-strings";
+import { getAuthMode } from "../../../lib/oidc";
 
 export const dynamic = "force-dynamic";
 
@@ -35,10 +36,12 @@ export default async function ProfilePage() {
         <ProfileForm initialData={profile} />
       </section>
 
-      <section>
-        <h2 className={styles.sectionTitle}>{ds.profile.changePassword}</h2>
-        <PasswordForm />
-      </section>
+      {getAuthMode() === "password" && (
+        <section>
+          <h2 className={styles.sectionTitle}>{ds.profile.changePassword}</h2>
+          <PasswordForm />
+        </section>
+      )}
     </div>
   );
 }

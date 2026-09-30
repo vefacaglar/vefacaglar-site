@@ -15,16 +15,30 @@ import {
   ChangePasswordResponseSchema,
 } from "./profile/profile.schema";
 import { ProfileHandler } from "./profile/profile.handler";
+import { OidcExchangeRequest, OidcExchangeRequestSchema } from "./oidc/exchange/exchange.schema";
+import { OidcExchangeHandler } from "./oidc/exchange/exchange.handler";
+import { getAuthMode, AuthMode } from "./auth.mode";
+import { NotFoundError } from "../../shared/http-errors";
 import { ErrorResponseSchema } from "../../shared/error-schema";
 import { container } from "../../container";
+
+function onlyInAuthMode(mode: AuthMode) {
+  return async () => {
+    if (getAuthMode() !== mode) {
+      throw new NotFoundError();
+    }
+  };
+}
 
 export async function authRoutes(app: FastifyInstance) {
   const loginHandler = container.resolve(LoginHandler);
   const meHandler = container.resolve(MeHandler);
   const logoutHandler = container.resolve(LogoutHandler);
   const profileHandler = container.resolve(ProfileHandler);
+  const oidcExchangeHandler = container.resolve(OidcExchangeHandler);
 
   app.post<{ Body: LoginRequest }>("/login", {
+    preHandler: onlyInAuthMode("password"),
     config: {
       rateLimit: {
         max: 5,
@@ -39,9 +53,20 @@ export async function authRoutes(app: FastifyInstance) {
       description: "User login to retrieve a session token",
       tags: ["Auth"],
       body: LoginRequestSchema,
-      response: { 200: LoginResponseSchema, 401: ErrorResponseSchema, 429: ErrorResponseSchema },
+      response: { 200: LoginResponseSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema, 429: ErrorResponseSchema },
     },
   }, (request) => loginHandler.handle(request.body));
+
+  app.post<{ Body: OidcExchangeRequest }>("/oidc/exchange", {
+    preHandler: onlyInAuthMode("oidc"),
+    config: { rateLimit: { max: 10, timeWindow: "15 minutes" } },
+    schema: {
+      description: "Exchange a verified OIDC ID token for a local session token",
+      tags: ["Auth"],
+      body: OidcExchangeRequestSchema,
+      response: { 200: LoginResponseSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema, 429: ErrorResponseSchema },
+    },
+  }, (request) => oidcExchangeHandler.handle(request.body));
 
   app.get("/me", {
     preHandler: app.requireAuth,
@@ -85,7 +110,7 @@ export async function authRoutes(app: FastifyInstance) {
   }, (request) => profileHandler.updateProfile(request, request.body));
 
   app.put<{ Body: ChangePasswordRequest }>("/profile/password", {
-    preHandler: app.requireAuth,
+    preHandler: [onlyInAuthMode("password"), app.requireAuth],
     config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
     schema: {
       description: "Change current user's password",
