@@ -184,6 +184,11 @@ const dashboardStrings = {
     passwordPlaceholder: "••••••",
     signIn: "sign in",
     signingIn: "signing in...",
+    signInWithProvider: "sign in",
+    errors: {
+      failed: "Sign-in failed. Please try again.",
+      not_authorized: "This account does not have access to the dashboard.",
+    },
   },
 
   profile: {

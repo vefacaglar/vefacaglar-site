@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { httpClient } from "../../lib/httpClient";
 import { authedRequest, authedMutation } from "../../lib/apiAction";
+import { getAuthMode, getOidcConfig, getOidcDiscovery, OIDC_FLOW_COOKIE, OIDC_ID_TOKEN_COOKIE } from "../../lib/oidc";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -61,8 +62,33 @@ export async function logoutAction() {
     }
   }
 
+  const idToken = cookieStore.get(OIDC_ID_TOKEN_COOKIE)?.value;
+
   cookieStore.delete("session_token");
-  redirect("/dashboard/login");
+  cookieStore.delete(OIDC_ID_TOKEN_COOKIE);
+  cookieStore.delete(OIDC_FLOW_COOKIE);
+
+  redirect((await getProviderLogoutUrl(idToken)) ?? "/dashboard/login");
+}
+
+/** RP-initiated logout URL at the identity provider, or null when there is nothing to end there. */
+async function getProviderLogoutUrl(idToken: string | undefined): Promise<string | null> {
+  if (getAuthMode() !== "oidc" || !idToken) return null;
+
+  try {
+    const { end_session_endpoint: endSessionEndpoint } = await getOidcDiscovery();
+    if (!endSessionEndpoint) return null;
+
+    const { clientId, postLogoutRedirectUri } = getOidcConfig();
+    const url = new URL(endSessionEndpoint);
+    url.searchParams.set("id_token_hint", idToken);
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri);
+    return url.toString();
+  } catch (error) {
+    console.error("OIDC logout error:", error);
+    return null;
+  }
 }
 
 export async function getSessionToken() {

@@ -27,6 +27,29 @@ export class DrizzleUsersRepository implements IUsersRepository {
     return row ?? null;
   }
 
+  async findByOidcSubject(issuer: string, subject: string): Promise<User | null> {
+    const [row] = await this.dbProvider.client
+      .select()
+      .from(users)
+      .where(and(eq(users.oidcIssuer, issuer), eq(users.oidcSubject, subject)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async linkOidc(userId: string, issuer: string, subject: string): Promise<User> {
+    const [row] = await this.dbProvider.client
+      .update(users)
+      .set({ oidcIssuer: issuer, oidcSubject: subject, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return row;
+  }
+
+  async create(user: NewUser): Promise<User> {
+    const [row] = await this.dbProvider.client.insert(users).values(user).returning();
+    return row;
+  }
+
   async updateLastLogin(id: string): Promise<void> {
     const now = new Date();
     await this.dbProvider.client.update(users).set({ lastLoginAt: now, updatedAt: now }).where(eq(users.id, id));

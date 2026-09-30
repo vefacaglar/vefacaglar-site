@@ -4,6 +4,9 @@ export interface IUsersRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByUsername(username: string): Promise<User | null>;
+  findByOidcSubject(issuer: string, subject: string): Promise<User | null>;
+  linkOidc(userId: string, issuer: string, subject: string): Promise<User>;
+  create(user: NewUser): Promise<User>;
   updateLastLogin(id: string): Promise<void>;
   updateProfile(
     userId: string,
