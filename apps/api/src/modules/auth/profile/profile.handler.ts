@@ -39,7 +39,6 @@ export class ProfileHandler {
     try {
       const updated = await this.usersRepo.updateProfile(user.id, {
         email: body.email,
-        username: body.username,
         displayName: body.displayName,
       });
 
@@ -57,9 +56,6 @@ export class ProfileHandler {
         const target = `${error.constraint_name ?? ""} ${error.detail ?? ""}`;
         if (target.includes("email")) {
           throw new BadRequestError("This email address is already in use.");
-        }
-        if (target.includes("username")) {
-          throw new BadRequestError("This username is already in use.");
         }
       }
       throw error;

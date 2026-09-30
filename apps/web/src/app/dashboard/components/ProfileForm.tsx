@@ -20,7 +20,6 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
   const [success, setSuccess] = useState(false);
 
   const [email, setEmail] = useState(initialData.email);
-  const [username, setUsername] = useState(initialData.username);
   const [displayName, setDisplayName] = useState(initialData.displayName);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,7 +28,7 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
     setError(null);
     setSuccess(false);
 
-    const result = await updateProfileAction({ email, username, displayName });
+    const result = await updateProfileAction({ email, displayName });
 
     if (result && result.error) {
       setError(result.error);
@@ -83,10 +82,9 @@ export default function ProfileForm({ initialData }: ProfileFormProps) {
         <input
           id="username"
           type="text"
-          required
-          minLength={3}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={initialData.username}
+          readOnly
+          disabled
           className="input"
         />
       </div>

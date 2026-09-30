@@ -188,7 +188,6 @@ export async function getProfileAction() {
 
 export async function updateProfileAction(data: {
   email: string;
-  username: string;
   displayName: string;
 }) {
   return authedMutation("PUT", "/api/auth/profile", {

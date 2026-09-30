@@ -13,7 +13,6 @@ export type GetProfileResponse = Static<typeof GetProfileResponseSchema>;
 
 export const UpdateProfileRequestSchema = Type.Object({
   email: Type.String({ format: "email" }),
-  username: Type.String({ minLength: 3 }),
   displayName: Type.String({ minLength: 1 }),
 });
 export type UpdateProfileRequest = Static<typeof UpdateProfileRequestSchema>;

@@ -10,7 +10,7 @@ export interface IUsersRepository {
   updateLastLogin(id: string): Promise<void>;
   updateProfile(
     userId: string,
-    patch: { email: string; username: string; displayName: string }
+    patch: { email: string; displayName: string }
   ): Promise<User>;
   changePasswordAndRevokeOtherSessions(
     userId: string,

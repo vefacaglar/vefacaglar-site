@@ -56,12 +56,12 @@ export class DrizzleUsersRepository implements IUsersRepository {
   }
 
   /**
-   * Updates profile fields with in-transaction uniqueness checks against other users.
-   * Throws "EmailAlreadyExists" or "UsernameAlreadyExists" on conflict.
+   * Updates profile fields with an in-transaction email uniqueness check against other users.
+   * The username is intentionally not editable. Throws "EmailAlreadyExists" on conflict.
    */
   async updateProfile(
     userId: string,
-    patch: { email: string; username: string; displayName: string }
+    patch: { email: string; displayName: string }
   ): Promise<User> {
     return await this.dbProvider.transaction(async () => {
       const emailExists = await this.dbProvider.client
@@ -71,15 +71,6 @@ export class DrizzleUsersRepository implements IUsersRepository {
         .limit(1);
       if (emailExists.length > 0) {
         throw new Error("EmailAlreadyExists");
-      }
-
-      const usernameExists = await this.dbProvider.client
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.username, patch.username), ne(users.id, userId)))
-        .limit(1);
-      if (usernameExists.length > 0) {
-        throw new Error("UsernameAlreadyExists");
       }
 
       const [row] = await this.dbProvider.client

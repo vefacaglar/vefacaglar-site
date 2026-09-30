@@ -59,7 +59,6 @@ describe("ProfileHandler", () => {
       const updated = {
         ...baseUser,
         email: "new@example.com",
-        username: "vefa-new",
         displayName: "Vefa New",
         updatedAt: new Date("2026-02-02"),
       };
@@ -71,20 +70,18 @@ describe("ProfileHandler", () => {
 
       const result = await handler.updateProfile(mockRequest, {
         email: "new@example.com",
-        username: "vefa-new",
         displayName: "Vefa New",
       });
 
       expect(mockUsersRepo.updateProfile).toHaveBeenCalledWith("user-1", {
         email: "new@example.com",
-        username: "vefa-new",
         displayName: "Vefa New",
       });
       expect(result).toEqual({
         user: {
           id: "user-1",
           email: "new@example.com",
-          username: "vefa-new",
+          username: "vefa",
           displayName: "Vefa New",
           role: "admin",
         },
@@ -105,37 +102,15 @@ describe("ProfileHandler", () => {
       await expect(
         handler.updateProfile(mockRequest, {
           email: "vefa@example.com",
-          username: "vefa",
           displayName: "Vefa Çağlar",
         })
       ).rejects.toThrow(BadRequestError);
       await expect(
         handler.updateProfile(mockRequest, {
           email: "vefa@example.com",
-          username: "vefa",
           displayName: "Vefa Çağlar",
         })
       ).rejects.toThrow("This email address is already in use.");
-    });
-
-    it("should translate unique-constraint error on username to BadRequestError", async () => {
-      const dbError: any = new Error("duplicate key");
-      dbError.code = "23505";
-      dbError.constraint_name = "users_username_unique";
-      dbError.detail = "Key (username)=(vefa) already exists.";
-      mockUsersRepo.updateProfile.mockRejectedValue(dbError);
-
-      const mockRequest = {
-        user: baseUser,
-      } as unknown as FastifyRequest;
-
-      await expect(
-        handler.updateProfile(mockRequest, {
-          email: "vefa@example.com",
-          username: "vefa",
-          displayName: "Vefa Çağlar",
-        })
-      ).rejects.toThrow("This username is already in use.");
     });
 
     it("should re-throw non-constraint errors unchanged", async () => {
@@ -149,7 +124,6 @@ describe("ProfileHandler", () => {
       await expect(
         handler.updateProfile(mockRequest, {
           email: "vefa@example.com",
-          username: "vefa",
           displayName: "Vefa Çağlar",
         })
       ).rejects.toThrow("connection lost");
