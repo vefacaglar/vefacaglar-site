@@ -39,7 +39,7 @@ export default function Header({ dict }: HeaderProps) {
       }
     } else if (pagePath.startsWith("/packages")) {
       if (pagePath !== "/packages") {
-        items.push({ label: "packages", href: `${prefix}/packages` });
+        items.push({ label: "packages", href: "/packages" });
       } else {
         items.push({ label: "packages", href: null });
       }

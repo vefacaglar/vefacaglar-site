@@ -7,7 +7,7 @@ import styles from "./post.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
-import { localizedAlternates } from "../../../lib/seo";
+import { localizedAlternates, SITE_URL } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { getPost } from "../../../lib/data";
 
@@ -23,6 +23,14 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     title: post.seoTitle || formatMetaTitle(post.title, lang),
     description: post.seoDescription || post.title,
     alternates: localizedAlternates(`/blog/${params.slug}`, lang),
+    openGraph: {
+      type: "article",
+      title: post.seoTitle || post.title,
+      description: post.seoDescription || post.title,
+      publishedTime: post.publishedAt ?? undefined,
+      modifiedTime: post.updatedAt ?? undefined,
+      images: post.coverImageUrl ? [post.coverImageUrl] : undefined,
+    },
   };
 }
 
@@ -43,8 +51,25 @@ export default async function BlogPost({ params }: { params: { slug: string } })
     });
   };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.seoDescription || post.title,
+    inLanguage: lang,
+    datePublished: post.publishedAt ?? undefined,
+    dateModified: post.updatedAt ?? post.publishedAt ?? undefined,
+    image: post.coverImageUrl ? [post.coverImageUrl] : undefined,
+    mainEntityOfPage: `${SITE_URL}${localizeHref(`/blog/${post.slug}`, lang)}`,
+    author: post.author ? { "@type": "Person", name: post.author.displayName } : undefined,
+  };
+
   return (
     <article>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <header className={styles.header}>
         <h1 className={styles.postTitle}>{post.title}</h1>
         {post.publishedAt && (

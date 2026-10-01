@@ -14,6 +14,7 @@ export async function generateMetadata() {
   const dict = getDictionary(lang);
   return {
     title: dict.blog_meta_title,
+    description: dict.blog_subtitle,
     alternates: localizedAlternates("/blog", lang),
   };
 }

@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "vefa çağlar",
   description: "personal website of vefa çağlar",
+  openGraph: {
+    type: "website",
+    siteName: "vefa çağlar",
+  },
   verification: {
     google: "nVnbCv8TKlOREhb5XkkIegzW0AImFUIHrvNokeSlJYA",
   },

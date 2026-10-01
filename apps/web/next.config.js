@@ -48,6 +48,10 @@ const securityHeaders = [
   },
 ];
 
+// Private routes must stay out of the index. robots.txt must NOT disallow them: Google can
+// only honor this header on URLs it is allowed to fetch.
+const noIndexHeaders = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+
 const nextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
@@ -62,6 +66,8 @@ const nextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      { source: "/dashboard/:path*", headers: noIndexHeaders },
+      { source: "/callback", headers: noIndexHeaders },
     ];
   },
   async redirects() {
@@ -74,6 +80,17 @@ const nextConfig = {
       {
         source: "/tr/home",
         destination: "/tr",
+        permanent: true,
+      },
+      // Packages are English-only; /tr variants would just be duplicates of the English pages.
+      {
+        source: "/tr/packages/:path*",
+        destination: "/packages/:path*",
+        permanent: true,
+      },
+      {
+        source: "/tr/packages",
+        destination: "/packages",
         permanent: true,
       },
     ];

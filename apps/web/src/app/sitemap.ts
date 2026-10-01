@@ -34,40 +34,72 @@ function englishOnly(path: string, options: Omit<Entry, "url">): Entry[] {
   return [{ url: `${baseUrl}${path}`, ...options }];
 }
 
-async function fetchJson(path: string): Promise<any | null> {
-  try {
-    const res = await fetch(`${apiUrl}${path}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error(`Sitemap: failed to fetch ${path}:`, error);
-    return null;
+// Throw on any failure: serving a sitemap that silently dropped the blog/project/package
+// URLs would make Google think those pages were removed. A 5xx makes it retry later instead.
+async function fetchJson(path: string): Promise<any> {
+  const res = await fetch(`${apiUrl}${path}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Sitemap: ${path} responded with ${res.status}`);
   }
+  return res.json();
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
-
-  const staticRoutes: Entry[] = [
-    ...bilingual("", { lastModified: now, changeFrequency: "daily", priority: 1.0 }),
-    ...bilingual("/about", { lastModified: now, changeFrequency: "monthly", priority: 0.8 }),
-    ...bilingual("/blog", { lastModified: now, changeFrequency: "daily", priority: 0.9 }),
-    ...bilingual("/projects", { lastModified: now, changeFrequency: "weekly", priority: 0.8 }),
-    ...englishOnly("/packages", { lastModified: now, changeFrequency: "weekly", priority: 0.8 }),
-  ];
-
-  const [postsData, pages, packagesData] = await Promise.all([
+  const [postsData, pages, projectsData, packagesData] = await Promise.all([
     fetchJson("/api/posts?limit=1000"),
     fetchJson("/api/pages"),
-    fetchJson("/api/packages"),
+    fetchJson("/api/projects?limit=1000"),
+    fetchJson("/api/packages?limit=1000"),
   ]);
+
+  // The list endpoint has no nested items/docs, so load each package's detail.
+  const packageDetails: any[] = await Promise.all(
+    (packagesData?.items ?? []).map((pkg: { slug: string }) => fetchJson(`/api/packages/${pkg.slug}`))
+  );
+
+  const posts: any[] = postsData?.items ?? [];
+
+  // lastModified is only set where a real date exists; a "now" on every request teaches
+  // Google to ignore the field.
+  const newestPostDate = parseDate(
+    ...posts.map((post) => post.updatedAt ?? post.publishedAt ?? post.createdAt)
+      .sort()
+      .reverse()
+  );
+
+  const staticRoutes: Entry[] = [
+    ...bilingual("", { changeFrequency: "daily", priority: 1.0 }),
+    ...bilingual("/about", { changeFrequency: "monthly", priority: 0.8 }),
+    ...bilingual("/blog", { lastModified: newestPostDate, changeFrequency: "daily", priority: 0.9 }),
+    ...bilingual("/projects", { changeFrequency: "weekly", priority: 0.8 }),
+    ...englishOnly("/packages", { changeFrequency: "weekly", priority: 0.8 }),
+  ];
 
   const dynamicRoutes: Entry[] = [];
 
-  for (const post of postsData?.items ?? []) {
+  for (const post of posts) {
     dynamicRoutes.push(
       ...bilingual(`/blog/${post.slug}`, {
-        lastModified: parseDate(post.updatedAt, post.publishedAt, post.createdAt) ?? now,
+        lastModified: parseDate(post.updatedAt, post.publishedAt, post.createdAt),
+        changeFrequency: "monthly",
+        priority: 0.7,
+      })
+    );
+  }
+
+  const authorUsernames = new Set<string>(
+    posts.map((post) => post.author?.username).filter(Boolean)
+  );
+  for (const username of authorUsernames) {
+    dynamicRoutes.push(
+      ...bilingual(`/author/${username}`, { changeFrequency: "monthly", priority: 0.5 })
+    );
+  }
+
+  for (const project of projectsData?.items ?? []) {
+    dynamicRoutes.push(
+      ...bilingual(`/projects/${project.slug}`, {
+        lastModified: parseDate(project.updatedAt, project.publishedAt, project.createdAt),
         changeFrequency: "monthly",
         priority: 0.7,
       })
@@ -79,21 +111,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (excludedSlugs.includes(page.slug) || page.status !== "published") continue;
     dynamicRoutes.push(
       ...bilingual(`/${page.slug}`, {
-        lastModified: parseDate(page.updatedAt, page.publishedAt, page.createdAt) ?? now,
+        lastModified: parseDate(page.updatedAt, page.publishedAt, page.createdAt),
         changeFrequency: "monthly",
         priority: 0.6,
       })
     );
   }
 
-  for (const pkg of packagesData?.items ?? []) {
+  // Packages and their docs are English-only.
+  for (const pkg of packageDetails) {
     dynamicRoutes.push(
-      ...englishOnly(`/packages/${pkg.slug}`, {
-        lastModified: parseDate(pkg.updatedAt, pkg.createdAt) ?? now,
-        changeFrequency: "monthly",
-        priority: 0.6,
-      })
+      ...englishOnly(`/packages/${pkg.slug}`, { changeFrequency: "monthly", priority: 0.6 })
     );
+    for (const item of pkg.packages ?? []) {
+      dynamicRoutes.push(
+        ...englishOnly(`/packages/${pkg.slug}/${item.slug}`, {
+          changeFrequency: "monthly",
+          priority: 0.5,
+        })
+      );
+    }
+    for (const doc of pkg.docsList ?? []) {
+      dynamicRoutes.push(
+        ...englishOnly(`/packages/${pkg.slug}/docs/${doc.slug}`, {
+          changeFrequency: "monthly",
+          priority: 0.5,
+        })
+      );
+    }
   }
 
   // Deduplicate by URL so a dynamic page slug can't collide with a static route.
