@@ -31,7 +31,7 @@ export class GetLibraryHandler {
         title: latest.game.title,
         coverImageUrl: latest.game.coverImageUrl,
         status: latest.status,
-        rating: rated ? Number(rated.rating) : null,
+        rating: rated ? rated.rating : null,
         playtimeHours: hours.length > 0 ? round1(hours.reduce((a, b) => a + b, 0)) : null,
         logCount: gameLogs.length,
         lastLoggedAt: latest.createdAt.toISOString(),

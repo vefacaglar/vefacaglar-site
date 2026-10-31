@@ -24,7 +24,8 @@ export type GameLog = Static<typeof GameLogSchema>;
 export const GameLogBodySchema = Type.Object({
   status: GameLogStatusSchema,
   platformId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
-  rating: Type.Optional(Type.Union([Type.Number({ minimum: 0, maximum: 10, multipleOf: 0.5 }), Type.Null()])),
+  // Out of 100.
+  rating: Type.Optional(Type.Union([Type.Integer({ minimum: 0, maximum: 100 }), Type.Null()])),
   startedAt: Type.Optional(NullableDate),
   completedAt: Type.Optional(NullableDate),
   playtimeHours: Type.Optional(Type.Union([Type.Number({ minimum: 0, maximum: 100000 }), Type.Null()])),
@@ -37,7 +38,7 @@ export function toGameLog(row: GameLogWithPlatform): GameLog {
     id: row.id,
     status: row.status,
     platform: row.platformId && row.platformName ? { id: row.platformId, name: row.platformName } : null,
-    rating: row.rating === null ? null : Number(row.rating),
+    rating: row.rating,
     startedAt: row.startedAt,
     completedAt: row.completedAt,
     playtimeHours: row.playtimeHours === null ? null : Number(row.playtimeHours),

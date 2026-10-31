@@ -18,7 +18,7 @@ describe("ListGameLogsHandler", () => {
   it("lists only the requesting user's logs", async () => {
     logsRepo.listForUserGame.mockResolvedValue([
       {
-        id: "l-1", status: "completed", platformId: "p-1", platformName: "PC", rating: "8.5",
+        id: "l-1", status: "completed", platformId: "p-1", platformName: "PC", rating: 85,
         startedAt: null, completedAt: "2026-01-02", playtimeHours: null, notes: null,
         createdAt: new Date("2026-01-02T00:00:00.000Z"),
       },
@@ -27,7 +27,7 @@ describe("ListGameLogsHandler", () => {
     const result = await handler.handle({ params: { slug: "doom" }, user: { id: "u-1" } } as any);
 
     expect(logsRepo.listForUserGame).toHaveBeenCalledWith("u-1", "g-1");
-    expect(result.items[0]).toMatchObject({ id: "l-1", rating: 8.5, platform: { id: "p-1", name: "PC" } });
+    expect(result.items[0]).toMatchObject({ id: "l-1", rating: 85, platform: { id: "p-1", name: "PC" } });
   });
 
   it("throws NotFound for an unknown game", async () => {

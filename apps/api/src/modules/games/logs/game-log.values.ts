@@ -18,7 +18,7 @@ export function toGameLogValues(body: GameLogBody, game: GameWithRelations): Par
   return {
     status: body.status,
     platformId,
-    rating: body.rating == null ? null : String(body.rating),
+    rating: body.rating ?? null,
     startedAt,
     completedAt,
     playtimeHours: body.playtimeHours == null ? null : String(body.playtimeHours),

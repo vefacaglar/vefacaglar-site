@@ -65,7 +65,7 @@ export default async function ProfilePage() {
     [String(summary.completedCount), dict.stat_completed],
     [String(summary.logCount), dict.stat_logs],
     [`${summary.playtimeHours}${dict.hours_short}`, dict.stat_hours],
-    [summary.averageRating !== null ? `${summary.averageRating}/10` : "—", dict.stat_avg_rating],
+    [summary.averageRating !== null ? `${summary.averageRating}/100` : "—", dict.stat_avg_rating],
   ];
 
   return (
@@ -106,7 +106,7 @@ export default async function ProfilePage() {
                   </Link>
                   <p className={styles.gameMeta}>
                     <span className={styles.status}>{statusLabel(dict, game.status)}</span>
-                    {game.rating !== null && <span>{game.rating}/10</span>}
+                    {game.rating !== null && <span>{game.rating}/100</span>}
                     {game.playtimeHours !== null && <span>{`${game.playtimeHours}${dict.hours_short}`}</span>}
                     {game.logCount > 1 && (
                       <span>{dict.log_count.replace("{count}", String(game.logCount))}</span>

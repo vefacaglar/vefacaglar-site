@@ -10,11 +10,8 @@ import { GAME_LOG_STATUSES, statusLabel } from "../../../gameLogStatus";
 import type { GameLog } from "../../GameLogs";
 import ConfirmDialog from "../../../../components/ConfirmDialog";
 import DatePicker from "../../../../components/DatePicker";
-import { toDecimal } from "../../../../../lib/numericInput";
+import { toDecimal, toDigits } from "../../../../../lib/numericInput";
 import styles from "../../game.module.css";
-
-/** 0.5 to 10 in half steps, highest first. */
-const RATINGS = Array.from({ length: 20 }, (_, i) => (20 - i) / 2);
 
 export default function LogEditForm({
   slug,
@@ -95,14 +92,24 @@ export default function LogEditForm({
           </label>
           <label className="field">
             <span className="label">{dict.log_rating}</span>
-            <select name="rating" className="input" defaultValue={log.rating === null ? "" : String(log.rating)}>
-              <option value="">—</option>
-              {RATINGS.map((r) => (
-                <option key={r} value={String(r)}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <div className={styles.suffixField}>
+              <input
+                name="rating"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={3}
+                className="input"
+                defaultValue={log.rating ?? ""}
+                onChange={(e) => {
+                  const digits = toDigits(e.currentTarget.value);
+                  e.currentTarget.value = digits === "" ? "" : String(Math.min(100, Number(digits)));
+                }}
+              />
+              <span className={styles.suffix} aria-hidden="true">
+                /100
+              </span>
+            </div>
           </label>
           <label className="field">
             <span className="label">{dict.log_playtime}</span>

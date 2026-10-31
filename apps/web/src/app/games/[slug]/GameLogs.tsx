@@ -86,7 +86,7 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
                 <div className={styles.logSummary}>
                   <span className={styles.status}>{statusLabel(dict, log.status)}</span>
                   {log.platform && <span>{log.platform.name}</span>}
-                  {log.rating !== null && <span>{log.rating}/10</span>}
+                  {log.rating !== null && <span>{log.rating}/100</span>}
                   {log.playtimeHours !== null && <span>{`${log.playtimeHours}${dict.hours_short}`}</span>}
                   {log.startedAt && <span>{`${dict.log_started} ${formatDate(log.startedAt, locale)}`}</span>}
                   {log.completedAt && <span>{`${dict.log_completed} ${formatDate(log.completedAt, locale)}`}</span>}

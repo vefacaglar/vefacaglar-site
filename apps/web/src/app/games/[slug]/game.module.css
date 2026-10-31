@@ -146,6 +146,28 @@
   margin-bottom: 24px;
 }
 
+/* An input with a fixed unit shown inside its right edge, e.g. "/100". */
+.suffixField {
+  position: relative;
+  display: flex;
+}
+
+.suffixField input {
+  flex: 1;
+  min-width: 0;
+  padding-right: 52px;
+}
+
+.suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
 .formFooter {
   display: flex;
   justify-content: space-between;

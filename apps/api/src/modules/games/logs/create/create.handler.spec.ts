@@ -25,13 +25,13 @@ describe("CreateGameLogHandler", () => {
 
   const request = (body: any) => ({ params: { slug: "doom" }, user: { id: "u-1" }, body }) as any;
 
-  it("creates a log for the user, converting numbers to decimal strings", async () => {
-    await handler.handle(request({ status: "completed", platformId: "p-1", rating: 8.5, playtimeHours: 12, notes: "  great  " }));
+  it("creates a log for the user, storing playtime as a decimal string", async () => {
+    await handler.handle(request({ status: "completed", platformId: "p-1", rating: 85, playtimeHours: 12, notes: "  great  " }));
 
     expect(logsRepo.create).toHaveBeenCalledWith({
       status: "completed",
       platformId: "p-1",
-      rating: "8.5",
+      rating: 85,
       startedAt: null,
       completedAt: null,
       playtimeHours: "12",

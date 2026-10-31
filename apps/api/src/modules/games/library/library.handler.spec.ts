@@ -33,17 +33,17 @@ describe("GetLibraryHandler", () => {
   it("groups logs per game: latest status, latest rating, summed hours", async () => {
     logsRepo.listForUser.mockResolvedValue([
       log({ id: "l3", gameId: "g-1", status: "playing", playtimeHours: "5.5", createdAt: new Date("2026-03-01T00:00:00.000Z") }),
-      log({ id: "l2", gameId: "g-1", status: "completed", rating: "9.0", playtimeHours: "20" }),
-      log({ id: "l1", gameId: "g-2", status: "abandoned", rating: "4.0", game: { slug: "quake", title: "Quake", coverImageUrl: null } }),
+      log({ id: "l2", gameId: "g-1", status: "completed", rating: 90, playtimeHours: "20" }),
+      log({ id: "l1", gameId: "g-2", status: "abandoned", rating: 40, game: { slug: "quake", title: "Quake", coverImageUrl: null } }),
     ]);
 
     const result = await handler.handle({ user: { id: "u-1" } } as any);
 
     expect(result.games[0]).toEqual({
-      slug: "doom", title: "Doom", coverImageUrl: null, status: "playing", rating: 9,
+      slug: "doom", title: "Doom", coverImageUrl: null, status: "playing", rating: 90,
       playtimeHours: 25.5, logCount: 2, lastLoggedAt: "2026-03-01T00:00:00.000Z",
     });
-    expect(result.games[1]).toMatchObject({ slug: "quake", rating: 4, playtimeHours: null, logCount: 1 });
-    expect(result.summary).toEqual({ gameCount: 2, logCount: 3, completedCount: 1, playtimeHours: 25.5, averageRating: 6.5 });
+    expect(result.games[1]).toMatchObject({ slug: "quake", rating: 40, playtimeHours: null, logCount: 1 });
+    expect(result.summary).toEqual({ gameCount: 2, logCount: 3, completedCount: 1, playtimeHours: 25.5, averageRating: 65 });
   });
 });

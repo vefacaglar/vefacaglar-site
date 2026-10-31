@@ -91,7 +91,8 @@ export const userGames = pgTable('user_games', {
     .notNull()
     .references(() => games.id, { onDelete: 'cascade' }),
   status: text('status', { enum: gameStatusEnum }).notNull(),
-  rating: decimal('rating', { precision: 3, scale: 1 }),
+  // 0-100
+  rating: integer('rating'),
   reviewText: text('review_text'),
   notes: text('notes'),
   isFavorite: boolean('is_favorite').notNull().default(false),
