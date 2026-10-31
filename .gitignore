@@ -16,6 +16,8 @@ build/
 
 # logs
 logs/
+# ...but not source folders that happen to be named logs (e.g. game log features)
+!apps/**/src/**/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
