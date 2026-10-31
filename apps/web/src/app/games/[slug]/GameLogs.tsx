@@ -6,6 +6,7 @@ import { useLocale } from "../../../components/LocaleProvider";
 import { getDictionary, type Dictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { createGameLog, deleteGameLog, type GameLogInput } from "../actions";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import styles from "./game.module.css";
 
 export type GameLog = {
@@ -42,6 +43,7 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
   const locale = useLocale();
   const dict = getDictionary(locale);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const run = (action: () => Promise<{ error?: string }>) => {
@@ -54,8 +56,11 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
 
   const onLog = () => run(() => createGameLog(slug, QUICK_LOG));
 
-  const onDelete = (id: string) => {
-    if (window.confirm(dict.confirm_delete_log)) run(() => deleteGameLog(slug, id));
+  const onDelete = () => {
+    if (!pendingDelete) return;
+    const id = pendingDelete;
+    setPendingDelete(null);
+    run(() => deleteGameLog(slug, id));
   };
 
   return (
@@ -89,7 +94,7 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
                 type="button"
                 className={`btnGhost ${styles.deleteButton}`}
                 disabled={pending}
-                onClick={() => onDelete(log.id)}
+                onClick={() => setPendingDelete(log.id)}
                 aria-label={dict.delete}
                 title={dict.delete}
               >
@@ -99,6 +104,16 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        message={dict.confirm_delete_log}
+        confirmLabel={dict.delete}
+        cancelLabel={dict.cancel}
+        pending={pending}
+        onConfirm={onDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
