@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "./forms.module.css";
 import ds from "../../../../lib/dashboard-strings";
+import { toDecimal, toDigits } from "../../../../lib/numericInput";
 
 export type ScoreField = number | "";
 export type HoursField = string | number;
@@ -123,13 +124,16 @@ export default function GameFieldsForm({
           <label className={styles.label} htmlFor="game-metacritic">{ds.games.form.metacriticScore}</label>
           <input
             id="game-metacritic"
-            type="number"
-            min={0}
-            max={100}
+            type="text"
+            inputMode="numeric"
+            maxLength={3}
             className={styles.input}
             placeholder={showPlaceholders ? ds.games.placeholders.metacriticScore : undefined}
             value={values.metacriticScore}
-            onChange={(e) => onChange("metacriticScore", e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => {
+              const digits = toDigits(e.target.value);
+              onChange("metacriticScore", digits === "" ? "" : Math.min(100, Number(digits)));
+            }}
             disabled={disabled}
           />
         </div>
@@ -137,13 +141,16 @@ export default function GameFieldsForm({
           <label className={styles.label} htmlFor="game-opencritic">{ds.games.form.opencriticScore}</label>
           <input
             id="game-opencritic"
-            type="number"
-            min={0}
-            max={100}
+            type="text"
+            inputMode="numeric"
+            maxLength={3}
             className={styles.input}
             placeholder={showPlaceholders ? ds.games.placeholders.metacriticScore : undefined}
             value={values.openCriticScore}
-            onChange={(e) => onChange("openCriticScore", e.target.value === "" ? "" : Number(e.target.value))}
+            onChange={(e) => {
+              const digits = toDigits(e.target.value);
+              onChange("openCriticScore", digits === "" ? "" : Math.min(100, Number(digits)));
+            }}
             disabled={disabled}
           />
         </div>
@@ -155,10 +162,11 @@ export default function GameFieldsForm({
           <input
             id="game-hltb-main"
             type="text"
+            inputMode="decimal"
             className={styles.input}
             placeholder={showPlaceholders ? ds.games.placeholders.hltbMain : undefined}
             value={values.hltbMainHours}
-            onChange={(e) => onChange("hltbMainHours", e.target.value)}
+            onChange={(e) => onChange("hltbMainHours", toDecimal(e.target.value))}
             disabled={disabled}
           />
         </div>
@@ -167,10 +175,11 @@ export default function GameFieldsForm({
           <input
             id="game-hltb-extra"
             type="text"
+            inputMode="decimal"
             className={styles.input}
             placeholder={showPlaceholders ? ds.games.placeholders.hltbMainEx : undefined}
             value={values.hltbMainExtraHours}
-            onChange={(e) => onChange("hltbMainExtraHours", e.target.value)}
+            onChange={(e) => onChange("hltbMainExtraHours", toDecimal(e.target.value))}
             disabled={disabled}
           />
         </div>
@@ -179,10 +188,11 @@ export default function GameFieldsForm({
           <input
             id="game-hltb-comp"
             type="text"
+            inputMode="decimal"
             className={styles.input}
             placeholder={showPlaceholders ? ds.games.placeholders.hltbComp : undefined}
             value={values.hltbCompletionistHours}
-            onChange={(e) => onChange("hltbCompletionistHours", e.target.value)}
+            onChange={(e) => onChange("hltbCompletionistHours", toDecimal(e.target.value))}
             disabled={disabled}
           />
         </div>

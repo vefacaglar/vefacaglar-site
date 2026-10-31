@@ -7,6 +7,7 @@ import { createDocAction, updateDocAction } from "./actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
 import Button from "../../../components/Button";
+import { toDigits } from "../../../lib/numericInput";
 
 interface CategoryItem {
   id: string;
@@ -198,10 +199,11 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
           <div className={`field ${styles.formCol}`}>
             <label className="label">display order</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               required
-              value={displayOrder}
-              onChange={(e) => setDisplayOrder(Number(e.target.value))}
+              value={String(displayOrder)}
+              onChange={(e) => setDisplayOrder(Number(toDigits(e.target.value)))}
               className="input"
             />
           </div>

@@ -10,7 +10,11 @@ import { GAME_LOG_STATUSES, statusLabel } from "../../../gameLogStatus";
 import type { GameLog } from "../../GameLogs";
 import ConfirmDialog from "../../../../components/ConfirmDialog";
 import DatePicker from "../../../../components/DatePicker";
+import { toDecimal } from "../../../../../lib/numericInput";
 import styles from "../../game.module.css";
+
+/** 0.5 to 10 in half steps, highest first. */
+const RATINGS = Array.from({ length: 20 }, (_, i) => (20 - i) / 2);
 
 export default function LogEditForm({
   slug,
@@ -91,11 +95,28 @@ export default function LogEditForm({
           </label>
           <label className="field">
             <span className="label">{dict.log_rating}</span>
-            <input name="rating" type="number" min={0} max={10} step={0.5} className="input" defaultValue={log.rating ?? ""} />
+            <select name="rating" className="input" defaultValue={log.rating === null ? "" : String(log.rating)}>
+              <option value="">—</option>
+              {RATINGS.map((r) => (
+                <option key={r} value={String(r)}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span className="label">{dict.log_playtime}</span>
-            <input name="playtimeHours" type="number" min={0} step={0.5} className="input" defaultValue={log.playtimeHours ?? ""} />
+            <input
+              name="playtimeHours"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              className="input"
+              defaultValue={log.playtimeHours ?? ""}
+              onChange={(e) => {
+                e.currentTarget.value = toDecimal(e.currentTarget.value);
+              }}
+            />
           </label>
           <div className="field">
             <label className="label" htmlFor="startedAt">

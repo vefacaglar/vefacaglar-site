@@ -9,6 +9,7 @@ import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
+import { toDigits } from "../../../lib/numericInput";
 
 interface ProjectFormProps {
   initialData?: {
@@ -246,9 +247,10 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
           <div className={`field ${styles.formCol}`}>
             <label className="label">{ds.forms.sortOrder}</label>
             <input
-              type="number"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(Number(e.target.value))}
+              type="text"
+              inputMode="numeric"
+              value={String(sortOrder)}
+              onChange={(e) => setSortOrder(Number(toDigits(e.target.value)))}
               className="input"
             />
           </div>

@@ -12,6 +12,7 @@ import {
   deleteDocAction
 } from "../../actions";
 import { useConfirm } from "../../../components/ConfirmProvider";
+import { toDigits } from "../../../../../lib/numericInput";
 
 interface CategoryItem {
   id: string;
@@ -321,10 +322,11 @@ export default function DocManagement({ packageId, groupSlug, categories, docs }
               <div style={{ width: "90px" }}>
                 <label className="label" style={{ fontSize: "0.8rem", marginBottom: "4px" }}>Order</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  value={newCatOrder}
-                  onChange={(e) => setNewCatOrder(Number(e.target.value))}
+                  value={String(newCatOrder)}
+                  onChange={(e) => setNewCatOrder(Number(toDigits(e.target.value)))}
                   className="input"
                   style={{ margin: 0, padding: "6px" }}
                 />
@@ -360,10 +362,11 @@ export default function DocManagement({ packageId, groupSlug, categories, docs }
                           <>
                             <td className={styles.td}>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 required
-                                value={editCatOrder}
-                                onChange={(e) => setEditCatOrder(Number(e.target.value))}
+                                value={String(editCatOrder)}
+                                onChange={(e) => setEditCatOrder(Number(toDigits(e.target.value)))}
                                 className="input"
                                 style={{ margin: 0, padding: "4px", fontSize: "0.85rem" }}
                               />
