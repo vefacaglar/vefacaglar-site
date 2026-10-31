@@ -1,0 +1,175 @@
+.hero {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.cover {
+  width: 180px;
+  flex-shrink: 0;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.heading h1 {
+  margin-top: 0;
+}
+
+.facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px;
+}
+
+.fact dt {
+  color: var(--muted);
+}
+
+.fact dd {
+  margin: 0;
+}
+
+.description {
+  line-height: 1.7;
+}
+
+.section {
+  margin-top: 40px;
+}
+
+.hltb {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--border);
+}
+
+.hltb li {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hltb li + li {
+  border-left: 1px solid var(--border);
+}
+
+.hours {
+  font-size: 20px;
+  color: var(--text-heading);
+}
+
+.hoursLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.logs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.logList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logList:empty {
+  display: none;
+}
+
+.logItem {
+  border: 1px solid var(--border);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.status {
+  color: var(--accent);
+}
+
+.notes {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.logActions {
+  display: flex;
+  gap: 8px;
+}
+
+.logForm {
+  width: 100%;
+  border: 1px solid var(--border);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .hero {
+    flex-direction: column;
+  }
+
+  .cover {
+    width: 140px;
+  }
+
+  .hltb,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .hltb li + li {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}

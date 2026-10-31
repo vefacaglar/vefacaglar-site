@@ -7,6 +7,7 @@ import {
   OidcFlowState,
   OIDC_FLOW_COOKIE,
   OIDC_ID_TOKEN_COOKIE,
+  sanitizeReturnTo,
 } from "../../lib/oidc";
 
 export const dynamic = "force-dynamic";
@@ -79,15 +80,18 @@ export async function GET(request: NextRequest) {
 
     const { token, user } = await exchangeRes.json();
 
-    // Only admins can use the dashboard. Drop the session of anyone else right away.
-    if (user.role !== "admin") {
+    // A sign-in started from a public page (e.g. to log a game) is open to every
+    // user and returns there. A dashboard sign-in is admin-only: drop the
+    // session of anyone else right away.
+    const returnTo = sanitizeReturnTo(flow.returnTo);
+    if (!returnTo && user.role !== "admin") {
       await httpClient
         .post("/api/auth/logout", undefined, { headers: { Authorization: `Bearer ${token}` } })
         .catch(() => null);
       return fail("not_authorized");
     }
 
-    const response = NextResponse.redirect(`${siteUrl}/dashboard`);
+    const response = NextResponse.redirect(`${siteUrl}${returnTo ?? "/dashboard"}`);
     const cookieOptions = {
       httpOnly: true,
       secure: siteUrl.startsWith("https://"),

@@ -51,6 +51,14 @@ export const getPackageDoc = cache((slug: string, docSlug: string) =>
   getJson(`/api/packages/${slug}/docs/${docSlug}`)
 );
 
+export const getPublicGames = cache((page: number, q?: string) => {
+  const params = new URLSearchParams({ page: String(page), limit: "24" });
+  if (q) params.set("q", q);
+  return getJson(`/api/games?${params.toString()}`, { cached: !q });
+});
+
+export const getGame = cache((slug: string) => getJson(`/api/games/${slug}`));
+
 export const getAuthor = cache((username: string) => getJson(`/api/authors/${username}`));
 
 export const getPublicPosts = cache((page: number, q?: string) => {

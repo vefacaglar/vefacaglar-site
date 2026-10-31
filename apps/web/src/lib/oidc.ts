@@ -69,4 +69,17 @@ export interface OidcFlowState {
   state: string;
   nonce: string;
   verifier: string;
+  /** Public page to return to after sign-in; absent for dashboard sign-ins. */
+  returnTo?: string;
+}
+
+/**
+ * Accepts only same-site public paths ("/games/foo?lang=tr"), never absolute
+ * or protocol-relative URLs (open redirect) and never the dashboard, which is
+ * admin-only and keeps its own post-login landing.
+ */
+export function sanitizeReturnTo(value: string | null | undefined): string | undefined {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return undefined;
+  if (value === "/dashboard" || value.startsWith("/dashboard/") || value.startsWith("/dashboard?")) return undefined;
+  return value;
 }

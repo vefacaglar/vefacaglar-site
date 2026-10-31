@@ -13,6 +13,7 @@ import { projectsRoutes } from "./modules/projects/projects.routes";
 import { uploadsRoutes } from "./modules/uploads/uploads.routes";
 import { localizationsRoutes } from "./modules/localizations/localizations.routes";
 import { gamesRoutes } from "./modules/catalog/games.routes";
+import { publicGamesRoutes } from "./modules/games/games.routes";
 import { developersRoutes } from "./modules/catalog/developers.routes";
 import { publishersRoutes } from "./modules/catalog/publishers.routes";
 import { genresRoutes } from "./modules/catalog/genres.routes";
@@ -142,6 +143,7 @@ app.register(platformsRoutes, { prefix: "/api/catalog" });
 app.register(gamesRoutes, { prefix: "/api/catalog" });
 app.register(gameRelationsRoutes, { prefix: "/api/catalog" });
 app.register(packagesRoutes, { prefix: "/api/packages" });
+app.register(publicGamesRoutes, { prefix: "/api/games" });
 
 export default async function handler(req: any, res: any) {
   await app.ready();

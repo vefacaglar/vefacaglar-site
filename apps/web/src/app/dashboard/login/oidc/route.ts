@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createPkceFlow, getAuthMode, getOidcConfig, getOidcDiscovery, OIDC_FLOW_COOKIE, OIDC_FLOW_MAX_AGE } from "../../../../lib/oidc";
+import { createPkceFlow, getAuthMode, getOidcConfig, getOidcDiscovery, OIDC_FLOW_COOKIE, OIDC_FLOW_MAX_AGE, sanitizeReturnTo } from "../../../../lib/oidc";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ export async function GET(request: Request) {
   }
 
   const { verifier, challenge, state, nonce } = createPkceFlow();
+  const returnTo = sanitizeReturnTo(new URL(request.url).searchParams.get("returnTo"));
 
   const url = new URL(authorizationEndpoint);
   url.searchParams.set("response_type", "code");
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
   url.searchParams.set("code_challenge_method", "S256");
 
   const response = NextResponse.redirect(url);
-  response.cookies.set(OIDC_FLOW_COOKIE, JSON.stringify({ state, nonce, verifier }), {
+  response.cookies.set(OIDC_FLOW_COOKIE, JSON.stringify({ state, nonce, verifier, returnTo }), {
     httpOnly: true,
     secure: siteUrl.startsWith("https://"),
     sameSite: "lax",

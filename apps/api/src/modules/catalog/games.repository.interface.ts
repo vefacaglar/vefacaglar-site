@@ -30,6 +30,9 @@ export interface CatalogIndex {
   themes: LookupIdentity[];
 }
 
+/** The fields a public game card needs. */
+export type GameCard = Pick<Game, "id" | "slug" | "title" | "coverImageUrl" | "releaseDate">;
+
 export interface IGamesRepository {
   create(
     values: NewGame,
@@ -55,6 +58,12 @@ export interface IGamesRepository {
     relation: "developer" | "publisher" | "genre" | "platform" | "theme",
     relatedId: string
   ): Promise<string[]>;
+
+  /**
+   * Public listing. Without `q`, released games newest first; with `q`, title
+   * matches ranked exact > prefix > substring, then newest first.
+   */
+  listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
 
   /** Loads ids and slugs (and game titles) of the whole catalog in one round of queries. */
   loadCatalogIndex(): Promise<CatalogIndex>;

@@ -11,11 +11,12 @@ import {
   gamePlatforms,
   gameThemes,
 } from "@vefacaglar/db";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
   CatalogIndex,
+  GameCard,
   IGamesRepository,
   Game,
   NewGame,
@@ -282,6 +283,41 @@ export class DrizzleGamesRepository implements IGamesRepository {
 
   async delete(id: string): Promise<void> {
     await this.dbProvider.client.delete(games).where(eq(games.id, id));
+  }
+
+  async listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }> {
+    const db = this.dbProvider.client;
+    const q = filter.q?.trim();
+    // Escape LIKE wildcards so a search for "100%" matches literally.
+    const pattern = q?.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const whereExpr = pattern
+      ? ilike(games.title, `%${pattern}%`)
+      : lte(games.releaseDate, sql`current_date`);
+    const order = pattern
+      ? [
+          asc(sql`case when lower(${games.title}) = lower(${q}) then 0 when ${games.title} ilike ${`${pattern}%`} then 1 else 2 end`),
+          sql`${games.releaseDate} desc nulls last`,
+          asc(games.title),
+        ]
+      : [sql`${games.releaseDate} desc nulls last`, asc(games.title)];
+
+    const [countResult, rows] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(games).where(whereExpr),
+      db
+        .select({
+          id: games.id,
+          slug: games.slug,
+          title: games.title,
+          coverImageUrl: games.coverImageUrl,
+          releaseDate: games.releaseDate,
+        })
+        .from(games)
+        .where(whereExpr)
+        .orderBy(...order)
+        .limit(filter.limit)
+        .offset((filter.page - 1) * filter.limit),
+    ]);
+    return { items: rows, total: Number(countResult[0]?.count || 0) };
   }
 
   async loadCatalogIndex(): Promise<CatalogIndex> {

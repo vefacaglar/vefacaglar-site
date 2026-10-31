@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { getSessionUser } from "../lib/session";
 import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
 import styles from "./AdminEditLink.module.css";
@@ -11,12 +11,10 @@ interface AdminEditLinkProps {
   from?: string;
 }
 
-export default function AdminEditLink({ type, id, from }: AdminEditLinkProps) {
-  const cookieStore = cookies();
-  const token = cookieStore.get("session_token")?.value;
-
-  // Only render if session_token is present
-  if (!token) {
+export default async function AdminEditLink({ type, id, from }: AdminEditLinkProps) {
+  // Regular users can sign in too (e.g. to log games); only admins get edit links.
+  const user = await getSessionUser();
+  if (user?.role !== "admin") {
     return null;
   }
 

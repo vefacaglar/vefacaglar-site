@@ -13,6 +13,7 @@ interface HeaderProps {
     back_to_blog: string;
     about: string;
     projects: string;
+    games: string;
   };
 }
 
@@ -49,6 +50,12 @@ export default function Header({ dict }: HeaderProps) {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: href("/blog") });
       } else {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: null });
+      }
+    } else if (pagePath.startsWith("/games")) {
+      if (pagePath !== "/games") {
+        items.push({ label: dict.games, href: href("/games") });
+      } else {
+        items.push({ label: dict.games, href: null });
       }
     } else if (pagePath.startsWith("/author/")) {
       const parts = pagePath.split("/");
