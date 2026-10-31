@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useLocale } from "../../components/LocaleProvider";
 import { getDictionary } from "../../dictionaries";
+import { formatDate, parseDateKey } from "../../lib/formatDate";
 import styles from "./DatePicker.module.css";
 
 const WEEKDAY_COUNT = 7;
@@ -17,22 +18,10 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/** Reads YYYY-MM-DD as a local date; parsing the string directly is treated as UTC and can shift the day. */
-function parseDateKey(key: string | null | undefined): Date | null {
-  if (!key) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
-  const day = Number(match[3]);
-  const date = new Date(year, month, day);
-
-  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
-    return null;
-  }
-
-  return date;
+/** A valid YYYY-MM-DD key, or "" for anything else. */
+function normalizeDateKey(key: string | null | undefined): string {
+  const date = parseDateKey(key);
+  return date ? toDateKey(date) : "";
 }
 
 function addDays(date: Date, days: number): Date {
@@ -49,29 +38,31 @@ function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
 
-/** Formats as "19 October 2010" regardless of the locale's native part order. */
-function formatLongDate(formatter: Intl.DateTimeFormat, date: Date): string {
-  const parts = formatter.formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("day")} ${part("month")} ${part("year")}`;
-}
-
 interface DatePickerProps {
-  name: string;
+  /** Renders a hidden input with this name so plain forms (FormData) get the value. */
+  name?: string;
+  /** Uncontrolled initial value, YYYY-MM-DD. */
   defaultValue?: string | null;
+  /** Controlled value, YYYY-MM-DD or "" for none; pair with onChange. */
+  value?: string;
+  onChange?: (value: string) => void;
   id?: string;
+  disabled?: boolean;
 }
 
-export default function DatePicker({ name, defaultValue, id }: DatePickerProps) {
+export default function DatePicker({ name, defaultValue, value: controlledValue, onChange, id, disabled }: DatePickerProps) {
   const locale = useLocale();
   const dict = getDictionary(locale);
 
-  const [value, setValue] = useState(() => {
-    const initial = parseDateKey(defaultValue);
-    return initial ? toDateKey(initial) : "";
-  });
+  const [uncontrolledValue, setUncontrolledValue] = useState(() => normalizeDateKey(defaultValue));
+  const isControlled = controlledValue !== undefined;
+  const value = isControlled ? normalizeDateKey(controlledValue) : uncontrolledValue;
+  const setValue = (next: string) => {
+    if (!isControlled) setUncontrolledValue(next);
+    onChange?.(next);
+  };
   const [open, setOpen] = useState(false);
-  const [focusDate, setFocusDate] = useState<Date>(() => parseDateKey(defaultValue) ?? new Date());
+  const [focusDate, setFocusDate] = useState<Date>(() => parseDateKey(controlledValue ?? defaultValue) ?? new Date());
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -86,7 +77,6 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
     return {
       firstDayOfWeek,
       month: new Intl.DateTimeFormat(tag, { month: "long" }),
-      full: new Intl.DateTimeFormat(tag, { day: "numeric", month: "long", year: "numeric" }),
       weekdays: Array.from({ length: WEEKDAY_COUNT }, (_, index) =>
         weekday.format(new Date(2024, 0, 7 + firstDayOfWeek + index)).toLowerCase(),
       ),
@@ -101,7 +91,7 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
   const leadingDays = (monthStart.getDay() - formatters.firstDayOfWeek + WEEKDAY_COUNT) % WEEKDAY_COUNT;
   const days = Array.from({ length: CALENDAR_CELL_COUNT }, (_, index) => addDays(monthStart, index - leadingDays));
   const monthTitle = `${formatters.month.format(monthStart).toLowerCase()} ${monthStart.getFullYear()}`;
-  const triggerText = selectedDate ? formatLongDate(formatters.full, selectedDate) : "";
+  const triggerText = selectedDate ? formatDate(selectedDate, locale) : "";
 
   useEffect(() => {
     if (!open) {
@@ -203,7 +193,7 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
 
   return (
     <div className={styles.wrapper} ref={wrapperRef} onKeyDown={handleKeyDown}>
-      <input type="hidden" name={name} value={value} />
+      {name && <input type="hidden" name={name} value={value} />}
       <button
         type="button"
         id={id}
@@ -211,6 +201,7 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
         className={styles.trigger}
         aria-haspopup="dialog"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => (open ? setOpen(false) : openPopover())}
       >
         <span className={styles.value}>{triggerText}</span>
@@ -293,7 +284,7 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
                   className={dayClassName}
                   data-date={key}
                   tabIndex={key === focusKey ? 0 : -1}
-                  aria-label={formatLongDate(formatters.full, day)}
+                  aria-label={formatDate(day, locale)}
                   aria-current={isToday ? "date" : undefined}
                   aria-pressed={isSelected}
                   onClick={() => selectDate(day)}

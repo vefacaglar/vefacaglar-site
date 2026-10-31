@@ -2,6 +2,7 @@ import React from "react";
 import styles from "./forms.module.css";
 import ds from "../../../../lib/dashboard-strings";
 import { toDecimal, toDigits } from "../../../../lib/numericInput";
+import DatePicker from "../../../components/DatePicker";
 
 export type ScoreField = number | "";
 export type HoursField = string | number;
@@ -109,12 +110,10 @@ export default function GameFieldsForm({
 
       <div className={styles.formGroup}>
         <label className={styles.label} htmlFor="game-release-date">{ds.games.form.releaseDate}</label>
-        <input
+        <DatePicker
           id="game-release-date"
-          type="date"
-          className={styles.input}
           value={values.releaseDate}
-          onChange={(e) => onChange("releaseDate", e.target.value)}
+          onChange={(value) => onChange("releaseDate", value)}
           disabled={disabled}
         />
       </div>

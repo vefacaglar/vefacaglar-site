@@ -23,7 +23,12 @@
   transition: border-color 0.15s ease;
 }
 
-.trigger:hover {
+.trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trigger:hover:not(:disabled) {
   border-color: var(--text);
 }
 

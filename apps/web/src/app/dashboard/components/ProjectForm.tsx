@@ -10,6 +10,7 @@ import styles from "./form.module.css";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
 import { toDigits } from "../../../lib/numericInput";
+import DatePicker from "../../components/DatePicker";
 
 interface ProjectFormProps {
   initialData?: {
@@ -211,23 +212,13 @@ export default function ProjectForm({ initialData }: ProjectFormProps) {
 
         <div className={styles.formRow}>
           <div className={`field ${styles.formCol}`}>
-            <label className="label">{ds.forms.startedAt}</label>
-            <input
-              type="date"
-              value={startedAt}
-              onChange={(e) => setStartedAt(e.target.value)}
-              className="input"
-            />
+            <label className="label" htmlFor="project-started-at">{ds.forms.startedAt}</label>
+            <DatePicker id="project-started-at" value={startedAt} onChange={setStartedAt} />
           </div>
 
           <div className={`field ${styles.formCol}`}>
-            <label className="label">{ds.forms.endedAt}</label>
-            <input
-              type="date"
-              value={endedAt}
-              onChange={(e) => setEndedAt(e.target.value)}
-              className="input"
-            />
+            <label className="label" htmlFor="project-ended-at">{ds.forms.endedAt}</label>
+            <DatePicker id="project-ended-at" value={endedAt} onChange={setEndedAt} />
           </div>
         </div>
 

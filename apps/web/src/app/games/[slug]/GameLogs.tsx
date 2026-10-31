@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useLocale } from "../../../components/LocaleProvider";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
+import { formatDate } from "../../../lib/formatDate";
 import { createGameLog, deleteGameLog, type GameLogInput } from "../actions";
 import { statusLabel } from "../gameLogStatus";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -21,16 +22,6 @@ export type GameLog = {
   notes: string | null;
   createdAt: string;
 };
-
-/** "2010-10-19" -> "19 Oct 2010" / "19 Eki 2010", read as a local date so the day never shifts. */
-function formatDate(value: string, locale: string): string {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 /** A fresh log starts as "playing"; the details are filled in on its own page. */
 const QUICK_LOG: GameLogInput = {

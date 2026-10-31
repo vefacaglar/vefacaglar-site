@@ -9,6 +9,7 @@ import { localizedAlternates } from "../../../lib/seo";
 import { getGame } from "../../../lib/data";
 import { httpClient } from "../../../lib/httpClient";
 import { getAuthMode } from "../../../lib/oidc";
+import { formatDate } from "../../../lib/formatDate";
 import GameLogs, { type GameLog } from "./GameLogs";
 
 type Named = { name: string; slug: string };
@@ -69,13 +70,11 @@ export default async function Game({ params }: GameProps) {
   const loginHref =
     getAuthMode() === "oidc" ? `/dashboard/login/oidc?returnTo=${encodeURIComponent(returnTo)}` : "/dashboard/login";
 
-  const formatDate = (value: string) =>
-    new Date(value).toLocaleDateString(lang === "tr" ? "tr-TR" : "en-US", { year: "numeric", month: "long", day: "numeric" });
   const names = (items: Named[]) => items.map((i) => i.name).join(", ");
 
   const facts: [string, string][] = (
     [
-      [dict.released, game.releaseDate ? formatDate(game.releaseDate) : ""],
+      [dict.released, game.releaseDate ? formatDate(game.releaseDate, lang) : ""],
       [
         dict.critic_score,
         game.criticScore !== null
