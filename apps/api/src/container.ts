@@ -24,6 +24,9 @@ import { DrizzleGenresRepository } from "./modules/catalog/genres.repository";
 import { DrizzleThemesRepository } from "./modules/catalog/themes.repository";
 import { DrizzlePlatformsRepository } from "./modules/catalog/platforms.repository";
 import { DrizzleGamesRepository } from "./modules/catalog/games.repository";
+import { IGDB_CLIENT, HLTB_CLIENT } from "./modules/catalog/import/import.tokens";
+import { IgdbClient } from "./modules/catalog/import/igdb.client";
+import { HltbClient } from "./modules/catalog/import/hltb.client";
 import { PACKAGES_REPOSITORY } from "./modules/packages/packages.tokens";
 import { DrizzlePackagesRepository } from "./modules/packages/packages.repository";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
@@ -51,6 +54,8 @@ container.registerSingleton(GENRES_REPOSITORY, DrizzleGenresRepository);
 container.registerSingleton(THEMES_REPOSITORY, DrizzleThemesRepository);
 container.registerSingleton(PLATFORMS_REPOSITORY, DrizzlePlatformsRepository);
 container.registerSingleton(GAMES_REPOSITORY, DrizzleGamesRepository);
+container.registerSingleton(IGDB_CLIENT, IgdbClient);
+container.registerSingleton(HLTB_CLIENT, HltbClient);
 container.registerSingleton(PACKAGES_REPOSITORY, DrizzlePackagesRepository);
 
 const typesenseConfig = readTypesenseConfig();
