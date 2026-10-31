@@ -77,22 +77,6 @@ const nextConfig = {
         destination: "/",
         permanent: true,
       },
-      {
-        source: "/tr/home",
-        destination: "/tr",
-        permanent: true,
-      },
-      // Packages are English-only; /tr variants would just be duplicates of the English pages.
-      {
-        source: "/tr/packages/:path*",
-        destination: "/packages/:path*",
-        permanent: true,
-      },
-      {
-        source: "/tr/packages",
-        destination: "/packages",
-        permanent: true,
-      },
     ];
   },
   webpack: (config, { dev, isServer }) => {

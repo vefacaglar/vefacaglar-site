@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLocale } from "./LocaleProvider";
+import { localizeHref } from "../lib/localizeHref";
 import styles from "./Header.module.css";
 
 interface HeaderProps {
@@ -18,13 +19,13 @@ interface HeaderProps {
 export default function Header({ dict }: HeaderProps) {
   const rawPath = usePathname();
   const locale = useLocale();
-  const prefix = locale === "tr" ? "/tr" : "";
-  const pagePath = rawPath.replace(/^\/tr/, "") || "/";
+  const pagePath = rawPath || "/";
+  const href = (path: string) => localizeHref(path, locale);
 
   const getBreadcrumbs = () => {
     const isHome = pagePath === "/" || pagePath === "";
     const items: Array<{ label: string; href: string | null }> = [
-      { label: dict.back_to_home, href: isHome ? null : `${prefix}/` }
+      { label: dict.back_to_home, href: isHome ? null : href("/") }
     ];
 
     if (isHome) return items;
@@ -33,7 +34,7 @@ export default function Header({ dict }: HeaderProps) {
       items.push({ label: dict.about.toLowerCase(), href: null });
     } else if (pagePath.startsWith("/projects")) {
       if (pagePath !== "/projects") {
-        items.push({ label: dict.projects.toLowerCase(), href: `${prefix}/projects` });
+        items.push({ label: dict.projects.toLowerCase(), href: href("/projects") });
       } else {
         items.push({ label: dict.projects.toLowerCase(), href: null });
       }
@@ -45,7 +46,7 @@ export default function Header({ dict }: HeaderProps) {
       }
     } else if (pagePath.startsWith("/blog")) {
       if (pagePath !== "/blog") {
-        items.push({ label: dict.back_to_blog.toLowerCase(), href: `${prefix}/blog` });
+        items.push({ label: dict.back_to_blog.toLowerCase(), href: href("/blog") });
       } else {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: null });
       }

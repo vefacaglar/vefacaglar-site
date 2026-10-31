@@ -18,9 +18,9 @@ export default function BlogSearch({ initialQuery = "" }: { initialQuery?: strin
     e.preventDefault();
     const form = e.currentTarget;
     const value = (form.elements.namedItem("q") as HTMLInputElement).value.trim();
-    const base = localizeHref("/blog", locale);
+    const target = value ? `/blog?q=${encodeURIComponent(value)}` : "/blog";
     startTransition(() => {
-      router.replace(value ? `${base}?q=${encodeURIComponent(value)}` : base);
+      router.replace(localizeHref(target, locale));
     });
   }
 

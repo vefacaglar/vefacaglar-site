@@ -9,7 +9,7 @@ export default function LanguageSwitcher() {
   const router = useRouter();
   const rawPath = usePathname();
   const locale = useLocale();
-  const pathname = rawPath.replace(/^\/tr/, "") || "/";
+  const pathname = rawPath || "/";
 
   const [isPending, startTransition] = React.useTransition();
 
@@ -18,19 +18,13 @@ export default function LanguageSwitcher() {
 
     if (newLang === locale) return;
 
-    let targetPath: string;
-    if (newLang === "tr") {
-      targetPath = `/tr${pathname === "/" ? "" : pathname}`;
-    } else {
-      targetPath = pathname;
-    }
-
-    // Merge existing search params and set/update 'lang' query parameter
-    // to bypass Next.js client-side router cache key collisions
+    // The language lives in the `lang` query param; English is the default and
+    // has no param, so canonical English URLs stay clean.
     const params = new URLSearchParams(window.location.search);
-    params.set("lang", newLang);
-
-    const finalPath = `${targetPath}?${params.toString()}`;
+    if (newLang === "tr") params.set("lang", "tr");
+    else params.delete("lang");
+    const query = params.toString();
+    const finalPath = query ? `${pathname}?${query}` : pathname;
 
     startTransition(() => {
       router.push(finalPath);

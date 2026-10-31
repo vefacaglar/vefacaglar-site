@@ -4,14 +4,12 @@ import React from "react";
 import Link from "next/link";
 import { useLocale } from "../../components/LocaleProvider";
 import { getDictionary } from "../../dictionaries";
+import { localizeHref } from "../../lib/localizeHref";
 import styles from "./MarkdownPreview.module.css";
 
 function useLocalizedHref(href: string): string {
   const locale = useLocale();
-  if (locale === "tr" && href.startsWith("/") && !href.startsWith("/tr")) {
-    return `/tr${href}`;
-  }
-  return href;
+  return href.startsWith("/") ? localizeHref(href, locale) : href;
 }
 
 function LocalizedLink({ href, ...props }: React.ComponentProps<typeof Link>) {

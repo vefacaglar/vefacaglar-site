@@ -16,16 +16,15 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
   const searchParams = useSearchParams();
   const locale = useLocale();
   const dict = getDictionary(locale);
-  const isTr = locale === "tr";
-  const pathname = rawPath.replace(/^\/tr/, "") || "/";
+  const pathname = rawPath || "/";
 
   if (totalPages <= 1) return null;
 
   const createPageUrl = (pageNumber: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", pageNumber.toString());
-    const prefix = isTr ? "/tr" : "";
-    return `${prefix}${pathname}?${params.toString()}`;
+    // Existing params (including `lang`) are kept, so the language carries over.
+    return `${pathname}?${params.toString()}`;
   };
 
   return (

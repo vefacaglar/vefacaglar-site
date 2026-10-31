@@ -21,11 +21,11 @@ function parseDate(...candidates: Array<string | undefined | null>): Date | unde
   return undefined;
 }
 
-// Emit the same entry for both the English and Turkish (/tr) variants of a path.
+// Emit the same entry for both the English and Turkish (?lang=tr) variants of a path.
 function bilingual(path: string, options: Omit<Entry, "url">): Entry[] {
   return [
     { url: `${baseUrl}${path}`, ...options },
-    { url: `${baseUrl}/tr${path}`, ...options },
+    { url: `${baseUrl}${path || "/"}?lang=tr`, ...options },
   ];
 }
 

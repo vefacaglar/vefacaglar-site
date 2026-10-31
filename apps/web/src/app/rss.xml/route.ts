@@ -23,7 +23,7 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-// Served at /rss.xml (English) and, through the locale middleware rewrite, /tr/rss.xml.
+// Served at /rss.xml (English) and /rss.xml?lang=tr (Turkish).
 export async function GET() {
   const lang = getActiveLanguage();
   const dict = getDictionary(lang);

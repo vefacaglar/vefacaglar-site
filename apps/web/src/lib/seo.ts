@@ -10,8 +10,8 @@ export const DEFAULT_OG_IMAGE = { url: "/og.png", width: 1200, height: 630, alt:
 /**
  * Build canonical + hreflang alternates for a locale-agnostic path.
  *
- * `path` is the path WITHOUT the locale prefix (e.g. "/blog/foo", or "" for
- * the home page).
+ * `path` is the locale-agnostic path (e.g. "/blog/foo", or "" for the home
+ * page). The Turkish variant is the same path with `?lang=tr`.
  *
  * For sections that are translated (`bilingual: true`, the default) the
  * canonical points at the variant matching the active language and `languages`
@@ -20,7 +20,7 @@ export const DEFAULT_OG_IMAGE = { url: "/og.png", width: 1200, height: 630, alt:
  *
  * For English-only sections (`bilingual: false`, e.g. packages/docs) the
  * canonical always points at the English URL — even when the page is reached
- * via a `/tr` URL — so any accidental Turkish-prefixed hit consolidates back to
+ * with `?lang=tr` — so any accidental Turkish hit consolidates back to
  * the single English page instead of registering as duplicate content.
  */
 export function localizedAlternates(
@@ -30,7 +30,7 @@ export function localizedAlternates(
 ): Metadata["alternates"] {
   const clean = path === "/" ? "" : path;
   const en = `${SITE_URL}${clean}`;
-  const tr = `${SITE_URL}/tr${clean}`;
+  const tr = `${SITE_URL}${clean || "/"}?lang=tr`;
 
   if (!bilingual) {
     return { canonical: en, types: { "application/rss+xml": `${SITE_URL}/rss.xml` } };
@@ -43,6 +43,6 @@ export function localizedAlternates(
       tr,
       "x-default": en,
     },
-    types: { "application/rss+xml": lang === "tr" ? `${SITE_URL}/tr/rss.xml` : `${SITE_URL}/rss.xml` },
+    types: { "application/rss+xml": lang === "tr" ? `${SITE_URL}/rss.xml?lang=tr` : `${SITE_URL}/rss.xml` },
   };
 }

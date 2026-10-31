@@ -4,32 +4,33 @@ import type { NextRequest } from "next/server";
 const SKIP_PREFIXES = ["/dashboard", "/api", "/_next", "/favicon.ico"];
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
 
   if (SKIP_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/tr")) {
-    const pathWithoutLocale = pathname.replace(/^\/tr/, "") || "/";
+  // Legacy /tr/... URLs moved to ?lang=tr; redirect permanently so existing
+  // links and search results keep working.
+  if (pathname === "/tr" || pathname.startsWith("/tr/")) {
     const url = request.nextUrl.clone();
-    url.pathname = pathWithoutLocale;
-
-    const response = NextResponse.rewrite(url);
-    response.headers.set("x-locale", "tr");
-    return response;
+    url.pathname = pathname.slice(3) || "/";
+    url.searchParams.set("lang", "tr");
+    return NextResponse.redirect(url, 308);
   }
 
-  if (pathname === "/") {
-    const langCookie = request.cookies.get("lang")?.value;
-    if (langCookie === "tr") {
-      return NextResponse.redirect(new URL("/tr", request.url));
-    }
+  const locale = searchParams.get("lang") === "tr" ? "tr" : "en";
+
+  if (pathname === "/" && !searchParams.has("lang") && request.cookies.get("lang")?.value === "tr") {
+    const url = request.nextUrl.clone();
+    url.searchParams.set("lang", "tr");
+    return NextResponse.redirect(url);
   }
 
-  const response = NextResponse.next();
-  response.headers.set("x-locale", "en");
-  return response;
+  // Pass the locale to server components as a request header.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-locale", locale);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
