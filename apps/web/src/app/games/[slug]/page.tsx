@@ -142,7 +142,12 @@ export default async function Game({ params }: GameProps) {
             {dict.login_to_log}
           </Link>
         ) : (
-          <GameLogs slug={game.slug} logs={logs} />
+          <>
+            <GameLogs slug={game.slug} logs={logs} />
+            <p className={styles.libraryLink}>
+              <Link href={localizeHref("/profile", lang)}>{dict.view_profile} →</Link>
+            </p>
+          </>
         )}
       </section>
     </article>

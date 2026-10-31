@@ -14,6 +14,7 @@ interface HeaderProps {
     about: string;
     projects: string;
     games: string;
+    profile: string;
   };
 }
 
@@ -57,6 +58,8 @@ export default function Header({ dict }: HeaderProps) {
       } else {
         items.push({ label: dict.games, href: null });
       }
+    } else if (pagePath.startsWith("/profile")) {
+      items.push({ label: dict.profile, href: null });
     } else if (pagePath.startsWith("/author/")) {
       const parts = pagePath.split("/");
       const username = parts[2] || "author";

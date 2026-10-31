@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useLocale } from "../../../components/LocaleProvider";
-import { getDictionary, type Dictionary } from "../../../dictionaries";
+import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { createGameLog, deleteGameLog, type GameLogInput } from "../actions";
+import { statusLabel } from "../gameLogStatus";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import styles from "./game.module.css";
 
@@ -20,12 +21,6 @@ export type GameLog = {
   notes: string | null;
   createdAt: string;
 };
-
-export const GAME_LOG_STATUSES: GameLogInput["status"][] = ["playing", "completed", "backlog", "on_hold", "abandoned"];
-
-export function statusLabel(dict: Dictionary, status: GameLogInput["status"]): string {
-  return dict[`status_${status}` as const];
-}
 
 /** "2010-10-19" -> "19 Oct 2010" / "19 Eki 2010", read as a local date so the day never shifts. */
 function formatDate(value: string, locale: string): string {

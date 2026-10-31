@@ -2,6 +2,8 @@ import { FastifyInstance } from "fastify";
 import { container } from "../../container";
 import { ErrorResponseSchema } from "../../shared/error-schema";
 import { ListGamesHandler } from "./list/list.handler";
+import { GetLibraryHandler } from "./library/library.handler";
+import { LibraryResponseSchema } from "./library/library.schema";
 import { ListGamesQuery, ListGamesQuerySchema, ListGamesResponseSchema } from "./list/list.schema";
 import { GetGameHandler } from "./detail/detail.handler";
 import { GameDetailResponseSchema, GetGameParams, GetGameParamsSchema } from "./detail/detail.schema";
@@ -20,6 +22,7 @@ import { DeleteGameLogResponseSchema } from "./logs/delete/delete.schema";
 export async function publicGamesRoutes(app: FastifyInstance) {
   const listHandler = container.resolve(ListGamesHandler);
   const getHandler = container.resolve(GetGameHandler);
+  const libraryHandler = container.resolve(GetLibraryHandler);
   const listLogsHandler = container.resolve(ListGameLogsHandler);
   const createLogHandler = container.resolve(CreateGameLogHandler);
   const getLogHandler = container.resolve(GetGameLogHandler);
@@ -34,6 +37,16 @@ export async function publicGamesRoutes(app: FastifyInstance) {
       response: { 200: ListGamesResponseSchema },
     },
   }, (request) => listHandler.handle(request));
+
+  app.get("/me/library", {
+    preHandler: app.requireAuth,
+    schema: {
+      description: "The signed-in user's logged games and play stats",
+      tags: ["Games"],
+      security: [{ bearerAuth: [] }],
+      response: { 200: LibraryResponseSchema, 401: ErrorResponseSchema },
+    },
+  }, (request) => libraryHandler.handle(request));
 
   app.get<{ Params: GetGameParams }>("/:slug", {
     schema: {

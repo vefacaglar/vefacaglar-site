@@ -1,8 +1,13 @@
-import { platforms, userGames } from "@vefacaglar/db";
+import { games, platforms, userGames } from "@vefacaglar/db";
 import { and, desc, eq } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
-import type { GameLogWithPlatform, IGameLogsRepository, NewGameLog } from "./game-logs.repository.interface";
+import type {
+  GameLogWithGame,
+  GameLogWithPlatform,
+  IGameLogsRepository,
+  NewGameLog,
+} from "./game-logs.repository.interface";
 
 @injectable()
 export class DrizzleGameLogsRepository implements IGameLogsRepository {
@@ -20,6 +25,21 @@ export class DrizzleGameLogsRepository implements IGameLogsRepository {
       .where(and(eq(userGames.userId, userId), eq(userGames.gameId, gameId)))
       .orderBy(desc(userGames.createdAt));
     return rows.map((r) => ({ ...r.log, platformName: r.platformName }));
+  }
+
+  async listForUser(userId: string): Promise<GameLogWithGame[]> {
+    const rows = await this.dbProvider.client
+      .select({
+        log: userGames,
+        platformName: platforms.name,
+        game: { slug: games.slug, title: games.title, coverImageUrl: games.coverImageUrl },
+      })
+      .from(userGames)
+      .innerJoin(games, eq(userGames.gameId, games.id))
+      .leftJoin(platforms, eq(userGames.platformId, platforms.id))
+      .where(eq(userGames.userId, userId))
+      .orderBy(desc(userGames.createdAt));
+    return rows.map((r) => ({ ...r.log, platformName: r.platformName, game: r.game }));
   }
 
   async findById(id: string): Promise<GameLogWithPlatform | null> {
