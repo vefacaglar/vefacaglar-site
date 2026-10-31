@@ -17,6 +17,19 @@ export interface GameWithRelations extends Game {
   themes: Theme[];
 }
 
+export type GameIdentity = Pick<Game, "id" | "slug" | "title" | "originalTitle" | "releaseDate">;
+export type LookupIdentity = { id: string; slug: string };
+
+/** Identifying columns of every game and lookup, for bulk imports that dedupe in memory. */
+export interface CatalogIndex {
+  games: GameIdentity[];
+  developers: LookupIdentity[];
+  publishers: LookupIdentity[];
+  genres: LookupIdentity[];
+  platforms: LookupIdentity[];
+  themes: LookupIdentity[];
+}
+
 export interface IGamesRepository {
   create(
     values: NewGame,
@@ -42,6 +55,9 @@ export interface IGamesRepository {
     relation: "developer" | "publisher" | "genre" | "platform" | "theme",
     relatedId: string
   ): Promise<string[]>;
+
+  /** Loads ids and slugs (and game titles) of the whole catalog in one round of queries. */
+  loadCatalogIndex(): Promise<CatalogIndex>;
 
   linkDeveloper(gameId: string, developerId: string): Promise<void>;
   unlinkDeveloper(gameId: string, developerId: string): Promise<void>;

@@ -2,7 +2,8 @@ import "reflect-metadata";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ImportGameHandler } from "./import.handler";
 import { GameCatalogService } from "../catalog.service";
-import { NotFoundError } from "../../../shared/http-errors";
+import type { CatalogIndex, IGamesRepository } from "../games.repository.interface";
+import { BadRequestError, NotFoundError } from "../../../shared/http-errors";
 import type { IHltbClient, IIgdbClient, ImportedGame } from "./import.types";
 
 const igdbGame: ImportedGame = {
@@ -36,24 +37,32 @@ const existingGame = {
   themes: [],
 };
 
+const emptyIndex = (): CatalogIndex => ({
+  games: [],
+  developers: [],
+  publishers: [],
+  genres: [{ id: "gen-platform", slug: "platform" }],
+  platforms: [],
+  themes: [],
+});
+
 describe("ImportGameHandler", () => {
   let catalog: Record<keyof GameCatalogService, any>;
+  let gamesRepo: Record<keyof IGamesRepository, any>;
   let igdb: Record<keyof IIgdbClient, any>;
   let hltb: Record<keyof IHltbClient, any>;
   let handler: ImportGameHandler;
 
   beforeEach(() => {
-    const notFound = () => Promise.reject(new NotFoundError());
     catalog = {
-      getGameBySlug: vi.fn(notFound),
-      listGames: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-      createGame: vi.fn().mockResolvedValue({ id: "g-new" }),
+      getGameById: vi.fn().mockResolvedValue(existingGame),
+      createGame: vi.fn().mockResolvedValue({ id: "g-new", slug: "hollow-knight", title: "Hollow Knight" }),
       updateGame: vi.fn().mockResolvedValue({}),
-      getDeveloperBySlug: vi.fn(notFound),
-      getPublisherBySlug: vi.fn(notFound),
-      getGenreBySlug: vi.fn().mockResolvedValue({ id: "gen-platform" }),
-      getPlatformBySlug: vi.fn(notFound),
-      getThemeBySlug: vi.fn(notFound),
+      getDeveloperBySlug: vi.fn(),
+      getPublisherBySlug: vi.fn(),
+      getGenreBySlug: vi.fn(),
+      getPlatformBySlug: vi.fn(),
+      getThemeBySlug: vi.fn(),
       createDeveloper: vi.fn().mockResolvedValue({ id: "dev-new" }),
       createPublisher: vi.fn().mockResolvedValue({ id: "pub-new" }),
       createGenre: vi.fn(),
@@ -65,12 +74,22 @@ describe("ImportGameHandler", () => {
       linkGamePlatform: vi.fn(),
       linkGameTheme: vi.fn(),
     } as unknown as Record<keyof GameCatalogService, any>;
+    gamesRepo = { loadCatalogIndex: vi.fn().mockResolvedValue(emptyIndex()) } as unknown as Record<
+      keyof IGamesRepository,
+      any
+    >;
     igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn() };
     hltb = {
       findTimes: vi.fn().mockResolvedValue({ mainHours: 27, mainExtraHours: 41.6, completionistHours: 65.6 }),
     };
-    handler = new ImportGameHandler(catalog as unknown as GameCatalogService, igdb, hltb);
+    handler = new ImportGameHandler(catalog as unknown as GameCatalogService, gamesRepo, igdb, hltb);
   });
+
+  const withIndexedGame = (game: Partial<CatalogIndex["games"][number]> = {}) =>
+    gamesRepo.loadCatalogIndex.mockResolvedValue({
+      ...emptyIndex(),
+      games: [{ id: "g-1", slug: "hollow-knight", title: "Hollow Knight", originalTitle: null, releaseDate: "2017-02-24", ...game }],
+    });
 
   it("returns not_found when IGDB has no match", async () => {
     igdb.findGame.mockResolvedValue(null);
@@ -81,10 +100,11 @@ describe("ImportGameHandler", () => {
     expect(catalog.createGame).not.toHaveBeenCalled();
   });
 
-  it("creates a new game, reusing existing lookups and creating missing ones", async () => {
+  it("creates a new game, reusing indexed lookups and creating missing ones", async () => {
     const result = await handler.handle("hollow knight");
 
     expect(result.status).toBe("created");
+    expect(catalog.getGameById).not.toHaveBeenCalled();
     expect(catalog.createGenre).not.toHaveBeenCalled();
     expect(catalog.createPlatform).toHaveBeenCalledWith({ name: "PC", slug: "win" });
     expect(catalog.createGame).toHaveBeenCalledWith(
@@ -99,12 +119,24 @@ describe("ImportGameHandler", () => {
     );
   });
 
+  it("loads the catalog index once and remembers games it created", async () => {
+    await handler.importSource(igdbGame, { skipHltb: true });
+    const second = await handler.importSource(igdbGame, { skipHltb: true });
+
+    expect(gamesRepo.loadCatalogIndex).toHaveBeenCalledTimes(1);
+    expect(catalog.createGame).toHaveBeenCalledTimes(1);
+    expect(catalog.createDeveloper).toHaveBeenCalledTimes(1);
+    expect(second.status).toBe("updated");
+    expect(catalog.getGameById).toHaveBeenCalledWith("g-new");
+  });
+
   it("fills only missing fields and empty relation kinds on an existing game", async () => {
-    catalog.getGameBySlug.mockResolvedValue(existingGame);
+    withIndexedGame();
 
     const result = await handler.handle("Hollow Knight");
 
     expect(result.status).toBe("updated");
+    expect(catalog.getGameById).toHaveBeenCalledWith("g-1");
     expect(catalog.updateGame).toHaveBeenCalledWith("g-1", {
       coverImageUrl: "https://images.igdb.com/cover.jpg",
       hltbMainHours: 27,
@@ -115,18 +147,27 @@ describe("ImportGameHandler", () => {
     expect(catalog.linkGameGenre).not.toHaveBeenCalled();
   });
 
-  it("matches an existing game by title when the slug differs", async () => {
-    catalog.listGames.mockResolvedValue({ items: [{ ...existingGame, slug: "hk" }], total: 1 });
+  it("matches an existing game by title and year when the slug differs", async () => {
+    withIndexedGame({ slug: "hk" });
 
     const result = await handler.handle("Hollow Knight");
 
     expect(result.status).toBe("updated");
-    expect(result.slug).toBe("hk");
     expect(catalog.createGame).not.toHaveBeenCalled();
   });
 
+  it("does not match a same-titled game from a different year", async () => {
+    withIndexedGame({ slug: "hollow-knight-2009", releaseDate: "2009-01-01" });
+
+    const result = await handler.handle("Hollow Knight");
+
+    expect(result.status).toBe("created");
+    expect(catalog.getGameById).not.toHaveBeenCalled();
+  });
+
   it("skips a game that has nothing missing", async () => {
-    catalog.getGameBySlug.mockResolvedValue({
+    withIndexedGame();
+    catalog.getGameById.mockResolvedValue({
       ...existingGame,
       coverImageUrl: "x",
       hltbMainHours: "27.0",
@@ -140,6 +181,28 @@ describe("ImportGameHandler", () => {
 
     expect(result.status).toBe("skipped");
     expect(catalog.updateGame).not.toHaveBeenCalled();
+  });
+
+  it("creates the game when the indexed record was deleted meanwhile", async () => {
+    withIndexedGame();
+    catalog.getGameById.mockRejectedValue(new NotFoundError());
+
+    const result = await handler.handle("Hollow Knight");
+
+    expect(result.status).toBe("created");
+  });
+
+  it("fetches a lookup that was created after the index was loaded", async () => {
+    catalog.createPlatform.mockRejectedValue(new BadRequestError("Platform with this slug already exists."));
+    catalog.getPlatformBySlug.mockResolvedValue({ id: "plat-existing" });
+
+    await handler.handle("Hollow Knight");
+
+    expect(catalog.getPlatformBySlug).toHaveBeenCalledWith("win");
+    expect(catalog.createGame).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ platformIds: ["plat-existing"] })
+    );
   });
 
   it("writes nothing in dry-run mode", async () => {
@@ -169,10 +232,6 @@ describe("ImportGameHandler", () => {
     expect(result.status).toBe("created");
     expect(igdb.findGame).not.toHaveBeenCalled();
     expect(hltb.findTimes).not.toHaveBeenCalled();
-    expect(catalog.createGame).toHaveBeenCalledWith(
-      expect.objectContaining({ slug: "hollow-knight" }),
-      expect.anything()
-    );
   });
 
   it("reports failed when IGDB throws", async () => {

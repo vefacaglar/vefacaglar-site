@@ -1,8 +1,9 @@
 import { inject, injectable } from "tsyringe";
 import { GameCatalogService } from "../catalog.service";
-import type { GameWithRelations } from "../games.repository.interface";
+import { GAMES_REPOSITORY } from "../catalog.tokens";
+import type { GameIdentity, GameWithRelations, IGamesRepository } from "../games.repository.interface";
 import type { UpdateGameData } from "../games.service";
-import { NotFoundError } from "../../../shared/http-errors";
+import { BadRequestError, NotFoundError } from "../../../shared/http-errors";
 import { HLTB_CLIENT, IGDB_CLIENT } from "./import.tokens";
 import {
   normalizeTitle,
@@ -28,6 +29,9 @@ export type ImportResult = {
 
 type LookupKind = "developer" | "publisher" | "genre" | "platform" | "theme";
 
+type TitleMatch = { id: string; year: string | null };
+type GameIndex = { bySlug: Map<string, string>; byTitle: Map<string, TitleMatch[]> };
+
 /**
  * Imports one game by name: looks it up on IGDB, adds HLTB completion times,
  * then creates it in the catalog or fills the fields an existing record is
@@ -35,11 +39,18 @@ type LookupKind = "developer" | "publisher" | "genre" | "platform" | "theme";
  */
 @injectable()
 export class ImportGameHandler {
-  /** Per-run cache of lookup slug -> id, so repeated genres/platforms hit the DB once. */
+  /**
+   * In-memory copy of the catalog's identifying columns, loaded once per run so
+   * the existence checks never hit the database. Kept current as games and
+   * lookups are created.
+   */
+  private gameIndex: GameIndex | null = null;
+  /** Lookup "kind:slug" -> id. */
   private readonly lookupIds = new Map<string, string>();
 
   constructor(
     private readonly catalog: GameCatalogService,
+    @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(IGDB_CLIENT) private readonly igdb: IIgdbClient,
     @inject(HLTB_CLIENT) private readonly hltb: IHltbClient
   ) {}
@@ -68,7 +79,7 @@ export class ImportGameHandler {
       }
 
       if (!options.dryRun) {
-        await this.catalog.createGame(
+        const created = await this.catalog.createGame(
           {
             title: source.title,
             slug: source.slug,
@@ -87,6 +98,7 @@ export class ImportGameHandler {
             themeIds: await this.resolveLookups("theme", source.themes),
           }
         );
+        this.indexGame(await this.loadIndex(), created);
       }
       return { query, status: "created", title: source.title, slug: source.slug, notes: [...notes, describe(source, times)] };
     } catch (err) {
@@ -153,17 +165,45 @@ export class ImportGameHandler {
   }
 
   private async findExisting(source: ImportedGame): Promise<GameWithRelations | null> {
-    const bySlug = await this.orNull(() => this.catalog.getGameBySlug(source.slug));
-    if (bySlug) return bySlug;
+    const index = await this.loadIndex();
+    // Hand-entered games may use a different slug, so fall back to a title match.
+    // Different games share titles (Doom 1993 vs Doom 2016), so the release
+    // year must agree too when both sides have one.
+    const year = source.releaseDate?.slice(0, 4) ?? null;
+    const id =
+      index.bySlug.get(source.slug) ??
+      index.byTitle.get(normalizeTitle(source.title))?.find((m) => !m.year || !year || m.year === year)?.id;
+    return id ? this.orNull(() => this.catalog.getGameById(id)) : null;
+  }
 
-    // Hand-entered games may use a different slug; fall back to a title match.
-    const wanted = normalizeTitle(source.title);
-    const { items } = await this.catalog.listGames({ q: source.title, limit: 20 });
-    return (
-      items.find(
-        (g) => normalizeTitle(g.title) === wanted || (g.originalTitle && normalizeTitle(g.originalTitle) === wanted)
-      ) ?? null
-    );
+  private async loadIndex(): Promise<GameIndex> {
+    if (this.gameIndex) return this.gameIndex;
+
+    const catalog = await this.gamesRepo.loadCatalogIndex();
+    const index: GameIndex = { bySlug: new Map(), byTitle: new Map() };
+    for (const game of catalog.games) this.indexGame(index, game);
+    const lookups: [LookupKind, { id: string; slug: string }[]][] = [
+      ["developer", catalog.developers],
+      ["publisher", catalog.publishers],
+      ["genre", catalog.genres],
+      ["platform", catalog.platforms],
+      ["theme", catalog.themes],
+    ];
+    for (const [kind, rows] of lookups) {
+      for (const row of rows) this.lookupIds.set(`${kind}:${row.slug}`, row.id);
+    }
+    this.gameIndex = index;
+    return index;
+  }
+
+  private indexGame(index: GameIndex, game: GameIdentity): void {
+    index.bySlug.set(game.slug, game.id);
+    const match: TitleMatch = { id: game.id, year: game.releaseDate?.slice(0, 4) ?? null };
+    for (const title of new Set([game.title, game.originalTitle].filter(Boolean).map((t) => normalizeTitle(t!)))) {
+      const matches = index.byTitle.get(title);
+      if (matches) matches.push(match);
+      else index.byTitle.set(title, [match]);
+    }
   }
 
   private async resolveLookups(kind: LookupKind, items: ImportedLookup[]): Promise<string[]> {
@@ -172,13 +212,22 @@ export class ImportGameHandler {
       const key = `${kind}:${item.slug}`;
       let id = this.lookupIds.get(key);
       if (!id) {
-        const found = await this.orNull(() => this.getLookup(kind, item.slug));
-        id = found ? found.id : (await this.createLookup(kind, item)).id;
+        id = (await this.createOrGetLookup(kind, item)).id;
         this.lookupIds.set(key, id);
       }
       if (!ids.includes(id)) ids.push(id);
     }
     return ids;
+  }
+
+  /** The index says the lookup is new; if it was added since (e.g. from the dashboard), fetch it instead. */
+  private async createOrGetLookup(kind: LookupKind, item: ImportedLookup): Promise<{ id: string }> {
+    try {
+      return await this.createLookup(kind, item);
+    } catch (err) {
+      if (err instanceof BadRequestError) return this.getLookup(kind, item.slug);
+      throw err;
+    }
   }
 
   private getLookup(kind: LookupKind, slug: string): Promise<{ id: string }> {

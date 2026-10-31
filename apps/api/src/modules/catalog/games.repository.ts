@@ -15,6 +15,7 @@ import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
+  CatalogIndex,
   IGamesRepository,
   Game,
   NewGame,
@@ -281,6 +282,28 @@ export class DrizzleGamesRepository implements IGamesRepository {
 
   async delete(id: string): Promise<void> {
     await this.dbProvider.client.delete(games).where(eq(games.id, id));
+  }
+
+  async loadCatalogIndex(): Promise<CatalogIndex> {
+    const db = this.dbProvider.client;
+    const [gameRows, devRows, pubRows, genRows, platRows, themeRows] = await Promise.all([
+      db
+        .select({ id: games.id, slug: games.slug, title: games.title, originalTitle: games.originalTitle, releaseDate: games.releaseDate })
+        .from(games),
+      db.select({ id: developers.id, slug: developers.slug }).from(developers),
+      db.select({ id: publishers.id, slug: publishers.slug }).from(publishers),
+      db.select({ id: genres.id, slug: genres.slug }).from(genres),
+      db.select({ id: platforms.id, slug: platforms.slug }).from(platforms),
+      db.select({ id: themes.id, slug: themes.slug }).from(themes),
+    ]);
+    return {
+      games: gameRows,
+      developers: devRows,
+      publishers: pubRows,
+      genres: genRows,
+      platforms: platRows,
+      themes: themeRows,
+    };
   }
 
   async findGameIdsByRelation(
