@@ -8,6 +8,7 @@ import { localizeHref } from "../../../../../lib/localizeHref";
 import { deleteGameLog, updateGameLog, type GameLogInput } from "../../../actions";
 import { GAME_LOG_STATUSES, statusLabel, type GameLog } from "../../GameLogs";
 import ConfirmDialog from "../../../../components/ConfirmDialog";
+import DatePicker from "../../../../components/DatePicker";
 import styles from "../../game.module.css";
 
 export default function LogEditForm({
@@ -95,14 +96,18 @@ export default function LogEditForm({
             <span className="label">{dict.log_playtime}</span>
             <input name="playtimeHours" type="number" min={0} step={0.5} className="input" defaultValue={log.playtimeHours ?? ""} />
           </label>
-          <label className="field">
-            <span className="label">{dict.log_started}</span>
-            <input name="startedAt" type="date" className="input" defaultValue={log.startedAt ?? ""} />
-          </label>
-          <label className="field">
-            <span className="label">{dict.log_completed}</span>
-            <input name="completedAt" type="date" className="input" defaultValue={log.completedAt ?? ""} />
-          </label>
+          <div className="field">
+            <label className="label" htmlFor="startedAt">
+              {dict.log_started}
+            </label>
+            <DatePicker id="startedAt" name="startedAt" defaultValue={log.startedAt} />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="completedAt">
+              {dict.log_completed}
+            </label>
+            <DatePicker id="completedAt" name="completedAt" defaultValue={log.completedAt} />
+          </div>
         </div>
         <label className="field">
           <span className="label">{dict.log_notes}</span>

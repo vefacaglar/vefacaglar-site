@@ -93,6 +93,13 @@ const dictionaries = {
     delete: "delete",
     confirm_delete_log: "delete this log?",
     log_edit_title: "edit log",
+    date_today: "today",
+    date_clear: "clear",
+    date_previous_month: "previous month",
+    date_next_month: "next month",
+    date_previous_year: "previous year",
+    date_next_year: "next year",
+    date_choose: "choose a date",
   },
   tr: {
     blog: "son yazılar",
@@ -188,6 +195,13 @@ const dictionaries = {
     delete: "sil",
     confirm_delete_log: "bu kayıt silinsin mi?",
     log_edit_title: "kaydı düzenle",
+    date_today: "bugün",
+    date_clear: "temizle",
+    date_previous_month: "önceki ay",
+    date_next_month: "sonraki ay",
+    date_previous_year: "önceki yıl",
+    date_next_year: "sonraki yıl",
+    date_choose: "tarih seç",
   }
 };
 
