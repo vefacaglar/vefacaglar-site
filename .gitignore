@@ -56,3 +56,6 @@ tmp/
 .commandcode/taste/taste.md
 .claude/settings.local.json
 .kilo/plans/1780307649197-nimble-knight.md
+
+# catalog:import --all crawl progress
+.catalog-import-state.json

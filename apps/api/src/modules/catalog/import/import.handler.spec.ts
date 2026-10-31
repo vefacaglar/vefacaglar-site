@@ -65,7 +65,7 @@ describe("ImportGameHandler", () => {
       linkGamePlatform: vi.fn(),
       linkGameTheme: vi.fn(),
     } as unknown as Record<keyof GameCatalogService, any>;
-    igdb = { findGame: vi.fn().mockResolvedValue(igdbGame) };
+    igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn() };
     hltb = {
       findTimes: vi.fn().mockResolvedValue({ mainHours: 27, mainExtraHours: 41.6, completionistHours: 65.6 }),
     };
@@ -159,6 +159,18 @@ describe("ImportGameHandler", () => {
     expect(result.notes).toContain("HLTB error: HLTB search failed: 500");
     expect(catalog.createGame).toHaveBeenCalledWith(
       expect.objectContaining({ hltbMainHours: undefined }),
+      expect.anything()
+    );
+  });
+
+  it("imports a pre-fetched IGDB record without searching again", async () => {
+    const result = await handler.importSource(igdbGame, { skipHltb: true });
+
+    expect(result.status).toBe("created");
+    expect(igdb.findGame).not.toHaveBeenCalled();
+    expect(hltb.findTimes).not.toHaveBeenCalled();
+    expect(catalog.createGame).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "hollow-knight" }),
       expect.anything()
     );
   });

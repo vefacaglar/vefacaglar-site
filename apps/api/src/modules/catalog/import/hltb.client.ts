@@ -25,8 +25,10 @@ export class HltbClient implements IHltbClient {
 
   async findTimes(title: string): Promise<ImportedTimes | null> {
     let res = await this.search(title);
-    if (res.status === 403) {
-      this.token = null;
+    for (let attempt = 0; attempt < 3 && (res.status === 403 || res.status === 429); attempt++) {
+      // 403: token expired, fetch a new one. 429: HLTB asks to wait a minute.
+      if (res.status === 403) this.token = null;
+      else await new Promise((r) => setTimeout(r, 60_000));
       res = await this.search(title);
     }
     if (!res.ok) throw new Error(`HLTB search failed: ${res.status}`);

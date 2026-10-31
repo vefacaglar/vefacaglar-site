@@ -21,8 +21,16 @@ export type ImportedTimes = {
   completionistHours: number | null;
 };
 
+export type ImportedGamePage = {
+  /** IGDB id of the last raw row in the page; pass it back as `afterId`. Null when the catalog is exhausted. */
+  lastId: number | null;
+  games: ImportedGame[];
+};
+
 export interface IIgdbClient {
   findGame(query: string): Promise<ImportedGame | null>;
+  /** Walks the whole IGDB catalog in id order, one page per call. */
+  listGames(afterId: number, options?: { minRatings?: number }): Promise<ImportedGamePage>;
 }
 
 export interface IHltbClient {

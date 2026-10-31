@@ -44,12 +44,22 @@ export class ImportGameHandler {
     @inject(HLTB_CLIENT) private readonly hltb: IHltbClient
   ) {}
 
+  /** Imports a game by name, searching IGDB for it first. */
   async handle(query: string, options: ImportOptions = {}): Promise<ImportResult> {
+    let source: ImportedGame | null;
+    try {
+      source = await this.igdb.findGame(query);
+    } catch (err) {
+      return { query, status: "failed", notes: [err instanceof Error ? err.message : String(err)] };
+    }
+    if (!source) return { query, status: "not_found", notes: ["not found on IGDB"] };
+    return this.importSource(source, options, query);
+  }
+
+  /** Imports a game record already fetched from IGDB (used by the full-catalog crawl). */
+  async importSource(source: ImportedGame, options: ImportOptions = {}, query = source.title): Promise<ImportResult> {
     const notes: string[] = [];
     try {
-      const source = await this.igdb.findGame(query);
-      if (!source) return { query, status: "not_found", notes: ["not found on IGDB"] };
-
       const times = options.skipHltb ? null : await this.fetchTimes(source.title, notes);
       const existing = await this.findExisting(source);
 
