@@ -8,7 +8,14 @@ import { getPublicGames } from "../../lib/data";
 import Pagination from "../components/Pagination";
 import GamesSearch from "./GamesSearch";
 
-type GameCard = { slug: string; title: string; coverImageUrl: string | null; releaseDate: string | null };
+type GameCard = {
+  slug: string;
+  title: string;
+  coverImageUrl: string | null;
+  releaseDate: string | null;
+  // Optional: cached list responses from before the field existed lack it.
+  criticScore?: number | null;
+};
 
 export async function generateMetadata() {
   const lang = getActiveLanguage();
@@ -54,6 +61,11 @@ export default async function Games({ searchParams }: GamesProps) {
                       <img src={game.coverImageUrl} alt="" loading="lazy" />
                     ) : (
                       <span className={styles.coverFallback}>{game.title}</span>
+                    )}
+                    {game.criticScore != null && (
+                      <span className={styles.score} aria-label={`${dict.critic_score}: ${game.criticScore}/100`}>
+                        {game.criticScore}
+                      </span>
                     )}
                   </div>
                   <span className={styles.title}>{game.title}</span>

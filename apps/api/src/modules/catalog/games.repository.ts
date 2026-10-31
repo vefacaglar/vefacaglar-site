@@ -310,6 +310,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
           title: games.title,
           coverImageUrl: games.coverImageUrl,
           releaseDate: games.releaseDate,
+          criticScore: games.criticScore,
         })
         .from(games)
         .where(whereExpr)

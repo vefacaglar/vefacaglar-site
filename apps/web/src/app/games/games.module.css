@@ -46,6 +46,7 @@
 }
 
 .cover {
+  position: relative;
   aspect-ratio: 3 / 4;
   border: 1px solid var(--border);
   overflow: hidden;
@@ -68,6 +69,21 @@
 
 .card:hover .cover img {
   transform: scale(1.03);
+}
+
+/* Critic score badge in the cover's top-right corner. */
+.score {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 28px;
+  padding: 2px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-heading);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .coverFallback {

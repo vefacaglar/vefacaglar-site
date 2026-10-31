@@ -19,7 +19,7 @@ describe("ListGamesHandler", () => {
 
   it("trims the query, ignores blank ones and maps card fields", async () => {
     repo.listPublic.mockResolvedValue({
-      items: [{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10" }],
+      items: [{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85 }],
       total: 49,
     });
 
@@ -27,7 +27,7 @@ describe("ListGamesHandler", () => {
 
     expect(repo.listPublic).toHaveBeenCalledWith({ page: 2, limit: 24, q: "doom" });
     expect(result).toEqual({
-      items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10" }],
+      items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85 }],
       total: 49,
       page: 2,
       limit: 24,

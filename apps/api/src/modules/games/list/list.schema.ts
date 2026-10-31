@@ -12,6 +12,7 @@ export const GameCardSchema = Type.Object({
   title: Type.String(),
   coverImageUrl: Type.Union([Type.String(), Type.Null()]),
   releaseDate: Type.Union([Type.String(), Type.Null()]),
+  criticScore: Type.Union([Type.Number(), Type.Null()]),
 });
 
 export const ListGamesResponseSchema = Type.Object({

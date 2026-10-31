@@ -31,7 +31,7 @@ export interface CatalogIndex {
 }
 
 /** The fields a public game card needs. */
-export type GameCard = Pick<Game, "id" | "slug" | "title" | "coverImageUrl" | "releaseDate">;
+export type GameCard = Pick<Game, "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "criticScore">;
 
 export interface IGamesRepository {
   create(

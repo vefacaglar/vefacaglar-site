@@ -22,6 +22,7 @@ export class ListGamesHandler {
         title: g.title,
         coverImageUrl: g.coverImageUrl,
         releaseDate: g.releaseDate,
+        criticScore: g.criticScore,
       })),
       total,
       page,
