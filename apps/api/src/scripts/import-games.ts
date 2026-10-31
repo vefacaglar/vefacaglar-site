@@ -25,6 +25,7 @@ const USAGE = `usage:
 options:
   --dry-run        report what would change, write nothing
   --skip-hltb      do not fetch completion times from HowLongToBeat
+  --with-hltb      --all only: also fetch HLTB times (off by default; HLTB rate-limits scrapers)
   --all            crawl the whole IGDB catalog in id order (resumable)
   --min-ratings N  --all only: skip games with fewer than N IGDB ratings
   --max N          --all only: stop after N games
@@ -46,6 +47,7 @@ function usage(): never {
 
 function parseArgs(argv: string[]): Args {
   const args: Args = { titles: [], all: false, restart: false, options: {} };
+  let withHltb = false;
   const numberArg = (value: string | undefined): number => {
     const n = Number(value);
     if (!Number.isInteger(n) || n < 0) usage();
@@ -57,6 +59,7 @@ function parseArgs(argv: string[]): Args {
     switch (arg) {
       case "--dry-run": args.options.dryRun = true; break;
       case "--skip-hltb": args.options.skipHltb = true; break;
+      case "--with-hltb": withHltb = true; break;
       case "--all": args.all = true; break;
       case "--restart": args.restart = true; break;
       case "--min-ratings": args.minRatings = numberArg(argv[++i]); break;
@@ -76,6 +79,9 @@ function parseArgs(argv: string[]): Args {
 
   args.titles = [...new Set(args.titles)];
   if (args.all === (args.titles.length > 0)) usage();
+  // A full crawl only uses IGDB, whose official API has no daily quota. HLTB is
+  // scraped and throttles bulk traffic, so it is opt-in there.
+  if (args.all && !withHltb) args.options.skipHltb = true;
   return args;
 }
 
