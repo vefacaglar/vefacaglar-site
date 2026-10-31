@@ -88,7 +88,7 @@ export class ImportGameHandler {
           }
         );
       }
-      return { query, status: "created", title: source.title, slug: source.slug, notes };
+      return { query, status: "created", title: source.title, slug: source.slug, notes: [...notes, describe(source, times)] };
     } catch (err) {
       notes.push(err instanceof Error ? err.message : String(err));
       return { query, status: "failed", notes };
@@ -219,4 +219,20 @@ export class ImportGameHandler {
       throw err;
     }
   }
+}
+
+/** One-line summary of what an import brings in, e.g. "genres: RPG; platforms: PC, Mac; ...". */
+function describe(source: ImportedGame, times: ImportedTimes | null): string {
+  const names = (items: ImportedLookup[]) => items.map((i) => i.name).join(", ") || "-";
+  const parts = [
+    `released: ${source.releaseDate ?? "-"}`,
+    `genres: ${names(source.genres)}`,
+    `themes: ${names(source.themes)}`,
+    `platforms: ${names(source.platforms)}`,
+    `developers: ${names(source.developers)}`,
+    `publishers: ${names(source.publishers)}`,
+    `cover: ${source.coverImageUrl ? "yes" : "no"}`,
+  ];
+  if (times) parts.push(`hltb: ${times.mainHours ?? "-"}/${times.mainExtraHours ?? "-"}/${times.completionistHours ?? "-"}h`);
+  return parts.join("; ");
 }
