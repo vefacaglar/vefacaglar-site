@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { httpClient } from "./httpClient";
+import { revalidatePublicContent } from "./cacheTags";
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -56,6 +57,7 @@ export async function authedRequest<T = any>(
     }
 
     for (const p of opts.revalidate ?? []) revalidatePath(p);
+    if (method !== "GET") revalidatePublicContent();
 
     const text = await res.text();
     return { data: (text ? JSON.parse(text) : undefined) as T };
