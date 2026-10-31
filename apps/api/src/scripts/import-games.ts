@@ -20,7 +20,7 @@ const STATE_FILE = path.resolve(__dirname, "../../.catalog-import-state.json");
 const USAGE = `usage:
   pnpm --filter api catalog:import [options] "Game Title" ...
   pnpm --filter api catalog:import [options] --file titles.txt
-  pnpm --filter api catalog:import [options] --all [--min-ratings N] [--max N] [--restart]
+  pnpm --filter api catalog:import [options] --all [--min-ratings N] [--max N] [--max-minutes N] [--restart]
 
 options:
   --dry-run        report what would change, write nothing
@@ -29,6 +29,7 @@ options:
   --all            crawl the whole IGDB catalog in id order (resumable)
   --min-ratings N  --all only: skip games with fewer than N IGDB ratings
   --max N          --all only: stop after N games
+  --max-minutes N  --all only: stop cleanly after N minutes (for CI job time limits)
   --restart        --all only: ignore saved progress and start from the beginning`;
 
 type Args = {
@@ -37,6 +38,7 @@ type Args = {
   restart: boolean;
   minRatings?: number;
   max?: number;
+  maxMinutes?: number;
   options: ImportOptions;
 };
 
@@ -64,6 +66,7 @@ function parseArgs(argv: string[]): Args {
       case "--restart": args.restart = true; break;
       case "--min-ratings": args.minRatings = numberArg(argv[++i]); break;
       case "--max": args.max = numberArg(argv[++i]); break;
+      case "--max-minutes": args.maxMinutes = numberArg(argv[++i]); break;
       case "--file": {
         const file = argv[++i];
         if (!file) usage();
@@ -115,9 +118,11 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
   const persist = !args.options.dryRun;
   let afterId = args.restart ? 0 : readState();
   let processed = 0;
+  const deadline = args.maxMinutes === undefined ? Infinity : Date.now() + args.maxMinutes * 60_000;
+  const limitReached = () => (args.max !== undefined && processed >= args.max) || Date.now() >= deadline;
   console.log(`[catalog:import] crawling IGDB from id > ${afterId}`);
 
-  while (args.max === undefined || processed < args.max) {
+  while (!limitReached()) {
     const page = await igdb.listGames(afterId, { minRatings: args.minRatings });
     if (page.lastId === null) {
       console.log("[catalog:import] reached the end of the IGDB catalog");
@@ -125,7 +130,7 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
     }
 
     for (const game of page.games) {
-      if (args.max !== undefined && processed >= args.max) break;
+      if (limitReached()) break;
       logResult(await handler.importSource(game, args.options), counts);
       processed++;
       if (!args.options.skipHltb) await sleep(HLTB_DELAY_MS);
@@ -133,12 +138,13 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
 
     // Progress is saved per page; re-running a half-done page is safe because
     // already-imported games come back as "skipped".
-    if (args.max === undefined || processed < args.max) {
+    if (!limitReached()) {
       afterId = page.lastId;
       if (persist) fs.writeFileSync(STATE_FILE, JSON.stringify({ lastId: afterId }));
     }
     await sleep(IGDB_PAGE_DELAY_MS);
   }
+  if (limitReached()) console.log(`[catalog:import] limit reached, will resume from id > ${afterId}`);
 }
 
 async function main() {

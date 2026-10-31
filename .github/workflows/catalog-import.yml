@@ -1,0 +1,61 @@
+name: Catalog import
+
+# Crawls the IGDB catalog into the games database. Each run works for up to
+# ~5.5 hours (GitHub's job limit is 6) and saves its position, so the first
+# full crawl spreads over several runs; after that each run only picks up
+# games added to IGDB since the last one.
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+# Never run two crawls at once; a scheduled run waits for the current one.
+concurrency:
+  group: catalog-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @vefacaglar/db build
+
+      # Cache entries are immutable, so every run saves a new key and the next
+      # run restores the most recent one by prefix.
+      - name: Restore crawl progress
+        uses: actions/cache/restore@v4
+        with:
+          path: apps/api/.catalog-import-state.json
+          key: catalog-import-state-${{ github.run_id }}
+          restore-keys: catalog-import-state-
+
+      - name: Import games
+        run: pnpm --filter api catalog:import --all --max-minutes 330
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          TYPESENSE_LANGUAGES: ${{ secrets.TYPESENSE_LANGUAGES }}
+
+      - name: Save crawl progress
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: apps/api/.catalog-import-state.json
+          key: catalog-import-state-${{ github.run_id }}
