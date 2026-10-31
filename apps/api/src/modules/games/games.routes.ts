@@ -9,6 +9,8 @@ import { ListGameLogsHandler } from "./logs/list/list.handler";
 import { ListGameLogsParams, ListGameLogsParamsSchema, ListGameLogsResponseSchema } from "./logs/list/list.schema";
 import { CreateGameLogHandler } from "./logs/create/create.handler";
 import { CreateGameLogParams, CreateGameLogParamsSchema, GameLogBody, GameLogBodySchema, GameLogSchema } from "./logs/create/create.schema";
+import { GetGameLogHandler } from "./logs/detail/detail.handler";
+import { GameLogDetailResponseSchema } from "./logs/detail/detail.schema";
 import { UpdateGameLogHandler } from "./logs/update/update.handler";
 import { GameLogIdParams, GameLogIdParamsSchema } from "./logs/update/update.schema";
 import { DeleteGameLogHandler } from "./logs/delete/delete.handler";
@@ -20,6 +22,7 @@ export async function publicGamesRoutes(app: FastifyInstance) {
   const getHandler = container.resolve(GetGameHandler);
   const listLogsHandler = container.resolve(ListGameLogsHandler);
   const createLogHandler = container.resolve(CreateGameLogHandler);
+  const getLogHandler = container.resolve(GetGameLogHandler);
   const updateLogHandler = container.resolve(UpdateGameLogHandler);
   const deleteLogHandler = container.resolve(DeleteGameLogHandler);
 
@@ -63,6 +66,17 @@ export async function publicGamesRoutes(app: FastifyInstance) {
       response: { 200: GameLogSchema, 400: ErrorResponseSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema },
     },
   }, (request) => createLogHandler.handle(request));
+
+  app.get<{ Params: GameLogIdParams }>("/logs/:id", {
+    preHandler: app.requireAuth,
+    schema: {
+      description: "Get one of the signed-in user's game logs with its game",
+      tags: ["Games"],
+      security: [{ bearerAuth: [] }],
+      params: GameLogIdParamsSchema,
+      response: { 200: GameLogDetailResponseSchema, 401: ErrorResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => getLogHandler.handle(request));
 
   app.put<{ Params: GameLogIdParams; Body: GameLogBody }>("/logs/:id", {
     preHandler: app.requireAuth,

@@ -39,7 +39,7 @@ async function send(method: "POST" | "PUT" | "DELETE", path: string, slug: strin
     return { error: "Server connection error." };
   }
 
-  revalidatePath(`/games/${slug}`);
+  revalidatePath(`/games/${slug}`, "layout");
   return {};
 }
 

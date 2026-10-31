@@ -132,7 +132,7 @@ export default async function Game({ params }: GameProps) {
             {dict.login_to_log}
           </Link>
         ) : (
-          <GameLogs slug={game.slug} logs={logs} platforms={game.platforms} />
+          <GameLogs slug={game.slug} logs={logs} />
         )}
       </section>
     </article>

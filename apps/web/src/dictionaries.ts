@@ -92,6 +92,7 @@ const dictionaries = {
     edit: "edit",
     delete: "delete",
     confirm_delete_log: "delete this log?",
+    log_edit_title: "edit log",
   },
   tr: {
     blog: "son yazılar",
@@ -186,6 +187,7 @@ const dictionaries = {
     edit: "düzenle",
     delete: "sil",
     confirm_delete_log: "bu kayıt silinsin mi?",
+    log_edit_title: "kaydı düzenle",
   }
 };
 
