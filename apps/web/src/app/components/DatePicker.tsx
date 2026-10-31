@@ -101,7 +101,7 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
   const leadingDays = (monthStart.getDay() - formatters.firstDayOfWeek + WEEKDAY_COUNT) % WEEKDAY_COUNT;
   const days = Array.from({ length: CALENDAR_CELL_COUNT }, (_, index) => addDays(monthStart, index - leadingDays));
   const monthTitle = `${formatters.month.format(monthStart).toLowerCase()} ${monthStart.getFullYear()}`;
-  const triggerText = selectedDate ? formatLongDate(formatters.full, selectedDate) : "—";
+  const triggerText = selectedDate ? formatLongDate(formatters.full, selectedDate) : "";
 
   useEffect(() => {
     if (!open) {
@@ -213,7 +213,7 @@ export default function DatePicker({ name, defaultValue, id }: DatePickerProps) 
         aria-expanded={open}
         onClick={() => (open ? setOpen(false) : openPopover())}
       >
-        <span className={selectedDate ? styles.value : styles.placeholder}>{triggerText}</span>
+        <span className={styles.value}>{triggerText}</span>
         <span className={styles.caret} aria-hidden="true">
           ▾
         </span>

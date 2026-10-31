@@ -16,7 +16,8 @@
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
-  line-height: 1.65;
+  /* Same line box as the global .input so the fields line up. */
+  line-height: normal;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease;
@@ -33,10 +34,8 @@
 
 .value {
   color: var(--text);
-}
-
-.placeholder {
-  color: var(--muted);
+  /* Keeps the field at text height when no date is chosen and it is empty. */
+  min-height: 1lh;
 }
 
 .caret {

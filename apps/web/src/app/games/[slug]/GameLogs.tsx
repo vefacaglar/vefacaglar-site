@@ -27,6 +27,16 @@ export function statusLabel(dict: Dictionary, status: GameLogInput["status"]): s
   return dict[`status_${status}` as const];
 }
 
+/** "2010-10-19" -> "19 Oct 2010" / "19 Eki 2010", read as a local date so the day never shifts. */
+function formatDate(value: string, locale: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 /** A fresh log starts as "playing"; the details are filled in on its own page. */
 const QUICK_LOG: GameLogInput = {
   status: "playing",
@@ -83,9 +93,8 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
                   {log.platform && <span>{log.platform.name}</span>}
                   {log.rating !== null && <span>{log.rating}/10</span>}
                   {log.playtimeHours !== null && <span>{`${log.playtimeHours}${dict.hours_short}`}</span>}
-                  {(log.startedAt || log.completedAt) && (
-                    <span>{[log.startedAt, log.completedAt].map((d) => d ?? "…").join(" → ")}</span>
-                  )}
+                  {log.startedAt && <span>{`${dict.log_started} ${formatDate(log.startedAt, locale)}`}</span>}
+                  {log.completedAt && <span>{`${dict.log_completed} ${formatDate(log.completedAt, locale)}`}</span>}
                   <span className={styles.logEdit}>{dict.edit} →</span>
                 </div>
                 {log.notes && <p className={styles.notes}>{log.notes}</p>}
