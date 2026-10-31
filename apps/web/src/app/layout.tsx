@@ -6,7 +6,7 @@ import WidthController from "../components/WidthController";
 import AuthWarmup from "../components/AuthWarmup";
 import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
-import { SITE_URL } from "../lib/seo";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
 import { getAuthMode } from "../lib/oidc";
 import "./globals.css";
 import styles from "./layout.module.css";
@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "vefa çağlar",
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
   },
   verification: {
     google: "nVnbCv8TKlOREhb5XkkIegzW0AImFUIHrvNokeSlJYA",

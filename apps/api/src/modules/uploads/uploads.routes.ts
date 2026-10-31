@@ -8,7 +8,7 @@ export async function uploadsRoutes(app: FastifyInstance) {
   const uploadImageHandler = container.resolve(UploadImageHandler);
 
   app.post("/image", {
-    preHandler: app.requireAuth,
+    preHandler: app.requireAdmin,
     schema: {
       description: "Upload an image securely to ImageKit",
       tags: ["Uploads"],

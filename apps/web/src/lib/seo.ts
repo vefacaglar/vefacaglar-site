@@ -4,6 +4,9 @@ export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://vefacaglar.com"
 ).replace(/\/$/, "");
 
+// Shared fallback for link previews on pages without their own cover image.
+export const DEFAULT_OG_IMAGE = { url: "/og.png", width: 1200, height: 630, alt: "vefa çağlar" };
+
 /**
  * Build canonical + hreflang alternates for a locale-agnostic path.
  *
@@ -30,7 +33,7 @@ export function localizedAlternates(
   const tr = `${SITE_URL}/tr${clean}`;
 
   if (!bilingual) {
-    return { canonical: en };
+    return { canonical: en, types: { "application/rss+xml": `${SITE_URL}/rss.xml` } };
   }
 
   return {
@@ -40,5 +43,6 @@ export function localizedAlternates(
       tr,
       "x-default": en,
     },
+    types: { "application/rss+xml": lang === "tr" ? `${SITE_URL}/tr/rss.xml` : `${SITE_URL}/rss.xml` },
   };
 }

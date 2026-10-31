@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidatePublicContent } from "../../../lib/cacheTags";
 import { httpClient } from "../../../lib/httpClient";
 
 type ListParams = { page?: number; limit?: number; q?: string };
@@ -100,6 +101,7 @@ export async function createPackageAction(data: {
     }
 
     revalidatePath("/dashboard/packages");
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Create package error:", error);
@@ -140,6 +142,7 @@ export async function updatePackageAction(
     }
 
     revalidatePath("/dashboard/packages");
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Update package error:", error);
@@ -166,6 +169,7 @@ export async function deletePackageAction(id: string, slug?: string) {
     }
 
     revalidatePath("/dashboard/packages");
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Delete package error:", error);
@@ -247,6 +251,7 @@ export async function createPackageItemAction(
     }
     revalidatePath(`/dashboard/packages/edit/${groupId}`);
     revalidatePath(`/dashboard/package-groups/${groupId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Create package item error:", error);
@@ -286,6 +291,7 @@ export async function updatePackageItemAction(
     revalidatePath(`/dashboard/packages/edit/${groupId}`);
     revalidatePath(`/dashboard/package-groups/${groupId}`);
     revalidatePath(`/dashboard/package-groups/${data.groupId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Update package item error:", error);
@@ -311,6 +317,7 @@ export async function deletePackageItemAction(
       return { error: errData.message || "Failed to delete package item." };
     }
     revalidatePath(`/dashboard/packages/edit/${groupId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Delete package item error:", error);
@@ -356,6 +363,7 @@ export async function createCategoryAction(packageId: string, data: { title: str
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Create category error:", error);
@@ -378,6 +386,7 @@ export async function updateCategoryAction(packageId: string, id: string, data: 
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Update category error:", error);
@@ -400,6 +409,7 @@ export async function deleteCategoryAction(packageId: string, id: string) {
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Delete category error:", error);
@@ -479,6 +489,7 @@ export async function createDocAction(
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Create doc error:", error);
@@ -515,6 +526,7 @@ export async function updateDocAction(
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Update doc error:", error);
@@ -541,6 +553,7 @@ export async function deleteDocAction(
     }
     revalidatePath(`/dashboard/packages/edit/${packageId}`);
     revalidatePath(`/dashboard/package-groups/${packageId}`);
+    revalidatePublicContent();
     return { success: true };
   } catch (error) {
     console.error("Delete doc error:", error);

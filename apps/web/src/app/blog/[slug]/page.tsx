@@ -7,7 +7,7 @@ import styles from "./post.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary, formatMetaTitle } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
-import { localizedAlternates, SITE_URL } from "../../../lib/seo";
+import { localizedAlternates, SITE_URL, DEFAULT_OG_IMAGE } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { getPost } from "../../../lib/data";
 
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description: post.seoDescription || post.title,
       publishedTime: post.publishedAt ?? undefined,
       modifiedTime: post.updatedAt ?? undefined,
-      images: post.coverImageUrl ? [post.coverImageUrl] : undefined,
+      images: post.coverImageUrl ? [post.coverImageUrl] : [DEFAULT_OG_IMAGE],
     },
   };
 }
