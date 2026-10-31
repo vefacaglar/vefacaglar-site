@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "main": "dist/app.js",
   "scripts": {
-    "dev": "ts-node-dev src/server.ts",
+    "dev": "ts-node-dev --transpile-only src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "search:reindex": "ts-node-dev --no-deps --no-notify --quiet src/scripts/search-reindex.ts",

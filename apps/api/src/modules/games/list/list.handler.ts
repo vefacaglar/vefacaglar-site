@@ -2,6 +2,7 @@ import { FastifyRequest } from "fastify";
 import { inject, injectable } from "tsyringe";
 import { GAMES_REPOSITORY } from "../../catalog/catalog.tokens";
 import type { IGamesRepository } from "../../catalog/games.repository.interface";
+import { publicCriticScore } from "../critic-score";
 import { ListGamesQuery, ListGamesResponse } from "./list.schema";
 
 const DEFAULT_LIMIT = 24;
@@ -22,7 +23,7 @@ export class ListGamesHandler {
         title: g.title,
         coverImageUrl: g.coverImageUrl,
         releaseDate: g.releaseDate,
-        criticScore: g.criticScore,
+        criticScore: publicCriticScore(g.criticScore, g.criticScoreCount),
       })),
       total,
       page,

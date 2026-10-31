@@ -17,9 +17,23 @@ describe("ListGamesHandler", () => {
     expect(repo.listPublic).toHaveBeenCalledWith({ page: 1, limit: 24, q: undefined });
   });
 
+  it("hides critic scores based on fewer than 3 reviews", async () => {
+    repo.listPublic.mockResolvedValue({
+      items: [
+        { id: "a", slug: "a", title: "A", coverImageUrl: null, releaseDate: null, criticScore: 100, criticScoreCount: 1 },
+        { id: "b", slug: "b", title: "B", coverImageUrl: null, releaseDate: null, criticScore: 80, criticScoreCount: 3 },
+      ],
+      total: 2,
+    });
+
+    const result = await handler.handle({ query: {} } as any);
+
+    expect(result.items.map((g) => g.criticScore)).toEqual([null, 80]);
+  });
+
   it("trims the query, ignores blank ones and maps card fields", async () => {
     repo.listPublic.mockResolvedValue({
-      items: [{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85 }],
+      items: [{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85, criticScoreCount: 12 }],
       total: 49,
     });
 

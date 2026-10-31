@@ -3,6 +3,7 @@ import { inject, injectable } from "tsyringe";
 import { GAMES_REPOSITORY } from "../../catalog/catalog.tokens";
 import type { IGamesRepository } from "../../catalog/games.repository.interface";
 import { NotFoundError } from "../../../shared/http-errors";
+import { publicCriticScore } from "../critic-score";
 import { GameDetailResponse, GetGameParams } from "./detail.schema";
 
 const toNumber = (value: string | null): number | null => (value === null ? null : Number(value));
@@ -15,6 +16,7 @@ export class GetGameHandler {
   async handle(request: FastifyRequest<{ Params: GetGameParams }>): Promise<GameDetailResponse> {
     const game = await this.gamesRepo.findBySlug(request.params.slug);
     if (!game) throw new NotFoundError("Game not found.");
+    const criticScore = publicCriticScore(game.criticScore, game.criticScoreCount);
 
     return {
       slug: game.slug,
@@ -22,8 +24,8 @@ export class GetGameHandler {
       description: game.description,
       coverImageUrl: game.coverImageUrl,
       releaseDate: game.releaseDate,
-      criticScore: game.criticScore,
-      criticScoreCount: game.criticScoreCount,
+      criticScore,
+      criticScoreCount: criticScore === null ? null : game.criticScoreCount,
       hltbMainHours: toNumber(game.hltbMainHours),
       hltbMainExtraHours: toNumber(game.hltbMainExtraHours),
       hltbCompletionistHours: toNumber(game.hltbCompletionistHours),
