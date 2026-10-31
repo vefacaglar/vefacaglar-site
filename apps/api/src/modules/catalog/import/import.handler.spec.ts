@@ -12,6 +12,8 @@ const igdbGame: ImportedGame = {
   description: "Metroidvania",
   coverImageUrl: "https://images.igdb.com/cover.jpg",
   releaseDate: "2017-02-24",
+  criticScore: 87,
+  criticScoreCount: 12,
   developers: [{ name: "Team Cherry", slug: "team-cherry" }],
   publishers: [{ name: "Team Cherry", slug: "team-cherry" }],
   genres: [{ name: "Platform", slug: "platform" }],
@@ -30,6 +32,8 @@ const existingGame = {
   hltbMainHours: null,
   hltbMainExtraHours: null,
   hltbCompletionistHours: "60.0",
+  criticScore: null,
+  criticScoreCount: null,
   developers: [],
   publishers: [],
   genres: [{ id: "gen-1", name: "Action", slug: "action" }],
@@ -108,7 +112,7 @@ describe("ImportGameHandler", () => {
     expect(catalog.createGenre).not.toHaveBeenCalled();
     expect(catalog.createPlatform).toHaveBeenCalledWith({ name: "PC", slug: "win" });
     expect(catalog.createGame).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Hollow Knight", slug: "hollow-knight", hltbMainHours: 27 }),
+      expect.objectContaining({ title: "Hollow Knight", slug: "hollow-knight", hltbMainHours: 27, criticScore: 87, criticScoreCount: 12 }),
       {
         developerIds: ["dev-new"],
         publisherIds: ["pub-new"],
@@ -139,6 +143,8 @@ describe("ImportGameHandler", () => {
     expect(catalog.getGameById).toHaveBeenCalledWith("g-1");
     expect(catalog.updateGame).toHaveBeenCalledWith("g-1", {
       coverImageUrl: "https://images.igdb.com/cover.jpg",
+      criticScore: 87,
+      criticScoreCount: 12,
       hltbMainHours: 27,
       hltbMainExtraHours: 41.6,
     });
@@ -170,6 +176,7 @@ describe("ImportGameHandler", () => {
     catalog.getGameById.mockResolvedValue({
       ...existingGame,
       coverImageUrl: "x",
+      criticScore: 80,
       hltbMainHours: "27.0",
       hltbMainExtraHours: "41.6",
       developers: [{ id: "d" }],

@@ -12,6 +12,8 @@ export const GameDetailResponseSchema = Type.Object({
   description: Type.Union([Type.String(), Type.Null()]),
   coverImageUrl: Type.Union([Type.String(), Type.Null()]),
   releaseDate: Type.Union([Type.String(), Type.Null()]),
+  criticScore: NullableNumber,
+  criticScoreCount: NullableNumber,
   hltbMainHours: NullableNumber,
   hltbMainExtraHours: NullableNumber,
   hltbCompletionistHours: NullableNumber,

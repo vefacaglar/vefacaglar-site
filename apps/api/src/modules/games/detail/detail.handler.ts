@@ -22,6 +22,8 @@ export class GetGameHandler {
       description: game.description,
       coverImageUrl: game.coverImageUrl,
       releaseDate: game.releaseDate,
+      criticScore: game.criticScore,
+      criticScoreCount: game.criticScoreCount,
       hltbMainHours: toNumber(game.hltbMainHours),
       hltbMainExtraHours: toNumber(game.hltbMainExtraHours),
       hltbCompletionistHours: toNumber(game.hltbCompletionistHours),

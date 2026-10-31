@@ -15,6 +15,8 @@ export type CreateGameData = {
   releaseDate?: string | null;
   metacriticScore?: number | null;
   openCriticScore?: number | null;
+  criticScore?: number | null;
+  criticScoreCount?: number | null;
   hltbMainHours?: string | number | null;
   hltbMainExtraHours?: string | number | null;
   hltbCompletionistHours?: string | number | null;
@@ -51,6 +53,8 @@ export class GamesService {
         releaseDate: data.releaseDate || null,
         metacriticScore: data.metacriticScore || null,
         openCriticScore: data.openCriticScore || null,
+        criticScore: data.criticScore ?? null,
+        criticScoreCount: data.criticScoreCount ?? null,
         hltbMainHours: data.hltbMainHours ? String(data.hltbMainHours) : null,
         hltbMainExtraHours: data.hltbMainExtraHours ? String(data.hltbMainExtraHours) : null,
         hltbCompletionistHours: data.hltbCompletionistHours ? String(data.hltbCompletionistHours) : null,
@@ -95,6 +99,8 @@ export class GamesService {
     if (data.releaseDate !== undefined) patch.releaseDate = data.releaseDate || null;
     if (data.metacriticScore !== undefined) patch.metacriticScore = data.metacriticScore;
     if (data.openCriticScore !== undefined) patch.openCriticScore = data.openCriticScore;
+    if (data.criticScore !== undefined) patch.criticScore = data.criticScore;
+    if (data.criticScoreCount !== undefined) patch.criticScoreCount = data.criticScoreCount;
     if (data.hltbMainHours !== undefined) patch.hltbMainHours = data.hltbMainHours ? String(data.hltbMainHours) : null;
     if (data.hltbMainExtraHours !== undefined) patch.hltbMainExtraHours = data.hltbMainExtraHours ? String(data.hltbMainExtraHours) : null;
     if (data.hltbCompletionistHours !== undefined) patch.hltbCompletionistHours = data.hltbCompletionistHours ? String(data.hltbCompletionistHours) : null;

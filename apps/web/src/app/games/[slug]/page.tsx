@@ -18,6 +18,8 @@ type GameDetail = {
   description: string | null;
   coverImageUrl: string | null;
   releaseDate: string | null;
+  criticScore: number | null;
+  criticScoreCount: number | null;
   hltbMainHours: number | null;
   hltbMainExtraHours: number | null;
   hltbCompletionistHours: number | null;
@@ -74,6 +76,14 @@ export default async function Game({ params }: GameProps) {
   const facts: [string, string][] = (
     [
       [dict.released, game.releaseDate ? formatDate(game.releaseDate) : ""],
+      [
+        dict.critic_score,
+        game.criticScore !== null
+          ? `${game.criticScore}/100${
+              game.criticScoreCount ? ` · ${dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}` : ""
+            }`
+          : "",
+      ],
       [dict.developers, names(game.developers)],
       [dict.publishers, names(game.publishers)],
       [dict.genres, names(game.genres)],

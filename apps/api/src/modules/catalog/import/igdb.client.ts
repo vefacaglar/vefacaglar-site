@@ -13,7 +13,7 @@ const COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big";
 const PAGE_SIZE = 500; // IGDB's maximum per request
 
 const FIELDS = [
-  "fields id,name,slug,summary,first_release_date,cover.image_id,game_type.type,",
+  "fields id,name,slug,summary,first_release_date,cover.image_id,game_type.type,aggregated_rating,aggregated_rating_count,",
   "genres.name,genres.slug,themes.name,themes.slug,platforms.name,platforms.slug,",
   "involved_companies.developer,involved_companies.publisher,",
   "involved_companies.company.name,involved_companies.company.slug;",
@@ -32,6 +32,8 @@ type IgdbGame = {
   first_release_date?: number;
   cover?: { image_id: string };
   game_type?: { type: string };
+  aggregated_rating?: number;
+  aggregated_rating_count?: number;
   genres?: IgdbNamed[];
   themes?: IgdbNamed[];
   platforms?: IgdbNamed[];
@@ -94,6 +96,8 @@ export class IgdbClient implements IIgdbClient {
       releaseDate: game.first_release_date
         ? new Date(game.first_release_date * 1000).toISOString().slice(0, 10)
         : null,
+      criticScore: game.aggregated_rating != null ? Math.round(game.aggregated_rating) : null,
+      criticScoreCount: game.aggregated_rating != null ? (game.aggregated_rating_count ?? null) : null,
       developers: lookup(companies.filter((c) => c.developer).map((c) => c.company)),
       publishers: lookup(companies.filter((c) => c.publisher).map((c) => c.company)),
       genres: lookup(game.genres),

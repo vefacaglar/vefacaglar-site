@@ -86,6 +86,8 @@ export class ImportGameHandler {
             description: source.description,
             coverImageUrl: source.coverImageUrl,
             releaseDate: source.releaseDate,
+            criticScore: source.criticScore,
+            criticScoreCount: source.criticScoreCount,
             hltbMainHours: times?.mainHours,
             hltbMainExtraHours: times?.mainExtraHours,
             hltbCompletionistHours: times?.completionistHours,
@@ -119,6 +121,10 @@ export class ImportGameHandler {
     if (!existing.description && source.description) patch.description = source.description;
     if (!existing.coverImageUrl && source.coverImageUrl) patch.coverImageUrl = source.coverImageUrl;
     if (!existing.releaseDate && source.releaseDate) patch.releaseDate = source.releaseDate;
+    if (existing.criticScore == null && source.criticScore != null) {
+      patch.criticScore = source.criticScore;
+      patch.criticScoreCount = source.criticScoreCount;
+    }
     if (!existing.hltbMainHours && times?.mainHours) patch.hltbMainHours = times.mainHours;
     if (!existing.hltbMainExtraHours && times?.mainExtraHours) patch.hltbMainExtraHours = times.mainExtraHours;
     if (!existing.hltbCompletionistHours && times?.completionistHours) {
@@ -275,6 +281,7 @@ function describe(source: ImportedGame, times: ImportedTimes | null): string {
   const names = (items: ImportedLookup[]) => items.map((i) => i.name).join(", ") || "-";
   const parts = [
     `released: ${source.releaseDate ?? "-"}`,
+    `critics: ${source.criticScore ?? "-"}${source.criticScoreCount ? ` (${source.criticScoreCount})` : ""}`,
     `genres: ${names(source.genres)}`,
     `themes: ${names(source.themes)}`,
     `platforms: ${names(source.platforms)}`,

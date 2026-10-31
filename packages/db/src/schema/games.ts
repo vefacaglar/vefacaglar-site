@@ -24,6 +24,9 @@ export const games = pgTable('games', {
   releaseDate: date('release_date'),
   metacriticScore: integer('metacritic_score'),
   openCriticScore: integer('open_critic_score'),
+  // IGDB's aggregated critic rating (0-100) and how many critic reviews it averages.
+  criticScore: integer('critic_score'),
+  criticScoreCount: integer('critic_score_count'),
   hltbMainHours: decimal('hltb_main_hours', { precision: 6, scale: 1 }),
   hltbMainExtraHours: decimal('hltb_main_extra_hours', { precision: 6, scale: 1 }),
   hltbCompletionistHours: decimal('hltb_completionist_hours', { precision: 6, scale: 1 }),

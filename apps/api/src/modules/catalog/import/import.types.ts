@@ -7,6 +7,9 @@ export type ImportedGame = {
   description: string | null;
   coverImageUrl: string | null;
   releaseDate: string | null;
+  /** Average external critic rating, 0-100, rounded. */
+  criticScore: number | null;
+  criticScoreCount: number | null;
   developers: ImportedLookup[];
   publishers: ImportedLookup[];
   genres: ImportedLookup[];
