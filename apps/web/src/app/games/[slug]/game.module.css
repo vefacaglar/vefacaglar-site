@@ -122,6 +122,21 @@
   border-color: var(--text);
 }
 
+.logRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.logRow .logItem {
+  flex: 1;
+  min-width: 0;
+}
+
+.deleteButton {
+  padding: 0 14px;
+}
+
 .logEdit {
   margin-left: auto;
 }

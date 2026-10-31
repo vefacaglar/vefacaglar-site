@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useLocale } from "../../../components/LocaleProvider";
 import { getDictionary, type Dictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
-import { createGameLog, type GameLogInput } from "../actions";
+import { createGameLog, deleteGameLog, type GameLogInput } from "../actions";
 import styles from "./game.module.css";
 
 export type GameLog = {
@@ -44,12 +44,18 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const onLog = () => {
+  const run = (action: () => Promise<{ error?: string }>) => {
     setError(null);
     startTransition(async () => {
-      const result = await createGameLog(slug, QUICK_LOG);
+      const result = await action();
       if (result.error) setError(result.error);
     });
+  };
+
+  const onLog = () => run(() => createGameLog(slug, QUICK_LOG));
+
+  const onDelete = (id: string) => {
+    if (window.confirm(dict.confirm_delete_log)) run(() => deleteGameLog(slug, id));
   };
 
   return (
@@ -65,7 +71,7 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
       ) : (
         <ul className={styles.logList}>
           {logs.map((log) => (
-            <li key={log.id}>
+            <li key={log.id} className={styles.logRow}>
               <Link href={localizeHref(`/games/${slug}/logs/${log.id}`, locale)} className={styles.logItem}>
                 <div className={styles.logSummary}>
                   <span className={styles.status}>{statusLabel(dict, log.status)}</span>
@@ -79,10 +85,31 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
                 </div>
                 {log.notes && <p className={styles.notes}>{log.notes}</p>}
               </Link>
+              <button
+                type="button"
+                className={`btnGhost ${styles.deleteButton}`}
+                disabled={pending}
+                onClick={() => onDelete(log.id)}
+                aria-label={dict.delete}
+                title={dict.delete}
+              >
+                <TrashIcon />
+              </button>
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V3h8v3" />
+      <path d="M5 6l1 15h12l1-15" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
   );
 }
