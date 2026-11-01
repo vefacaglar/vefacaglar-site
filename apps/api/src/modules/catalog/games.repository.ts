@@ -393,9 +393,12 @@ export class DrizzleGamesRepository implements IGamesRepository {
     return this.dbProvider.transaction(async () => {
       const db = this.dbProvider.client;
 
+      // Queries without a data dependency are issued together: postgres.js
+      // pipelines them on the transaction's connection, so a page pays a few
+      // round trips instead of one per row.
       const lookups = {} as CatalogImportWriteResult["lookups"];
       const lookupIds = {} as Record<CatalogLookupKind, Map<string, string>>;
-      for (const kind of LOOKUP_KINDS) {
+      await Promise.all(LOOKUP_KINDS.map(async (kind) => {
         const table = LOOKUP_TABLES[kind] as typeof genres;
         const items = [...new Map(write.lookups[kind].map((i) => [i.slug, i])).values()];
         const created = new Set<string>();
@@ -416,7 +419,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
         }
         lookups[kind] = rows.map((r) => ({ ...r, created: created.has(r.slug) }));
         lookupIds[kind] = new Map(rows.map((r) => [r.slug, r.id]));
-      }
+      }));
 
       const insertedGameIds: string[] = [];
       for (const chunk of chunks(write.newGames, 500)) {
@@ -425,13 +428,11 @@ export class DrizzleGamesRepository implements IGamesRepository {
         insertedGameIds.push(...rows.map((r) => r.id));
       }
 
-      for (const { id, patch } of write.gameUpdates) {
-        await db.update(games).set(patch).where(eq(games.id, id));
-      }
+      await Promise.all(write.gameUpdates.map(({ id, patch }) => db.update(games).set(patch).where(eq(games.id, id))));
 
       const inserted = new Set(insertedGameIds);
       const notInserted = new Set(write.newGames.map((g) => g.id!).filter((id) => !inserted.has(id)));
-      for (const kind of LOOKUP_KINDS) {
+      await Promise.all(LOOKUP_KINDS.map(async (kind) => {
         const { table, column } = LINK_TABLES[kind];
         const rows = write.links[kind].flatMap((link) => {
           const lookupId = lookupIds[kind].get(link.slug);
@@ -444,7 +445,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
             .values(chunk as unknown as (typeof gameGenres.$inferInsert)[])
             .onConflictDoNothing();
         }
-      }
+      }));
 
       return { insertedGameIds, lookups };
     });
