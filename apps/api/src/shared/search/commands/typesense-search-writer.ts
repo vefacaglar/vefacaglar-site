@@ -44,6 +44,8 @@ import {
 } from "../mappers/lookup.mapper";
 
 const IMPORT_BATCH_SIZE = 100;
+// One crawl page (500 games) fits in a single bulk index pass.
+const BULK_INDEX_SIZE = 500;
 
 type LookupEntity = "developer" | "publisher" | "genre" | "platform" | "theme";
 type LookupRow = Developer | Publisher | Genre | Platform | Theme;
@@ -197,39 +199,48 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
   }
 
   async indexGames(ids: string[]): Promise<void> {
-    if (!this.enabled) return;
-    for (let i = 0; i < ids.length; i += IMPORT_BATCH_SIZE) {
-      const sliceIds = ids.slice(i, i + IMPORT_BATCH_SIZE);
-      try {
-        const slice = await this.gamesRepo.findByIds(sliceIds);
-        for (const lang of this.languages) {
-          const translationsByEntity = this.needsTranslations(lang)
-            ? await this.localizationsRepo.findByEntities("game", sliceIds, lang)
-            : {};
-          const docs = slice.map((game) => toGameDoc(game, lang, translationsByEntity[game.id] ?? []));
-          await this.bulkImportDocs(`games_${lang}`, docs);
-        }
-      } catch (err) {
-        console.error(`[search] failed to bulk-index ${sliceIds.length} games:`, (err as Error).message);
-      }
-    }
+    await this.bulkIndex("games", ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), "game", (game, lang, translations) =>
+      toGameDoc(game, lang, translations)
+    );
   }
 
   async indexLookups(kind: LookupEntity, ids: string[]): Promise<void> {
-    if (!this.enabled) return;
-    for (let i = 0; i < ids.length; i += IMPORT_BATCH_SIZE) {
-      const sliceIds = ids.slice(i, i + IMPORT_BATCH_SIZE);
+    await this.bulkIndex(`${kind}s`, ids, (sliceIds) => this.gamesRepo.findLookupsByIds(kind, sliceIds), kind, (row, lang, translations) =>
+      this.toLookupDoc(kind, row, lang, translations)
+    );
+  }
+
+  /**
+   * Loads the rows and every language's translations at once, then imports all
+   * languages in parallel: a bulk import costs a few round trips, not a few per
+   * language and slice.
+   */
+  private async bulkIndex<T extends { id: string }>(
+    collection: string,
+    ids: string[],
+    load: (ids: string[]) => Promise<T[]>,
+    entityType: string,
+    toDoc: (row: T, lang: SearchLanguage, translations: { field: string; value: string }[]) => object
+  ): Promise<void> {
+    if (!this.enabled || ids.length === 0) return;
+    for (let i = 0; i < ids.length; i += BULK_INDEX_SIZE) {
+      const sliceIds = ids.slice(i, i + BULK_INDEX_SIZE);
       try {
-        const slice = await this.gamesRepo.findLookupsByIds(kind, sliceIds);
-        for (const lang of this.languages) {
-          const translationsByEntity = this.needsTranslations(lang)
-            ? await this.localizationsRepo.findByEntities(kind, sliceIds, lang)
-            : {};
-          const docs = slice.map((row) => this.toLookupDoc(kind, row, lang, translationsByEntity[row.id] ?? []));
-          await this.bulkImportDocs(`${kind}s_${lang}`, docs);
-        }
+        const [rows, ...translations] = await Promise.all([
+          load(sliceIds),
+          ...this.languages.map((lang) =>
+            this.needsTranslations(lang)
+              ? this.localizationsRepo.findByEntities(entityType, sliceIds, lang)
+              : Promise.resolve({} as Record<string, { field: string; value: string }[]>)
+          ),
+        ]);
+        await Promise.all(
+          this.languages.map((lang, l) =>
+            this.bulkImportDocs(`${collection}_${lang}`, rows.map((row) => toDoc(row, lang, translations[l][row.id] ?? [])))
+          )
+        );
       } catch (err) {
-        console.error(`[search] failed to bulk-index ${sliceIds.length} ${kind}s:`, (err as Error).message);
+        console.error(`[search] failed to bulk-index ${sliceIds.length} ${collection}:`, (err as Error).message);
       }
     }
   }
