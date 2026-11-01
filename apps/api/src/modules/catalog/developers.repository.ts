@@ -38,7 +38,7 @@ export class DrizzleDevelopersRepository implements IDevelopersRepository {
     let dataQuery = this.dbProvider.client
       .select()
       .from(developers)
-      .orderBy(asc(developers.name))
+      .orderBy(asc(developers.name), asc(developers.id))
       .$dynamic();
 
     if (whereExpr) dataQuery = dataQuery.where(whereExpr);

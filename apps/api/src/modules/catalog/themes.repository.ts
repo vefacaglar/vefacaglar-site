@@ -38,7 +38,7 @@ export class DrizzleThemesRepository implements IThemesRepository {
     let dataQuery = this.dbProvider.client
       .select()
       .from(themes)
-      .orderBy(asc(themes.name))
+      .orderBy(asc(themes.name), asc(themes.id))
       .$dynamic();
 
     if (whereExpr) dataQuery = dataQuery.where(whereExpr);

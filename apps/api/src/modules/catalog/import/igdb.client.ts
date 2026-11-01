@@ -89,6 +89,7 @@ export class IgdbClient implements IIgdbClient {
       (items ?? []).map((i) => ({ name: i.name, slug: i.slug }));
 
     return {
+      igdbId: game.id,
       title: game.name,
       slug: game.slug,
       description: game.summary ?? null,

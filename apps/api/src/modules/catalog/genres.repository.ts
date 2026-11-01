@@ -38,7 +38,7 @@ export class DrizzleGenresRepository implements IGenresRepository {
     let dataQuery = this.dbProvider.client
       .select()
       .from(genres)
-      .orderBy(asc(genres.name))
+      .orderBy(asc(genres.name), asc(genres.id))
       .$dynamic();
 
     if (whereExpr) dataQuery = dataQuery.where(whereExpr);

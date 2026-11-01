@@ -38,7 +38,7 @@ export class DrizzlePlatformsRepository implements IPlatformsRepository {
     let dataQuery = this.dbProvider.client
       .select()
       .from(platforms)
-      .orderBy(asc(platforms.name))
+      .orderBy(asc(platforms.name), asc(platforms.id))
       .$dynamic();
 
     if (whereExpr) dataQuery = dataQuery.where(whereExpr);

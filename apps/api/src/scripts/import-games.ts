@@ -129,16 +129,16 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
       break;
     }
 
-    for (const game of page.games) {
-      if (limitReached()) break;
-      logResult(await handler.importSource(game, args.options), counts);
-      processed++;
-      if (!args.options.skipHltb) await sleep(HLTB_DELAY_MS);
-    }
+    // The whole page is written in one transaction. If that throws, the error
+    // ends the run before progress is saved, so the next run retries this page.
+    const games = args.max === undefined ? page.games : page.games.slice(0, args.max - processed);
+    const results = await handler.importPage(games, { ...args.options, hltbDelayMs: HLTB_DELAY_MS });
+    for (const result of results) logResult(result, counts);
+    processed += games.length;
 
-    // Progress is saved per page; re-running a half-done page is safe because
-    // already-imported games come back as "skipped".
-    if (!limitReached()) {
+    // Progress is saved per finished page; a page cut short by --max is re-run
+    // next time, which is safe because already-imported games come back as "skipped".
+    if (games.length === page.games.length) {
       afterId = page.lastId;
       if (persist) fs.writeFileSync(STATE_FILE, JSON.stringify({ lastId: afterId }));
     }

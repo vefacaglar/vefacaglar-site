@@ -17,6 +17,8 @@ export type PlayStyle = typeof playStyleEnum[number];
 export const games = pgTable('games', {
   id: uuid('id').primaryKey().defaultRandom(),
   slug: varchar('slug', { length: 180 }).notNull().unique(),
+  // IGDB's game id, set by catalog:import; null for hand-entered games not yet matched.
+  igdbId: integer('igdb_id').unique(),
   title: varchar('title', { length: 250 }).notNull(),
   originalTitle: varchar('original_title', { length: 250 }),
   description: text('description'),

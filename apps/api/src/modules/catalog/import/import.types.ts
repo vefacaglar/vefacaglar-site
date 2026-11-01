@@ -2,6 +2,7 @@ export type ImportedLookup = { name: string; slug: string };
 
 /** A game record normalized from an external catalog source (IGDB). */
 export type ImportedGame = {
+  igdbId: number;
   title: string;
   slug: string;
   description: string | null;

@@ -15,13 +15,45 @@ import { and, asc, desc, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
+  CatalogImportWrite,
+  CatalogImportWriteResult,
   CatalogIndex,
+  CatalogLookupKind,
+  CatalogLookupRow,
   GameCard,
   IGamesRepository,
   Game,
   NewGame,
   GameWithRelations,
 } from "./games.repository.interface";
+
+const LOOKUP_KINDS: CatalogLookupKind[] = ["developer", "publisher", "genre", "platform", "theme"];
+
+const LOOKUP_TABLES = {
+  developer: developers,
+  publisher: publishers,
+  genre: genres,
+  platform: platforms,
+  theme: themes,
+};
+
+// Each join table with its lookup-side column, so links can be written generically.
+const LINK_TABLES = {
+  developer: { table: gameDevelopers, column: "developerId" },
+  publisher: { table: gamePublishers, column: "publisherId" },
+  genre: { table: gameGenres, column: "genreId" },
+  platform: { table: gamePlatforms, column: "platformId" },
+  theme: { table: gameThemes, column: "themeId" },
+} as const;
+
+// Postgres caps a statement at 65535 bind parameters; this keeps every bulk insert well below it.
+const INSERT_CHUNK = 1000;
+
+function chunks<T>(items: T[], size = INSERT_CHUNK): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
 
 @injectable()
 export class DrizzleGamesRepository implements IGamesRepository {
@@ -244,7 +276,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
         updatedAt: games.updatedAt,
       })
       .from(games)
-      .orderBy(desc(games.createdAt))
+      .orderBy(desc(games.createdAt), asc(games.id))
       .$dynamic();
 
     if (whereExpr) dataQuery = dataQuery.where(whereExpr);
@@ -326,7 +358,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const db = this.dbProvider.client;
     const [gameRows, devRows, pubRows, genRows, platRows, themeRows] = await Promise.all([
       db
-        .select({ id: games.id, slug: games.slug, title: games.title, originalTitle: games.originalTitle, releaseDate: games.releaseDate })
+        .select({ id: games.id, slug: games.slug, igdbId: games.igdbId, title: games.title, originalTitle: games.originalTitle, releaseDate: games.releaseDate })
         .from(games),
       db.select({ id: developers.id, slug: developers.slug }).from(developers),
       db.select({ id: publishers.id, slug: publishers.slug }).from(publishers),
@@ -342,6 +374,80 @@ export class DrizzleGamesRepository implements IGamesRepository {
       platforms: platRows,
       themes: themeRows,
     };
+  }
+
+  async findByIds(ids: string[]): Promise<GameWithRelations[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.dbProvider.client.select().from(games).where(inArray(games.id, ids));
+    return this.attachRelations(rows);
+  }
+
+  async findLookupsByIds(kind: CatalogLookupKind, ids: string[]): Promise<CatalogLookupRow[]> {
+    if (ids.length === 0) return [];
+    // The lookup tables share id/name/slug columns; the cast only narrows the type for Drizzle.
+    const table = LOOKUP_TABLES[kind] as typeof genres;
+    return this.dbProvider.client.select().from(table).where(inArray(table.id, ids));
+  }
+
+  async writeImportPage(write: CatalogImportWrite): Promise<CatalogImportWriteResult> {
+    return this.dbProvider.transaction(async () => {
+      const db = this.dbProvider.client;
+
+      const lookups = {} as CatalogImportWriteResult["lookups"];
+      const lookupIds = {} as Record<CatalogLookupKind, Map<string, string>>;
+      for (const kind of LOOKUP_KINDS) {
+        const table = LOOKUP_TABLES[kind] as typeof genres;
+        const items = [...new Map(write.lookups[kind].map((i) => [i.slug, i])).values()];
+        const created = new Set<string>();
+        const rows: { id: string; slug: string }[] = [];
+        for (const chunk of chunks(items)) {
+          const inserted = await db
+            .insert(table)
+            .values(chunk.map((i) => ({ name: i.name, slug: i.slug })))
+            .onConflictDoNothing({ target: table.slug })
+            .returning({ slug: table.slug });
+          for (const r of inserted) created.add(r.slug);
+          rows.push(
+            ...(await db
+              .select({ id: table.id, slug: table.slug })
+              .from(table)
+              .where(inArray(table.slug, chunk.map((i) => i.slug))))
+          );
+        }
+        lookups[kind] = rows.map((r) => ({ ...r, created: created.has(r.slug) }));
+        lookupIds[kind] = new Map(rows.map((r) => [r.slug, r.id]));
+      }
+
+      const insertedGameIds: string[] = [];
+      for (const chunk of chunks(write.newGames, 500)) {
+        // A slug or IGDB id taken since the index was loaded skips that row instead of failing the page.
+        const rows = await db.insert(games).values(chunk).onConflictDoNothing().returning({ id: games.id });
+        insertedGameIds.push(...rows.map((r) => r.id));
+      }
+
+      for (const { id, patch } of write.gameUpdates) {
+        await db.update(games).set(patch).where(eq(games.id, id));
+      }
+
+      const inserted = new Set(insertedGameIds);
+      const notInserted = new Set(write.newGames.map((g) => g.id!).filter((id) => !inserted.has(id)));
+      for (const kind of LOOKUP_KINDS) {
+        const { table, column } = LINK_TABLES[kind];
+        const rows = write.links[kind].flatMap((link) => {
+          const lookupId = lookupIds[kind].get(link.slug);
+          return lookupId && !notInserted.has(link.gameId) ? [{ gameId: link.gameId, [column]: lookupId }] : [];
+        });
+        for (const chunk of chunks(rows)) {
+          // Same shape for every join table (gameId + one lookup id); the cast only satisfies Drizzle's typing.
+          await db
+            .insert(table as typeof gameGenres)
+            .values(chunk as unknown as (typeof gameGenres.$inferInsert)[])
+            .onConflictDoNothing();
+        }
+      }
+
+      return { insertedGameIds, lookups };
+    });
   }
 
   async findGameIdsByRelation(

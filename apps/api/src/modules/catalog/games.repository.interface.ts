@@ -17,8 +17,29 @@ export interface GameWithRelations extends Game {
   themes: Theme[];
 }
 
-export type GameIdentity = Pick<Game, "id" | "slug" | "title" | "originalTitle" | "releaseDate">;
+export type GameIdentity = Pick<Game, "id" | "slug" | "igdbId" | "title" | "originalTitle" | "releaseDate">;
 export type LookupIdentity = { id: string; slug: string };
+
+export type CatalogLookupKind = "developer" | "publisher" | "genre" | "platform" | "theme";
+export type CatalogLookupRow = Developer | Publisher | Genre | Platform | Theme;
+
+/** One page of an IGDB import, written in a single transaction. */
+export type CatalogImportWrite = {
+  /** Lookups the page references; missing ones are created, existing slugs are left alone. */
+  lookups: Record<CatalogLookupKind, { name: string; slug: string }[]>;
+  /** New games, with their ids already assigned. */
+  newGames: NewGame[];
+  gameUpdates: { id: string; patch: Partial<NewGame> }[];
+  /** Game-to-lookup links by lookup slug; links that already exist are kept. */
+  links: Record<CatalogLookupKind, { gameId: string; slug: string }[]>;
+};
+
+export type CatalogImportWriteResult = {
+  /** Ids of `newGames` that were inserted; a row hitting a unique slug/IGDB id is skipped. */
+  insertedGameIds: string[];
+  /** Id and slug of every lookup the page references, and which of them were created. */
+  lookups: Record<CatalogLookupKind, (LookupIdentity & { created: boolean })[]>;
+};
 
 /** Identifying columns of every game and lookup, for bulk imports that dedupe in memory. */
 export interface CatalogIndex {
@@ -67,6 +88,12 @@ export interface IGamesRepository {
 
   /** Loads ids and slugs (and game titles) of the whole catalog in one round of queries. */
   loadCatalogIndex(): Promise<CatalogIndex>;
+
+  /** Loads many games with their relations in a fixed number of queries. */
+  findByIds(ids: string[]): Promise<GameWithRelations[]>;
+  findLookupsByIds(kind: CatalogLookupKind, ids: string[]): Promise<CatalogLookupRow[]>;
+  /** Bulk-writes one import page in a single transaction. Publishes no events. */
+  writeImportPage(write: CatalogImportWrite): Promise<CatalogImportWriteResult>;
 
   linkDeveloper(gameId: string, developerId: string): Promise<void>;
   unlinkDeveloper(gameId: string, developerId: string): Promise<void>;

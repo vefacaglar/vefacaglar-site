@@ -6,7 +6,9 @@ import type { ISearchIndexWriter } from "./search-writer.interface";
 import {
   GAME_ENTITY_CHANGED,
   GAME_ENTITY_REMOVED,
+  GAMES_IMPORTED,
   type GameEntityChangedEvent,
+  type GamesImportedEvent,
   type GameEntityRemovedEvent,
   type GameEntityKind,
 } from "../../../modules/catalog/catalog.events";
@@ -51,6 +53,13 @@ export class SearchEventSubscriber {
     this.eventBus.subscribe<GameEntityRemovedEvent>(GAME_ENTITY_REMOVED, (event) =>
       this.gameRemovers[event.kind](event.id)
     );
+    this.eventBus.subscribe<GamesImportedEvent>(GAMES_IMPORTED, async (event) => {
+      // Lookups first, so the game documents never reference a lookup search can't find.
+      for (const [kind, ids] of Object.entries(event.createdLookups)) {
+        await this.indexer.indexLookups(kind as keyof GamesImportedEvent["createdLookups"], ids);
+      }
+      await this.indexer.indexGames(event.gameIds);
+    });
 
     this.eventBus.subscribe<PostEntityChangedEvent>(POST_ENTITY_CHANGED, (event) =>
       this.indexer.indexPost(event.id)

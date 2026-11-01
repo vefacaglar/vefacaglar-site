@@ -5,7 +5,6 @@ import type { Publisher } from "../../../modules/catalog/publishers.repository.i
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
 import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../../modules/catalog/themes.repository.interface";
-import type { GameWithRelations } from "../../../modules/catalog/games.repository.interface";
 import type { PostWithAuthor } from "../../../modules/posts/posts.repository";
 import {
   DEVELOPERS_REPOSITORY,
@@ -197,6 +196,44 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
   }
 
+  async indexGames(ids: string[]): Promise<void> {
+    if (!this.enabled) return;
+    for (let i = 0; i < ids.length; i += IMPORT_BATCH_SIZE) {
+      const sliceIds = ids.slice(i, i + IMPORT_BATCH_SIZE);
+      try {
+        const slice = await this.gamesRepo.findByIds(sliceIds);
+        for (const lang of this.languages) {
+          const translationsByEntity = this.needsTranslations(lang)
+            ? await this.localizationsRepo.findByEntities("game", sliceIds, lang)
+            : {};
+          const docs = slice.map((game) => toGameDoc(game, lang, translationsByEntity[game.id] ?? []));
+          await this.bulkImportDocs(`games_${lang}`, docs);
+        }
+      } catch (err) {
+        console.error(`[search] failed to bulk-index ${sliceIds.length} games:`, (err as Error).message);
+      }
+    }
+  }
+
+  async indexLookups(kind: LookupEntity, ids: string[]): Promise<void> {
+    if (!this.enabled) return;
+    for (let i = 0; i < ids.length; i += IMPORT_BATCH_SIZE) {
+      const sliceIds = ids.slice(i, i + IMPORT_BATCH_SIZE);
+      try {
+        const slice = await this.gamesRepo.findLookupsByIds(kind, sliceIds);
+        for (const lang of this.languages) {
+          const translationsByEntity = this.needsTranslations(lang)
+            ? await this.localizationsRepo.findByEntities(kind, sliceIds, lang)
+            : {};
+          const docs = slice.map((row) => this.toLookupDoc(kind, row, lang, translationsByEntity[row.id] ?? []));
+          await this.bulkImportDocs(`${kind}s_${lang}`, docs);
+        }
+      } catch (err) {
+        console.error(`[search] failed to bulk-index ${sliceIds.length} ${kind}s:`, (err as Error).message);
+      }
+    }
+  }
+
   private async upsertLookupInAllLanguages(
     entityName: LookupEntity,
     id: string,
@@ -327,10 +364,10 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
     console.log(`[search] collections ready (langs: ${this.languages.join(", ")})`);
 
-    const allGames = await this.fetchAllGames();
+    // Games are read and imported one page at a time, so a large catalog never sits in memory.
     let gameCount = 0;
-    for (let i = 0; i < allGames.length; i += IMPORT_BATCH_SIZE) {
-      const slice = allGames.slice(i, i + IMPORT_BATCH_SIZE);
+    for (let page = 1; ; page++) {
+      const { items: slice } = await this.gamesRepo.list({ page, limit: IMPORT_BATCH_SIZE });
       const sliceIds = slice.map((g) => g.id);
       for (const lang of this.languages) {
         const translationsByEntity = this.needsTranslations(lang)
@@ -340,6 +377,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.bulkImportDocs(`games_${lang}`, docs);
       }
       gameCount += slice.length;
+      if (slice.length < IMPORT_BATCH_SIZE) break;
     }
     console.log(`[search] reindexed ${gameCount} games`);
 
@@ -376,20 +414,6 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       console.log(`[search] reindexed ${count} ${builder.entityName}s`);
     }
-  }
-
-  private async fetchAllGames(): Promise<GameWithRelations[]> {
-    const pageSize = 500;
-    let page = 1;
-    const all: GameWithRelations[] = [];
-    while (true) {
-      const { items } = await this.gamesRepo.list({ page, limit: pageSize });
-      for (const g of items) all.push(g);
-      if (items.length < pageSize) break;
-      page++;
-      if (page > 50) break;
-    }
-    return all;
   }
 
   private async fetchAllPublishedPosts(): Promise<PostWithAuthor[]> {
@@ -437,8 +461,12 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
   }> {
     const pageSize = 1000;
     const fetchRows = async <T>(list: (p: { page?: number; limit?: number }) => Promise<{ items: T[] }>): Promise<T[]> => {
-      const { items } = await list({ page: 1, limit: pageSize });
-      return items;
+      const all: T[] = [];
+      for (let page = 1; ; page++) {
+        const { items } = await list({ page, limit: pageSize });
+        all.push(...items);
+        if (items.length < pageSize) return all;
+      }
     };
 
     yield {

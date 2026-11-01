@@ -1,7 +1,10 @@
-import type { GameWithRelations } from "../../../modules/catalog/games.repository.interface";
+import type { GameCard, GameWithRelations } from "../../../modules/catalog/games.repository.interface";
 import type { SearchLanguage } from "../search.types";
 
 export type GameTranslations = { field: string; value: string }[];
+
+/** `releaseTimestamp` of a game without a release date: earlier than any real one. */
+export const RELEASE_UNKNOWN = -9_999_999_999;
 
 export interface GameDoc {
   id: string;
@@ -13,6 +16,9 @@ export interface GameDoc {
   releaseDate?: string;
   metacriticScore?: number;
   openCriticScore?: number;
+  criticScore?: number;
+  criticScoreCount?: number;
+  releaseTimestamp: number;
   hltbMainHours?: string;
   hltbMainExtraHours?: string;
   hltbCompletionistHours?: string;
@@ -66,6 +72,9 @@ export function toGameDoc(
     releaseDate: game.releaseDate ?? undefined,
     metacriticScore: game.metacriticScore ?? undefined,
     openCriticScore: game.openCriticScore ?? undefined,
+    criticScore: game.criticScore ?? undefined,
+    criticScoreCount: game.criticScoreCount ?? undefined,
+    releaseTimestamp: game.releaseDate ? toUnixSeconds(game.releaseDate) : RELEASE_UNKNOWN,
     hltbMainHours: game.hltbMainHours ?? undefined,
     hltbMainExtraHours: game.hltbMainExtraHours ?? undefined,
     hltbCompletionistHours: game.hltbCompletionistHours ?? undefined,
@@ -115,6 +124,8 @@ export function gameWithRelationsFromDoc(doc: GameDoc): GameWithRelations {
     releaseDate: doc.releaseDate ?? null,
     metacriticScore: doc.metacriticScore ?? null,
     openCriticScore: doc.openCriticScore ?? null,
+    criticScore: doc.criticScore ?? null,
+    criticScoreCount: doc.criticScoreCount ?? null,
     hltbMainHours: doc.hltbMainHours ?? null,
     hltbMainExtraHours: doc.hltbMainExtraHours ?? null,
     hltbCompletionistHours: doc.hltbCompletionistHours ?? null,
@@ -126,4 +137,16 @@ export function gameWithRelationsFromDoc(doc: GameDoc): GameWithRelations {
     platforms: zipRelation(doc.platformIds, doc.platformNames, doc.platformSlugs),
     themes: zipRelation(doc.themeIds, doc.themeNames, doc.themeSlugs),
   } as unknown as GameWithRelations;
+}
+
+export function gameCardFromDoc(doc: GameDoc): GameCard {
+  return {
+    id: doc.id,
+    slug: doc.slug,
+    title: doc.title,
+    coverImageUrl: doc.coverImageUrl ?? null,
+    releaseDate: doc.releaseDate ?? null,
+    criticScore: doc.criticScore ?? null,
+    criticScoreCount: doc.criticScoreCount ?? null,
+  };
 }

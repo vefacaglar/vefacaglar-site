@@ -5,7 +5,7 @@ import type { Publisher } from "../../../modules/catalog/publishers.repository.i
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
 import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../../modules/catalog/themes.repository.interface";
-import type { GameWithRelations } from "../../../modules/catalog/games.repository.interface";
+import type { GameCard, GameWithRelations } from "../../../modules/catalog/games.repository.interface";
 import {
   DEVELOPERS_REPOSITORY,
   PUBLISHERS_REPOSITORY,
@@ -29,7 +29,7 @@ import type { SearchQuery, SearchResult, SearchLanguage, PostSearchItem } from "
 import { LanguageProvider } from "../../localization";
 import { RedisCircuitBreaker } from "../circuit-breaker";
 import { withTimeout } from "../with-timeout";
-import { gameWithRelationsFromDoc, type GameDoc } from "../mappers/game.mapper";
+import { gameCardFromDoc, gameWithRelationsFromDoc, RELEASE_UNKNOWN, type GameDoc } from "../mappers/game.mapper";
 import { postFromDoc, type PostDoc } from "../mappers/post.mapper";
 import {
   developerFromDoc,
@@ -79,6 +79,14 @@ export class TypesenseSearchReader implements ISearchReader {
       () => this.runGamesSearch(query),
       () => this.fallbackGamesSearch(query),
       "games"
+    );
+  }
+
+  searchPublicGames(query: SearchQuery): Promise<SearchResult<GameCard>> {
+    return this.runSearch(
+      () => this.runPublicGamesSearch(query),
+      () => this.gamesRepo.listPublic({ q: query.q, page: query.page ?? 1, limit: query.limit ?? 24 }),
+      "public games"
     );
   }
 
@@ -174,6 +182,28 @@ export class TypesenseSearchReader implements ISearchReader {
     const hits = (res.hits ?? []) as Array<{ document: GameDoc }>;
     return {
       items: hits.map((h) => gameWithRelationsFromDoc(h.document)),
+      total: (res.found as number) ?? 0,
+    };
+  }
+
+  private async runPublicGamesSearch(query: SearchQuery): Promise<SearchResult<GameCard>> {
+    const lang = this.getLang();
+    const q = query.q?.trim();
+    const now = Math.floor(Date.now() / 1000);
+    const res = await this.typesense.collections(`games_${lang}`).documents().search({
+      q: q || "*",
+      query_by: "title,originalTitle",
+      // Browsing shows only released games; a search also finds unreleased ones.
+      ...(q
+        ? { sort_by: "_text_match:desc,releaseTimestamp:desc" }
+        : { filter_by: `releaseTimestamp:>${RELEASE_UNKNOWN} && releaseTimestamp:<=${now}`, sort_by: "releaseTimestamp:desc" }),
+      include_fields: "id,slug,title,coverImageUrl,releaseDate,criticScore,criticScoreCount",
+      page: query.page ?? 1,
+      per_page: query.limit ?? 24,
+    });
+    const hits = (res.hits ?? []) as Array<{ document: GameDoc }>;
+    return {
+      items: hits.map((h) => gameCardFromDoc(h.document)),
       total: (res.found as number) ?? 0,
     };
   }
@@ -330,6 +360,9 @@ export class TypesenseSearchReader implements ISearchReader {
     // with an empty disk) — the client reports it as a generic "Not found."
     // without naming the collection, so match on status too.
     if (status === 404) return true;
+    // The collection predates a field the query filters or sorts on; it is
+    // fixed by `search:reindex --drop`, and Postgres can answer meanwhile.
+    if (status === 400 && msg.includes("could not find a field")) return true;
     if (typeof status === "number" && status >= 500) return true;
     return false;
   }

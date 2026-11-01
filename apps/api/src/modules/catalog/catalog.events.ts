@@ -32,3 +32,22 @@ export function entityChanged(kind: GameEntityKind, id: string): GameEntityChang
 export function entityRemoved(kind: GameEntityKind, id: string): GameEntityRemovedEvent {
   return { type: GAME_ENTITY_REMOVED, kind, id };
 }
+
+export const GAMES_IMPORTED = "games.imported";
+
+/**
+ * A bulk import wrote many games at once. Carries every touched game and each
+ * newly created lookup so the read model can refresh them in batches.
+ */
+export interface GamesImportedEvent extends DomainEvent {
+  readonly type: typeof GAMES_IMPORTED;
+  readonly gameIds: string[];
+  readonly createdLookups: Record<Exclude<GameEntityKind, "game">, string[]>;
+}
+
+export function gamesImported(
+  gameIds: string[],
+  createdLookups: Record<Exclude<GameEntityKind, "game">, string[]>
+): GamesImportedEvent {
+  return { type: GAMES_IMPORTED, gameIds, createdLookups };
+}

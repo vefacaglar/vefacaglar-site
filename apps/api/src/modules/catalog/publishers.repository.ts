@@ -38,7 +38,7 @@ export class DrizzlePublishersRepository implements IPublishersRepository {
     let dataQuery = this.dbProvider.client
       .select()
       .from(publishers)
-      .orderBy(asc(publishers.name))
+      .orderBy(asc(publishers.name), asc(publishers.id))
       .$dynamic();
 
     if (whereExpr) dataQuery = dataQuery.where(whereExpr);
