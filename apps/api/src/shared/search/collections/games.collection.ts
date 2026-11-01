@@ -12,11 +12,6 @@ export const GAMES_COLLECTION: CollectionCreateSchema = {
     { name: "releaseDate", type: "string", optional: true, facet: true },
     { name: "metacriticScore", type: "int32", optional: true },
     { name: "openCriticScore", type: "int32", optional: true },
-    { name: "criticScore", type: "int32", optional: true },
-    { name: "criticScoreCount", type: "int32", optional: true },
-    // Release date as unix seconds, for the public list's "released" filter and
-    // newest-first sort. Unknown dates hold RELEASE_UNKNOWN so they sort last.
-    { name: "releaseTimestamp", type: "int64" },
     { name: "hltbMainHours", type: "string", optional: true },
     { name: "hltbMainExtraHours", type: "string", optional: true },
     { name: "hltbCompletionistHours", type: "string", optional: true },
