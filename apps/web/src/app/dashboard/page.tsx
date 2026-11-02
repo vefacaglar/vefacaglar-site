@@ -41,18 +41,19 @@ interface ListResponse<T> {
 }
 
 interface PageProps {
-  searchParams: {
+  searchParams: Promise<{
     postsPage?: string;
     postsLimit?: string;
     projectsPage?: string;
     projectsLimit?: string;
     pagesPage?: string;
     pagesLimit?: string;
-  };
+  }>;
 }
 
-export default async function AdminDashboard({ searchParams }: PageProps) {
-  const cookieStore = cookies();
+export default async function AdminDashboard(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

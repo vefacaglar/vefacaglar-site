@@ -9,13 +9,14 @@ import { getPackageGroupAction, listCategoriesAction, listDocsAction, listPackag
 export const dynamic = "force-dynamic";
 
 interface PackageGroupPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default async function PackageGroupPage({ params }: PackageGroupPageProps) {
-  const cookieStore = cookies();
+export default async function PackageGroupPage(props: PackageGroupPageProps) {
+  const params = await props.params;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

@@ -18,7 +18,7 @@ type GameCard = {
 };
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   return {
     title: formatMetaTitle(dict.games, lang),
@@ -28,13 +28,14 @@ export async function generateMetadata() {
 }
 
 interface GamesProps {
-  searchParams: { page?: string; q?: string };
+  searchParams: Promise<{ page?: string; q?: string }>;
 }
 
-export default async function Games({ searchParams }: GamesProps) {
+export default async function Games(props: GamesProps) {
+  const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams.page) || 1);
   const query = searchParams.q?.trim() || "";
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
   const data = await getPublicGames(page, query || undefined);

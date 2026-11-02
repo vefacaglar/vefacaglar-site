@@ -29,7 +29,7 @@ export async function authedRequest<T = any>(
   path: string,
   opts: AuthedRequestOptions = {}
 ): Promise<{ data: T } | { error: string }> {
-  const token = cookies().get("session_token")?.value;
+  const token = (await cookies()).get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
   const headers = { Authorization: `Bearer ${token}` };

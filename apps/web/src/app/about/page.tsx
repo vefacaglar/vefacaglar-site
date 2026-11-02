@@ -9,7 +9,7 @@ import { getPage } from "../../lib/data";
 
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const page = await getPage("about");
 
@@ -21,7 +21,7 @@ export async function generateMetadata() {
 }
 
 export default async function About() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const page = await getPage("about");
 

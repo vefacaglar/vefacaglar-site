@@ -9,7 +9,7 @@ import { getPublicProjects } from '../../lib/data';
 
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   return {
     title: dict.projects_meta_title,
@@ -19,14 +19,15 @@ export async function generateMetadata() {
 }
 
 interface ProjectsProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
-  };
+  }>;
 }
 
-export default async function Projects({ searchParams }: ProjectsProps) {
+export default async function Projects(props: ProjectsProps) {
+  const searchParams = await props.searchParams;
   const page = searchParams.page ? Number(searchParams.page) : 1;
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
   const data = await getPublicProjects(page);

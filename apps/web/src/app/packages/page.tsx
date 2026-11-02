@@ -11,17 +11,18 @@ export async function generateMetadata() {
   return {
     title: "Packages | Vefa Çağlar",
     description: "Open source packages and documentation library developed by Vefa Çağlar.",
-    alternates: localizedAlternates("/packages", getActiveLanguage(), { bilingual: false }),
+    alternates: localizedAlternates("/packages", await getActiveLanguage(), { bilingual: false }),
   };
 }
 
 interface PackagesProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
-  };
+  }>;
 }
 
-export default async function PackagesPage({ searchParams }: PackagesProps) {
+export default async function PackagesPage(props: PackagesProps) {
+  const searchParams = await props.searchParams;
   const page = searchParams.page ? Number(searchParams.page) : 1;
   const data = await getPublicPackages(page);
   const packageGroups = (data?.items ?? []) as {

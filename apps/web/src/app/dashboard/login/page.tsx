@@ -8,10 +8,11 @@ import { getAuthMode } from "../../../lib/oidc";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: { error?: string; reason?: string };
+  searchParams: Promise<{ error?: string; reason?: string }>;
 }
 
-export default function AdminLogin({ searchParams }: PageProps) {
+export default async function AdminLogin(props: PageProps) {
+  const searchParams = await props.searchParams;
   const errorKey = searchParams.error as keyof typeof ds.login.errors | undefined;
   const error = errorKey ? ds.login.errors[errorKey] : undefined;
   const reason = process.env.NODE_ENV !== "production" ? searchParams.reason : undefined;

@@ -1,8 +1,9 @@
 import { Type, Static } from "@sinclair/typebox";
 
 export const ListDevelopersQuerySchema = Type.Object({
-  page: Type.Optional(Type.Number()),
-  limit: Type.Optional(Type.Number()),
+  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  // Typesense rejects per_page above 250.
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 250 })),
   q: Type.Optional(Type.String()),
 });
 

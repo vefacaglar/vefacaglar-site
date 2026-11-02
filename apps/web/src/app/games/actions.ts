@@ -19,7 +19,7 @@ type Result = { error?: string };
 // Log changes only affect the signed-in user's own view of one game page, so
 // they revalidate that path instead of the site-wide public content tag.
 async function send(method: "POST" | "PUT" | "DELETE", path: string, slug: string, body?: GameLogInput): Promise<Result> {
-  const token = cookies().get("session_token")?.value;
+  const token = (await cookies()).get("session_token")?.value;
   if (!token) return { error: "Please sign in again." };
   const headers = { Authorization: `Bearer ${token}` };
 

@@ -44,9 +44,22 @@ async function fetchJson(path: string): Promise<any> {
   return res.json();
 }
 
+// The posts list is served by Typesense, which caps a page at 250 items, so walk every page.
+const POSTS_PAGE_SIZE = 250;
+
+async function fetchAllPosts(): Promise<any[]> {
+  const first = await fetchJson(`/api/posts?page=1&limit=${POSTS_PAGE_SIZE}`);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max((first?.totalPages ?? 1) - 1, 0) }, (_, i) =>
+      fetchJson(`/api/posts?page=${i + 2}&limit=${POSTS_PAGE_SIZE}`)
+    )
+  );
+  return [first, ...rest].flatMap((data) => data?.items ?? []);
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [postsData, pages, projectsData, packagesData] = await Promise.all([
-    fetchJson("/api/posts?limit=1000"),
+  const [posts, pages, projectsData, packagesData] = await Promise.all([
+    fetchAllPosts(),
     fetchJson("/api/pages"),
     fetchJson("/api/projects?limit=1000"),
     fetchJson("/api/packages?limit=1000"),
@@ -56,8 +69,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const packageDetails: any[] = await Promise.all(
     (packagesData?.items ?? []).map((pkg: { slug: string }) => fetchJson(`/api/packages/${pkg.slug}`))
   );
-
-  const posts: any[] = postsData?.items ?? [];
 
   // lastModified is only set where a real date exists; a "now" on every request teaches
   // Google to ignore the field.

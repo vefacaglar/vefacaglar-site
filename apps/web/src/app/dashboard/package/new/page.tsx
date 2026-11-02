@@ -7,14 +7,15 @@ import { listPackageGroupsAction } from "../../packages/actions";
 export const dynamic = "force-dynamic";
 
 interface NewPackagePageProps {
-  searchParams: {
+  searchParams: Promise<{
     groupId?: string;
     groupSlug?: string;
-  };
+  }>;
 }
 
-export default async function NewPackagePage({ searchParams }: NewPackagePageProps) {
-  const cookieStore = cookies();
+export default async function NewPackagePage(props: NewPackagePageProps) {
+  const searchParams = await props.searchParams;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

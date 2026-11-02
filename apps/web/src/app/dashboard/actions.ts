@@ -24,11 +24,11 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     const data = await res.json();
 
-    const headersList = headers();
+    const headersList = await headers();
     const proto = headersList.get("x-forwarded-proto");
     const isSecure = proto === "https" || process.env.NODE_ENV === "production";
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set("session_token", data.token, {
       httpOnly: true,
       secure: isSecure,
@@ -46,7 +46,7 @@ export async function loginAction(prevState: any, formData: FormData) {
 }
 
 export async function logoutAction() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (token) {
@@ -92,7 +92,7 @@ async function getProviderLogoutUrl(idToken: string | undefined): Promise<string
 }
 
 export async function getSessionToken() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   return cookieStore.get("session_token")?.value || null;
 }
 
@@ -264,7 +264,7 @@ export async function deleteProjectAction(id: string) {
 }
 
 export async function uploadImageAction(formData: FormData) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) return { error: "Unauthorized." };

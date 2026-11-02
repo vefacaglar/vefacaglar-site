@@ -8,8 +8,9 @@ import { localizedAlternates } from "../../../lib/seo";
 import { getAuthor } from "../../../lib/data";
 
 
-export async function generateMetadata({ params }: { params: { username: string } }) {
-  const lang = getActiveLanguage();
+export async function generateMetadata(props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const author = await getAuthor(params.username);
 
@@ -22,8 +23,9 @@ export async function generateMetadata({ params }: { params: { username: string 
   };
 }
 
-export default async function AuthorPage({ params }: { params: { username: string } }) {
-  const lang = getActiveLanguage();
+export default async function AuthorPage(props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const author = await getAuthor(params.username);
 

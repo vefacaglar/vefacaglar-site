@@ -1,10 +1,10 @@
 import { FastifyRequest } from "fastify";
 import { injectable, inject } from "tsyringe";
-import FileType from "file-type";
 import { UploadImageResponse } from "./image.schema";
 import { BadRequestError, HttpError } from "../../../shared/http-errors";
 import { IMAGE_CLIENT } from "./image-client.tokens";
 import { IImageClient } from "./image-client.interface";
+import { sniffImageMime } from "./image-signature";
 
 const ALLOWED_MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -45,16 +45,16 @@ export class UploadImageHandler {
       throw new BadRequestError("Uploaded file is empty.");
     }
 
-    const sniffed = await FileType.fromBuffer(buffer);
-    if (!sniffed || sniffed.mime !== fileData.mimetype) {
+    const sniffedMime = sniffImageMime(buffer);
+    if (!sniffedMime || sniffedMime !== fileData.mimetype) {
       throw new BadRequestError("Invalid file type.");
     }
 
-    const ext = ALLOWED_MIME_TO_EXT[sniffed.mime];
+    const ext = ALLOWED_MIME_TO_EXT[sniffedMime];
     const safeFilename = sanitizeFilename(fileData.filename, ext);
 
     try {
-      const url = await this.imageClient.upload(buffer, safeFilename, sniffed.mime);
+      const url = await this.imageClient.upload(buffer, safeFilename, sniffedMime);
       return { url };
     } catch (err) {
       request.log.error(err, "Failed to upload image via ImageClient");

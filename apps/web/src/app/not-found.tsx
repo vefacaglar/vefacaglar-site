@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { getDictionary } from "../dictionaries";
 import styles from "./not-found.module.css";
 
-export default function NotFound() {
+export default async function NotFound() {
   let lang = "en";
   try {
-    const localeHeader = headers().get("x-locale");
+    const localeHeader = (await headers()).get("x-locale");
     if (localeHeader === "tr") {
       lang = "tr";
     }
   } catch (e) {
+    unstable_rethrow(e);
   }
 
   const dict = getDictionary(lang);

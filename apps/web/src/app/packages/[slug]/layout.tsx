@@ -5,13 +5,18 @@ import styles from "./packageLayout.module.css";
 import { getPackage } from "../../../lib/data";
 
 
-export default async function PackageLayout({
-  children,
-  params,
-}: {
-  children: React.ReactNode;
-  params: { slug: string };
-}) {
+export default async function PackageLayout(
+  props: {
+    children: React.ReactNode;
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   const pkg = await getPackage(params.slug);
   if (!pkg) notFound();
 

@@ -7,7 +7,8 @@ import styles from "./docPage.module.css";
 import { getPackageDoc } from "../../../../../lib/data";
 
 
-export async function generateMetadata({ params }: { params: { slug: string; docSlug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string; docSlug: string }> }) {
+  const params = await props.params;
   const doc = await getPackageDoc(params.slug, params.docSlug);
   if (!doc) return { title: "Documentation Page Not Found" };
 
@@ -16,13 +17,14 @@ export async function generateMetadata({ params }: { params: { slug: string; doc
     description: doc.description || `Documentation article for ${doc.title}`,
     alternates: localizedAlternates(
       `/packages/${params.slug}/docs/${params.docSlug}`,
-      getActiveLanguage(),
+      await getActiveLanguage(),
       { bilingual: false }
     ),
   };
 }
 
-export default async function DocPage({ params }: { params: { slug: string; docSlug: string } }) {
+export default async function DocPage(props: { params: Promise<{ slug: string; docSlug: string }> }) {
+  const params = await props.params;
   const doc = await getPackageDoc(params.slug, params.docSlug);
   if (!doc) notFound();
 

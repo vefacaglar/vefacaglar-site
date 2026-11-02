@@ -53,8 +53,10 @@ const securityHeaders = [
 const noIndexHeaders = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig = {
+  poweredByHeader: false,
   images: {
-    formats: ["image/avif", "image/webp"],
+    // AVIF is left out on purpose: the AVIF decoding path in the image optimizer has had RCE advisories.
+    formats: ["image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "ik.imagekit.io" },
       { protocol: "https", hostname: "**.imagekit.io" },

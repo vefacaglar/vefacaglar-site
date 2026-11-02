@@ -11,8 +11,9 @@ import { localizeHref } from "../../../lib/localizeHref";
 import { getProject } from "../../../lib/data";
 
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const lang = getActiveLanguage();
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const project = await getProject(params.slug);
 
@@ -25,8 +26,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function Project({ params }: { params: { slug: string } }) {
-  const lang = getActiveLanguage();
+export default async function Project(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const project = await getProject(params.slug);
 

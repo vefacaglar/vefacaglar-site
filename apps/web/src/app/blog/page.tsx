@@ -10,7 +10,7 @@ import BlogSearch from './BlogSearch';
 
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   return {
     title: dict.blog_meta_title,
@@ -20,16 +20,17 @@ export async function generateMetadata() {
 }
 
 interface BlogProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     q?: string;
-  };
+  }>;
 }
 
-export default async function Blog({ searchParams }: BlogProps) {
+export default async function Blog(props: BlogProps) {
+  const searchParams = await props.searchParams;
   const page = searchParams.page ? Number(searchParams.page) : 1;
   const query = searchParams.q || "";
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
   const data = await getPublicPosts(page, query || undefined);

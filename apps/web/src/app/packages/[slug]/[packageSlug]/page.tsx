@@ -8,20 +8,22 @@ import MarkdownPreview from "../../../components/MarkdownPreview";
 import styles from "../packagePage.module.css";
 
 
-export async function generateMetadata({ params }: { params: { slug: string; packageSlug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string; packageSlug: string }> }) {
+  const params = await props.params;
   const pkg = await getPackageItem(params.slug, params.packageSlug);
   if (!pkg) return { title: "Package Not Found" };
 
   return {
     title: `${pkg.name} | ${pkg.groupName}`,
     description: pkg.description || `Package details for ${pkg.name}`,
-    alternates: localizedAlternates(`/packages/${params.slug}/${params.packageSlug}`, getActiveLanguage(), {
+    alternates: localizedAlternates(`/packages/${params.slug}/${params.packageSlug}`, await getActiveLanguage(), {
       bilingual: false,
     }),
   };
 }
 
-export default async function PackageItemPage({ params }: { params: { slug: string; packageSlug: string } }) {
+export default async function PackageItemPage(props: { params: Promise<{ slug: string; packageSlug: string }> }) {
+  const params = await props.params;
   const pkg = await getPackageItem(params.slug, params.packageSlug);
   if (!pkg) notFound();
 

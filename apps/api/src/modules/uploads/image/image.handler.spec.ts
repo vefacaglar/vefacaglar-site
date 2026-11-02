@@ -5,21 +5,16 @@ import type { IImageClient } from "./image-client.interface";
 import { BadRequestError, HttpError } from "../../../shared/http-errors";
 import { FastifyRequest } from "fastify";
 
-vi.mock("file-type", () => ({
-  default: {
-    fromBuffer: vi.fn(),
-  },
-}));
-
-import FileType from "file-type";
-
 function makeBuffer(magic: number[]): Buffer {
-  const buf = Buffer.alloc(8);
+  const buf = Buffer.alloc(16);
   magic.forEach((byte, i) => {
     buf[i] = byte;
   });
   return buf;
 }
+
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const JPEG_MAGIC = [0xff, 0xd8, 0xff, 0xe0];
 
 describe("UploadImageHandler", () => {
   let mockImageClient: Record<keyof IImageClient, any>;
@@ -32,7 +27,7 @@ describe("UploadImageHandler", () => {
   });
 
   it("should upload a valid PNG file and return the URL", async () => {
-    const buffer = makeBuffer([0x89, 0x50, 0x4e, 0x47]);
+    const buffer = makeBuffer(PNG_MAGIC);
 
     const mockRequest = {
       file: async () => ({
@@ -43,7 +38,6 @@ describe("UploadImageHandler", () => {
       log: { error: vi.fn() },
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue({ mime: "image/png", ext: "png" });
     mockImageClient.upload.mockResolvedValue("https://cdn.example.com/My-Photo-1.png");
 
     const result = await handler.handle(mockRequest);
@@ -93,7 +87,7 @@ describe("UploadImageHandler", () => {
   });
 
   it("should throw BadRequestError when the sniffed MIME does not match the declared one", async () => {
-    const buffer = makeBuffer([0x00, 0x00, 0x00, 0x00]);
+    const buffer = makeBuffer(JPEG_MAGIC);
     const mockRequest = {
       file: async () => ({
         mimetype: "image/png",
@@ -103,7 +97,6 @@ describe("UploadImageHandler", () => {
       log: { error: vi.fn() },
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
 
     await expect(handler.handle(mockRequest)).rejects.toThrow("Invalid file type.");
   });
@@ -119,13 +112,12 @@ describe("UploadImageHandler", () => {
       log: { error: vi.fn() },
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue(null);
 
     await expect(handler.handle(mockRequest)).rejects.toThrow("Invalid file type.");
   });
 
   it("should sanitize filenames by stripping path, normalizing spaces, removing unsafe chars", async () => {
-    const buffer = makeBuffer([0x89, 0x50, 0x4e, 0x47]);
+    const buffer = makeBuffer(PNG_MAGIC);
 
     const mockRequest = {
       file: async () => ({
@@ -136,7 +128,6 @@ describe("UploadImageHandler", () => {
       log: { error: vi.fn() },
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue({ mime: "image/png", ext: "png" });
     mockImageClient.upload.mockResolvedValue("https://cdn.example.com/name.png");
 
     await handler.handle(mockRequest);
@@ -146,7 +137,7 @@ describe("UploadImageHandler", () => {
   });
 
   it("should fall back to 'upload.<ext>' when filename is missing entirely", async () => {
-    const buffer = makeBuffer([0xff, 0xd8, 0xff, 0xe0]);
+    const buffer = makeBuffer(JPEG_MAGIC);
     const mockRequest = {
       file: async () => ({
         mimetype: "image/jpeg",
@@ -156,7 +147,6 @@ describe("UploadImageHandler", () => {
       log: { error: vi.fn() },
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
     mockImageClient.upload.mockResolvedValue("https://cdn.example.com/upload.jpg");
 
     await handler.handle(mockRequest);
@@ -166,7 +156,7 @@ describe("UploadImageHandler", () => {
   });
 
   it("should rethrow HttpError from image client without wrapping", async () => {
-    const buffer = makeBuffer([0x89, 0x50, 0x4e, 0x47]);
+    const buffer = makeBuffer(PNG_MAGIC);
     const mockRequest = {
       file: async () => ({
         mimetype: "image/png",
@@ -176,7 +166,6 @@ describe("UploadImageHandler", () => {
       log: { error: vi.fn() },
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue({ mime: "image/png", ext: "png" });
     const httpErr = new HttpError(502, "upstream down");
     mockImageClient.upload.mockRejectedValue(httpErr);
 
@@ -184,7 +173,7 @@ describe("UploadImageHandler", () => {
   });
 
   it("should wrap non-HttpError image client failures as a 500 HttpError and log", async () => {
-    const buffer = makeBuffer([0x89, 0x50, 0x4e, 0x47]);
+    const buffer = makeBuffer(PNG_MAGIC);
     const log = { error: vi.fn() };
     const mockRequest = {
       file: async () => ({
@@ -195,7 +184,6 @@ describe("UploadImageHandler", () => {
       log,
     } as unknown as FastifyRequest;
 
-    (FileType.fromBuffer as any).mockResolvedValue({ mime: "image/png", ext: "png" });
     mockImageClient.upload.mockRejectedValue(new Error("network blip"));
 
     await expect(handler.handle(mockRequest)).rejects.toThrow(HttpError);

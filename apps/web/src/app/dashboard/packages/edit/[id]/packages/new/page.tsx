@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 
 interface LegacyNewPackagePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function LegacyNewPackagePage({ params }: LegacyNewPackagePageProps) {
+export default async function LegacyNewPackagePage(props: LegacyNewPackagePageProps) {
+  const params = await props.params;
   redirect(`/dashboard/package/new?groupId=${params.id}`);
 }

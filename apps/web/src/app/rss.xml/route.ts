@@ -25,7 +25,7 @@ function escapeXml(value: string): string {
 
 // Served at /rss.xml (English) and /rss.xml?lang=tr (Turkish).
 export async function GET() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const data = await getFeedPosts();
   const posts = (data?.items ?? []) as FeedPost[];

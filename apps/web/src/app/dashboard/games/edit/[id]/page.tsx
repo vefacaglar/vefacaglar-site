@@ -7,14 +7,15 @@ import type { Game } from "../../types";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditGame({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { returnUrl?: string };
-}) {
-  const token = cookies().get("session_token")?.value;
+export default async function EditGame(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ returnUrl?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
+  const token = (await cookies()).get("session_token")?.value;
 
   if (!token) {
     redirect("/dashboard/login");

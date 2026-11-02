@@ -16,21 +16,22 @@ type LogDetail = {
 };
 
 interface LogPageProps {
-  params: { slug: string; id: string };
+  params: Promise<{ slug: string; id: string }>;
 }
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   // A user's own log page is private; keep it out of search results.
   return { title: formatMetaTitle(getDictionary(lang).log_edit_title, lang), robots: { index: false } };
 }
 
-export default async function GameLogPage({ params }: LogPageProps) {
-  const lang = getActiveLanguage();
+export default async function GameLogPage(props: LogPageProps) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const gameHref = localizeHref(`/games/${params.slug}`, lang);
 
-  const token = cookies().get("session_token")?.value;
+  const token = (await cookies()).get("session_token")?.value;
   const res = token
     ? await httpClient.get(`/api/games/logs/${encodeURIComponent(params.id)}`, {
         headers: { Authorization: `Bearer ${token}` },

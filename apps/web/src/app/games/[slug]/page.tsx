@@ -32,11 +32,12 @@ type GameDetail = {
 };
 
 interface GameProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: GameProps) {
-  const lang = getActiveLanguage();
+export async function generateMetadata(props: GameProps) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const game = (await getGame(params.slug)) as GameDetail | null;
   if (!game) return {};
   return {
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: GameProps) {
 
 /** The signed-in user's logs, or null when nobody (valid) is signed in. */
 async function getMyLogs(slug: string): Promise<GameLog[] | null> {
-  const token = cookies().get("session_token")?.value;
+  const token = (await cookies()).get("session_token")?.value;
   if (!token) return null;
   const res = await httpClient.get(`/api/games/${encodeURIComponent(slug)}/logs`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -59,8 +60,9 @@ async function getMyLogs(slug: string): Promise<GameLog[] | null> {
   return ((await res.json()) as { items: GameLog[] }).items;
 }
 
-export default async function Game({ params }: GameProps) {
-  const lang = getActiveLanguage();
+export default async function Game(props: GameProps) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const game = (await getGame(params.slug)) as GameDetail | null;
   if (!game) notFound();

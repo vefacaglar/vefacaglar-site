@@ -7,13 +7,14 @@ import { listCategoriesAction, getPackageGroupAction } from "../../../../package
 export const dynamic = "force-dynamic";
 
 interface NewDocPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default async function NewDocPage({ params }: NewDocPageProps) {
-  const cookieStore = cookies();
+export default async function NewDocPage(props: NewDocPageProps) {
+  const params = await props.params;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

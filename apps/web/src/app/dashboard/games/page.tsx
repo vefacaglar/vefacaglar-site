@@ -19,16 +19,17 @@ import {
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: {
+  searchParams: Promise<{
     tab?: string;
     page?: string;
     limit?: string;
     q?: string;
-  };
+  }>;
 }
 
-export default async function GamesDashboard({ searchParams }: PageProps) {
-  const cookieStore = cookies();
+export default async function GamesDashboard(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

@@ -6,7 +6,7 @@ import PackageForm from "../PackageForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewPackagePage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

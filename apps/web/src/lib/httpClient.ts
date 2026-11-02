@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { getActiveLanguage } from "./lang";
 
 const API_URL = process.env.API_URL;
@@ -25,14 +26,14 @@ class HttpClient {
     const headers = new Headers(init?.headers);
 
     if (!headers.has("language")) {
-      const lang = getActiveLanguage();
+      const lang = await getActiveLanguage();
       headers.set("language", lang);
     }
 
     if (typeof window === "undefined") {
       try {
         const { headers: nextHeaders } = require("next/headers");
-        const list = nextHeaders();
+        const list = await nextHeaders();
         const forwardedFor = list.get("x-forwarded-for");
         const realIp = list.get("x-real-ip");
 
@@ -42,6 +43,7 @@ class HttpClient {
           headers.set("x-forwarded-for", realIp);
         }
       } catch (e) {
+        unstable_rethrow(e);
       }
     }
 

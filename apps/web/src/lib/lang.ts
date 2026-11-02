@@ -1,24 +1,28 @@
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 
-export const getActiveLanguage = cache((): string => {
+export const getActiveLanguage = cache(async (): Promise<string> => {
   try {
-    const localeHeader = headers().get("x-locale");
+    const headerStore = await headers();
+    const localeHeader = headerStore.get("x-locale");
     if (localeHeader === "tr" || localeHeader === "en") {
       return localeHeader;
     }
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const langCookie = cookieStore.get("lang")?.value;
     if (langCookie === "tr" || langCookie === "en") {
       return langCookie;
     }
 
-    const acceptLang = headers().get("accept-language");
+    const acceptLang = headerStore.get("accept-language");
     if (acceptLang && acceptLang.toLowerCase().startsWith("tr")) {
       return "tr";
     }
   } catch (e) {
+    // Let Next.js see the dynamic-rendering bailout instead of swallowing it.
+    unstable_rethrow(e);
   }
 
   return "en";

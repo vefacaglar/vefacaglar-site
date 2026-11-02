@@ -28,12 +28,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const locale = (lang === "tr" ? "tr" : "en") as "en" | "tr";
   const issuer = process.env.OIDC_ISSUER?.replace(/\/+$/, "");

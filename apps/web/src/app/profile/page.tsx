@@ -34,16 +34,16 @@ type Library = {
 };
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   // A user's own library is private; keep it out of search results.
   return { title: formatMetaTitle(getDictionary(lang).profile, lang), robots: { index: false } };
 }
 
 export default async function ProfilePage() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
-  const token = cookies().get("session_token")?.value;
+  const token = (await cookies()).get("session_token")?.value;
   const res = token
     ? await httpClient.get("/api/games/me/library", {
         headers: { Authorization: `Bearer ${token}` },

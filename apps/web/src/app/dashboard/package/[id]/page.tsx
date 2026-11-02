@@ -7,13 +7,14 @@ import { getPackageItemAction, listPackageGroupsAction } from "../../packages/ac
 export const dynamic = "force-dynamic";
 
 interface PackagePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default async function PackagePage({ params }: PackagePageProps) {
-  const cookieStore = cookies();
+export default async function PackagePage(props: PackagePageProps) {
+  const params = await props.params;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

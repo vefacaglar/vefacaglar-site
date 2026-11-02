@@ -12,8 +12,9 @@ import AdminEditLink from "../../../components/AdminEditLink";
 import { getPost } from "../../../lib/data";
 
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const lang = getActiveLanguage();
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const post = await getPost(params.slug);
 
@@ -34,8 +35,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function BlogPost({ params }: { params: { slug: string } }) {
-  const lang = getActiveLanguage();
+export default async function BlogPost(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const post = await getPost(params.slug);
 

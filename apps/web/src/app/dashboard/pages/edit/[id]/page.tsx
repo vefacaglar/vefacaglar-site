@@ -17,8 +17,9 @@ interface PageItem {
 
 export const dynamic = "force-dynamic";
 
-export default async function EditPage({ params }: { params: { id: string } }) {
-  const cookieStore = cookies();
+export default async function EditPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) {

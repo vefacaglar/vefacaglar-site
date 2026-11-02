@@ -15,7 +15,7 @@ type ListResult<T> = {
 };
 
 async function listProxy<T>(path: string, params: ListParams): Promise<ListResult<T> | { error: string }> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -51,7 +51,7 @@ export async function listPackageGroupsAction(params: ListParams = {}) {
 }
 
 export async function getPackageGroupAction(id: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -83,7 +83,7 @@ export async function createPackageAction(data: {
   isActive?: boolean;
   content?: string;
 }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) return { error: "Unauthorized." };
@@ -124,7 +124,7 @@ export async function updatePackageAction(
     content?: string;
   }
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) return { error: "Unauthorized." };
@@ -151,7 +151,7 @@ export async function updatePackageAction(
 }
 
 export async function deletePackageAction(id: string, slug?: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
 
   if (!token) return { error: "Unauthorized." };
@@ -180,7 +180,7 @@ export async function deletePackageAction(id: string, slug?: string) {
 // --- Child Package Actions ---
 
 export async function listPackageItemsAction(groupId: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -201,7 +201,7 @@ export async function listPackageItemsAction(groupId: string) {
 }
 
 export async function getPackageItemAction(id: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -237,7 +237,7 @@ export async function createPackageItemAction(
   },
   groupSlug?: string
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -276,7 +276,7 @@ export async function updatePackageItemAction(
   },
   groupSlug?: string
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -304,7 +304,7 @@ export async function deletePackageItemAction(
   id: string,
   groupSlug?: string
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -328,7 +328,7 @@ export async function deletePackageItemAction(
 // --- Category Actions ---
 
 export async function listCategoriesAction(packageId: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -349,7 +349,7 @@ export async function listCategoriesAction(packageId: string) {
 }
 
 export async function createCategoryAction(packageId: string, data: { title: string; slug: string; displayOrder?: number }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -372,7 +372,7 @@ export async function createCategoryAction(packageId: string, data: { title: str
 }
 
 export async function updateCategoryAction(packageId: string, id: string, data: { title: string; slug: string; displayOrder?: number }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -395,7 +395,7 @@ export async function updateCategoryAction(packageId: string, id: string, data: 
 }
 
 export async function deleteCategoryAction(packageId: string, id: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -420,7 +420,7 @@ export async function deleteCategoryAction(packageId: string, id: string) {
 // --- Doc Actions ---
 
 export async function listDocsAction(packageId: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -441,7 +441,7 @@ export async function listDocsAction(packageId: string) {
 }
 
 export async function getDocAction(id: string) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -475,7 +475,7 @@ export async function createDocAction(
   },
   groupSlug?: string
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -512,7 +512,7 @@ export async function updateDocAction(
   },
   groupSlug?: string
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 
@@ -539,7 +539,7 @@ export async function deleteDocAction(
   id: string,
   groupSlug?: string
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("session_token")?.value;
   if (!token) return { error: "Unauthorized." };
 

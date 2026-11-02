@@ -2,11 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { getPackage } from "../../../../lib/data";
 
 
-export default async function PackageDocsPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
+export default async function PackageDocsPage(
+  props: {
+    params: Promise<{ slug: string }>;
+  }
+) {
+  const params = await props.params;
   const pkg = await getPackage(params.slug);
   if (!pkg) notFound();
 

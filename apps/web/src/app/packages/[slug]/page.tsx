@@ -8,20 +8,22 @@ import styles from "./packagePage.module.css";
 import { getPackage } from "../../../lib/data";
 
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const pkg = await getPackage(params.slug);
   if (!pkg) return { title: "Package Not Found" };
 
   return {
     title: `${pkg.name} | Package`,
     description: pkg.description || `Documentation and details for ${pkg.name}`,
-    alternates: localizedAlternates(`/packages/${params.slug}`, getActiveLanguage(), {
+    alternates: localizedAlternates(`/packages/${params.slug}`, await getActiveLanguage(), {
       bilingual: false,
     }),
   };
 }
 
-export default async function PackagePage({ params }: { params: { slug: string } }) {
+export default async function PackagePage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const pkg = await getPackage(params.slug);
   if (!pkg) notFound();
 

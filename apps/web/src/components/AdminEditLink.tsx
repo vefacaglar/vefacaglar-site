@@ -18,7 +18,7 @@ export default async function AdminEditLink({ type, id, from }: AdminEditLinkPro
     return null;
   }
 
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
   let href = "";

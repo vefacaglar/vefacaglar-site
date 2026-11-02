@@ -28,8 +28,8 @@ const cachedFetchJson = unstable_cache(fetchJson, ["public-api"], {
   revalidate: FALLBACK_REVALIDATE_SECONDS,
 });
 
-function getJson<T = any>(path: string, { cached = true }: { cached?: boolean } = {}) {
-  const lang = getActiveLanguage();
+async function getJson<T = any>(path: string, { cached = true }: { cached?: boolean } = {}) {
+  const lang = await getActiveLanguage();
   return cached ? cachedFetchJson(path, lang) as Promise<T | null> : fetchJson<T>(path, lang);
 }
 

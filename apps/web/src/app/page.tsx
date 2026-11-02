@@ -17,7 +17,7 @@ interface PostItem {
 
 
 export async function generateMetadata() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const page = await getHomePage();
 
@@ -29,7 +29,7 @@ export async function generateMetadata() {
 }
 
 export default async function Home() {
-  const lang = getActiveLanguage();
+  const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
   const [page, postsRes] = await Promise.all([
