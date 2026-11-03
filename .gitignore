@@ -66,3 +66,14 @@ tmp/
 
 # catalog:import --all crawl progress
 .catalog-import-state.json
+
+deploy/api/__pycache__/
+deploy/api/.deploy-backup.*/
+deploy/api/.caddy-backup-*/
+deploy/api/.proxy.lock
+
+deploy/api/releases/
+deploy/api/.releases.json
+deploy/api/.releases.tmp
+deploy/api/.pending-release.json
+deploy/api/.pending-release.tmp

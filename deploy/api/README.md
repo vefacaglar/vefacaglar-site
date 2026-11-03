@@ -1,133 +1,147 @@
-# API on the VPS
+# API deployment through GitHub
 
-The web app stays on Vercel. GitHub Actions tests the API, builds an amd64/arm64
-image and publishes `ghcr.io/<owner>/<repository>-api:<commit>` on `main`.
-Deployment uses the immutable image digest, SSH and Docker Compose. PRs run
-verification and build the image without publishing or deploying.
+The API runs at `https://api2.vefacaglar.com` on the VPS. The web app stays on
+Vercel. GitHub Actions verifies the API, builds amd64/arm64 images and publishes
+`ghcr.io/vefacaglar/vefacaglar-site-api:<commit>` on `main`. Deployment uses the
+immutable digest. Pull requests never publish or deploy.
 
-The existing Vercel entrypoint (`dist/app.js`) is preserved. Docker runs
-`dist/server.js`. No database container, volume or migration is managed here.
+CD creates `~/vefacaglar-api`, transfers runtime settings, authenticates GHCR
+with the temporary job token, starts the service, configures the Caddy route if
+needed and checks HTTPS directly against the VPS. No manual SSH, env-file editing,
+file uploads or registry login are needed for routine deployments.
 
-## One-time VPS setup
+The Vercel entrypoint `dist/app.js` is preserved; Docker runs `dist/server.js`.
+CD does not create a database, seed it or apply migrations. Use the existing API
+database with its production schema and data. The auth server database is separate.
 
-Requires Linux, Bash, `flock`, Docker and Compose v2.30+ (for raw env files).
-The SSH deployment user must have access to Docker and own `~/vefacaglar-api`.
-Docker access grants administrative control of the host; use a dedicated SSH key.
+## GitHub secrets
 
-Copy `.env.example` and `api.env.example` from this directory to the VPS as
-`~/vefacaglar-api/.env` and `~/vefacaglar-api/api.env`. Keep both files private:
-
-```sh
-mkdir -p ~/vefacaglar-api
-chmod 700 ~/vefacaglar-api
-chmod 600 ~/vefacaglar-api/.env ~/vefacaglar-api/api.env
-```
-
-Set `API_DOCKER_NETWORK` to the existing user-defined Docker network used by
-PostgreSQL. Inspect it with `docker network ls` and `docker inspect <db-container>`.
-The API joins that external network. Use the database container's hostname and
-internal port in `DATABASE_URL`, not `localhost` or the public VPS address.
-If the database currently uses Docker's default `bridge`, create a user-defined
-network and attach the database; persist that membership in its owning Compose
-configuration so it survives recreation.
-
-Copy the existing API's required ImageKit, Typesense, Redis and authentication
-settings into `api.env`. Preserve the current `AUTH_MODE` and OIDC values.
-Values in `api.env` are literal: do not add shell quotes around them; `$` is not
-interpolated. `.env` contains only Compose settings, not application secrets.
-
-Confirm that the VPS database already contains the production schema and data
-before switching traffic. A running database container alone does not establish
-this. This deployment intentionally does not seed, migrate or overwrite it.
-
-If the GHCR package is private, log in once **as the deployment user**, using a
-GitHub token with `read:packages` access to the package:
-
-```sh
-docker login ghcr.io --username YOUR_GITHUB_USERNAME
-```
-
-Enter the token at the password prompt. Do not put it in the repository or image.
-
-## Caddy and Cloudflare
-
-Create a Cloudflare DNS `A` record named `api2` pointing to the VPS IPv4 address.
-Start with DNS only. Add an `AAAA` record only if IPv6 reaches this same server.
-Allow incoming ports 80 and 443 for Caddy; the API port binds only to loopback.
-
-Add the block in `Caddyfile.example` to the existing Caddy configuration. If Caddy
-runs directly on the host, use `127.0.0.1:3001` (or the chosen `API_BIND_PORT`).
-If Caddy runs in Docker, attach it to `API_DOCKER_NETWORK` in its own persistent
-Compose configuration and use `vefacaglar-api:3001` instead.
-
-Validate and reload Caddy using its existing service/container setup. Preserve
-the other site blocks. Caddy handles the certificate for `api2.vefacaglar.com`.
-See the [Caddy reverse proxy documentation](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy).
-
-If Cloudflare proxying is enabled later, use
-[Full (strict)](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
-and configure Caddy to trust only Cloudflare's proxy ranges for forwarded client
-IPs; otherwise the API's rate limits can group visitors under an edge IP.
-
-## GitHub settings
-
-Create an environment named `api-production`. Add its secrets:
+In the **vefacaglar-site** repository, open **Settings → Secrets and variables →
+Actions**. Use repository secrets, or secrets scoped to `api-production`.
+Secrets from the authserver repository are not automatically shared here.
 
 | Secret | Value |
 | --- | --- |
-| `VPS_HOST` | Direct VPS IPv4 address or DNS-only SSH hostname |
-| `VPS_USER` | Deployment user |
-| `VPS_PORT` | Optional SSH port, defaults to 22 |
-| `VPS_SSH_KEY` | Dedicated SSH private key; install its public key on the VPS |
-| `VPS_KNOWN_HOSTS` | Verified OpenSSH known_hosts line for this host and port |
+| `VPS_HOST` | `187.126.24.87` |
+| `VPS_USER` | Existing deployment user with Docker access |
+| `VPS_PASSWORD` | Existing SSH password |
+| `VPS_SSH_KEY` | Optional alternative to the password; an already-authorized key takes precedence |
+| `VPS_PORT` | Optional SSH port; defaults to `22` |
+| `VPS_KNOWN_HOSTS` | Verified host-key entry, as used for the auth server |
+| `DATABASE_URL` | Existing API PostgreSQL connection string reachable from the VPS |
+| `WEB_URL` | Exact allowed frontend origins, comma-separated; e.g. `https://vefacaglar.com,https://www.vefacaglar.com` |
+| `AUTH_MODE` | Preserve the current mode: `oidc` or `password` |
+| `OIDC_ISSUER` | Required for OIDC; `https://auth.vefacaglar.com` |
+| `OIDC_CLIENT_ID` | Required for OIDC; the existing registered client ID |
 
-Verify the host-key fingerprint through the VPS console or a trusted connection
-before saving `VPS_KNOWN_HOSTS`. The workflow never disables host-key checking.
-For a non-default port, known_hosts uses `[host]:port`.
+Each secret contains only its value, without the `NAME=` prefix or surrounding
+quotes. Add optional integrations using their existing values:
 
-After DNS, Caddy, env files and registry access are ready, set the **repository
-variable** `API_DEPLOY_ENABLED=true`. Without it, CI publishes images on main but
-skips SSH deployment. Run **API CI and deploy** manually on `main` for the first
-deployment. Subsequent matching changes pushed to `main` deploy automatically.
+| Feature | Secrets |
+| --- | --- |
+| Redis cache/rate limiting | `REDIS_URL` |
+| Typesense search | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, `TYPESENSE_LANGUAGES`; `TYPESENSE_PUBLIC_URL` can replace explicit host/port/protocol |
+| Image uploads | `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_PUBLIC_KEY`, optionally `IMAGEKIT_FOLDER` |
+| IGDB imports | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
+| Additional runtime settings | `PG_POOL_MAX`, `API_URL` (defaults to `https://api2.vefacaglar.com`) |
 
-The workflow copies only `compose.yml` and `deploy.sh`; secrets remain on the VPS.
-Deployments wait for container health, then check the public HTTPS endpoint.
-A failed container health check restores the last successful image and Compose
-file when available. A public DNS/TLS failure reports an error but does not roll
-back the container. The first deployment has no previous version to restore.
-Replacing the single API container can briefly interrupt requests.
+Alternatively, put a complete raw env file in the optional `API_ENV` secret.
+Nonempty individual secrets override matching entries in that file. Dollar signs,
+spaces and quotes are preserved literally; no shell evaluation occurs. Duplicate
+or malformed entries and multiline individual values are rejected without printing
+their contents. `DATABASE_URL`, `WEB_URL` and `AUTH_MODE` are required; OIDC mode
+also requires its issuer and client ID. The Compose file enforces production mode,
+the container's listening address and port.
 
-The image publishing pattern follows the
-[GitHub Actions documentation](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
+Every deploy replaces the full env file. To remove a setting, remove it from both
+its individual secret and `API_ENV`. Changing secrets alone does not trigger a
+deploy; select **Run workflow** afterwards. Files are private to the deployment
+user. Each release has its own private environment. A failed rollout leaves the active
+release running; a failed traffic check restores the previous Caddy route.
 
-## Cut over the web app
+## GitHub variables and deployment
 
-Check `https://api2.vefacaglar.com/health` and an actual data endpoint, then test
-dashboard login, search and image upload. `/health` only checks API liveness;
-it does not verify database contents or external services.
+| Repository variable | Value |
+| --- | --- |
+| `API_DEPLOY_ENABLED` | `true` to enable deployment |
+| `API_DOCKER_NETWORK` | Optional existing network; defaults to `databases_default` |
+| `API_BIND_PORT` | Legacy host-Caddy upstream port for the first migration; defaults to `3001` |
+| `API_CADDY_CONTAINER` | Optional container name/ID when multiple Caddy containers exist |
+| `API_CADDY_CONFIG_PATH` | Optional Caddyfile path inside the container or on the host |
 
-Set both `API_URL` and `NEXT_PUBLIC_API_URL` on the Vercel **web** project to
-`https://api2.vefacaglar.com`, then redeploy the web app. Keep `WEB_URL` on the API
-set to the exact frontend origins. Keep the old API available until these checks
-pass; reverting the web env values and redeploying provides a cutover rollback.
-If the catalog-import workflow should use the VPS database too, update its
-database connection separately after verifying network access and data.
+Push API/deployment changes to `main`, or select **Actions → API CI and deploy →
+Run workflow → main**. The deploy job uses the `api-production` environment.
+No separate GHCR token is required: the job's `GITHUB_TOKEN` has package-read access
+and is supplied over SSH stdin to a temporary Docker credential directory. That
+directory and the temporary upload are removed after deployment.
 
-## Operations
+## Infrastructure and HTTPS
 
-```sh
-cd ~/vefacaglar-api
-API_IMAGE="$(cat .current-image)" docker compose --env-file .env -f compose.yml ps
-API_IMAGE="$(cat .current-image)" docker compose --env-file .env -f compose.yml logs --tail 100 api
-```
+The VPS must already provide Docker, Compose 2.30+, Python 3, Bash, `curl`, SSH
+access, the external application network and a running Caddy installation. The
+database and optional services must be reachable from that network; `localhost`
+inside the API container refers to the API itself.
 
-To redeploy an earlier compatible image, use its published immutable digest:
+CD detects one conventional Caddy container with a persistent Caddyfile, or a host
+systemd Caddy service. It preserves other sites, including the authserver route.
+The first blue-green deployment adopts a single explicit multiline API site block
+only when its existing upstream matches the legacy deployment. Imports, multi-site
+blocks, ambiguous containers and conflicting upstreams fail without switching
+traffic. Custom API directives are preserved while the proxy target is changed.
 
-```sh
-bash deploy.sh ghcr.io/OWNER/REPOSITORY-api@sha256:DIGEST
-```
+Each release has a unique Compose project, DNS alias and automatically assigned
+host loopback port. Docker Caddy uses `vefacaglar-api-<release>:3001`; host Caddy
+uses the assigned loopback port. No additional GitHub secrets or port variables
+are required. Caddy is attached to the application network if necessary.
+Ports 80/443 and DNS
+must reach Caddy for public certificate issuance. The workflow does not modify DNS.
+For a new record, use Cloudflare `A api2 → 187.126.24.87`, DNS only. Do not change an
+already-correct record. Cloudflare proxying requires a separate trusted-proxy setup.
 
-Replace the placeholders with the actual lowercase package name and digest.
-The most recent previous image is recorded in `.previous-image`. Database and
-external-service changes are outside image rollback. Do not prune earlier
-images until the new release has been verified.
+HTTPS checks connect directly to the VPS with the API hostname, then test public
+DNS. This prevents an old hosting provider from satisfying the VPS health gate.
+`/health` checks liveness only; it does not prove database contents or integrations.
+
+## Web cutover and recovery
+
+Verify a data endpoint, dashboard sign-in, search and image upload. Then set both
+`API_URL` and `NEXT_PUBLIC_API_URL` on the Vercel **web** project to
+`https://api2.vefacaglar.com` and redeploy the web app. Keep API `WEB_URL` aligned
+with the actual frontend origins. The web app's OIDC settings and registered
+redirect URIs must agree with the existing client configuration.
+
+## Blue-green rollout and recovery
+
+The deploy lock covers the entire transaction. CD starts a new isolated blue or
+green release without stopping the active one. Compose waits for container health,
+then Caddy validates and gracefully reloads the new proxy target. A direct HTTPS
+request to the VPS loopback address verifies the TLS certificate, health response
+and the candidate's `X-API-Deployment` response header. Only then is the active
+release recorded atomically in `.releases.json`.
+
+The immediate previous release remains running with its original environment.
+There are normally two running releases and temporarily three during a rollout;
+reserve memory and DB connections for that overlap. After a further successful
+rollout, CD waits 30 seconds before retiring older releases, followed by Docker's
+30-second stop timeout. The original single-container API is retired only after
+the second successful blue-green deployment. Long-lived connections that exceed
+this drain period are not guaranteed to survive retirement.
+
+A failed candidate health check never changes traffic. A failed reload or HTTPS
+check reloads the original route before removing the candidate. If recovery is
+uncertain, both containers and `.pending-release.json` are retained. The next
+workflow run recovers that transaction before starting another candidate. If the
+Caddyfile was edited externally during the transaction, recovery refuses to
+silently overwrite that edit. Do not run another tool that edits the same
+Caddyfile concurrently with a deployment.
+
+The public HTTPS check is a separate DNS/accessibility check after the server
+transaction; it does not roll back a successfully verified direct VPS rollout.
+`/health` proves liveness, not database or integration correctness. Database
+migrations are not run by CD; schema changes must be compatible with both versions.
+No rollback reverses database writes or external-service changes.
+
+To recover from a later application regression, revert the application change in
+GitHub and deploy `main` again. To restore runtime settings, update GitHub secrets
+and run the workflow. Keep the old external hosting provider until data endpoints,
+sign-in, search and uploads have been checked on the VPS.

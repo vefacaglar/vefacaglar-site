@@ -1,4 +1,4 @@
-name: vefacaglar-api
+name: vefacaglar-api-${API_RELEASE:?Set API_RELEASE}
 
 services:
   api:
@@ -13,11 +13,11 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: "3001"
     ports:
-      - "127.0.0.1:${API_BIND_PORT:-3001}:3001"
+      - "127.0.0.1::3001"
     networks:
       backend:
         aliases:
-          - vefacaglar-api
+          - vefacaglar-api-${API_RELEASE:?Set API_RELEASE}
     stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]

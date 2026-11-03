@@ -59,6 +59,25 @@ jobs:
       - name: Compile API
         run: pnpm --filter api exec tsc
 
+      - name: Check deployment scripts
+        run: |
+          bash -n deploy/api/deploy.sh deploy/api/receive.sh deploy/api/ssh-deploy.sh
+          shellcheck deploy/api/deploy.sh deploy/api/receive.sh deploy/api/ssh-deploy.sh
+          python3 -m unittest discover -s deploy/api -p 'test_*.py'
+
+      - name: Validate generated Caddy route
+        run: |
+          python3 - <<'PYCODE'
+          import os
+          from pathlib import Path
+          import runpy
+          proxy = runpy.run_path('deploy/api/configure-caddy.py')
+          existing = 'auth.vefacaglar.com {\n    reverse_proxy authserver:5175\n}\n'
+          config = proxy['blue_green_config'](existing, {}, 'vefacaglar-api:3001', 'vefacaglar-api-blue-1:3001', 'blue-1')
+          (Path(os.environ['RUNNER_TEMP']) / 'api-test-Caddyfile').write_text(config)
+          PYCODE
+          docker run --rm --mount "type=bind,src=$RUNNER_TEMP/api-test-Caddyfile,dst=/etc/caddy/Caddyfile,readonly" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
   image:
     needs: verify
     runs-on: ubuntu-latest
@@ -105,6 +124,9 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.API_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
     environment:
       name: api-production
       url: https://api2.vefacaglar.com
@@ -113,33 +135,72 @@ jobs:
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_USER: ${{ secrets.VPS_USER }}
       VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          persist-credentials: false
       - name: Configure SSH
         env:
           SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_PASSWORD: ${{ secrets.VPS_PASSWORD }}
           KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
-          test -n "$SSH_KEY" && test -n "$KNOWN_HOSTS"
+          test -n "$KNOWN_HOSTS"
+          test -n "$SSH_KEY" || test -n "$SSH_PASSWORD"
           [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
           [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
           [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
-
-      - name: Deploy published image
+          chmod 600 ~/.ssh/known_hosts
+          if [[ -n "$SSH_KEY" ]]; then
+            printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/vefacaglar-api-ssh-key"
+            chmod 600 "$RUNNER_TEMP/vefacaglar-api-ssh-key"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+      - name: Prepare configuration from GitHub secrets
+        env:
+          API_ENV: ${{ secrets.API_ENV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PG_POOL_MAX: ${{ secrets.PG_POOL_MAX }}
+          API_URL: ${{ secrets.API_URL }}
+          WEB_URL: ${{ secrets.WEB_URL }}
+          AUTH_MODE: ${{ secrets.AUTH_MODE }}
+          OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ secrets.OIDC_CLIENT_ID }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          TYPESENSE_PUBLIC_URL: ${{ secrets.TYPESENSE_PUBLIC_URL }}
+          TYPESENSE_LANGUAGES: ${{ secrets.TYPESENSE_LANGUAGES }}
+          IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
+          IMAGEKIT_PUBLIC_KEY: ${{ secrets.IMAGEKIT_PUBLIC_KEY }}
+          IMAGEKIT_FOLDER: ${{ secrets.IMAGEKIT_FOLDER }}
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+          API_DOCKER_NETWORK: ${{ vars.API_DOCKER_NETWORK || 'databases_default' }}
+          API_BIND_PORT: ${{ vars.API_BIND_PORT || '3001' }}
+          API_CADDY_CONTAINER: ${{ vars.API_CADDY_CONTAINER }}
+          API_CADDY_CONFIG_PATH: ${{ vars.API_CADDY_CONFIG_PATH }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 deploy/api/prepare-deploy.py "$RUNNER_TEMP/vefacaglar-api-bundle"
+      - name: Upload configuration and deploy published image
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: bash deploy/api/ssh-deploy.sh
+      - name: Verify VPS and public HTTPS endpoints
         run: |
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" 'test -f ~/vefacaglar-api/.env && test -f ~/vefacaglar-api/api.env'
-          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -P "$VPS_PORT" deploy/api/compose.yml deploy/api/deploy.sh "$VPS_USER@$VPS_HOST:vefacaglar-api/"
-          [[ "$API_IMAGE" =~ ^ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$ ]]
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "cd ~/vefacaglar-api && bash deploy.sh '$API_IMAGE'"
+          curl --connect-to "api2.vefacaglar.com:443:$VPS_HOST:443" --fail --silent --show-error --retry 24 --retry-delay 5 --retry-all-errors --retry-max-time 180 --max-time 10 https://api2.vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors --max-time 15 https://api2.vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
 
-      - name: Check public HTTPS endpoint
-        run: curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors --max-time 15 https://api2.vefacaglar.com/health
-
-      - name: Remove SSH key
+      - name: Remove temporary deployment credentials
         if: always()
-        run: rm -f ~/.ssh/id_ed25519
+        run: |
+          rm -f "$RUNNER_TEMP/vefacaglar-api-ssh-key"
+          rm -rf "$RUNNER_TEMP/vefacaglar-api-bundle"
