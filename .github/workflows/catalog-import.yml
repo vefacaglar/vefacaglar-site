@@ -20,7 +20,9 @@ jobs:
     timeout-minutes: 350
     environment: api-production
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Runs on GitHub's runners, so it needs a publicly reachable URL; the API's
+      # DATABASE_URL points at the internal Docker hostname instead.
+      DATABASE_URL: ${{ secrets.CATALOG_IMPORT_DATABASE_URL || secrets.DATABASE_URL }}
       IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
       IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
     steps:
