@@ -127,6 +127,13 @@
       "when": 1793744563229,
       "tag": "0017_lazy_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793747120285,
+      "tag": "0018_stiff_invisible_woman",
+      "breakpoints": true
     }
   ]
 }

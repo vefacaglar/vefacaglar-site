@@ -34,7 +34,12 @@ export const games = pgTable('games', {
   hltbCompletionistHours: decimal('hltb_completionist_hours', { precision: 6, scale: 1 }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }),
-});
+}, (table) => ({
+  // Public games list order (Postgres fallback when search is down).
+  releaseDateTitleIdx: index('games_release_date_title_idx').on(table.releaseDate.desc().nullsLast(), table.title),
+  // Dashboard games list order.
+  createdAtIdIdx: index('games_created_at_id_idx').on(table.createdAt.desc().nullsFirst(), table.id),
+}));
 
 // 2. Developers
 export const developers = pgTable('developers', {
@@ -134,6 +139,8 @@ export const gameDevelopers = pgTable('game_developers', {
     .references(() => developers.id, { onDelete: 'cascade' }),
 }, (table) => ({
   pk: primaryKey({ columns: [table.gameId, table.developerId] }),
+  // The PK only serves game -> developers; this serves developer -> games and cascade deletes.
+  developerIdIdx: index('game_developers_developer_id_idx').on(table.developerId),
 }));
 
 // GamePublishers
@@ -146,6 +153,7 @@ export const gamePublishers = pgTable('game_publishers', {
     .references(() => publishers.id, { onDelete: 'cascade' }),
 }, (table) => ({
   pk: primaryKey({ columns: [table.gameId, table.publisherId] }),
+  publisherIdIdx: index('game_publishers_publisher_id_idx').on(table.publisherId),
 }));
 
 // GameGenres
@@ -170,6 +178,7 @@ export const gamePlatforms = pgTable('game_platforms', {
     .references(() => platforms.id, { onDelete: 'cascade' }),
 }, (table) => ({
   pk: primaryKey({ columns: [table.gameId, table.platformId] }),
+  platformIdIdx: index('game_platforms_platform_id_idx').on(table.platformId),
 }));
 
 // GameThemes
