@@ -164,6 +164,7 @@ const dashboardStrings = {
 
   delete: {
     confirm: 'are you sure you want to delete the {type} "{title}"?',
+    modalTitle: "delete {type}",
     button: "delete",
     deleting: "deleting...",
   },

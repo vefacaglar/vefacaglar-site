@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import ProjectForm from "../../../components/ProjectForm";
 import { httpClient } from "../../../../../lib/httpClient";
+import { requireAdmin } from "../../../../../lib/session";
 
 interface ProjectItem {
   id: string;
@@ -33,6 +34,7 @@ export default async function EditProject(props: { params: Promise<{ id: string 
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   let project: ProjectItem | null = null;
   try {

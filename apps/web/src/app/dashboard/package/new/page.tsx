@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import PackageItemForm from "../../packages/PackageItemForm";
 import { listPackageGroupsAction } from "../../packages/actions";
+import { requireAdmin } from "../../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function NewPackagePage(props: NewPackagePageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   const groupsRes = await listPackageGroupsAction({ limit: 100 });
   const groups = groupsRes && "items" in groupsRes ? groupsRes.items : [];

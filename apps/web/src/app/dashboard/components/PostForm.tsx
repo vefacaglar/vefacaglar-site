@@ -9,6 +9,7 @@ import LocalizationButton from "./LocalizationButton";
 import styles from "./form.module.css";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
+import { safeInternalPath } from "../../../lib/safePath";
 
 interface PostFormProps {
   initialData?: {
@@ -27,7 +28,7 @@ interface PostFormProps {
 export default function PostForm({ initialData }: PostFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("from");
+  const fromUrl = safeInternalPath(searchParams.get("from"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

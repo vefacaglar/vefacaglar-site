@@ -2,6 +2,7 @@ import React from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ProjectForm from "../../components/ProjectForm";
+import { requireAdmin } from "../../../../lib/session";
 
 export default async function NewProject() {
   const cookieStore = await cookies();
@@ -10,6 +11,7 @@ export default async function NewProject() {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   return <ProjectForm />;
 }

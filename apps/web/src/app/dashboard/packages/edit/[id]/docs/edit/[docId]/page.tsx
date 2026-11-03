@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import DocForm from "../../../../../DocForm";
 import { listCategoriesAction, getDocAction, getPackageGroupAction } from "../../../../../actions";
+import { requireAdmin } from "../../../../../../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function EditDocPage(props: EditDocPageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   let categories: any[] = [];
   let docData = null;

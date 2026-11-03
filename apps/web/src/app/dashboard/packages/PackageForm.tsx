@@ -8,6 +8,7 @@ import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
+import { safeInternalPath } from "../../../lib/safePath";
 
 interface PackageFormProps {
   initialData?: {
@@ -26,7 +27,7 @@ interface PackageFormProps {
 export default function PackageForm({ initialData }: PackageFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("from");
+  const fromUrl = safeInternalPath(searchParams.get("from"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

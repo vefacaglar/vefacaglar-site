@@ -7,6 +7,7 @@ import { listPackagesAction } from "./actions";
 import PackagesDashboardClient from "./PackagesDashboardClient";
 import styles from "../dashboard.module.css";
 import ds from "../../../lib/dashboard-strings";
+import { requireAdmin } from "../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function PackagesDashboard(props: PageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   const page = Number(searchParams.page) || 1;
   const limit = Number(searchParams.limit) || 10;

@@ -133,6 +133,19 @@ app.setErrorHandler((err, request, reply) => {
     const translatedMsg = translateError("err_rate_limit_exceeded", request.lang);
     return reply.status(429).send({ message: translatedMsg });
   }
+  // Fastify/plugin client errors (bad JSON, payload too large, unsupported media type, ...).
+  if (fastifyErr.statusCode && fastifyErr.statusCode >= 400 && fastifyErr.statusCode < 500) {
+    return reply.status(fastifyErr.statusCode).send({ message: fastifyErr.message ?? "Bad request." });
+  }
+  // Postgres errors caused by client input; Drizzle wraps the driver error in `cause`.
+  const pgCode = ((err as { cause?: { code?: string } }).cause ?? (err as { code?: string }))?.code;
+  if (pgCode === "23505") {
+    const translatedMsg = translateError("err_already_exists", request.lang);
+    return reply.status(409).send({ message: translatedMsg });
+  }
+  if (pgCode === "22P02" || pgCode === "23503") {
+    return reply.status(400).send({ message: "Invalid identifier or reference." });
+  }
   request.log.error(err);
   return reply.status(500).send({ message: "Internal server error." });
 });

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { safeInternalPath } from "./safePath";
 
 export type AuthMode = "oidc" | "password";
 
@@ -78,8 +79,9 @@ export interface OidcFlowState {
  * or protocol-relative URLs (open redirect) and never the dashboard, which is
  * admin-only and keeps its own post-login landing.
  */
-export function sanitizeReturnTo(value: string | null | undefined): string | undefined {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return undefined;
+export function sanitizeReturnTo(rawValue: string | null | undefined): string | undefined {
+  const value = safeInternalPath(rawValue);
+  if (!value) return undefined;
   if (value === "/dashboard" || value.startsWith("/dashboard/") || value.startsWith("/dashboard?")) return undefined;
   return value;
 }

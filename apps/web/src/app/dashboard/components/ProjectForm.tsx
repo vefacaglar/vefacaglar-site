@@ -11,6 +11,7 @@ import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
 import { toDigits } from "../../../lib/numericInput";
 import DatePicker from "../../components/DatePicker";
+import { safeInternalPath } from "../../../lib/safePath";
 
 interface ProjectFormProps {
   initialData?: {
@@ -35,7 +36,7 @@ interface ProjectFormProps {
 export default function ProjectForm({ initialData }: ProjectFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("from");
+  const fromUrl = safeInternalPath(searchParams.get("from"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

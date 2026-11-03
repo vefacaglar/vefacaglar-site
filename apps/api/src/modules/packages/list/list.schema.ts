@@ -1,8 +1,8 @@
 import { Type, Static } from "@sinclair/typebox";
 
 export const ListPackagesQuerySchema = Type.Object({
-  page: Type.Optional(Type.Number()),
-  limit: Type.Optional(Type.Number()),
+  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
   q: Type.Optional(Type.String()),
 });
 export type ListPackagesQuery = Static<typeof ListPackagesQuerySchema>;

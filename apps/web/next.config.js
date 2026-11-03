@@ -54,6 +54,10 @@ const noIndexHeaders = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Editor image uploads go through a Server Action; match the API's 10MB multipart limit.
+    serverActions: { bodySizeLimit: "10mb" },
+  },
   images: {
     // AVIF is left out on purpose: the AVIF decoding path in the image optimizer has had RCE advisories.
     formats: ["image/webp"],

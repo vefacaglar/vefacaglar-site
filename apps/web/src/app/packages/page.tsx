@@ -23,7 +23,7 @@ interface PackagesProps {
 
 export default async function PackagesPage(props: PackagesProps) {
   const searchParams = await props.searchParams;
-  const page = searchParams.page ? Number(searchParams.page) : 1;
+  const page = Math.max(1, Math.floor(Number(searchParams.page)) || 1);
   const data = await getPublicPackages(page);
   const packageGroups = (data?.items ?? []) as {
     id: string;

@@ -2,6 +2,11 @@
   "err_page_not_found": "Sayfa bulunamadı.",
   "err_post_not_found": "Yazı bulunamadı.",
   "err_project_not_found": "Proje bulunamadı.",
+  "err_package_not_found": "Paket bulunamadı.",
+  "err_doc_not_found": "Doküman bulunamadı.",
+  "err_category_not_found": "Kategori bulunamadı.",
+  "err_slug_already_exists": "Bu slug zaten kullanılıyor.",
+  "err_already_exists": "Aynı benzersiz değere sahip bir kayıt zaten var.",
   "err_unauthorized": "Bu kaynağa erişim yetkiniz bulunmamaktadır.",
   "err_rate_limit_exceeded": "Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin."
 }

@@ -8,7 +8,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   oidcIssuer: text('oidc_issuer'),
   oidcSubject: text('oidc_subject'),
-  role: text('role').notNull().default('admin'),
+  role: text('role').notNull().default('user'),
   isActive: boolean('is_active').notNull().default(true),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),

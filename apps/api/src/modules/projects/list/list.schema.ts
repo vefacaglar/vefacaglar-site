@@ -2,8 +2,8 @@ import { Type, Static } from "@sinclair/typebox";
 import { ProjectResponseSchema } from "../dashboard/create/create.schema";
 
 export const ListProjectsQuerySchema = Type.Object({
-  page: Type.Optional(Type.Number()),
-  limit: Type.Optional(Type.Number()),
+  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
 });
 
 export type ListProjectsQuery = Static<typeof ListProjectsQuerySchema>;

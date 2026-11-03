@@ -52,11 +52,13 @@ export class ProfileHandler {
         },
       };
     } catch (error: any) {
-      if (error?.code === "23505") {
-        const target = `${error.constraint_name ?? ""} ${error.detail ?? ""}`;
-        if (target.includes("email")) {
-          throw new BadRequestError("This email address is already in use.");
-        }
+      // Drizzle wraps driver errors, so the Postgres code lives on `cause`.
+      const dbError = error?.cause ?? error;
+      const isUniqueEmailViolation =
+        dbError?.code === "23505" &&
+        `${dbError.constraint_name ?? ""} ${dbError.detail ?? ""}`.includes("email");
+      if (error?.message === "EmailAlreadyExists" || isUniqueEmailViolation) {
+        throw new BadRequestError("This email address is already in use.");
       }
       throw error;
     }

@@ -106,6 +106,17 @@ describe("OidcExchangeHandler", () => {
     expect(authService.createSession).toHaveBeenCalledWith(created);
   });
 
+  it("falls back to the username, never the email, when the provider sends no name", async () => {
+    oidcClient.verifyIdToken.mockResolvedValue({ ...claims, name: undefined });
+    usersRepo.create.mockResolvedValue({ id: "user-2", isActive: true });
+
+    await handler.handle({ idToken: "jwt", nonce: "n1" });
+
+    expect(usersRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: "vefa.caglar" })
+    );
+  });
+
   it("appends a number when the username is taken", async () => {
     usersRepo.findByUsername.mockImplementation(async (name: string) =>
       name === "vefa.caglar" ? { id: "x" } : null

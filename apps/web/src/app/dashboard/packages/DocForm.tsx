@@ -8,6 +8,7 @@ import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "../components/form.module.css";
 import Button from "../../../components/Button";
 import { toDigits } from "../../../lib/numericInput";
+import { safeInternalPath } from "../../../lib/safePath";
 
 interface CategoryItem {
   id: string;
@@ -34,7 +35,7 @@ interface DocFormProps {
 export default function DocForm({ packageId, groupSlug, categories, initialData }: DocFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("from");
+  const fromUrl = safeInternalPath(searchParams.get("from"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

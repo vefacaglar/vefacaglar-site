@@ -113,6 +113,30 @@ describe("ProfileHandler", () => {
       ).rejects.toThrow("This email address is already in use.");
     });
 
+    it("should translate a Drizzle-wrapped unique-constraint error on email to BadRequestError", async () => {
+      const cause: any = new Error("duplicate key");
+      cause.code = "23505";
+      cause.constraint_name = "users_email_unique";
+      const wrapped = new Error("Failed query", { cause });
+      mockUsersRepo.updateProfile.mockRejectedValue(wrapped);
+
+      const mockRequest = { user: baseUser } as unknown as FastifyRequest;
+
+      await expect(
+        handler.updateProfile(mockRequest, { email: "vefa@example.com", displayName: "Vefa Çağlar" })
+      ).rejects.toThrow("This email address is already in use.");
+    });
+
+    it("should translate the repository's EmailAlreadyExists error to BadRequestError", async () => {
+      mockUsersRepo.updateProfile.mockRejectedValue(new Error("EmailAlreadyExists"));
+
+      const mockRequest = { user: baseUser } as unknown as FastifyRequest;
+
+      await expect(
+        handler.updateProfile(mockRequest, { email: "taken@example.com", displayName: "Vefa Çağlar" })
+      ).rejects.toThrow(BadRequestError);
+    });
+
     it("should re-throw non-constraint errors unchanged", async () => {
       const dbError = new Error("connection lost");
       mockUsersRepo.updateProfile.mockRejectedValue(dbError);

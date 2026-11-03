@@ -15,6 +15,7 @@ import {
   listThemesAction,
   listPlatformsAction,
 } from "./actions";
+import { requireAdmin } from "../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function GamesDashboard(props: PageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   // Parse parameters
   const tab = (searchParams.tab || "games") as SubTab;

@@ -14,7 +14,8 @@ interface PageProps {
 export default async function AdminLogin(props: PageProps) {
   const searchParams = await props.searchParams;
   const errorKey = searchParams.error as keyof typeof ds.login.errors | undefined;
-  const error = errorKey ? ds.login.errors[errorKey] : undefined;
+  const error =
+    errorKey && Object.hasOwn(ds.login.errors, errorKey) ? ds.login.errors[errorKey] : undefined;
   const reason = process.env.NODE_ENV !== "production" ? searchParams.reason : undefined;
 
   return (

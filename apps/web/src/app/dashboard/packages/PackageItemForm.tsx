@@ -7,6 +7,7 @@ import Button from "../../../components/Button";
 import styles from "../components/form.module.css";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { createPackageItemAction, updatePackageItemAction } from "./actions";
+import { safeInternalPath } from "../../../lib/safePath";
 
 interface PackageGroupOption {
   id: string;
@@ -66,7 +67,7 @@ function slugify(text: string) {
 export default function PackageItemForm({ groups, initialGroupId, groupSlug, initialData }: PackageItemFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("from");
+  const fromUrl = safeInternalPath(searchParams.get("from"));
   const defaultGroupId = initialData?.groupId || initialGroupId || groups[0]?.id || "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

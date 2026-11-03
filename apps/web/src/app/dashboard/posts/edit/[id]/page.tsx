@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import PostForm from "../../../components/PostForm";
 import { httpClient } from "../../../../../lib/httpClient";
+import { requireAdmin } from "../../../../../lib/session";
 
 interface PostItem {
   id: string;
@@ -27,6 +28,7 @@ export default async function EditPost(props: { params: Promise<{ id: string }> 
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   let post: PostItem | null = null;
   try {

@@ -3,10 +3,8 @@
 import React, { useState, useRef } from "react";
 import MarkdownPreview from "./MarkdownPreview";
 import styles from "./MarkdownEditor.module.css";
-import { getSessionToken } from "../dashboard/actions";
+import { uploadImageAction } from "../dashboard/actions";
 import e from "../../lib/editor-strings";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const COMPRESS_MAX_DIMENSION = 1000;
 const COMPRESS_TARGET_BYTES = 300 * 1024;
@@ -222,28 +220,15 @@ export default function MarkdownEditor({
     setIsUploading(true);
 
     try {
-      const token = await getSessionToken();
-      if (!token) {
-        throw new Error(e.errors.unauthorized);
-      }
-
       const compressedFile = await compressImage(file);
 
       const formData = new FormData();
       formData.append("file", compressedFile);
 
-      const response = await fetch(`${API_URL}/api/uploads/image`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const result = await uploadImageAction(formData);
 
-      const result = await response.json();
-
-      if (!response.ok || result.error || result.message) {
-        throw new Error(result.error || result.message || e.errors.uploadFailed);
+      if (!result || result.error || !result.url) {
+        throw new Error(result?.error || e.errors.uploadFailed);
       }
 
       const finalImageMarkdown = `![${filename}](${result.url})`;

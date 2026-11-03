@@ -7,6 +7,7 @@ import DashboardListsContainer from "./components/DashboardListsContainer";
 import styles from "./dashboard.module.css";
 import { httpClient } from "../../lib/httpClient";
 import ds from "../../lib/dashboard-strings";
+import { requireAdmin } from "../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export default async function AdminDashboard(props: PageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   const postsPage = Number(searchParams.postsPage) || 1;
   const postsLimit = Number(searchParams.postsLimit) || 10;

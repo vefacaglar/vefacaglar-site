@@ -16,11 +16,16 @@ export class AuthorsService {
   async getByUsername(username: string): Promise<GetAuthorResponse> {
     const user = await this.usersRepo.findByUsername(username);
 
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new NotFoundError("Author not found.");
     }
 
     const authorPosts = await this.postsRepo.listPublishedByAuthorId(user.id);
+
+    // Only real authors are public; regular site members must not be enumerable here.
+    if (user.role !== "admin" && authorPosts.length === 0) {
+      throw new NotFoundError("Author not found.");
+    }
 
     return {
       username: user.username,

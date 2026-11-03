@@ -3,8 +3,8 @@ import { PostResponseSchema } from "../create/create.schema";
 
 export const ListAdminPostsQuerySchema = Type.Object({
   status: Type.Optional(Type.Union([Type.Literal("draft"), Type.Literal("published")])),
-  page: Type.Optional(Type.Number()),
-  limit: Type.Optional(Type.Number()),
+  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
 });
 export type ListAdminPostsQuery = Static<typeof ListAdminPostsQuerySchema>;
 

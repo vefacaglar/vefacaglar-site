@@ -91,11 +91,6 @@ async function getProviderLogoutUrl(idToken: string | undefined): Promise<string
   }
 }
 
-export async function getSessionToken() {
-  const cookieStore = await cookies();
-  return cookieStore.get("session_token")?.value || null;
-}
-
 export async function deletePostAction(id: string) {
   const result = await authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
     fallbackError: "Failed to delete post.",
@@ -272,7 +267,8 @@ export async function uploadImageAction(formData: FormData) {
   const API_URL = process.env.API_URL;
 
   if (!API_URL) {
-    return { error: "API_URL environment variable is not set." };
+    console.error("Upload image error: API_URL environment variable is not set.");
+    return { error: "Server configuration error." };
   }
 
   try {
@@ -292,7 +288,7 @@ export async function uploadImageAction(formData: FormData) {
     return await res.json();
   } catch (error) {
     console.error(`Upload image error (tried fetching from ${API_URL}/api/uploads/image):`, error);
-    return { error: `Server connection error (tried connecting to ${API_URL}).` };
+    return { error: "Server connection error." };
   }
 }
 

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { httpClient } from "../../../../../lib/httpClient";
 import GameEditForm from "../../GameEditForm";
 import type { Game } from "../../types";
+import { requireAdmin } from "../../../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function EditGame(
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   let game: Game | null = null;
   try {

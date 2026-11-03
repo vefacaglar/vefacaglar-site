@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { httpClient } from "./httpClient";
 
 export type SessionUser = { id: string; email: string; displayName: string; role: string };
@@ -16,3 +17,11 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     return null;
   }
 });
+
+/** Guard for admin-only dashboard pages: redirects signed-out users to login and non-admins home. */
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user) redirect("/dashboard/login");
+  if (user.role !== "admin") redirect("/");
+  return user;
+}

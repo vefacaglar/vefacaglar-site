@@ -5,6 +5,7 @@ import PackageForm from "../../packages/PackageForm";
 import DocManagement from "../../packages/edit/[id]/DocManagement";
 import PackageItemsManagement from "../../packages/edit/[id]/PackageItemsManagement";
 import { getPackageGroupAction, listCategoriesAction, listDocsAction, listPackageItemsAction } from "../../packages/actions";
+import { requireAdmin } from "../../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function PackageGroupPage(props: PackageGroupPageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   let packageGroup = null;
   let packageItems: any[] = [];

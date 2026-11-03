@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import PageForm from "../../../components/PageForm";
 import { httpClient } from "../../../../../lib/httpClient";
+import { requireAdmin } from "../../../../../lib/session";
 
 interface PageItem {
   id: string;
@@ -25,6 +26,7 @@ export default async function EditPage(props: { params: Promise<{ id: string }> 
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   let page: PageItem | null = null;
   try {

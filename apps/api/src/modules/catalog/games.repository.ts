@@ -259,22 +259,9 @@ export class DrizzleGamesRepository implements IGamesRepository {
       .$dynamic();
     if (whereExpr) countQuery.where(whereExpr);
 
+    // Full rows: search reindexing maps these into documents (description, critic scores).
     let dataQuery = this.dbProvider.client
-      .select({
-        id: games.id,
-        slug: games.slug,
-        title: games.title,
-        originalTitle: games.originalTitle,
-        coverImageUrl: games.coverImageUrl,
-        releaseDate: games.releaseDate,
-        metacriticScore: games.metacriticScore,
-        openCriticScore: games.openCriticScore,
-        hltbMainHours: games.hltbMainHours,
-        hltbMainExtraHours: games.hltbMainExtraHours,
-        hltbCompletionistHours: games.hltbCompletionistHours,
-        createdAt: games.createdAt,
-        updatedAt: games.updatedAt,
-      })
+      .select()
       .from(games)
       .orderBy(desc(games.createdAt), asc(games.id))
       .$dynamic();
@@ -289,7 +276,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const [countResult, rows] = await Promise.all([countQuery, dataQuery]);
     const total = Number(countResult[0]?.count || 0);
 
-    const items = await this.attachRelations(rows as Game[]);
+    const items = await this.attachRelations(rows);
     return { items, total };
   }
 

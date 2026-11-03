@@ -56,10 +56,12 @@ export class OidcExchangeHandler {
     }
 
     // New users never get elevated rights; roles are managed in this database.
+    const username = await this.pickUsername(claims);
     return this.usersRepo.create({
       email: claims.email,
-      username: await this.pickUsername(claims),
-      displayName: claims.name ?? claims.email,
+      username,
+      // Never fall back to the email: display names are public.
+      displayName: claims.name ?? username,
       passwordHash: null,
       role: DEFAULT_ROLE,
       oidcIssuer: claims.issuer,

@@ -49,4 +49,38 @@ describe("GetAuthorHandler", () => {
 
     await expect(handler.handle(mockRequest)).rejects.toThrow(NotFoundError);
   });
+
+  describe("author visibility (real service, mocked repositories)", () => {
+    let usersRepo: Record<string, any>;
+    let postsRepo: Record<string, any>;
+    const request = { params: { username: "someone" } } as unknown as FastifyRequest<{
+      Params: { username: string };
+    }>;
+
+    beforeEach(() => {
+      usersRepo = { findByUsername: vi.fn() };
+      postsRepo = { listPublishedByAuthorId: vi.fn().mockResolvedValue([]) };
+      handler = new GetAuthorHandler(new AuthorsService(usersRepo as any, postsRepo as any));
+    });
+
+    it("hides regular members without published posts", async () => {
+      usersRepo.findByUsername.mockResolvedValue({ id: "u-1", username: "someone", displayName: "x", role: "user", isActive: true });
+
+      await expect(handler.handle(request)).rejects.toThrow(NotFoundError);
+    });
+
+    it("hides disabled accounts", async () => {
+      usersRepo.findByUsername.mockResolvedValue({ id: "u-1", username: "someone", displayName: "x", role: "admin", isActive: false });
+
+      await expect(handler.handle(request)).rejects.toThrow(NotFoundError);
+    });
+
+    it("shows active admins even without posts", async () => {
+      usersRepo.findByUsername.mockResolvedValue({ id: "u-1", username: "someone", displayName: "Admin", role: "admin", isActive: true });
+
+      const result = await handler.handle(request);
+
+      expect(result).toEqual({ username: "someone", displayName: "Admin", posts: [] });
+    });
+  });
 });

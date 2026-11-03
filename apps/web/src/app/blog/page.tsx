@@ -28,7 +28,7 @@ interface BlogProps {
 
 export default async function Blog(props: BlogProps) {
   const searchParams = await props.searchParams;
-  const page = searchParams.page ? Number(searchParams.page) : 1;
+  const page = Math.max(1, Math.floor(Number(searchParams.page)) || 1);
   const query = searchParams.q || "";
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);

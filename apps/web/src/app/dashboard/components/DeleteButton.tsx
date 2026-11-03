@@ -19,7 +19,7 @@ export default function DeleteButton({ id, type, title, confirmMessage, onDelete
 
   const handleDelete = async () => {
     const message = confirmMessage || ds.delete.confirm.replace("{type}", type).replace("{title}", title);
-    if (!await confirm(message, { title: ds.games.modalTitle.edit.replace("{type}", ds.delete.button) })) return;
+    if (!await confirm(message, { title: ds.delete.modalTitle.replace("{type}", type) })) return;
 
     setLoading(true);
     const result = await onDelete(id);

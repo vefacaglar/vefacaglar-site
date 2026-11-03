@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import PackageItemForm from "../../packages/PackageItemForm";
 import { getPackageItemAction, listPackageGroupsAction } from "../../packages/actions";
+import { requireAdmin } from "../../../../lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function PackagePage(props: PackagePageProps) {
   if (!token) {
     redirect("/dashboard/login");
   }
+  await requireAdmin();
 
   const [packageRes, groupsRes] = await Promise.all([
     getPackageItemAction(params.id),
@@ -27,12 +29,13 @@ export default async function PackagePage(props: PackagePageProps) {
   ]);
 
   const groups = groupsRes && "items" in groupsRes ? groupsRes.items : [];
-  const group = groups.find((g: any) => g.id === packageRes.groupId);
-  const groupSlug = group?.slug;
 
   if (!packageRes || "error" in packageRes || groups.length === 0) {
     notFound();
   }
+
+  const group = groups.find((g: any) => g.id === packageRes.groupId);
+  const groupSlug = group?.slug;
 
   return <PackageItemForm groups={groups} groupSlug={groupSlug} initialData={packageRes} />;
 }
