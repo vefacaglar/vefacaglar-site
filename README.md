@@ -111,6 +111,9 @@ cp .env.example .env
 
 ## 💻 Running the Project
 
+For the API-only VPS deployment with Docker, Caddy and GitHub Actions, see
+[the deployment guide](deploy/api/README.md).
+
 All commands should be executed from the **project root directory**:
 
 ### Development Mode

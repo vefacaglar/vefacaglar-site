@@ -50,6 +50,11 @@ coverage/
 
 # Docker
 docker-compose.override.yml
+deploy/api/api.env
+deploy/api/.current-image
+deploy/api/.previous-image
+deploy/api/.last-good-compose.yml
+deploy/api/.deploy.lock
 
 # misc
 .cache/

@@ -12,11 +12,28 @@ import { app } from "./app";
 const start = async () => {
   try {
     const port = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3001;
-    await app.listen({ port });
-    console.log(`API listening on http://localhost:${port}`);
+    const host = process.env.API_HOST ?? "127.0.0.1";
+    await app.listen({ port, host });
   } catch (err) {
     console.error(err);
     process.exit(1);
   }
 };
+
+let stopping = false;
+const shutdown = async () => {
+  if (stopping) return;
+  stopping = true;
+  const timeout = setTimeout(() => process.exit(1), 25_000);
+  timeout.unref();
+  try {
+    await app.close();
+    process.exit(0);
+  } catch (err) {
+    app.log.error(err, "Failed to shut down API");
+    process.exit(1);
+  }
+};
+process.once("SIGTERM", shutdown);
+process.once("SIGINT", shutdown);
 start();

@@ -1,0 +1,37 @@
+name: vefacaglar-api
+
+services:
+  api:
+    image: ${API_IMAGE:?Set API_IMAGE to the published image digest}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: ./api.env
+        format: raw
+    environment:
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: "3001"
+    ports:
+      - "127.0.0.1:${API_BIND_PORT:-3001}:3001"
+    networks:
+      backend:
+        aliases:
+          - vefacaglar-api
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  backend:
+    external: true
+    name: ${API_DOCKER_NETWORK:?Set API_DOCKER_NETWORK to the existing database network}

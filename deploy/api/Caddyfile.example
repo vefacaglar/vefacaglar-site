@@ -1,0 +1,6 @@
+# Add this block to the existing Caddyfile; do not replace other sites.
+api2.vefacaglar.com {
+    reverse_proxy vefacaglar-api:3001
+}
+# Caddy and the API must share API_DOCKER_NETWORK (databases_default on the VPS).
+# For Caddy running directly on the host, use 127.0.0.1:3001 instead.
