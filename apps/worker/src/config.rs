@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
-
 /// Typesense connection settings, mirroring the API's `readTypesenseConfig`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypesenseConfig {
@@ -71,15 +69,13 @@ pub fn health_file_from_env() -> PathBuf {
 }
 
 impl Config {
-    pub fn from_env() -> Result<Self> {
-        let database_url = env_opt("DATABASE_URL").context("DATABASE_URL is required")?;
+    pub fn from_env() -> Result<Self, ConfigError> {
+        let database_url = env_opt("DATABASE_URL").ok_or(ConfigError::MissingDatabaseUrl)?;
         let hostname = hostname();
         let worker_id =
             env_opt("WORKER_ID").unwrap_or_else(|| format!("{}-{}", hostname, std::process::id()));
         let db_pool_max = match env_opt("WORKER_DB_POOL_MAX") {
-            Some(raw) => raw
-                .parse()
-                .context("WORKER_DB_POOL_MAX must be a positive integer")?,
+            Some(raw) => raw.parse().map_err(ConfigError::InvalidPoolSize)?,
             None => 5,
         };
         Ok(Self {
@@ -96,6 +92,14 @@ impl Config {
             ),
         })
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("DATABASE_URL is required")]
+    MissingDatabaseUrl,
+    #[error("WORKER_DB_POOL_MAX must be an unsigned integer")]
+    InvalidPoolSize(#[source] std::num::ParseIntError),
 }
 
 #[cfg(test)]

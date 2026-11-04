@@ -24,12 +24,18 @@ struct LogDocument {
     level: &'static str,
     event: String,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_message: Option<String>,
 }
 
 #[derive(Default)]
 struct LogFields {
     event: Option<String>,
     message: Option<String>,
+    error_code: Option<String>,
+    response_message: Option<String>,
 }
 
 impl Visit for LogFields {
@@ -37,6 +43,8 @@ impl Visit for LogFields {
         match field.name() {
             "application_event" => self.event = Some(value.to_owned()),
             "message" => self.message = Some(value.to_owned()),
+            "error_code" => self.error_code = Some(value.to_owned()),
+            "response_message" => self.response_message = Some(value.to_owned()),
             _ => {}
         }
     }
@@ -66,7 +74,8 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             Level::INFO => "info",
             _ => return,
         };
-        // Tagged events use fixed messages. Other tracing fields stay local.
+        // Tagged events use fixed messages and may supply a safe error reason.
+        // Raw error and other tracing fields stay local.
         let mut fields = LogFields::default();
         event.record(&mut fields);
         let (Some(event), Some(message)) = (fields.event, fields.message) else {
@@ -79,6 +88,8 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             level,
             event,
             message,
+            error_code: fields.error_code,
+            response_message: fields.response_message,
         };
         if let Err(mpsc::error::TrySendError::Full(_)) = self.sender.try_send(document)
             && !self.overflow_reported.swap(true, Ordering::Relaxed)

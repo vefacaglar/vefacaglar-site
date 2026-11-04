@@ -2,10 +2,9 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
 use sqlx::postgres::PgPoolOptions;
 use tokio_util::sync::CancellationToken;
-use worker::config::{self, Config};
+use worker::config::{self, Config, ConfigError};
 use worker::runner::Worker;
 use worker::{health, jobs, telemetry};
 
@@ -52,7 +51,80 @@ async fn shutdown_signal(token: CancellationToken) {
     token.cancel();
 }
 
-async fn run() -> Result<()> {
+#[derive(Debug, thiserror::Error)]
+enum StartupError {
+    #[error(transparent)]
+    Config(#[from] ConfigError),
+    #[error("connect to Postgres")]
+    Connect(#[source] sqlx::Error),
+    #[error("register worker in Postgres")]
+    Register(#[source] sqlx::Error),
+}
+
+impl StartupError {
+    // Only controlled descriptions and codes go to Log Tracker. The raw
+    // database error may include credentials or server-side data.
+    fn log_reason(&self) -> (String, String) {
+        let (stage, error) = match self {
+            Self::Config(ConfigError::MissingDatabaseUrl) => {
+                return (
+                    "missing_database_url".into(),
+                    "DATABASE_URL is required.".into(),
+                );
+            }
+            Self::Config(ConfigError::InvalidPoolSize(_)) => {
+                return (
+                    "invalid_db_pool_size".into(),
+                    "WORKER_DB_POOL_MAX must be an unsigned integer.".into(),
+                );
+            }
+            Self::Connect(error) => ("Could not connect to Postgres", error),
+            Self::Register(error) => ("Could not register the worker in Postgres", error),
+        };
+        let (code, detail) = match error {
+            sqlx::Error::Configuration(_) => (
+                "invalid_database_url",
+                "invalid database connection settings",
+            ),
+            sqlx::Error::Tls(_) => ("database_tls_failed", "TLS handshake failed"),
+            sqlx::Error::Io(_) => ("database_io_failed", "network communication failed"),
+            sqlx::Error::PoolTimedOut => (
+                "database_timeout",
+                "timed out waiting for a database connection",
+            ),
+            sqlx::Error::Database(error) => {
+                let state = error.code();
+                let detail = match state.as_deref() {
+                    Some("28P01" | "28000") => "Postgres rejected authentication",
+                    Some("3D000") => "the configured database does not exist",
+                    Some("42P01") => "a required table is missing; check database migrations",
+                    Some("42703") => "a required column is missing; check database migrations",
+                    Some("42501") => "the database role lacks the required permissions",
+                    _ => "Postgres rejected the operation",
+                };
+                let code = state
+                    .filter(|code| {
+                        code.len() == 5
+                            && code
+                                .bytes()
+                                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+                    })
+                    .map_or_else(
+                        || "database_error".into(),
+                        |code| format!("sqlstate_{code}"),
+                    );
+                return (code, format!("{stage}: {detail}."));
+            }
+            _ => (
+                "database_error",
+                "unexpected database error; see the worker's container logs",
+            ),
+        };
+        (code.into(), format!("{stage}: {detail}."))
+    }
+}
+
+async fn run() -> Result<(), StartupError> {
     let config = Config::from_env()?;
     if config.typesense.is_none() {
         tracing::warn!(
@@ -65,7 +137,7 @@ async fn run() -> Result<()> {
         .acquire_timeout(Duration::from_secs(30))
         .connect(&config.database_url)
         .await
-        .context("connect to DATABASE_URL")?;
+        .map_err(StartupError::Connect)?;
 
     let shutdown = CancellationToken::new();
     tokio::spawn(shutdown_signal(shutdown.clone()));
@@ -73,7 +145,8 @@ async fn run() -> Result<()> {
     let registry = jobs::registry(&config);
     Worker::new(pool.clone(), config, registry, shutdown)
         .run()
-        .await?;
+        .await
+        .map_err(StartupError::Register)?;
     pool.close().await;
     Ok(())
 }
@@ -92,9 +165,12 @@ async fn main() -> ExitCode {
     let status = match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
+            let (code, reason) = e.log_reason();
             tracing::error!(
                 application_event = "worker_failed",
-                error = format!("{e:#}"),
+                error_code = code.as_str(),
+                response_message = reason.as_str(),
+                error = format!("{:#}", anyhow::Error::new(e)),
                 "worker failed"
             );
             ExitCode::FAILURE

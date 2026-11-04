@@ -7,8 +7,10 @@ The API and worker can export events to the same Typesense
 The API exports startup events, server errors and HTTP 400, 401, 403 and 429
 responses. HTTP events include the matched route template when available and
 the generated request ID returned in `X-Request-Id`. The worker exports
-lifecycle, job failure and infrastructure events. Job progress and detailed
-errors remain in the existing local logs and the job dashboard.
+lifecycle, job failure and infrastructure events. For startup failures, expand
+`worker failed` in Log Tracker to see the reason and error code (including
+the SQLSTATE when Postgres supplies one). Job progress and raw errors remain
+in the existing local logs and the job dashboard.
 
 Set `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` in the runtime environment
 of both services. For GitHub deployment, add them as GitHub secrets (both

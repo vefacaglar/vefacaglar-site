@@ -69,7 +69,7 @@ impl Worker {
         }
     }
 
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self) -> sqlx::Result<()> {
         let types = self.registry.job_types();
         tracing::info!(
             application_event = "worker_starting",
