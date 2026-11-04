@@ -156,6 +156,9 @@ jobs:
           TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
           TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
           TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          LOG_TYPESENSE_URL: ${{ secrets.LOG_TYPESENSE_URL }}
+          LOG_TYPESENSE_API_KEY: ${{ secrets.LOG_TYPESENSE_API_KEY }}
+          LOG_ENVIRONMENT: ${{ secrets.LOG_ENVIRONMENT }}
           WORKER_ID: ${{ vars.WORKER_ID }}
           WORKER_DB_POOL_MAX: ${{ vars.WORKER_DB_POOL_MAX }}
           RUST_LOG: ${{ vars.WORKER_RUST_LOG }}

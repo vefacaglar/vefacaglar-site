@@ -72,3 +72,4 @@ Target job design (user decision):
 4. Browser-check signed-in library pages; answer the open questions in section 1.
 5. Commit in logical chunks (English messages): library UI, profile + API, popularity, typesense en-only, jobs (db/api/web), worker + CI.
 6. Later: movies feature, popularity as a registered job.
+7. Application logs (commit 3addda7, by Codex; see docs/application-logs.md): API + worker export selected events to Typesense `application_logs_v1` when `LOG_TYPESENSE_URL` + `LOG_TYPESENSE_API_KEY` are set (put them inside `API_ENV` / `WORKER_ENV` secrets). Reviewed: typecheck, api 466 tests, worker fmt/clippy/test pass. Open: no retention/cleanup for the log collection; expected 401/403 (private profiles, stream-token reconnect) are exported as warnings (noise); no unit tests for the log sink.

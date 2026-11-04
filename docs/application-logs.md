@@ -11,8 +11,9 @@ lifecycle, job failure and infrastructure events. Job progress and detailed
 errors remain in the existing local logs and the job dashboard.
 
 Set `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` in the runtime environment
-of both services. For GitHub deployment, use `API_ENV` in `api-production` and
-`WORKER_ENV` in `worker-production`. On the shared Docker network, use
+of both services. For GitHub deployment, add them as GitHub secrets (both
+workflows pass them through) or put them inside `API_ENV` (`api-production`) and
+`WORKER_ENV` (`worker-production`). On the shared Docker network, use
 `http://typesense:8108`. Use HTTPS for remote endpoints. `LOG_ENVIRONMENT`
 can override the default environment label.
 

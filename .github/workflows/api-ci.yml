@@ -188,6 +188,9 @@ jobs:
           IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
           JOB_STREAM_TOKEN_SECRET: ${{ secrets.JOB_STREAM_TOKEN_SECRET }}
           WEB_ORIGINS: ${{ secrets.WEB_ORIGINS }}
+          LOG_TYPESENSE_URL: ${{ secrets.LOG_TYPESENSE_URL }}
+          LOG_TYPESENSE_API_KEY: ${{ secrets.LOG_TYPESENSE_API_KEY }}
+          LOG_ENVIRONMENT: ${{ secrets.LOG_ENVIRONMENT }}
           API_DOCKER_NETWORK: ${{ vars.API_DOCKER_NETWORK || 'databases_default' }}
           API_BIND_PORT: ${{ vars.API_BIND_PORT || '3001' }}
           API_CADDY_CONTAINER: ${{ vars.API_CADDY_CONTAINER }}
