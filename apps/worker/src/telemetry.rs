@@ -3,8 +3,10 @@ use std::io::IsTerminal;
 use tracing_subscriber::{EnvFilter, prelude::*};
 
 mod application_logs;
+mod error_details;
 
 pub use application_logs::LogDrain;
+pub use error_details::database_error;
 
 /// Initializes tracing. Output is JSON unless stdout is a terminal, or as forced
 /// by `WORKER_LOG_FORMAT=json|pretty`. Filtering follows `RUST_LOG` (default `info`).

@@ -88,7 +88,11 @@ impl Worker {
         )
         .await?;
         if let Err(e) = health::write_heartbeat(&self.config.health_file) {
-            tracing::warn!(application_event = "health_file_write_failed", error = %e, "cannot write health file");
+            tracing::warn!(
+                application_event = "health_file_write_failed",
+                error = &e as &dyn std::error::Error,
+                "cannot write health file"
+            );
         }
 
         // Side tasks stop on `tasks_stop`, which is cancelled only after the
@@ -123,7 +127,11 @@ impl Worker {
                 Ok(None) => db_errors = 0,
                 Err(e) => {
                     db_errors = db_errors.saturating_add(1);
-                    tracing::error!(application_event = "job_claim_failed", error = %e, "failed to claim a job");
+                    tracing::error!(
+                        application_event = "job_claim_failed",
+                        error = &e as &dyn std::error::Error,
+                        "failed to claim a job"
+                    );
                 }
             }
             let wait = if db_errors > 0 {
@@ -256,7 +264,8 @@ impl Worker {
                 match queue::mark_failed(pool, job_id, worker_id, &message, delay, permanent).await
                 {
                     Ok(result) => {
-                        tracing::error!(application_event = "job_attempt_failed", %job_id, ?result, error = %message, "job attempt failed");
+                        let cause: &(dyn std::error::Error + 'static) = error.as_ref();
+                        tracing::error!(application_event = "job_attempt_failed", %job_id, ?result, error = cause, error_chain = %message, "job attempt failed");
                         Ok(())
                     }
                     Err(e) => Err(e),
@@ -265,7 +274,7 @@ impl Worker {
         };
         if let Err(e) = outcome {
             // The reaper will pick the job up again once heartbeats stop.
-            tracing::error!(application_event = "job_finalize_failed", %job_id, error = %e, "failed to finalize job");
+            tracing::error!(application_event = "job_finalize_failed", %job_id, error = &e as &dyn std::error::Error, "failed to finalize job");
         }
     }
 
@@ -288,7 +297,7 @@ impl Worker {
                     match queue::heartbeat_job(&pool, job.id, &config.worker_id).await {
                         Ok(held) => job.flags.apply(held),
                         Err(e) => {
-                            tracing::warn!(application_event = "job_heartbeat_failed", job_id = %job.id, error = %e, "job heartbeat failed")
+                            tracing::warn!(application_event = "job_heartbeat_failed", job_id = %job.id, error = &e as &dyn std::error::Error, "job heartbeat failed")
                         }
                     }
                 }
@@ -303,11 +312,19 @@ impl Worker {
                 {
                     Ok(()) => {
                         if let Err(e) = health::write_heartbeat(&config.health_file) {
-                            tracing::warn!(application_event = "health_file_write_failed", error = %e, "cannot write health file");
+                            tracing::warn!(
+                                application_event = "health_file_write_failed",
+                                error = &e as &dyn std::error::Error,
+                                "cannot write health file"
+                            );
                         }
                     }
                     Err(e) => {
-                        tracing::warn!(application_event = "worker_heartbeat_failed", error = %e, "worker heartbeat failed")
+                        tracing::warn!(
+                            application_event = "worker_heartbeat_failed",
+                            error = &e as &dyn std::error::Error,
+                            "worker heartbeat failed"
+                        )
                     }
                 }
             }
@@ -322,7 +339,11 @@ impl Worker {
                 let mut listener = match PgListener::connect_with(&pool).await {
                     Ok(l) => l,
                     Err(e) => {
-                        tracing::warn!(application_event = "job_listener_connect_failed", error = %e, "LISTEN connection failed; polling only");
+                        tracing::warn!(
+                            application_event = "job_listener_connect_failed",
+                            error = &e as &dyn std::error::Error,
+                            "LISTEN connection failed; polling only"
+                        );
                         tokio::select! {
                             _ = stop.cancelled() => break,
                             _ = tokio::time::sleep(POLL_INTERVAL * 6) => continue,
@@ -330,7 +351,11 @@ impl Worker {
                     }
                 };
                 if let Err(e) = listener.listen("jobs").await {
-                    tracing::warn!(application_event = "job_listener_subscribe_failed", error = %e, "LISTEN jobs failed; polling only");
+                    tracing::warn!(
+                        application_event = "job_listener_subscribe_failed",
+                        error = &e as &dyn std::error::Error,
+                        "LISTEN jobs failed; polling only"
+                    );
                     tokio::select! {
                         _ = stop.cancelled() => break,
                         _ = tokio::time::sleep(POLL_INTERVAL * 6) => continue,
@@ -346,7 +371,7 @@ impl Worker {
                                 wake.notify_one();
                             }
                             Err(e) => {
-                                tracing::warn!(application_event = "job_listener_disconnected", error = %e, "LISTEN connection lost; reconnecting");
+                                tracing::warn!(application_event = "job_listener_disconnected", error = &e as &dyn std::error::Error, "LISTEN connection lost; reconnecting");
                                 break;
                             }
                         }
@@ -382,14 +407,26 @@ impl Worker {
                     }
                     Ok(_) => {}
                     Err(e) => {
-                        tracing::error!(application_event = "job_reaper_failed", error = %e, "reaper failed")
+                        tracing::error!(
+                            application_event = "job_reaper_failed",
+                            error = &e as &dyn std::error::Error,
+                            "reaper failed"
+                        )
                     }
                 }
                 if let Err(e) = scheduler::tick(&pool, &registry).await {
-                    tracing::error!(application_event = "job_scheduler_failed", error = %e, "scheduler failed");
+                    tracing::error!(
+                        application_event = "job_scheduler_failed",
+                        error = &e as &dyn std::error::Error,
+                        "scheduler failed"
+                    );
                 }
                 if let Err(e) = queue::prune_workers(&pool).await {
-                    tracing::warn!(application_event = "worker_prune_failed", error = %e, "pruning offline workers failed");
+                    tracing::warn!(
+                        application_event = "worker_prune_failed",
+                        error = &e as &dyn std::error::Error,
+                        "pruning offline workers failed"
+                    );
                 }
             }
         })

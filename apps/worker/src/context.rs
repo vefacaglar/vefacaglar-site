@@ -143,7 +143,7 @@ impl JobContext {
             }
         }
         if let Err(e) = queue::insert_log(&self.pool, self.job.id, level, message).await {
-            tracing::warn!(application_event = "job_log_write_failed", job_id = %self.job.id, error = %e, "failed to write job log");
+            tracing::warn!(application_event = "job_log_write_failed", job_id = %self.job.id, error = &e as &dyn std::error::Error, "failed to write job log");
         }
     }
 

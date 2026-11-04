@@ -1,5 +1,10 @@
 export class HttpError extends Error {
-  constructor(public readonly statusCode: number, message: string) {
+  constructor(
+    public readonly statusCode: number,
+    message: string,
+    // Supply a fixed log message whenever the client message contains interpolated data.
+    public readonly logMessage = message,
+  ) {
     super(message);
     this.name = new.target.name;
   }
@@ -12,8 +17,8 @@ export class BadRequestError extends HttpError {
 }
 
 export class UnauthorizedError extends HttpError {
-  constructor(message = "Unauthorized.") {
-    super(401, message);
+  constructor(message = "Unauthorized.", logMessage = message) {
+    super(401, message, logMessage);
   }
 }
 

@@ -48,7 +48,8 @@ export class OidcExchangeHandler {
       if (!claims.emailVerified) {
         // Development only: reveals the subject so an existing account can be linked to it by hand.
         const hint = process.env.NODE_ENV === "production" ? "" : ` (sub: ${claims.subject}, issuer: ${claims.issuer})`;
-        throw new UnauthorizedError(`The identity provider has not verified this email address.${hint}`);
+        const reason = "The identity provider has not verified this email address.";
+        throw new UnauthorizedError(reason + hint, reason);
       }
       if (existing.oidcSubject) {
         throw new UnauthorizedError("This account is already linked to another identity.");

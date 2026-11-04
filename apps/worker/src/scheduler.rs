@@ -4,7 +4,6 @@
 //! `cron` is a manual-only registered job: the scheduler never touches it; it
 //! only runs via the dashboard's "run now".
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -62,7 +61,7 @@ pub fn decide(
 
 /// One scheduler pass. Rows are locked with `FOR UPDATE SKIP LOCKED` so
 /// several workers never enqueue the same run twice.
-pub async fn tick(pool: &PgPool, registry: &Registry) -> Result<()> {
+pub async fn tick(pool: &PgPool, registry: &Registry) -> sqlx::Result<()> {
     let mut tx = pool.begin().await?;
     let due: Vec<DueRecurring> = sqlx::query_as(
         "SELECT id, type, cron, payload, next_run_at FROM recurring_jobs \

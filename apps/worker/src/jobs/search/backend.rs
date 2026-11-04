@@ -127,8 +127,13 @@ impl TypesenseClient {
         if status.is_success() {
             return Ok(response);
         }
+        let http_error = response.error_for_status_ref().err();
         let body = response.text().await.unwrap_or_default();
-        bail!("{what}: HTTP {status}: {}", truncate(&body, 300))
+        let detail = format!("{what}: HTTP {status}: {}", truncate(&body, 300));
+        match http_error {
+            Some(error) => Err(anyhow!(error).context(detail)),
+            None => Err(anyhow!(detail)),
+        }
     }
 }
 

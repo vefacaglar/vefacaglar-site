@@ -29,11 +29,11 @@ const start = async () => {
           level: "error",
           event: "search_collection_bootstrap_failed",
           message: "Search collection bootstrap failed",
-        });
+        }, app.log, err);
       });
   } catch (err) {
     console.error(err);
-    applicationLogs.write({ level: "error", event: "api_start_failed", message: "API failed to start" });
+    applicationLogs.write({ level: "error", event: "api_start_failed", message: "API failed to start" }, app.log, err);
     await applicationLogs.close();
     process.exit(1);
   }

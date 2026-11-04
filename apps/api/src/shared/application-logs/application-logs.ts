@@ -1,5 +1,7 @@
-import type { FastifyInstance } from "fastify";
+import { STATUS_CODES } from "node:http";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import schema from "./application_logs_v1.json";
+import { describeLogError } from "./error-details";
 
 interface LogEvent {
   level: "info" | "warning" | "error";
@@ -123,12 +125,18 @@ function configureSink(logger: FastifyInstance["log"]): TypesenseLogSink | undef
 export function installApplicationLogs(app: FastifyInstance) {
   const environment = process.env.LOG_ENVIRONMENT?.trim() || process.env.NODE_ENV || "development";
   const sink = configureSink(app.log);
+  const requestErrors = new WeakMap<FastifyRequest, Error>();
 
-  function write(event: LogEvent, logger = app.log): void {
-    const document = { ...event, timestamp: Date.now(), service, environment };
-    const { level, message, ...fields } = document;
+  function write(event: LogEvent, logger = app.log, error?: unknown): void {
+    const { reason, ...details } = describeLogError(error);
+    const explanation = reason ?? (details.error_type && (
+      details.source ? `${details.error_type} at ${details.source}` : details.error_type
+    ));
+    const message = explanation ? `${explanation} | ${event.message}` : event.message;
+    const document = { ...event, ...details, message, timestamp: Date.now(), service, environment };
+    const { level, message: logMessage, ...fields } = document;
     const method = level === "warning" ? "warn" : level;
-    logger[method](fields, message);
+    logger[method](fields, logMessage);
     sink?.enqueue(document);
   }
 
@@ -136,20 +144,27 @@ export function installApplicationLogs(app: FastifyInstance) {
     reply.header("X-Request-Id", request.id);
   });
 
+  app.addHook("onError", async (request, _reply, error) => {
+    requestErrors.set(request, error);
+  });
+
   app.addHook("onResponse", async (request, reply) => {
     const status = reply.statusCode;
     const serverError = status >= 500;
     if (!serverError && ![400, 401, 403, 429].includes(status)) return;
 
+    const route = request.routeOptions.url;
+    const statusText = STATUS_CODES[status];
+    const description = statusText ? `HTTP ${status} ${statusText}` : `HTTP ${status}`;
     write({
       level: serverError ? "error" : "warning",
       event: serverError ? "http_request_failed" : "http_request_rejected",
-      message: serverError ? "API request failed" : "API request rejected",
+      message: `${request.method}${route ? ` ${route}` : ""} returned ${description}`,
       request_id: request.id,
       http_method: request.method,
-      http_route: request.routeOptions.url,
+      http_route: route,
       http_status: status,
-    }, request.log);
+    }, request.log, requestErrors.get(request));
   });
 
   const close = async () => sink?.close();

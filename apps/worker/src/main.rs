@@ -81,46 +81,8 @@ impl StartupError {
             Self::Connect(error) => ("Could not connect to Postgres", error),
             Self::Register(error) => ("Could not register the worker in Postgres", error),
         };
-        let (code, detail) = match error {
-            sqlx::Error::Configuration(_) => (
-                "invalid_database_url",
-                "invalid database connection settings",
-            ),
-            sqlx::Error::Tls(_) => ("database_tls_failed", "TLS handshake failed"),
-            sqlx::Error::Io(_) => ("database_io_failed", "network communication failed"),
-            sqlx::Error::PoolTimedOut => (
-                "database_timeout",
-                "timed out waiting for a database connection",
-            ),
-            sqlx::Error::Database(error) => {
-                let state = error.code();
-                let detail = match state.as_deref() {
-                    Some("28P01" | "28000") => "Postgres rejected authentication",
-                    Some("3D000") => "the configured database does not exist",
-                    Some("42P01") => "a required table is missing; check database migrations",
-                    Some("42703") => "a required column is missing; check database migrations",
-                    Some("42501") => "the database role lacks the required permissions",
-                    _ => "Postgres rejected the operation",
-                };
-                let code = state
-                    .filter(|code| {
-                        code.len() == 5
-                            && code
-                                .bytes()
-                                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
-                    })
-                    .map_or_else(
-                        || "database_error".into(),
-                        |code| format!("sqlstate_{code}"),
-                    );
-                return (code, format!("{stage}: {detail}."));
-            }
-            _ => (
-                "database_error",
-                "unexpected database error; see the worker's container logs",
-            ),
-        };
-        (code.into(), format!("{stage}: {detail}."))
+        let (code, detail) = telemetry::database_error(error);
+        (code, format!("{stage}: {detail}."))
     }
 }
 

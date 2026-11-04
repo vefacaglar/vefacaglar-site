@@ -11,6 +11,8 @@ use tracing::field::{Field, Visit};
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 
+use super::error_details::describe_error;
+
 const COLLECTION: &str = "application_logs_v1";
 const SCHEMA: &str = include_str!("../application_logs_v1.json");
 const SERVICE: &str = "vefacaglar-site-worker";
@@ -28,6 +30,8 @@ struct LogDocument {
     error_code: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     response_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source: Option<String>,
 }
 
 #[derive(Default)]
@@ -54,6 +58,14 @@ impl Visit for LogFields {
             self.message = Some(format!("{value:?}"));
         }
     }
+
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        if field.name() == "error" {
+            let (code, reason) = describe_error(value);
+            self.error_code = Some(code);
+            self.response_message = Some(reason.to_owned());
+        }
+    }
 }
 
 pub(super) struct LogLayer {
@@ -78,9 +90,13 @@ impl<S: Subscriber> Layer<S> for LogLayer {
         // Raw error and other tracing fields stay local.
         let mut fields = LogFields::default();
         event.record(&mut fields);
-        let (Some(event), Some(message)) = (fields.event, fields.message) else {
+        let (Some(event), Some(mut message)) = (fields.event, fields.message) else {
             return;
         };
+        if let Some(reason) = &fields.response_message {
+            message.push_str(": ");
+            message.push_str(reason);
+        }
         let document = LogDocument {
             timestamp: chrono::Utc::now().timestamp_millis(),
             service: SERVICE,
@@ -90,6 +106,12 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             message,
             error_code: fields.error_code,
             response_message: fields.response_message,
+            source: (level != "info")
+                .then(|| {
+                    let (file, line) = metadata.file().zip(metadata.line())?;
+                    Some(format!("{file}:{line}"))
+                })
+                .flatten(),
         };
         if let Err(mpsc::error::TrySendError::Full(_)) = self.sender.try_send(document)
             && !self.overflow_reported.swap(true, Ordering::Relaxed)
@@ -226,5 +248,41 @@ impl LogSink {
             .await
             .ok()?;
         Some(response.status())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tracing_subscriber::prelude::*;
+
+    #[test]
+    fn runtime_warning_exports_safe_cause_in_message() {
+        let (sender, mut receiver) = mpsc::channel(1);
+        let subscriber = tracing_subscriber::registry().with(LogLayer {
+            sender,
+            environment: "test".into(),
+            overflow_reported: AtomicBool::new(false),
+        });
+        tracing::subscriber::with_default(subscriber, || {
+            let error = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "private path");
+            tracing::warn!(
+                application_event = "health_file_write_failed",
+                error = &error as &dyn std::error::Error,
+                "cannot write health file"
+            );
+        });
+
+        let event = receiver.try_recv().unwrap();
+        assert_eq!(event.error_code.as_deref(), Some("io_permission_denied"));
+        assert_eq!(
+            event.message,
+            "cannot write health file: the worker lacks filesystem permissions"
+        );
+        assert!(
+            !serde_json::to_string(&event)
+                .unwrap()
+                .contains("private path")
+        );
     }
 }
