@@ -1,0 +1,471 @@
+/* ==========================================================================
+   Profile games, list view: a plain table. Titles on the left, figures in
+   tabular numerals on the right, dividers between entries. An open entry is
+   marked with an accent bar on its left edge and expands below the row.
+   ========================================================================== */
+
+/* Status tones: shared by the row marker and the chip in the panel. */
+.group[data-status="playing"] {
+  --tone: var(--info);
+}
+
+.group[data-status="completed"] {
+  --tone: var(--success);
+}
+
+.group[data-status="backlog"] {
+  --tone: var(--muted);
+}
+
+.group[data-status="on_hold"] {
+  --tone: var(--warning);
+}
+
+.group[data-status="abandoned"] {
+  --tone: var(--faint);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* ---------- Head ---------- */
+
+.table thead th {
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table thead .headGame {
+  padding-left: 34px;
+}
+
+.table thead .headFigure {
+  width: 1%;
+  padding-left: 36px;
+  text-align: right;
+}
+
+/* The column the list is ordered by: lit, with the shelf's square marker. */
+.table thead .headSorted {
+  color: var(--text-heading);
+}
+
+.headSorted::after {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 8px;
+  vertical-align: 0.2em;
+  background: var(--accent);
+}
+
+.toggleHead {
+  width: 1%;
+}
+
+/* ---------- Rows ---------- */
+
+.row {
+  cursor: pointer;
+}
+
+.row > th,
+.row > td {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  transition: background-color 0.15s ease;
+}
+
+.group:hover .row > th,
+.group:hover .row > td {
+  background: var(--surface);
+}
+
+.titleCell {
+  position: relative;
+  font-weight: 400;
+  text-align: left;
+}
+
+.row > .titleCell {
+  padding-left: 34px;
+}
+
+/* Status square, centred on the title's first line. */
+.marker {
+  position: absolute;
+  left: 12px;
+  top: 19px;
+  width: 6px;
+  height: 6px;
+  background: var(--tone);
+}
+
+.titleBlock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-width: 0;
+}
+
+.titleLink {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-heading);
+  text-decoration: none;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.titleLink:hover {
+  text-decoration-line: underline;
+  text-decoration-color: var(--accent);
+}
+
+.titleLink:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.platform {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.finished {
+  flex-basis: 100%;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.row > .figure {
+  padding-left: 36px;
+  /* Optical: sit on the title's baseline rather than the cell's top. */
+  padding-top: 19px;
+}
+
+.figure {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-heading);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  margin-left: 1px;
+  color: var(--faint);
+}
+
+.dash {
+  color: var(--faint);
+}
+
+.editCell {
+  width: 1%;
+}
+
+.row > .editCell {
+  padding-left: 22px;
+}
+
+.toggleCell {
+  width: 1%;
+}
+
+.row > .toggleCell {
+  padding-left: 6px;
+  padding-right: 4px;
+}
+
+/* Square icon buttons: quiet until pointed at. */
+.iconButton,
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 1px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.iconButton:hover,
+.toggle:hover {
+  color: var(--text-heading);
+  border-color: var(--border-strong);
+}
+
+.iconButton:focus-visible,
+.toggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Plus that folds into a minus. */
+.toggleGlyph {
+  position: relative;
+  width: 11px;
+  height: 11px;
+}
+
+.toggleGlyph::before,
+.toggleGlyph::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 11px;
+  height: 1px;
+  background: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.toggleGlyph::after {
+  transform: rotate(90deg);
+}
+
+.toggle[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--border-strong);
+}
+
+.toggle[aria-expanded="true"] .toggleGlyph::after {
+  transform: rotate(0deg);
+}
+
+/* ---------- Open entry ---------- */
+
+.group[data-open] .row > th,
+.group[data-open] .row > td,
+.detailCell {
+  background: var(--surface);
+}
+
+.group[data-open] .row > th,
+.group[data-open] .row > td {
+  border-bottom-color: transparent;
+}
+
+/* Accent bar down the left edge of the open entry, row and panel together. */
+.group[data-open] .titleCell,
+.detailCell {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.detailRow[hidden] {
+  display: none;
+}
+
+.detailCell {
+  padding: 0 4px 0 34px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail {
+  padding: 16px 0 20px;
+  border-top: 1px solid var(--border);
+  animation: unfold 0.22s ease-out;
+}
+
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 22px 32px;
+  margin: 0;
+  padding-right: 32px;
+}
+
+.fact {
+  min-width: 0;
+}
+
+.fact dt {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fact dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-heading);
+}
+
+.fact time[title] {
+  cursor: help;
+  text-decoration: underline dotted var(--border-strong);
+  text-underline-offset: 4px;
+}
+
+.factFigure {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 10px 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  background: var(--tone);
+}
+
+.rated {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ratedLine {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ratedWho {
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notRated {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.detailEdit {
+  margin-top: 18px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail {
+    animation: none;
+  }
+
+  .toggleGlyph::before,
+  .toggleGlyph::after {
+    transition: none;
+  }
+}
+
+/* ---------- Small screens: title, then two compact figures and the toggle ---------- */
+
+@media (max-width: 720px) {
+  .table thead .headGame,
+  .row > .titleCell {
+    padding-left: 20px;
+  }
+
+  .table thead .headFigure,
+  .row > .figure {
+    padding-left: 14px;
+  }
+
+  .marker {
+    left: 4px;
+    top: 23px;
+    width: 6px;
+    height: 6px;
+  }
+
+  .titleLink {
+    font-size: 14px;
+  }
+
+  .platform {
+    flex-basis: 100%;
+    font-size: 13px;
+  }
+
+  .row > .figure {
+    padding-top: 17px;
+    font-size: 13px;
+  }
+
+  /* The edit shortcut moves into the open panel. */
+  .editCell {
+    display: none;
+  }
+
+  .row > .toggleCell {
+    padding-left: 2px;
+    padding-right: 0;
+  }
+
+  .detailCell {
+    padding-left: 20px;
+  }
+
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
+    padding-right: 12px;
+  }
+}

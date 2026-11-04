@@ -7,7 +7,7 @@
 
 .searchIcon {
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
@@ -17,20 +17,19 @@
 
 .searchInput {
   width: 100%;
-  padding: 11px 14px 11px 40px;
+  padding: 9px 12px 9px 36px;
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--surface);
   color: var(--text-heading);
   font-family: inherit;
-  font-size: 16px;
+  font-size: 14px;
   outline: none;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .searchInput::placeholder {
   color: var(--muted);
-  font-style: italic;
 }
 
 .searchInput:hover {
@@ -48,9 +47,8 @@
 
 .noResults {
   margin: 0;
-  padding: 48px 0;
-  font-size: 19px;
-  font-style: italic;
+  padding: 32px 0;
+  font-size: 15px;
   color: var(--muted);
 }
 
@@ -61,14 +59,14 @@
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-  gap: 48px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+  gap: 32px 20px;
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   text-decoration: none;
   color: var(--text);
   transition: opacity 0.25s ease;
@@ -132,7 +130,7 @@
   padding: 3px 7px;
   background: var(--bg);
   color: var(--text-heading);
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
@@ -151,9 +149,8 @@
 
 .coverFallback {
   padding: 18px;
-  font-size: 19px;
-  font-style: italic;
-  line-height: 1.2;
+  font-size: 14px;
+  line-height: 1.3;
   color: var(--muted);
   text-align: center;
   overflow-wrap: anywhere;
@@ -162,13 +159,13 @@
 .caption {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1.35;
   color: var(--text-heading);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -177,7 +174,7 @@
 }
 
 .year {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -186,8 +183,8 @@
 /* ---------- Pagination (shared component, library look) ---------- */
 
 nav.pagination {
-  margin-top: 72px;
-  padding-top: 28px;
+  margin-top: 48px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
 }
 
@@ -210,7 +207,7 @@ nav.pagination > span {
 }
 
 nav.pagination > div {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--muted);
 }
@@ -221,30 +218,29 @@ nav.pagination > div {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
-  padding: 40px 0 24px;
+  gap: 14px;
+  padding: 32px 0 16px;
 }
 
 .notFoundCode {
-  margin: 0 0 0 -0.04em;
-  font-size: clamp(88px, 14vw, 168px);
-  font-weight: 300;
-  line-height: 0.9;
-  letter-spacing: -0.03em;
+  margin: 0;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
 .notFoundText {
   margin: 0 0 8px 0;
-  font-size: 20px;
-  font-style: italic;
+  font-size: 15px;
   color: var(--muted);
 }
 
 @media (max-width: 720px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 32px 16px;
+    gap: 24px 14px;
   }
 
   .card {
@@ -252,6 +248,6 @@ nav.pagination > div {
   }
 
   .title {
-    font-size: 15px;
+    font-size: 14px;
   }
 }

@@ -95,6 +95,9 @@ export default async function GamesDashboard(props: PageProps) {
         <Link href="/dashboard/games" className={`${styles.tab} ${styles.activeTab}`}>
           {ds.nav.tabs.games}
         </Link>
+        <Link href="/dashboard/jobs" className={styles.tab}>
+          {ds.nav.tabs.jobs}
+        </Link>
       </div>
 
       <GamesDashboardClient

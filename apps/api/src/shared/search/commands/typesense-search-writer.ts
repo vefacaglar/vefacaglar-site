@@ -5,7 +5,6 @@ import type { Publisher } from "../../../modules/catalog/publishers.repository.i
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
 import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../../modules/catalog/themes.repository.interface";
-import type { PostWithAuthor } from "../../../modules/posts/posts.repository";
 import {
   DEVELOPERS_REPOSITORY,
   PUBLISHERS_REPOSITORY,
@@ -23,7 +22,7 @@ import type { IThemesRepository } from "../../../modules/catalog/themes.reposito
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";
-import { buildAllCollectionSchemas, LEGACY_SEARCH_COLLECTIONS, SEARCH_COLLECTIONS } from "../collections";
+import { buildAllCollectionSchemas, SEARCH_COLLECTIONS } from "../collections";
 import type { ISearchIndexWriter } from "./search-writer.interface";
 import { toGameDoc } from "../mappers/game.mapper";
 import { toPostDoc } from "../mappers/post.mapper";
@@ -40,7 +39,6 @@ import {
   type ThemeDoc,
 } from "../mappers/lookup.mapper";
 
-const IMPORT_BATCH_SIZE = 100;
 // One crawl page (500 games) fits in a single bulk index pass.
 const BULK_INDEX_SIZE = 500;
 
@@ -283,99 +281,50 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
   }
 
-  // --- Reindex ---
+  // --- Collection bootstrap ---
 
-  async reindexAll(options: { drop: boolean }): Promise<void> {
-    if (!this.enabled) {
-      console.warn("[search] reindex skipped: typesense is not configured");
-      return;
-    }
-    if (options.drop) {
-      await this.dropLegacyCollections();
-    }
+  /**
+   * Creates missing collections; never deletes or recreates anything. Full
+   * reindexing (including zero-downtime alias swaps) is owned by the worker's
+   * `search.reindex` job (docs/jobs-worker.md), so a name that resolves to an
+   * alias counts as present and no real collection is ever created over it.
+   */
+  async ensureCollections(): Promise<void> {
+    if (!this.enabled) return;
     for (const schema of buildAllCollectionSchemas()) {
       try {
-        if (options.drop) {
-          try {
-            await this.typesense.collections(schema.name).delete();
-          } catch {
-            // Collection may not exist; ignore.
-          }
-        }
-        try {
-          await this.typesense.collections().create(schema);
-        } catch (err) {
-          const msg = (err as Error).message ?? "";
-          if (msg.includes("already exists") || msg.includes("409")) {
-            // already exists; ok
-          } else {
-            throw err;
-          }
-        }
+        if (await this.aliasExists(schema.name)) continue;
+        if (await this.collectionExists(schema.name)) continue;
+        await this.typesense.collections().create(schema);
+        console.log(`[search] created collection ${schema.name}`);
       } catch (err) {
-        console.error(`[search] failed to create collection ${schema.name}:`, (err as Error).message);
+        const status = (err as { httpStatus?: number }).httpStatus;
+        const msg = (err as Error).message ?? "";
+        // Created concurrently (another instance or the worker); nothing to do.
+        if (status === 409 || msg.includes("already exists")) continue;
+        console.error(`[search] failed to ensure collection ${schema.name}:`, msg);
       }
     }
     console.log("[search] collections ready");
-
-    // Games are read and imported one page at a time, so a large catalog never sits in memory.
-    let gameCount = 0;
-    for (let page = 1; ; page++) {
-      const { items: slice } = await this.gamesRepo.list({ page, limit: IMPORT_BATCH_SIZE });
-      await this.bulkImportDocs(SEARCH_COLLECTIONS.games, slice.map(toGameDoc));
-      gameCount += slice.length;
-      if (slice.length < IMPORT_BATCH_SIZE) break;
-    }
-    console.log(`[search] reindexed ${gameCount} games`);
-
-    const allPublishedPosts = await this.fetchAllPublishedPosts();
-    let postCount = 0;
-    for (let i = 0; i < allPublishedPosts.length; i += IMPORT_BATCH_SIZE) {
-      const slice = allPublishedPosts.slice(i, i + IMPORT_BATCH_SIZE);
-      await this.bulkImportDocs(SEARCH_COLLECTIONS.posts, slice.map(toPostDoc));
-      postCount += slice.length;
-    }
-    console.log(`[search] reindexed ${postCount} published posts`);
-
-    for (const builder of this.lookupReindexBuilders()) {
-      const allRows = await builder.fetchAll();
-      let count = 0;
-      for (let i = 0; i < allRows.length; i += IMPORT_BATCH_SIZE) {
-        const slice = allRows.slice(i, i + IMPORT_BATCH_SIZE);
-        const docs = slice.map((row) => this.toLookupDoc(builder.entityName, row));
-        await this.bulkImportDocs(LOOKUP_COLLECTIONS[builder.entityName], docs);
-        count += slice.length;
-      }
-      console.log(`[search] reindexed ${count} ${builder.entityName}s`);
-    }
   }
 
-  /** Deletes the collections of the removed Turkish index (`games_tr`, …); missing ones are skipped. */
-  private async dropLegacyCollections(): Promise<void> {
-    for (const name of LEGACY_SEARCH_COLLECTIONS) {
-      try {
-        await this.typesense.collections(name).delete();
-        console.log(`[search] dropped legacy collection ${name}`);
-      } catch (err) {
-        const status = (err as { httpStatus?: number }).httpStatus;
-        if (status === 404) continue;
-        console.error(`[search] failed to drop legacy collection ${name}:`, (err as Error).message);
-      }
-    }
+  private async aliasExists(name: string): Promise<boolean> {
+    return this.exists(() => this.typesense.aliases(name).retrieve());
   }
 
-  private async fetchAllPublishedPosts(): Promise<PostWithAuthor[]> {
-    const pageSize = 500;
-    let page = 1;
-    const all: PostWithAuthor[] = [];
-    while (true) {
-      const { items } = await this.postsRepo.listRawWithAuthor({ status: "published", page, limit: pageSize });
-      for (const p of items) all.push(p);
-      if (items.length < pageSize) break;
-      page++;
-      if (page > 50) break;
+  private async collectionExists(name: string): Promise<boolean> {
+    return this.exists(() => this.typesense.collections(name).retrieve());
+  }
+
+  /** `true` if the lookup succeeds, `false` on 404; other errors propagate. */
+  private async exists(lookup: () => Promise<unknown>): Promise<boolean> {
+    try {
+      await lookup();
+      return true;
+    } catch (err) {
+      if ((err as { httpStatus?: number }).httpStatus === 404) return false;
+      throw err;
     }
-    return all;
   }
 
   // --- Private: bulk import helper ---
@@ -401,41 +350,5 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     } catch (err) {
       console.error(`[search] bulk import ${collectionName} failed:`, (err as Error).message);
     }
-  }
-
-  private *lookupReindexBuilders(): Generator<{
-    entityName: LookupEntity;
-    fetchAll: () => Promise<LookupRow[]>;
-  }> {
-    const pageSize = 1000;
-    const fetchRows = async <T>(list: (p: { page?: number; limit?: number }) => Promise<{ items: T[] }>): Promise<T[]> => {
-      const all: T[] = [];
-      for (let page = 1; ; page++) {
-        const { items } = await list({ page, limit: pageSize });
-        all.push(...items);
-        if (items.length < pageSize) return all;
-      }
-    };
-
-    yield {
-      entityName: "developer",
-      fetchAll: () => fetchRows((p) => this.developersRepo.list(p)),
-    };
-    yield {
-      entityName: "publisher",
-      fetchAll: () => fetchRows((p) => this.publishersRepo.list(p)),
-    };
-    yield {
-      entityName: "genre",
-      fetchAll: () => fetchRows((p) => this.genresRepo.list(p)),
-    };
-    yield {
-      entityName: "platform",
-      fetchAll: () => fetchRows((p) => this.platformsRepo.list(p)),
-    };
-    yield {
-      entityName: "theme",
-      fetchAll: () => fetchRows((p) => this.themesRepo.list(p)),
-    };
   }
 }

@@ -7,7 +7,7 @@
   position: relative;
   isolation: isolate;
   margin-top: calc(-1 * var(--shell-pad-top, 56px));
-  padding-top: 48px;
+  padding-top: 36px;
 }
 
 .band::before {
@@ -27,25 +27,25 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas: "mono identity tools";
-  align-items: end;
-  gap: 32px;
-  padding-bottom: 36px;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 24px;
 }
 
 /* Monogram plate: the name's first letter, like a stamp on a library card. */
 .monogram {
   grid-area: mono;
-  width: 112px;
+  width: 64px;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
-  font-size: 64px;
-  font-weight: 400;
+  font-size: 26px;
+  font-weight: 600;
   line-height: 1;
-  color: var(--accent);
+  color: var(--text-heading);
   user-select: none;
 }
 
@@ -55,11 +55,11 @@
 }
 
 .displayName {
-  margin: 0 0 10px -0.02em;
-  font-size: clamp(40px, 5.6vw, 76px);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  margin: 0 0 4px 0;
+  font-size: clamp(24px, 2.6vw, 30px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
@@ -70,7 +70,7 @@
   align-items: center;
   gap: 8px 16px;
   margin: 0;
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--muted);
 }
@@ -81,10 +81,11 @@
   gap: 6px;
   padding: 2px 8px;
   border: 1px solid var(--border-strong);
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 14px;
+  font-family: inherit;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--text);
+  font-weight: 500;
 }
 
 .ownerTools {
@@ -94,7 +95,7 @@
 }
 
 .settingsLink {
-  font-size: 15px;
+  font-size: 13px;
 }
 
 /* ---------- Tabs (sit on the band's bottom rule) ---------- */
@@ -104,7 +105,7 @@
   position: relative;
   z-index: 1;
   display: flex;
-  gap: 36px;
+  gap: 28px;
   margin-bottom: -1px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -114,13 +115,14 @@
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  padding: 14px 0;
-  border-bottom: 1px solid transparent;
-  font-size: 17px;
+  padding: 12px 0;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
   transition: color 0.15s ease, border-color 0.15s ease;
+  font-weight: 500;
 }
 
 .tab:hover {
@@ -139,14 +141,14 @@
 }
 
 .tabCount {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
 .content {
-  padding-top: 52px;
+  padding-top: 36px;
 }
 
 /* ---------- Figures ---------- */
@@ -154,15 +156,15 @@
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0 0 72px 0;
+  margin: 0 0 48px 0;
 }
 
 /* Value, label, then the meter; the label comes first in the markup (dt before dd). */
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 28px;
+  gap: 4px;
+  padding: 0 24px;
   border-left: 1px solid var(--border);
 }
 
@@ -173,18 +175,17 @@
 
 .statLabel {
   order: 2;
-  font-size: 15px;
-  font-style: italic;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .statValue {
   order: 1;
   margin: 0;
-  font-size: clamp(36px, 4.2vw, 54px);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
   font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;
@@ -192,15 +193,16 @@
 
 .statUnit {
   margin-left: 4px;
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   letter-spacing: 0;
   color: var(--muted);
+  font-weight: 400;
 }
 
 .statMeter {
   order: 3;
-  margin: 6px 0 0 0;
+  margin: 8px 0 0 0;
 }
 
 .statBar {
@@ -220,12 +222,12 @@
 /* ---------- Sections ---------- */
 
 .section {
-  padding-top: 22px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
 }
 
 .section + .section {
-  margin-top: 72px;
+  margin-top: 48px;
 }
 
 .sectionHead {
@@ -233,20 +235,20 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 28px;
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
   color: var(--text-heading);
 }
 
 .sectionLink {
-  font-size: 15px;
+  font-size: 13px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
@@ -267,12 +269,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 2px 12px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .status {
-  font-style: italic;
   color: var(--text);
 }
 
@@ -283,7 +284,7 @@
 
 /* Completion date, set like the year on the main shelf. */
 .cardDate {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -298,8 +299,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 14px 40px;
-  margin-bottom: 40px;
-  padding-bottom: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -314,11 +315,12 @@
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
   transition: color 0.15s ease;
+  font-weight: 500;
 }
 
 /* Square marker: outlined on hover, filled when chosen. Always takes its space so labels don't shift. */
@@ -362,11 +364,10 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px 18px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .sortLabel {
-  font-style: italic;
   color: var(--faint);
 }
 
@@ -394,29 +395,88 @@
   padding: 8px 0 24px;
 }
 
+/* Sort and view sit together at the end of the bar. */
+.shelfTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 28px;
+}
+
+/* Grid / list: a two-cell segmented control, square, the chosen cell raised. */
+.viewToggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+}
+
+.viewOption {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.viewOption + .viewOption {
+  border-left: 1px solid var(--border-strong);
+}
+
+.viewOption:hover {
+  color: var(--text-heading);
+  background: var(--surface);
+}
+
+.viewOptionActive,
+.viewOptionActive:hover {
+  color: var(--text-heading);
+  background: var(--surface-2);
+}
+
+.viewOption:focus-visible {
+  z-index: 1;
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.viewIcon {
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+.viewOptionActive .viewIcon {
+  fill: var(--accent);
+}
+
 /* ---------- Empty, private and missing states ---------- */
 
 .empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
   padding: 8px 0 24px;
 }
 
 .emptyTitle {
   margin: 0;
-  font-size: 32px;
-  font-weight: 400;
-  line-height: 1.15;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
   letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 
 .muted {
   margin: 0;
-  font-size: 18px;
-  font-style: italic;
+  font-size: 14px;
   color: var(--muted);
 }
 
@@ -437,17 +497,17 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 14px;
-  padding: 24px 0 32px;
+  gap: 10px;
+  padding: 16px 0 24px;
 }
 
 .privatePlate {
-  width: 112px;
+  width: 64px;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   color: var(--muted);
@@ -455,18 +515,18 @@
 
 .privateHandle {
   margin: 0;
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--muted);
 }
 
 .privateTitle {
   max-width: 16ch;
-  margin: 0 0 4px -0.02em;
-  font-size: clamp(40px, 5.6vw, 72px);
-  font-weight: 400;
-  line-height: 1.02;
-  letter-spacing: -0.02em;
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
 }
 
@@ -474,16 +534,16 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
-  padding: 40px 0 24px;
+  gap: 14px;
+  padding: 32px 0 16px;
 }
 
 .notFoundCode {
-  margin: 0 0 0 -0.04em;
-  font-size: clamp(88px, 14vw, 168px);
-  font-weight: 300;
-  line-height: 0.9;
-  letter-spacing: -0.03em;
+  margin: 0;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
@@ -494,8 +554,8 @@
 }
 
 .backLink {
-  margin: 0 0 24px 0;
-  font-size: 15px;
+  margin: 0 0 16px 0;
+  font-size: 13px;
 }
 
 .backLink a {
@@ -508,23 +568,23 @@
 }
 
 .settingsTitle {
-  margin: 0 0 40px -0.02em;
-  font-size: clamp(40px, 5vw, 64px);
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  margin: 0 0 28px 0;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
 }
 
 .settingsForm {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 22px;
 }
 
 .choiceGroup {
   margin: 0;
-  padding: 22px 0 0 0;
+  padding: 20px 0 0 0;
   border: none;
   border-top: 1px solid var(--border);
   min-width: 0;
@@ -535,11 +595,12 @@
   float: left;
   width: 100%;
   padding: 0;
-  margin-bottom: 18px;
-  font-size: 28px;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+  font-size: 16px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
   color: var(--text-heading);
+  font-weight: 600;
 }
 
 /* Segmented choice: two square tiles backed by real radio inputs. */
@@ -553,7 +614,7 @@
 .choice {
   position: relative;
   display: block;
-  padding: 20px 22px;
+  padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -592,9 +653,10 @@
 .choiceTitle {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  font-size: 19px;
+  gap: 10px;
+  font-size: 15px;
   color: var(--text-heading);
+  font-weight: 500;
 }
 
 /* Square indicator, filled when chosen. */
@@ -613,9 +675,8 @@
 }
 
 .choiceHint {
-  padding-left: 22px;
-  font-size: 15px;
-  font-style: italic;
+  padding-left: 20px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--muted);
 }
@@ -627,22 +688,21 @@
 }
 
 .settingsStatus {
-  font-size: 15px;
-  font-style: italic;
+  font-size: 13px;
   color: var(--success);
 }
 
 .publicLink {
-  padding-top: 22px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
 }
 
 .publicLink .settingsLabel {
   float: none;
   margin-bottom: 12px;
-  font-size: 15px;
-  font-style: italic;
+  font-size: 13px;
   color: var(--muted);
+  font-weight: 400;
 }
 
 .publicLinkRow {
@@ -655,7 +715,7 @@
 .publicUrl {
   flex: 1 1 260px;
   min-width: 0;
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--text-heading);
   overflow-wrap: anywhere;
@@ -665,7 +725,7 @@
 
 @media (max-width: 720px) {
   .band {
-    padding-top: 28px;
+    padding-top: 24px;
   }
 
   .profileHeader {
@@ -673,8 +733,8 @@
     grid-template-areas:
       "mono identity"
       "tools tools";
-    gap: 18px 20px;
-    padding-bottom: 24px;
+    gap: 14px 16px;
+    padding-bottom: 18px;
   }
 
   /* Visitors see no owner tools, so no empty second row. */
@@ -683,36 +743,36 @@
   }
 
   .monogram {
-    width: 72px;
-    font-size: 42px;
+    width: 52px;
+    font-size: 22px;
   }
 
   .displayName {
-    font-size: clamp(32px, 9vw, 48px);
-    margin-bottom: 8px;
+    font-size: 22px;
+    margin-bottom: 2px;
   }
 
   .tabs {
-    gap: 28px;
+    gap: 22px;
   }
 
   .tab {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .content {
-    padding-top: 32px;
+    padding-top: 24px;
   }
 
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-bottom: 40px;
+    margin-bottom: 32px;
     border-top: 1px solid var(--border);
   }
 
   .stat,
   .stat:first-child {
-    padding: 20px 16px;
+    padding: 14px 14px;
   }
 
   .stat:nth-child(odd) {
@@ -735,11 +795,11 @@
   }
 
   .statValue {
-    font-size: 38px;
+    font-size: 22px;
   }
 
   .section + .section {
-    margin-top: 56px;
+    margin-top: 40px;
   }
 
   .shelfBar {
@@ -759,14 +819,18 @@
     scrollbar-width: none;
   }
 
+  .shelfTools {
+    justify-content: space-between;
+  }
+
   .sectionTitle,
   .settingsLabel {
-    font-size: 24px;
+    font-size: 16px;
   }
 
   .privatePlate {
-    width: 84px;
-    margin-bottom: 8px;
+    width: 56px;
+    margin-bottom: 6px;
   }
 
   .choices {

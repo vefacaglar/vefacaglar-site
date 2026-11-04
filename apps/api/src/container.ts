@@ -31,6 +31,10 @@ import { GAME_LOGS_REPOSITORY } from "./modules/games/games.tokens";
 import { DrizzleGameLogsRepository } from "./modules/games/game-logs.repository";
 import { PACKAGES_REPOSITORY } from "./modules/packages/packages.tokens";
 import { DrizzlePackagesRepository } from "./modules/packages/packages.repository";
+import { JOBS_REPOSITORY, JOB_EVENTS_LISTENER, JOB_STREAM_TOKEN_CONFIG, JOB_STREAM_TOKEN_SERVICE } from "./modules/jobs/jobs.tokens";
+import { DrizzleJobsRepository } from "./modules/jobs/jobs.repository";
+import { PgJobEventsListener } from "./modules/jobs/job-events.listener";
+import { JobStreamTokenService, readJobStreamTokenConfig } from "./modules/jobs/job-stream-token.service";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
 import { createTypesenseClient, createDisabledTypesenseClient, readTypesenseConfig } from "./shared/search/typesense.client";
 import { createRedisClient, createDisabledRedisClient, readRedisConfig } from "./shared/search/redis.client";
@@ -60,6 +64,11 @@ container.registerSingleton(IGDB_CLIENT, IgdbClient);
 container.registerSingleton(HLTB_CLIENT, HltbClient);
 container.registerSingleton(GAME_LOGS_REPOSITORY, DrizzleGameLogsRepository);
 container.registerSingleton(PACKAGES_REPOSITORY, DrizzlePackagesRepository);
+container.registerSingleton(JOBS_REPOSITORY, DrizzleJobsRepository);
+// Process-wide LISTEN job_events; connects lazily on the first stream subscriber.
+container.registerSingleton(JOB_EVENTS_LISTENER, PgJobEventsListener);
+container.registerInstance(JOB_STREAM_TOKEN_CONFIG, readJobStreamTokenConfig());
+container.registerSingleton(JOB_STREAM_TOKEN_SERVICE, JobStreamTokenService);
 
 const typesenseConfig = readTypesenseConfig();
 container.registerInstance(TYPESENSE_CONFIG, typesenseConfig);

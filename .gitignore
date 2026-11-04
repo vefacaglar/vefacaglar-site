@@ -3,6 +3,7 @@ node_modules/
 .pnpm-store/
 
 # build outputs
+target/
 .next/
 out/
 dist/
@@ -36,6 +37,12 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Rust (Cargo.lock stays committed: apps/worker is a binary)
+target/
+**/*.rs.bk
+*.pdb
+**/mutants.out*/
 
 # coverage
 coverage/
@@ -77,3 +84,7 @@ deploy/api/.releases.json
 deploy/api/.releases.tmp
 deploy/api/.pending-release.json
 deploy/api/.pending-release.tmp
+
+deploy/worker/worker.env
+deploy/worker/.worker-image
+deploy/worker/.deploy.lock

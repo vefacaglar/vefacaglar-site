@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "apps/api/**"
+      # Golden fixtures asserted by apps/api/src/shared/search/mappers/mappers.parity.spec.ts.
+      - "apps/worker/fixtures/**"
       - "packages/db/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - "apps/api/**"
+      # Golden fixtures asserted by apps/api/src/shared/search/mappers/mappers.parity.spec.ts.
+      - "apps/worker/fixtures/**"
       - "packages/db/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -182,6 +186,8 @@ jobs:
           IMAGEKIT_FOLDER: ${{ secrets.IMAGEKIT_FOLDER }}
           IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
           IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+          JOB_STREAM_TOKEN_SECRET: ${{ secrets.JOB_STREAM_TOKEN_SECRET }}
+          WEB_ORIGINS: ${{ secrets.WEB_ORIGINS }}
           API_DOCKER_NETWORK: ${{ vars.API_DOCKER_NETWORK || 'databases_default' }}
           API_BIND_PORT: ${{ vars.API_BIND_PORT || '3001' }}
           API_CADDY_CONTAINER: ${{ vars.API_CADDY_CONTAINER }}

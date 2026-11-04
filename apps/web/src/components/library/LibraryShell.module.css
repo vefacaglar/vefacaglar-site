@@ -1,15 +1,14 @@
 /*
- * The library frame: its own palette (see the [data-library] block in
- * globals.css), a serif text face and a wider measure than the main site.
- * Words are set in Newsreader; small figures use Fira Code (--font-mono).
+ * The library frame: its own graphite palette (see the [data-library] block in
+ * globals.css), Geist as the only typeface and a wider measure than the main site.
  */
 .shell {
   width: min(1240px, calc(100% - 64px));
   margin: 0 auto;
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 17px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.5;
   letter-spacing: normal;
   color: var(--text);
 }
@@ -23,11 +22,11 @@
   grid-template-columns: auto 1fr auto;
   grid-template-areas: "mark tabs utility";
   align-items: stretch;
-  column-gap: 56px;
-  min-height: 76px;
+  column-gap: 40px;
+  min-height: 60px;
 }
 
-/* The header rule runs edge to edge, like the bands below it. */
+/* The header divider runs edge to edge. */
 .header::after {
   content: "";
   position: absolute;
@@ -43,8 +42,8 @@
   grid-area: mark;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 22px;
+  gap: 5px;
+  font-size: 16px;
   line-height: 1;
   letter-spacing: -0.01em;
   text-decoration: none;
@@ -56,7 +55,7 @@
 }
 
 .name {
-  font-weight: 400;
+  font-weight: 500;
   color: var(--muted);
   transition: color 0.15s ease;
 }
@@ -75,18 +74,19 @@
   z-index: 1;
   display: flex;
   align-items: stretch;
-  gap: 36px;
+  gap: 28px;
 }
 
 .tab {
   display: inline-flex;
   align-items: center;
   margin-bottom: -1px;
-  border-bottom: 1px solid transparent;
-  font-size: 17px;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
   color: var(--muted);
   text-decoration: none;
   transition: color 0.15s ease, border-color 0.15s ease;
+  font-weight: 500;
 }
 
 .tab:hover {
@@ -110,14 +110,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 7px 16px;
+  padding: 6px 12px;
   border: 1px solid var(--border-strong);
   border-radius: 0;
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--text-heading);
   text-decoration: none;
   transition: border-color 0.15s ease, background-color 0.15s ease;
+  font-weight: 500;
 }
 
 .account:hover {
@@ -142,7 +143,7 @@
   border-radius: 0;
   background: none;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--muted);
   cursor: pointer;
@@ -165,7 +166,7 @@
 
 /* Pages can pull full-bleed bands up to the header rule with --shell-pad-top. */
 .body {
-  --shell-pad-top: 56px;
+  --shell-pad-top: 40px;
   padding: var(--shell-pad-top) 0 120px;
 }
 
@@ -174,22 +175,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 28px 0 44px;
+  padding: 20px 0 32px;
   border-top: 1px solid var(--border);
   color: var(--muted);
+  font-size: 13px;
 }
 
 .footerMark {
-  font-size: 15px;
-  font-style: italic;
+  font-size: 13px;
 }
 
-/* The shared language switch: show the code as a code. */
+/* The shared language switch: show the language code in capitals. */
 .footer button {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
-  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-weight: 500;
 }
 
 @media (max-width: 720px) {
@@ -211,13 +212,13 @@
   }
 
   .wordmark {
-    font-size: 20px;
+    font-size: 15px;
   }
 
   .account {
     max-width: 160px;
-    padding: 6px 12px;
-    font-size: 14px;
+    padding: 5px 10px;
+    font-size: 13px;
   }
 
   .signOutForm {
@@ -234,12 +235,12 @@
   }
 
   .tab {
-    min-height: 46px;
-    font-size: 16px;
+    min-height: 44px;
+    font-size: 14px;
   }
 
   .body {
-    --shell-pad-top: 36px;
+    --shell-pad-top: 28px;
     padding-bottom: 88px;
   }
 }

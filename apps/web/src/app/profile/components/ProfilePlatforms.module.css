@@ -1,0 +1,100 @@
+/* ==========================================================================
+   Platforms: a short ledger of where the shelf was played. Each bar stands on
+   its own hairline; the most played platform (or a tie) is full accent, the rest a step
+   quieter, so the order reads before the numbers do.
+   ========================================================================== */
+
+.platforms {
+  margin-top: 88px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) 4.5ch 6.5rem;
+  grid-template-areas: "name bar percent count";
+  align-items: center;
+  gap: 8px 28px;
+  padding: 12px 0;
+}
+
+.item + .item {
+  border-top: 1px solid var(--border);
+}
+
+.name {
+  grid-area: name;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.bar {
+  grid-area: bar;
+  display: block;
+  width: 100%;
+  height: 6px;
+}
+
+.track {
+  fill: var(--border-strong);
+}
+
+.fill {
+  fill: color-mix(in srgb, var(--accent) 55%, var(--surface-2));
+}
+
+.item[data-lead] .fill {
+  fill: var(--accent);
+}
+
+.percent {
+  grid-area: percent;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--text-heading);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.count {
+  grid-area: count;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .platforms {
+    margin-top: 56px;
+  }
+
+  /* Name and figures on one line, the bar full width beneath. */
+  .item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "name percent count"
+      "bar bar bar";
+    gap: 10px 16px;
+    padding: 14px 0;
+  }
+
+  .name {
+    font-size: 14px;
+  }
+
+  .count {
+    min-width: 5.5rem;
+  }
+}

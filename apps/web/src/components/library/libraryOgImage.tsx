@@ -8,12 +8,12 @@ import { getDictionary } from "../../dictionaries";
  * here and only here. Colors must mirror the [data-library] palette in globals.css
  * (Satori cannot read CSS vars).
  */
-const BG = "#171411"; // --bg
-const SURFACE = "#201c18"; // --surface
-const HEADING = "#f6efe2"; // --text-heading
-const MUTED = "#a29788"; // --muted
-const BORDER = "#36302a"; // --border
-const ACCENT = "#cfa35e"; // --accent
+const BG = "#141414"; // --bg
+const SURFACE = "#1a1a1a"; // --surface
+const HEADING = "#f4f4f4"; // --text-heading
+const MUTED = "#9b9b9b"; // --muted
+const BORDER = "#292929"; // --border
+const ACCENT = "#8aa4c8"; // --accent
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
@@ -38,12 +38,12 @@ export async function renderLibraryOgImage(section: LibrarySection) {
   const labels = LIBRARY_SECTIONS.map((key) => dict[key]);
   const glyphs = `Vefa Library${labels.join("")}`;
   const [regular, semibold] = await Promise.all([
-    loadGoogleFont("Newsreader:opsz,wght@72,400", glyphs),
-    loadGoogleFont("Newsreader:opsz,wght@72,600", glyphs),
+    loadGoogleFont("Geist:wght@500", glyphs),
+    loadGoogleFont("Geist:wght@600", glyphs),
   ]);
   const fonts = [
-    ...(regular ? [{ name: "Newsreader", data: regular, weight: 400 as const, style: "normal" as const }] : []),
-    ...(semibold ? [{ name: "Newsreader", data: semibold, weight: 600 as const, style: "normal" as const }] : []),
+    ...(regular ? [{ name: "Geist", data: regular, weight: 500 as const, style: "normal" as const }] : []),
+    ...(semibold ? [{ name: "Geist", data: semibold, weight: 600 as const, style: "normal" as const }] : []),
   ];
 
   return new ImageResponse(
@@ -56,21 +56,21 @@ export async function renderLibraryOgImage(section: LibrarySection) {
           flexDirection: "column",
           background: BG,
           color: HEADING,
-          fontFamily: fonts.length ? "Newsreader" : undefined,
+          fontFamily: fonts.length ? "Geist" : undefined,
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            height: 132,
+            height: 120,
             padding: "0 80px",
             borderBottom: `1px solid ${BORDER}`,
-            fontSize: 40,
+            fontSize: 36,
           }}
         >
           <span style={{ fontWeight: 600 }}>Vefa</span>
-          <span style={{ fontWeight: 400, color: MUTED, marginLeft: 12 }}>Library</span>
+          <span style={{ fontWeight: 500, color: MUTED, marginLeft: 10 }}>Library</span>
         </div>
 
         <div
@@ -83,18 +83,19 @@ export async function renderLibraryOgImage(section: LibrarySection) {
             background: SURFACE,
           }}
         >
-          <div style={{ display: "flex", fontSize: 196, fontWeight: 400, letterSpacing: "-0.02em", lineHeight: 1 }}>
+          <div style={{ display: "flex", fontSize: 128, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1 }}>
             {dict[section]}
           </div>
-          <div style={{ display: "flex", gap: 48, marginTop: 40 }}>
+          <div style={{ display: "flex", gap: 44, marginTop: 48 }}>
             {LIBRARY_SECTIONS.map((key) => (
               <span
                 key={key}
                 style={{
                   paddingBottom: 18,
-                  fontSize: 32,
+                  fontSize: 30,
+                  fontWeight: 500,
                   color: key === section ? HEADING : MUTED,
-                  borderBottom: `2px solid ${key === section ? ACCENT : SURFACE}`,
+                  borderBottom: `3px solid ${key === section ? ACCENT : SURFACE}`,
                 }}
               >
                 {dict[key]}

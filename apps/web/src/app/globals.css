@@ -250,64 +250,69 @@ html {
 
 /* ==========================================================================
    Library sub-brand (games, movies, profiles: everything inside LibraryShell).
-   A warm, dark "cinema programme" palette that only applies while a library
-   page is on screen. It is set on the root (via :has) so the page background,
-   scrollbars and top-layer dialogs follow it, and on the shell itself as a
-   fallback for browsers without :has(). The main site keeps the palette above.
+   A neutral graphite palette that only applies while a library page is on
+   screen. It is set on the root (via :has) so the page background, scrollbars
+   and top-layer dialogs follow it, and on the shell itself as a fallback for
+   browsers without :has(). The main site keeps the palette above.
    ========================================================================== */
 :root:has([data-library]),
 [data-library] {
-  --bg: #171411;            /* espresso ground */
-  --surface: #201c18;       /* raised bands: game hero, profile header, panels */
-  --surface-2: #2a251f;     /* covers before they load, plates, inputs */
-  --text: #e8e0d2;          /* cream body text */
-  --text-heading: #f6efe2;  /* titles */
-  --muted: #a29788;         /* warm grey: secondary text, labels */
-  --faint: #756c60;         /* quiet figures, disabled */
-  --border: #36302a;        /* hairline rules */
-  --border-strong: #514840; /* hover / focus rules */
-  --accent: #cfa35e;        /* brass: the one accent */
-  --on-accent: #171411;     /* text on brass */
-  --success: #9aab86;
-  --warning: #c7a27a;
-  --info: #93a3b5;
-  --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --bg: #141414;            /* page */
+  --surface: #1a1a1a;       /* raised areas: game header, profile header, panels */
+  --surface-2: #222222;     /* inputs, plates, covers before they load */
+  --text: #e4e4e4;          /* body text */
+  --text-heading: #f4f4f4;  /* titles */
+  --muted: #9b9b9b;         /* secondary text, labels */
+  --faint: #6c6c6c;         /* quiet figures, disabled */
+  --border: #292929;        /* dividers */
+  --border-strong: #3a3a3a; /* control outlines, hover */
+  --accent: #8aa4c8;        /* calm steel blue: active state, bars, focus */
+  --on-accent: #111111;     /* text on the accent */
+  --success: #8fa898;
+  --warning: #b3a58d;
+  --info: #8f9fb3;
 }
 
-/* Library buttons: brass for the primary action, quiet outline otherwise. */
+/* Library buttons: near-white primary, quiet outline secondary. */
 [data-library] .btnAccent {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--text-heading);
+  border-color: var(--text-heading);
   color: var(--on-accent) !important;
   font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
 }
 
 [data-library] .btnAccent:hover {
   opacity: 1;
-  background: var(--text-heading);
-  border-color: var(--text-heading);
+  background: var(--text);
+  border-color: var(--text);
   color: var(--on-accent) !important;
 }
 
 [data-library] .btnGhost {
   border-color: var(--border-strong);
   color: var(--text-heading);
-  font-size: 15px;
-  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
 }
 
 [data-library] .btnGhost:hover {
   background-color: var(--surface-2);
-  border-color: var(--muted);
+  border-color: var(--faint);
+}
+
+[data-library] .btnAccent:hover,
+[data-library] .btnGhost:hover {
+  transform: none;
 }
 
 [data-library] .btnAccent:focus-visible,
 [data-library] .btnGhost:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Form fields inside the library sit on a raised surface. */
@@ -316,8 +321,8 @@ html {
   background: var(--surface-2);
   border-color: var(--border-strong);
   color: var(--text-heading);
-  font-size: 15px;
-  padding: 10px 12px;
+  font-size: 14px;
+  padding: 9px 12px;
 }
 
 [data-library] .input:focus,
@@ -327,7 +332,6 @@ html {
 }
 
 [data-library] .label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
-  font-style: italic;
 }

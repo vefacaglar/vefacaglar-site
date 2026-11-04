@@ -1,7 +1,8 @@
 /**
  * Command side (CQRS write model maintenance). Consumed by the domain-event
- * subscriber and the reindex script to keep the search index in sync; only
- * exposes index/remove/reindex operations.
+ * subscriber to keep the search index in sync with incremental per-document
+ * writes. Full reindexing is a worker job (`search.reindex`, see
+ * docs/jobs-worker.md) and is intentionally not part of this interface.
  */
 export interface ISearchIndexWriter {
   readonly enabled: boolean;
@@ -26,5 +27,6 @@ export interface ISearchIndexWriter {
   removePlatform(id: string): Promise<void>;
   removeTheme(id: string): Promise<void>;
 
-  reindexAll(options: { drop: boolean }): Promise<void>;
+  /** Creates missing collections (alias-aware, never deletes). */
+  ensureCollections(): Promise<void>;
 }

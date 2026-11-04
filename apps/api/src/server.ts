@@ -8,12 +8,21 @@ import * as path from "path";
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import { app } from "./app";
+import { container } from "./container";
+import { SEARCH_WRITER } from "./shared/search/search.tokens";
+import type { ISearchIndexWriter } from "./shared/search/commands/search-writer.interface";
 
 const start = async () => {
   try {
     const port = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3001;
     const host = process.env.API_HOST ?? "127.0.0.1";
     await app.listen({ port, host });
+    // Non-blocking: create missing Typesense collections (alias-aware, never
+    // deletes). Full reindexing is the worker's `search.reindex` job.
+    container
+      .resolve<ISearchIndexWriter>(SEARCH_WRITER)
+      .ensureCollections()
+      .catch((err) => app.log.error(err, "[search] collection bootstrap failed"));
   } catch (err) {
     console.error(err);
     process.exit(1);

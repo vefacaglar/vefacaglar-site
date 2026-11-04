@@ -1,4 +1,4 @@
-import type { LibraryGame } from "../../lib/profileLibrary";
+import type { LibraryGame, LibraryPlatformCount } from "../../lib/profileLibrary";
 import { GAME_LOG_STATUSES } from "../games/gameLogStatus";
 
 // Status tabs and sort order for a profile's games shelf, read from the URL
@@ -7,6 +7,8 @@ import { GAME_LOG_STATUSES } from "../games/gameLogStatus";
 export type ShelfStatus = LibraryGame["status"];
 export type ShelfTab = "all" | ShelfStatus;
 export type ShelfSort = "activity" | "playtime" | "completed";
+/** Cover wall (default) or a ledger-style list, from `?view=list`. */
+export type ShelfView = "grid" | "list";
 
 export const SHELF_TABS: ShelfTab[] = ["all", ...GAME_LOG_STATUSES];
 
@@ -34,13 +36,32 @@ export function parseSort(raw: string | string[] | undefined, tab: ShelfTab): Sh
   return sortsFor(tab).find((sort) => sort === value) ?? defaultSort(tab);
 }
 
-/** Query string for a tab + sort, leaving out whatever is already the default. */
-export function shelfQuery(tab: ShelfTab, sort: ShelfSort): string {
+export function parseView(raw: string | string[] | undefined): ShelfView {
+  return first(raw) === "list" ? "list" : "grid";
+}
+
+/** Query string for a tab + sort + view, leaving out whatever is already the default. */
+export function shelfQuery(tab: ShelfTab, sort: ShelfSort, view: ShelfView = "grid"): string {
   const params = new URLSearchParams();
   if (tab !== "all") params.set("status", tab);
   if (sort !== defaultSort(tab)) params.set("sort", sort);
+  if (view !== "grid") params.set("view", view);
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+/**
+ * Games per platform for a set of games, most first, then by name. Games without a
+ * platform are left out, matching the API's library summary.
+ */
+export function platformCounts(games: LibraryGame[]): LibraryPlatformCount[] {
+  const counts = new Map<string, number>();
+  for (const game of games) {
+    if (game.platformName) counts.set(game.platformName, (counts.get(game.platformName) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /** Latest activity as a timestamp; falls back to the last log for responses without it. */

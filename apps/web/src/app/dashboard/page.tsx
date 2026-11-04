@@ -107,6 +107,9 @@ export default async function AdminDashboard(props: PageProps) {
         <Link href="/dashboard/games" className={styles.tab}>
           {ds.nav.tabs.games}
         </Link>
+        <Link href="/dashboard/jobs" className={styles.tab}>
+          {ds.nav.tabs.jobs}
+        </Link>
       </div>
 
       <DashboardListsContainer

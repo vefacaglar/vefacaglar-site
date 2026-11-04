@@ -20,6 +20,20 @@ export const LibraryGameSchema = Type.Object({
   completedAt: Type.Union([Type.String({ format: "date" }), Type.Null()]),
   /** Latest of the logs' createdAt/updatedAt and their playtime entries' recordedAt (ISO timestamp). */
   lastActivityAt: Type.String({ format: "date-time" }),
+  /** Platform of the most recent log that has one, or null if no log names a platform. */
+  platformName: Type.Union([Type.String(), Type.Null()]),
+  /** Catalog critic score (0-100), or null when unknown or based on too few reviews. */
+  criticScore: NullableNumber,
+  /** createdAt of the earliest log (ISO timestamp): when the game entered the library. */
+  addedAt: Type.String({ format: "date-time" }),
+  /** Id of the most recent log; null on public views not seen by the owner. */
+  latestLogId: Type.Union([Type.String(), Type.Null()]),
+});
+
+export const LibraryPlatformCountSchema = Type.Object({
+  name: Type.String(),
+  /** Number of distinct games whose `platformName` is this platform. */
+  count: Type.Number(),
 });
 
 export const LibraryResponseSchema = Type.Object({
@@ -29,6 +43,8 @@ export const LibraryResponseSchema = Type.Object({
     completedCount: Type.Number(),
     playtimeHours: Type.Number(),
     averageRating: NullableNumber,
+    /** Games per platform (games without a platform excluded), by count desc then name asc. */
+    platforms: Type.Array(LibraryPlatformCountSchema),
   }),
   games: Type.Array(LibraryGameSchema),
 });

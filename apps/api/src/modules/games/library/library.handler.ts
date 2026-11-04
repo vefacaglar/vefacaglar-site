@@ -16,6 +16,6 @@ export class GetLibraryHandler {
       this.logsRepo.listForUser(userId),
       this.logsRepo.listPlaytimeActivityForUser(userId),
     ]);
-    return buildLibrary(logs, playtimeActivity);
+    return buildLibrary(logs, playtimeActivity, { includeLogIds: true });
   }
 }

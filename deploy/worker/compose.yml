@@ -1,0 +1,43 @@
+name: vefacaglar-worker
+
+# Single replica. On `docker compose up -d` with a new image, Docker sends
+# SIGTERM; the worker stops claiming, checkpoints the running job at its next
+# batch boundary, re-queues it and exits well inside the grace period.
+services:
+  worker:
+    image: ${WORKER_IMAGE:?Set WORKER_IMAGE to the published image digest}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: ./worker.env
+        format: raw
+    environment:
+      WORKER_LOG_FORMAT: json
+      WORKER_HEALTH_FILE: /tmp/worker-health
+    stop_signal: SIGTERM
+    stop_grace_period: 120s
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/worker", "--healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  backend:
+    external: true
+    name: ${WORKER_DOCKER_NETWORK:-databases_default}

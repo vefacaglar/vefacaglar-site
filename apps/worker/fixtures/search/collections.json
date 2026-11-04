@@ -1,0 +1,395 @@
+[
+  {
+    "name": "games_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "name": "originalTitle",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "coverImageUrl",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "releaseDate",
+        "type": "string",
+        "optional": true,
+        "facet": true
+      },
+      {
+        "name": "metacriticScore",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "openCriticScore",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "criticScore",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "criticScoreCount",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "popularityScore",
+        "type": "float",
+        "optional": true,
+        "sort": true
+      },
+      {
+        "name": "releaseTimestamp",
+        "type": "int64"
+      },
+      {
+        "name": "hltbMainHours",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "hltbMainExtraHours",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "hltbCompletionistHours",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "developerIds",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "developerNames",
+        "type": "string[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "developerSlugs",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "publisherIds",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "publisherNames",
+        "type": "string[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "publisherSlugs",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "genreIds",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "genreNames",
+        "type": "string[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "genreSlugs",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "platformIds",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "platformNames",
+        "type": "string[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "platformSlugs",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "themeIds",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "themeNames",
+        "type": "string[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "themeSlugs",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "createdAt"
+  },
+  {
+    "name": "developers_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "countryCode",
+        "type": "string",
+        "optional": true,
+        "facet": true
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "createdAt"
+  },
+  {
+    "name": "publishers_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "countryCode",
+        "type": "string",
+        "optional": true,
+        "facet": true
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "createdAt"
+  },
+  {
+    "name": "genres_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "createdAt"
+  },
+  {
+    "name": "platforms_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "createdAt"
+  },
+  {
+    "name": "themes_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "createdAt"
+  },
+  {
+    "name": "posts_en",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "name": "excerpt",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "content",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "coverImageUrl",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "seoTitle",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "seoDescription",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "authorUsername",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "authorDisplayName",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "publishedAt",
+        "type": "int64"
+      },
+      {
+        "name": "createdAt",
+        "type": "int64"
+      },
+      {
+        "name": "updatedAt",
+        "type": "int64",
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "publishedAt"
+  }
+]

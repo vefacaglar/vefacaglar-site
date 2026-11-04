@@ -1,16 +1,13 @@
-import { Newsreader } from "next/font/google";
+import { Geist } from "next/font/google";
 
 /**
- * The library's text face. Newsreader is a variable serif with an optical-size
- * axis: at display sizes it tightens into a sharp, high-contrast title face, at
- * reading sizes it opens up for descriptions and notes — one family that reads
- * like a printed programme or archive catalogue. Fira Code (the site's own
- * face) stays on for figures: years, scores, hours, counts.
+ * The library's only typeface. Geist is a plain, neutral grotesque built for
+ * interfaces: even texture at small sizes, clear figures (set with tabular
+ * numerals where they line up in columns) and no italic or display cuts to
+ * tempt decoration. latin-ext covers Turkish.
  */
-export const librarySerif = Newsreader({
+export const librarySans = Geist({
   subsets: ["latin", "latin-ext"],
-  style: ["normal", "italic"],
-  axes: ["opsz"],
   display: "swap",
-  variable: "--font-serif",
+  variable: "--font-sans",
 });

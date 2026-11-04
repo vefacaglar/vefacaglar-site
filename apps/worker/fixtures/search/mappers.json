@@ -1,0 +1,524 @@
+{
+  "games": [
+    {
+      "name": "full game with relations and unicode",
+      "input": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-123456789abc",
+        "slug": "okami-hd",
+        "title": "Ōkami HD — 大神",
+        "originalTitle": "大神 絶景版",
+        "description": "A **cel-shaded** adventure.\n\n# Not stripped for games\n<b>html</b> & \"quotes\"",
+        "coverImageUrl": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1abc.jpg",
+        "releaseDate": "2006-04-20",
+        "metacriticScore": 93,
+        "openCriticScore": 91,
+        "criticScore": 92,
+        "criticScoreCount": 57,
+        "popularityScore": 0.7345129871,
+        "hltbMainHours": "33.5",
+        "hltbMainExtraHours": "45.0",
+        "hltbCompletionistHours": "70.0",
+        "createdAt": "2024-01-15T10:30:45.999Z",
+        "updatedAt": "2025-06-01T00:00:00.000Z",
+        "developers": [
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000001",
+            "name": "Clover Studio",
+            "slug": "clover-studio"
+          },
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000002",
+            "name": "HexaDrive",
+            "slug": "hexadrive"
+          }
+        ],
+        "publishers": [
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000003",
+            "name": "Capcom",
+            "slug": "capcom"
+          }
+        ],
+        "genres": [
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000004",
+            "name": "Adventure",
+            "slug": "adventure"
+          },
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000005",
+            "name": "Role-playing (RPG)",
+            "slug": "role-playing-rpg"
+          }
+        ],
+        "platforms": [
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000006",
+            "name": "PlayStation®4 – Édition",
+            "slug": "ps4"
+          }
+        ],
+        "themes": [
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000007",
+            "name": "Fantasy",
+            "slug": "fantasy"
+          }
+        ]
+      },
+      "expected": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-123456789abc",
+        "slug": "okami-hd",
+        "title": "Ōkami HD — 大神",
+        "originalTitle": "大神 絶景版",
+        "description": "A **cel-shaded** adventure.\n\n# Not stripped for games\n<b>html</b> & \"quotes\"",
+        "coverImageUrl": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1abc.jpg",
+        "releaseDate": "2006-04-20",
+        "metacriticScore": 93,
+        "openCriticScore": 91,
+        "criticScore": 92,
+        "criticScoreCount": 57,
+        "popularityScore": 0.7345129871,
+        "releaseTimestamp": 1145491200,
+        "hltbMainHours": "33.5",
+        "hltbMainExtraHours": "45.0",
+        "hltbCompletionistHours": "70.0",
+        "developerIds": [
+          "0d4f6b1e-0000-4000-8000-000000000001",
+          "0d4f6b1e-0000-4000-8000-000000000002"
+        ],
+        "developerNames": [
+          "Clover Studio",
+          "HexaDrive"
+        ],
+        "developerSlugs": [
+          "clover-studio",
+          "hexadrive"
+        ],
+        "publisherIds": [
+          "0d4f6b1e-0000-4000-8000-000000000003"
+        ],
+        "publisherNames": [
+          "Capcom"
+        ],
+        "publisherSlugs": [
+          "capcom"
+        ],
+        "genreIds": [
+          "0d4f6b1e-0000-4000-8000-000000000004",
+          "0d4f6b1e-0000-4000-8000-000000000005"
+        ],
+        "genreNames": [
+          "Adventure",
+          "Role-playing (RPG)"
+        ],
+        "genreSlugs": [
+          "adventure",
+          "role-playing-rpg"
+        ],
+        "platformIds": [
+          "0d4f6b1e-0000-4000-8000-000000000006"
+        ],
+        "platformNames": [
+          "PlayStation®4 – Édition"
+        ],
+        "platformSlugs": [
+          "ps4"
+        ],
+        "themeIds": [
+          "0d4f6b1e-0000-4000-8000-000000000007"
+        ],
+        "themeNames": [
+          "Fantasy"
+        ],
+        "themeSlugs": [
+          "fantasy"
+        ],
+        "createdAt": 1705314645,
+        "updatedAt": 1748736000
+      }
+    },
+    {
+      "name": "minimal game with every nullable field null",
+      "input": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-000000000002",
+        "slug": "untitled",
+        "title": "Untitled",
+        "originalTitle": null,
+        "description": null,
+        "coverImageUrl": null,
+        "releaseDate": null,
+        "metacriticScore": null,
+        "openCriticScore": null,
+        "criticScore": null,
+        "criticScoreCount": null,
+        "popularityScore": null,
+        "hltbMainHours": null,
+        "hltbMainExtraHours": null,
+        "hltbCompletionistHours": null,
+        "createdAt": "2025-02-03T04:05:06Z",
+        "updatedAt": null,
+        "developers": [],
+        "publishers": [],
+        "genres": [],
+        "platforms": [],
+        "themes": []
+      },
+      "expected": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-000000000002",
+        "slug": "untitled",
+        "title": "Untitled",
+        "popularityScore": -1,
+        "releaseTimestamp": -9999999999,
+        "developerIds": [],
+        "developerNames": [],
+        "developerSlugs": [],
+        "publisherIds": [],
+        "publisherNames": [],
+        "publisherSlugs": [],
+        "genreIds": [],
+        "genreNames": [],
+        "genreSlugs": [],
+        "platformIds": [],
+        "platformNames": [],
+        "platformSlugs": [],
+        "themeIds": [],
+        "themeNames": [],
+        "themeSlugs": [],
+        "createdAt": 1738555506
+      }
+    },
+    {
+      "name": "edge values: integral popularity, pre-1970 dates, empty strings, zero scores",
+      "input": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-000000000003",
+        "slug": "spacewar",
+        "title": "Spacewar!",
+        "originalTitle": "",
+        "description": "",
+        "coverImageUrl": null,
+        "releaseDate": "1962-05-01",
+        "metacriticScore": 0,
+        "openCriticScore": null,
+        "criticScore": 100,
+        "criticScoreCount": 1,
+        "popularityScore": 1,
+        "hltbMainHours": "0.5",
+        "hltbMainExtraHours": null,
+        "hltbCompletionistHours": null,
+        "createdAt": "1969-12-31T23:59:59.500Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z",
+        "developers": [
+          {
+            "id": "0d4f6b1e-0000-4000-8000-000000000008",
+            "name": "Steve Russell",
+            "slug": "steve-russell"
+          }
+        ],
+        "publishers": [],
+        "genres": [],
+        "platforms": [],
+        "themes": []
+      },
+      "expected": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-000000000003",
+        "slug": "spacewar",
+        "title": "Spacewar!",
+        "originalTitle": "",
+        "description": "",
+        "releaseDate": "1962-05-01",
+        "metacriticScore": 0,
+        "criticScore": 100,
+        "criticScoreCount": 1,
+        "popularityScore": 1,
+        "releaseTimestamp": -242092800,
+        "hltbMainHours": "0.5",
+        "developerIds": [
+          "0d4f6b1e-0000-4000-8000-000000000008"
+        ],
+        "developerNames": [
+          "Steve Russell"
+        ],
+        "developerSlugs": [
+          "steve-russell"
+        ],
+        "publisherIds": [],
+        "publisherNames": [],
+        "publisherSlugs": [],
+        "genreIds": [],
+        "genreNames": [],
+        "genreSlugs": [],
+        "platformIds": [],
+        "platformNames": [],
+        "platformSlugs": [],
+        "themeIds": [],
+        "themeNames": [],
+        "themeSlugs": [],
+        "createdAt": -1,
+        "updatedAt": 0
+      }
+    },
+    {
+      "name": "zero popularity and timezone offset timestamps",
+      "input": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-000000000004",
+        "slug": "zero",
+        "title": "Zero",
+        "originalTitle": null,
+        "description": null,
+        "coverImageUrl": null,
+        "releaseDate": "2000-02-29",
+        "metacriticScore": null,
+        "openCriticScore": null,
+        "criticScore": null,
+        "criticScoreCount": null,
+        "popularityScore": 0,
+        "hltbMainHours": null,
+        "hltbMainExtraHours": null,
+        "hltbCompletionistHours": null,
+        "createdAt": "2024-03-01T01:30:00.123+03:00",
+        "updatedAt": null,
+        "developers": [],
+        "publishers": [],
+        "genres": [],
+        "platforms": [],
+        "themes": []
+      },
+      "expected": {
+        "id": "6f1c2a4e-1b2c-4d5e-8f90-000000000004",
+        "slug": "zero",
+        "title": "Zero",
+        "releaseDate": "2000-02-29",
+        "popularityScore": 0,
+        "releaseTimestamp": 951782400,
+        "developerIds": [],
+        "developerNames": [],
+        "developerSlugs": [],
+        "publisherIds": [],
+        "publisherNames": [],
+        "publisherSlugs": [],
+        "genreIds": [],
+        "genreNames": [],
+        "genreSlugs": [],
+        "platformIds": [],
+        "platformNames": [],
+        "platformSlugs": [],
+        "themeIds": [],
+        "themeNames": [],
+        "themeSlugs": [],
+        "createdAt": 1709245800
+      }
+    }
+  ],
+  "lookups": [
+    {
+      "name": "developer with country",
+      "kind": "developer",
+      "input": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000001",
+        "name": "CD PROJEKT RED",
+        "slug": "cd-projekt-red",
+        "countryCode": "PL",
+        "createdAt": "2023-05-05T05:05:05.555Z",
+        "updatedAt": "2024-05-05T05:05:05.000Z"
+      },
+      "expected": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000001",
+        "name": "CD PROJEKT RED",
+        "slug": "cd-projekt-red",
+        "countryCode": "PL",
+        "createdAt": 1683263105,
+        "updatedAt": 1714885505
+      }
+    },
+    {
+      "name": "publisher without country",
+      "kind": "publisher",
+      "input": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000002",
+        "name": "Annapurna Interactive",
+        "slug": "annapurna-interactive",
+        "countryCode": null,
+        "createdAt": "2023-01-01T00:00:00Z",
+        "updatedAt": null
+      },
+      "expected": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000002",
+        "name": "Annapurna Interactive",
+        "slug": "annapurna-interactive",
+        "createdAt": 1672531200
+      }
+    },
+    {
+      "name": "genre",
+      "kind": "genre",
+      "input": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000003",
+        "name": "Hack and slash/Beat 'em up",
+        "slug": "hack-and-slash-beat-em-up",
+        "createdAt": "2022-12-31T23:59:59.999Z",
+        "updatedAt": "2023-01-01T00:00:00.001Z"
+      },
+      "expected": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000003",
+        "name": "Hack and slash/Beat 'em up",
+        "slug": "hack-and-slash-beat-em-up",
+        "createdAt": 1672531199,
+        "updatedAt": 1672531200
+      }
+    },
+    {
+      "name": "platform with unicode",
+      "kind": "platform",
+      "input": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000004",
+        "name": "PlayStation®5 – Édition spéciale ✨",
+        "slug": "ps5",
+        "createdAt": "2020-11-12T00:00:00Z",
+        "updatedAt": null
+      },
+      "expected": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000004",
+        "name": "PlayStation®5 – Édition spéciale ✨",
+        "slug": "ps5",
+        "createdAt": 1605139200
+      }
+    },
+    {
+      "name": "theme",
+      "kind": "theme",
+      "input": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000005",
+        "name": "Science fiction",
+        "slug": "science-fiction",
+        "createdAt": "2021-07-07T07:07:07Z",
+        "updatedAt": "2021-07-08T07:07:07Z"
+      },
+      "expected": {
+        "id": "1a2b3c4d-0000-4000-8000-000000000005",
+        "name": "Science fiction",
+        "slug": "science-fiction",
+        "createdAt": 1625641627,
+        "updatedAt": 1625728027
+      }
+    }
+  ],
+  "posts": [
+    {
+      "name": "published post with MDX content and author",
+      "input": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000001",
+        "slug": "building-the-thing",
+        "title": "Building the thing",
+        "excerpt": "How I built it.",
+        "content": "import { Note } from './note'\n\n# Building the thing\n\nThis is **important** and references [the guide](https://x.com).\n\n```ts\nconst secret = 42;\n```\n\n- point one\n- point two\n\n1. first\n2. second\n\n> quoted\n\n<Note type=\"info\">Heads up</Note>\n\n![cover](cover.png) caption `inline`",
+        "coverImageUrl": "https://ik.imagekit.io/x/cover.png",
+        "seoTitle": "Building the thing | Vefa",
+        "seoDescription": "A write-up.",
+        "authorUsername": "vefa",
+        "authorDisplayName": "Vefa Çağlar",
+        "publishedAt": "2025-01-02T03:04:05.678Z",
+        "createdAt": "2024-12-30T10:00:00Z",
+        "updatedAt": "2025-01-03T00:00:00Z"
+      },
+      "expected": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000001",
+        "slug": "building-the-thing",
+        "title": "Building the thing",
+        "excerpt": "How I built it.",
+        "content": "Building the thing This is important and references the guide . point one point two first second quoted Heads up caption",
+        "coverImageUrl": "https://ik.imagekit.io/x/cover.png",
+        "seoTitle": "Building the thing | Vefa",
+        "seoDescription": "A write-up.",
+        "authorUsername": "vefa",
+        "authorDisplayName": "Vefa Çağlar",
+        "publishedAt": 1735787045,
+        "createdAt": 1735552800,
+        "updatedAt": 1735862400
+      }
+    },
+    {
+      "name": "post whose content strips to nothing, no author, null publishedAt",
+      "input": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000002",
+        "slug": "code-only",
+        "title": "Code only",
+        "excerpt": null,
+        "content": "```\nonly code\n```\n\n`more`",
+        "coverImageUrl": null,
+        "seoTitle": null,
+        "seoDescription": null,
+        "authorUsername": null,
+        "authorDisplayName": null,
+        "publishedAt": null,
+        "createdAt": "2025-03-03T03:03:03Z",
+        "updatedAt": "2025-03-03T03:03:03Z"
+      },
+      "expected": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000002",
+        "slug": "code-only",
+        "title": "Code only",
+        "publishedAt": 0,
+        "createdAt": 1740970983,
+        "updatedAt": 1740970983
+      }
+    },
+    {
+      "name": "unicode content with CRLF line endings and emphasis",
+      "input": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000003",
+        "slug": "sarj-istasyonu",
+        "title": "Şarj İstasyonu",
+        "excerpt": "",
+        "content": "# Şarj İstasyonu\r\n\r\nElektrikli __araç__ *içeriği* — “quotes” & emoji 🚗⚡\r\n\r\n- madde bir\r\n- madde iki\r\nsnake_case_name",
+        "coverImageUrl": null,
+        "seoTitle": null,
+        "seoDescription": null,
+        "authorUsername": "vefa",
+        "authorDisplayName": null,
+        "publishedAt": "2024-02-29T12:00:00Z",
+        "createdAt": "2024-02-28T12:00:00Z",
+        "updatedAt": "2024-02-29T12:00:00Z"
+      },
+      "expected": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000003",
+        "slug": "sarj-istasyonu",
+        "title": "Şarj İstasyonu",
+        "excerpt": "",
+        "content": "Şarj İstasyonu Elektrikli araç içeriği — “quotes” & emoji 🚗⚡ madde bir madde iki snakecasename",
+        "authorUsername": "vefa",
+        "publishedAt": 1709208000,
+        "createdAt": 1709121600,
+        "updatedAt": 1709208000
+      }
+    },
+    {
+      "name": "empty content",
+      "input": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000004",
+        "slug": "empty",
+        "title": "Empty",
+        "excerpt": "Just an excerpt",
+        "content": "",
+        "coverImageUrl": null,
+        "seoTitle": "",
+        "seoDescription": null,
+        "authorUsername": null,
+        "authorDisplayName": null,
+        "publishedAt": "2023-06-15T08:00:00Z",
+        "createdAt": "2023-06-15T08:00:00Z",
+        "updatedAt": "2023-06-15T08:00:00Z"
+      },
+      "expected": {
+        "id": "9e8d7c6b-0000-4000-8000-000000000004",
+        "slug": "empty",
+        "title": "Empty",
+        "excerpt": "Just an excerpt",
+        "seoTitle": "",
+        "publishedAt": 1686816000,
+        "createdAt": 1686816000,
+        "updatedAt": 1686816000
+      }
+    }
+  ]
+}

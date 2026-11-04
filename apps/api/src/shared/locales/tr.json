@@ -10,5 +10,13 @@
   "err_slug_already_exists": "Bu slug zaten kullanılıyor.",
   "err_already_exists": "Aynı benzersiz değere sahip bir kayıt zaten var.",
   "err_unauthorized": "Bu kaynağa erişim yetkiniz bulunmamaktadır.",
-  "err_rate_limit_exceeded": "Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin."
+  "err_rate_limit_exceeded": "Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin.",
+  "err_job_not_found": "İş bulunamadı.",
+  "err_stream_token_invalid": "Geçersiz veya süresi dolmuş akış anahtarı.",
+  "err_recurring_job_not_found": "Tekrarlanan iş bulunamadı.",
+  "err_job_already_active": "Bu türde bir iş zaten kuyrukta veya çalışıyor.",
+  "err_job_unknown_type": "Bilinmeyen iş türü.",
+  "err_job_invalid_payload": "Geçersiz iş verisi.",
+  "err_job_invalid_state": "Bu işlem, işin mevcut durumunda yapılamaz.",
+  "err_job_invalid_cron": "Geçersiz cron ifadesi. Standart 5 alanlı bir ifade kullanın (dakika saat gün ay haftanın-günü)."
 }

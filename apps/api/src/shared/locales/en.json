@@ -10,5 +10,13 @@
   "err_slug_already_exists": "This slug is already in use.",
   "err_already_exists": "A record with the same unique value already exists.",
   "err_unauthorized": "You are not authorized to access this resource.",
-  "err_rate_limit_exceeded": "Too many requests. Please try again later."
+  "err_rate_limit_exceeded": "Too many requests. Please try again later.",
+  "err_job_not_found": "Job not found.",
+  "err_stream_token_invalid": "Invalid or expired stream token.",
+  "err_recurring_job_not_found": "Recurring job not found.",
+  "err_job_already_active": "A job of this kind is already queued or running.",
+  "err_job_unknown_type": "Unknown job type.",
+  "err_job_invalid_payload": "Invalid job payload.",
+  "err_job_invalid_state": "This action is not allowed in the job's current state.",
+  "err_job_invalid_cron": "Invalid cron expression. Use a standard 5-field expression (minute hour day month weekday)."
 }

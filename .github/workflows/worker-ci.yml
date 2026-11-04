@@ -1,0 +1,175 @@
+name: Worker CI and deploy
+
+on:
+  pull_request:
+    paths:
+      - "apps/worker/**"
+      - "deploy/worker/**"
+      - ".github/workflows/worker-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/worker/**"
+      - "deploy/worker/**"
+      - ".github/workflows/worker-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/worker
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      # Integration tests against Postgres are skipped unless
+      # WORKER_TEST_DATABASE_URL is set (never set it to production).
+      - name: Test
+        run: cargo test --locked
+
+      - name: Check deployment scripts
+        working-directory: .
+        run: |
+          bash -n deploy/worker/deploy.sh deploy/worker/receive.sh deploy/worker/ssh-deploy.sh
+          shellcheck deploy/worker/deploy.sh deploy/worker/receive.sh deploy/worker/ssh-deploy.sh
+          python3 -m unittest discover -s deploy/worker -p 'test_*.py'
+          tmp=$(mktemp -d)
+          cp deploy/worker/compose.yml "$tmp/"
+          : > "$tmp/worker.env"
+          WORKER_IMAGE="ghcr.io/example/worker@sha256:$(printf 'a%.0s' {1..64})" \
+            docker compose --file "$tmp/compose.yml" config --quiet
+
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}@${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Image name
+        id: name
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "image=ghcr.io/${REPOSITORY,,}-worker" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish worker
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/worker
+          file: apps/worker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}
+          build-args: WORKER_GIT_SHA=${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
+
+  deploy:
+    needs: image
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.WORKER_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: worker-production
+    env:
+      WORKER_IMAGE: ${{ needs.image.outputs.image }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          test -n "$KNOWN_HOSTS"
+          test -n "$SSH_KEY" || test -n "$SSH_PASSWORD"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [[ -n "$SSH_KEY" ]]; then
+            printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/vefacaglar-worker-ssh-key"
+            chmod 600 "$RUNNER_TEMP/vefacaglar-worker-ssh-key"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+      - name: Prepare configuration from GitHub secrets
+        env:
+          WORKER_ENV: ${{ secrets.WORKER_ENV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          WORKER_ID: ${{ vars.WORKER_ID }}
+          WORKER_DB_POOL_MAX: ${{ vars.WORKER_DB_POOL_MAX }}
+          RUST_LOG: ${{ vars.WORKER_RUST_LOG }}
+          WORKER_DOCKER_NETWORK: ${{ vars.WORKER_DOCKER_NETWORK || vars.API_DOCKER_NETWORK || 'databases_default' }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 deploy/worker/prepare-deploy.py "$RUNNER_TEMP/vefacaglar-worker-bundle"
+      - name: Upload configuration and deploy published image
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: bash deploy/worker/ssh-deploy.sh
+
+      - name: Remove temporary deployment credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/vefacaglar-worker-ssh-key"
+          rm -rf "$RUNNER_TEMP/vefacaglar-worker-bundle"

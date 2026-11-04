@@ -21,7 +21,7 @@ const log = (over: Record<string, unknown>) => ({
   rating: null, startedAt: null, completedAt: null, playtimeHours: null,
   notes: "private note", reviewText: "private review", purchasePrice: "59.99",
   createdAt: new Date("2026-01-01T00:00:00.000Z"), updatedAt: null,
-  game: { slug: "doom", title: "Doom", coverImageUrl: null },
+  game: { slug: "doom", title: "Doom", coverImageUrl: null, criticScore: 90, criticScoreCount: 20 },
   ...over,
 });
 
@@ -45,7 +45,7 @@ describe("GetPublicLibraryHandler", () => {
   it("returns the public user identity and library stats for a public profile", async () => {
     usersRepo.findByUsername.mockResolvedValue(user());
     logsRepo.listForUser.mockResolvedValue([
-      log({ id: "l2", gameId: "g-1", status: "completed", rating: 80, playtimeHours: "12", completedAt: "2026-01-20" }),
+      log({ id: "l2", gameId: "g-1", status: "completed", rating: 80, playtimeHours: "12", completedAt: "2026-01-20", platformId: "p-pc", platformName: "PC" }),
     ]);
     logsRepo.listPlaytimeActivityForUser.mockResolvedValue([
       { userGameId: "l2", lastRecordedAt: new Date("2026-01-20T18:30:00.000Z") },
@@ -59,11 +59,15 @@ describe("GetPublicLibraryHandler", () => {
     expect(result).toEqual({
       user: { username: "vefa", displayName: "Vefa Çağlar", isProfilePublic: true },
       isOwner: false,
-      summary: { gameCount: 1, logCount: 1, completedCount: 1, playtimeHours: 12, averageRating: 80 },
+      summary: {
+        gameCount: 1, logCount: 1, completedCount: 1, playtimeHours: 12, averageRating: 80,
+        platforms: [{ name: "PC", count: 1 }],
+      },
       games: [{
         slug: "doom", title: "Doom", coverImageUrl: null, status: "completed", rating: 80,
         playtimeHours: 12, logCount: 1, lastLoggedAt: "2026-01-01T00:00:00.000Z",
         completedAt: "2026-01-20", lastActivityAt: "2026-01-20T18:30:00.000Z",
+        platformName: "PC", criticScore: 90, addedAt: "2026-01-01T00:00:00.000Z", latestLogId: null,
       }],
     });
   });
@@ -79,6 +83,28 @@ describe("GetPublicLibraryHandler", () => {
     expect(serialized).not.toContain("private note");
     expect(serialized).not.toContain("private review");
     expect(serialized).not.toContain("59.99");
+  });
+
+  it.each([
+    ["an anonymous visitor", undefined],
+    ["a signed-in stranger", "u-2"],
+  ])("hides log ids from %s", async (_label, viewer) => {
+    usersRepo.findByUsername.mockResolvedValue(user());
+    logsRepo.listForUser.mockResolvedValue([log({ id: "secret-log-id" })]);
+
+    const result = await handler.handle(request("vefa", viewer));
+
+    expect(result.games[0].latestLogId).toBeNull();
+    expect(JSON.stringify(result)).not.toContain("secret-log-id");
+  });
+
+  it("exposes the latest log id to the owner", async () => {
+    usersRepo.findByUsername.mockResolvedValue(user());
+    logsRepo.listForUser.mockResolvedValue([log({ id: "l2" }), log({ id: "l1" })]);
+
+    const result = await handler.handle(request("vefa", "u-1"));
+
+    expect(result.games[0].latestLogId).toBe("l2");
   });
 
   it("flags the owner when a signed-in user views their own public library", async () => {

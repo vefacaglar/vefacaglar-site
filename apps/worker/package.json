@@ -1,0 +1,12 @@
+{
+  "name": "worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rust background jobs worker (see docs/jobs-worker.md). Not part of `pnpm dev`.",
+  "scripts": {
+    "worker:dev": "cargo run",
+    "typecheck": "cargo check --locked --all-targets",
+    "test": "cargo test --locked",
+    "lint": "cargo clippy --locked --all-targets -- -D warnings"
+  }
+}

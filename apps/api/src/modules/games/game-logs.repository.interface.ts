@@ -6,7 +6,14 @@ export type GameLogRow = InferSelectModel<typeof userGames>;
 export type NewGameLog = InferInsertModel<typeof userGames>;
 export type GameLogWithPlatform = GameLogRow & { platformName: string | null };
 export type GameLogWithGame = GameLogWithPlatform & {
-  game: { slug: string; title: string; coverImageUrl: string | null };
+  game: {
+    slug: string;
+    title: string;
+    coverImageUrl: string | null;
+    /** Catalog critic score (0-100) and how many reviews it averages; see `publicCriticScore`. */
+    criticScore: number | null;
+    criticScoreCount: number | null;
+  };
 };
 /** When playtime was last added to a log (latest `user_game_playtime_entries.recorded_at`). */
 export type LogPlaytimeActivity = { userGameId: string; lastRecordedAt: Date };

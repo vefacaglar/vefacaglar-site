@@ -22,7 +22,17 @@ export type LibraryGame = {
   completedAt: string | null;
   /** ISO timestamp of the latest activity: a log created or updated, or playtime added. */
   lastActivityAt: string;
+  /** Platform of the most recent log that names one. */
+  platformName: string | null;
+  /** Catalog critic score (0-100), or null when unknown. */
+  criticScore: number | null;
+  /** ISO timestamp of the earliest log: when the game entered the library. */
+  addedAt: string;
+  /** Id of the most recent log; only sent to the profile's owner. */
+  latestLogId: string | null;
 };
+
+export type LibraryPlatformCount = { name: string; count: number };
 
 export type LibrarySummary = {
   gameCount: number;
@@ -30,6 +40,8 @@ export type LibrarySummary = {
   completedCount: number;
   playtimeHours: number;
   averageRating: number | null;
+  /** Games per platform, most played first. */
+  platforms: LibraryPlatformCount[];
 };
 
 export type ProfileUser = { username: string; displayName: string; isProfilePublic: boolean };
@@ -65,12 +77,28 @@ export const getProfileLibrary = cache(async (username: string): Promise<Profile
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
-  if (res.ok) return { kind: "ok", data: (await res.json()) as ProfileLibrary };
+  if (res.ok) return { kind: "ok", data: withDefaults((await res.json()) as ProfileLibrary) };
   if (res.status === 401) return { kind: "private", signedIn: false };
   if (res.status === 403) return { kind: "private", signedIn: true };
   if (res.status === 404) return { kind: "not_found" };
   throw new Error(`Profile library fetch failed: ${res.status}`);
 });
+
+/**
+ * Fills fields an older API may not send yet (platform, critic score, added date,
+ * log id, platform counts), so the pages never read `undefined`.
+ */
+function withDefaults(data: ProfileLibrary): ProfileLibrary {
+  const games = (data.games ?? []).map((game) => ({
+    ...game,
+    platformName: game.platformName ?? null,
+    criticScore: typeof game.criticScore === "number" ? game.criticScore : null,
+    addedAt: game.addedAt ?? game.lastLoggedAt,
+    latestLogId: game.latestLogId ?? null,
+  }));
+  const platforms = Array.isArray(data.summary?.platforms) ? data.summary.platforms : [];
+  return { ...data, games, summary: { ...data.summary, platforms } };
+}
 
 /** Path of a user's profile, e.g. `/profile/vefa`. */
 export function profilePath(username: string, sub?: "games" | "movies"): string {

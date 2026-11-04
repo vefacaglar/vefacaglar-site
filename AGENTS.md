@@ -90,6 +90,18 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
 - **Error & Localization**: Throw custom `HttpError` subclasses using predefined translation keys. The global error handler translates errors automatically using `translateError` based on `request.lang`.
 - **Swagger Documentation**: Always register schemas in route options to support automated, typed OpenAPI documentation at `/swagger`.
 
+## Background Jobs
+
+Hangfire-style background jobs; the full spec is [docs/jobs-worker.md](docs/jobs-worker.md).
+
+- **Worker**: `apps/worker` (Rust) claims and runs jobs (LISTEN/poll, heartbeat, checkpoint/resume, cancel, retries, recurring scheduler). Not part of `pnpm dev`; run it with `pnpm --filter worker worker:dev`.
+- **Tables**: `jobs`, `job_logs`, `recurring_jobs`, `workers` — Drizzle schema in `packages/db/src/schema/jobs.ts`. Postgres is the only queue (no Redis).
+- **API**: `apps/api/src/modules/jobs` (admin-only `/api/jobs/dashboard/...`). Enqueue = INSERT + `pg_notify('jobs', id)` + `pg_notify('job_events', id)` in one `this.dbProvider.transaction`.
+- **Adding a job type**: (1) implement the `JobHandler` trait in a new Rust module under `apps/worker` and register it in the worker registry; (2) add an allowlist entry (English description + TypeBox payload schema + concurrency key) to `JOB_TYPES` in `apps/api/src/modules/jobs/job-types.ts`. Both sides must use the same type string.
+- **Registered jobs**: rows in `recurring_jobs` (id = type); `cron` is nullable — null = manual-only (the worker scheduler ignores it). They are seeded by a migration data step, not by the worker. Every run of a registered type is linked via `jobs.recurring_job_id`.
+- **Search jobs**: `search.reindex` (full reindex into new `{alias}__{timestamp}` collections, all aliases swapped at the end) and `search.sync` (upsert only documents missing from the live collections). Payload `{}`; both share concurrency key `search.index`. The API's search writer only does incremental per-document writes and alias-aware collection bootstrapping.
+- **Live updates**: `GET /api/jobs/dashboard/:id/stream` (SSE: `snapshot` / `log` / `done`). Browsers connect directly to the API (never proxy SSE through Vercel) with a 120 s job-scoped token from `POST /api/jobs/dashboard/:id/stream-token` (`?token=`, `JOB_STREAM_TOKEN_SECRET`; route-level CORS from `WEB_ORIGINS`); never log the token. Any job state change (API or worker) must `pg_notify('job_events', job_id)` inside the same transaction; the API listens on one lazily opened connection (`PgJobEventsListener`). Never connect to Postgres at import time (serverless `src/app.ts`).
+
 ## Database Migrations
 
 Never hand-write migration SQL files. Always edit the Drizzle schema in `packages/db/src/schema/` and generate the migration with `pnpm --filter @vefacaglar/db db:generate`. Editing a generated file is only allowed to insert a data/backfill step (e.g. `UPDATE` between `ADD COLUMN` and `SET NOT NULL`) — never to rewrite the DDL Drizzle produced.
@@ -106,6 +118,14 @@ Unit tests use **Vitest**. The conventions below are firm constraints, not sugge
 - **File naming**: Use `*.spec.ts` consistently. Do not mix in `*.test.ts`.
 - **Build isolation**: Specs are excluded from the production build via `tsconfig.json` (`exclude: ["**/*.spec.ts", "vitest.config.ts"]`) and Vitest only scans `src/**/*.spec.ts` (pinned in `apps/api/vitest.config.ts`). Do not remove these guards — without them, compiled `dist/**/*.spec.js` files leak into the bundle and get double-run.
 - **Commands**: `pnpm test` (all workspaces via Turborepo), `pnpm --filter api test` (API only), `pnpm --filter api test:watch` (watch mode).
+
+## Testing (`apps/web`)
+
+- **Vitest**, node environment, `TZ=UTC` pinned in `apps/web/vitest.config.ts` (scans `src/**/*.spec.ts` only).
+- **Colocation**: specs sit next to the file they cover as `<file>.spec.ts` (e.g. `src/lib/formatDate.spec.ts`). Use `*.spec.ts` only; no `__tests__/` directories.
+- **Scope**: pure logic and helpers only (formatters, parsers, URL/query builders, sorting, response mapping). No component, browser, or jsdom tests, and never a real network call.
+- **Mocking**: mock `next/headers`, `next/navigation`, `next/cache`, React `cache`, `./httpClient` and server actions with `vi.mock` instead of changing source. Restore env/timers/mocks after each test (`vi.unstubAllEnvs`, `vi.resetAllMocks`, ...).
+- **Commands**: `pnpm --filter web test`, `pnpm --filter web test:watch`.
 
 ## Development & Verification Guidelines
 

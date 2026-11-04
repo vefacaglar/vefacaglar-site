@@ -1,14 +1,14 @@
 /* ==========================================================================
-   Game page: a programme spread. A raised band with the cover and title,
-   then notes and logs beside a credits column.
+   Game page: a raised header with the cover and title, then notes and logs
+   beside a details column.
    ========================================================================== */
 
 .hero {
   position: relative;
   isolation: isolate;
   margin-top: calc(-1 * var(--shell-pad-top, 56px));
-  padding: 48px 0 56px;
-  margin-bottom: 64px;
+  padding: 40px 0 40px;
+  margin-bottom: 48px;
 }
 
 /* The band runs edge to edge; the content keeps the shell's measure. */
@@ -25,11 +25,52 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Faint, desaturated copy of the cover behind the header, fading into the surface. */
+.backdrop {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 1px;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(48px) grayscale(0.6);
+  opacity: 0.18;
+  transform: scale(1.15);
+}
+
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, var(--surface) 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .backdrop img {
+    animation: wash 1.4s ease-out both;
+  }
+}
+
+@keyframes wash {
+  from {
+    opacity: 0;
+  }
+}
+
 .heroInner {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 200px minmax(0, 1fr);
   align-items: end;
-  gap: 56px;
+  gap: 40px;
 }
 
 .heroNoCover {
@@ -52,8 +93,8 @@
 }
 
 .back {
-  margin: 0 0 28px 0;
-  font-size: 15px;
+  margin: 0 0 16px 0;
+  font-size: 13px;
 }
 
 .back a {
@@ -66,10 +107,10 @@
 }
 
 .title {
-  margin: 0 0 12px -0.02em;
-  font-size: clamp(40px, 5.2vw, 72px);
-  font-weight: 400;
-  line-height: 1.02;
+  margin: 0 0 6px 0;
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 600;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--text-heading);
   text-wrap: balance;
@@ -78,26 +119,25 @@
 
 .byline {
   margin: 0;
-  font-size: 21px;
-  font-style: italic;
-  line-height: 1.35;
+  font-size: 15px;
+  line-height: 1.4;
   color: var(--muted);
 }
 
-/* Key figures: release year and critic score, separated by rules. */
+/* Key figures: release year and critic score. */
 .figures {
   display: flex;
   flex-wrap: wrap;
   gap: 20px 0;
-  margin: 36px 0 0 0;
+  margin: 28px 0 0 0;
 }
 
 .figure {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 0 36px;
-  border-left: 1px solid var(--border-strong);
+  gap: 4px;
+  padding: 0 28px;
+  border-left: 1px solid var(--border);
 }
 
 .figure:first-child {
@@ -106,8 +146,7 @@
 }
 
 .figure dt {
-  font-size: 15px;
-  font-style: italic;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -116,11 +155,12 @@
 }
 
 .figureValue {
-  font-size: 44px;
+  font-size: 24px;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
-  font-variant-numeric: lining-nums tabular-nums;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .figure[data-tier="high"] .figureValue {
@@ -129,14 +169,15 @@
 
 .figureUnit {
   margin-left: 4px;
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   letter-spacing: 0;
   color: var(--muted);
+  font-weight: 400;
 }
 
 .figureNote {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--muted);
 }
@@ -145,28 +186,27 @@
 
 .body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 88px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 64px;
   align-items: start;
 }
 
-/* Both columns open on a rule, so notes and credits start on the same line. */
 .main {
   min-width: 0;
-  padding-top: 22px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
+  border-top: none;
 }
 
 .description {
-  max-width: 62ch;
-  margin: 0 0 64px 0;
-  font-size: 19px;
+  max-width: 68ch;
+  margin: 0 0 48px 0;
+  font-size: 15px;
   line-height: 1.65;
   color: var(--text);
 }
 
 .section {
-  padding-top: 22px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
 }
 
@@ -177,32 +217,32 @@
 }
 
 .section + .section {
-  margin-top: 64px;
+  margin-top: 48px;
 }
 
 .sectionTitle {
-  margin: 0 0 26px 0;
-  font-size: 28px;
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
   color: var(--text-heading);
 }
 
-/* Credits column */
+/* Details column */
 .aside {
   position: sticky;
   top: 32px;
-  padding-top: 22px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
+  border-top: none;
 }
 
 .asideTitle {
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
   color: var(--text-heading);
 }
 
@@ -212,16 +252,15 @@
 
 .credit {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: 16px;
-  padding: 14px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
 .credit dt {
-  font-style: italic;
   color: var(--muted);
 }
 
@@ -230,7 +269,7 @@
   color: var(--text-heading);
 }
 
-/* How long to beat: three times as thin bars, relative to the longest. */
+/* How long to beat: three times as bars, relative to the longest. */
 .hltb {
   list-style: none;
   padding: 0;
@@ -242,10 +281,10 @@
 
 .hltbRow {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr) 84px;
+  grid-template-columns: 150px minmax(0, 1fr) 64px;
   align-items: center;
-  gap: 24px;
-  padding: 12px 0;
+  gap: 20px;
+  padding: 10px 0;
 }
 
 .hltbRow + .hltbRow {
@@ -253,7 +292,7 @@
 }
 
 .hoursLabel {
-  font-size: 17px;
+  font-size: 14px;
   color: var(--text);
 }
 
@@ -272,18 +311,20 @@
 }
 
 .hours {
-  font-size: 28px;
+  font-size: 15px;
   line-height: 1;
   text-align: right;
   color: var(--text-heading);
-  font-variant-numeric: lining-nums tabular-nums;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .hoursUnit {
   margin-left: 3px;
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--muted);
+  font-weight: 400;
 }
 
 /* ---------- Logs ---------- */
@@ -297,8 +338,8 @@
 
 .muted {
   margin: 0;
-  font-style: italic;
   color: var(--muted);
+  font-size: 14px;
 }
 
 .logList {
@@ -326,8 +367,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: 8px;
+  padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   text-decoration: none;
@@ -349,14 +390,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 20px;
-  font-size: 15px;
+  gap: 4px 16px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .status {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text-heading);
 }
 
 .logEdit {
@@ -366,7 +407,7 @@
 
 .notes {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--text);
   white-space: pre-wrap;
@@ -377,8 +418,8 @@
 }
 
 .libraryLink {
-  margin: 24px 0 0 0;
-  font-size: 15px;
+  margin: 20px 0 0 0;
+  font-size: 14px;
 }
 
 /* ---------- Log edit page ---------- */
@@ -388,8 +429,8 @@
 }
 
 .backLink {
-  margin: 0 0 24px 0;
-  font-size: 15px;
+  margin: 0 0 16px 0;
+  font-size: 13px;
 }
 
 .backLink a {
@@ -402,11 +443,11 @@
 }
 
 .narrow h1 {
-  margin: 0 0 32px -0.02em;
-  font-size: clamp(36px, 4.6vw, 56px);
-  font-weight: 400;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  margin: 0 0 24px 0;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
 }
 
@@ -414,8 +455,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 28px;
+  gap: 18px;
+  padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
 }
@@ -443,7 +484,7 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--muted);
   pointer-events: none;
@@ -465,8 +506,8 @@
 
 @media (max-width: 960px) {
   .heroInner {
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 36px;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 32px;
   }
 
   .heroNoCover {
@@ -475,7 +516,7 @@
 
   .body {
     grid-template-columns: minmax(0, 1fr);
-    gap: 64px;
+    gap: 48px;
   }
 
   .aside {
@@ -491,48 +532,48 @@
 
 @media (max-width: 640px) {
   .hero {
-    padding: 28px 0 36px;
-    margin-bottom: 40px;
+    padding: 24px 0 28px;
+    margin-bottom: 32px;
   }
 
   .heroInner {
     grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
+    gap: 20px;
   }
 
   .cover {
-    width: 58%;
-    max-width: 230px;
+    width: 44%;
+    max-width: 180px;
   }
 
   .back {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
 
   .byline {
-    font-size: 18px;
+    font-size: 14px;
   }
 
   .figures {
-    margin-top: 28px;
+    margin-top: 20px;
   }
 
   .figure {
-    padding: 0 24px;
+    padding: 0 20px;
   }
 
   .figureValue {
-    font-size: 36px;
+    font-size: 20px;
   }
 
   .description {
-    font-size: 17px;
-    margin-bottom: 48px;
+    font-size: 15px;
+    margin-bottom: 36px;
   }
 
   .sectionTitle,
   .asideTitle {
-    font-size: 24px;
+    font-size: 16px;
   }
 
   .credit {
@@ -557,7 +598,7 @@
 
   .hours {
     grid-area: hours;
-    font-size: 24px;
+    font-size: 15px;
   }
 
   .logForm {

@@ -1,0 +1,199 @@
+/* Job progress: a native <progress> restyled with the site palette. Square, flat. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.rootLarge {
+  composes: root;
+  gap: 10px;
+}
+
+/* ---- Bar ------------------------------------------------------------------ */
+
+.bar {
+  --tone: var(--muted);
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--border);
+  color: var(--tone);
+  overflow: hidden;
+}
+
+.barLarge {
+  composes: bar;
+  height: 8px;
+}
+
+.bar::-webkit-progress-bar {
+  background: var(--border);
+  border-radius: 0;
+}
+
+.bar::-webkit-progress-value {
+  background: var(--tone);
+  border-radius: 0;
+  transition: width 0.45s ease;
+}
+
+.bar::-moz-progress-bar {
+  background: var(--tone);
+  border-radius: 0;
+}
+
+.queued { --tone: var(--muted); }
+.running { --tone: var(--info); }
+.succeeded { --tone: var(--success); }
+.failed { --tone: var(--accent); }
+.cancelled { --tone: var(--warning); }
+
+/* Running with a known total: a slow sheen travels along the filled part. */
+.running::-webkit-progress-value {
+  background: linear-gradient(
+    90deg,
+    var(--tone) 0%,
+    color-mix(in srgb, var(--tone) 55%, var(--text-heading)) 50%,
+    var(--tone) 100%
+  );
+  background-size: 200% 100%;
+  animation: sheen 1.8s linear infinite;
+}
+
+.running::-moz-progress-bar {
+  background: linear-gradient(
+    90deg,
+    var(--tone) 0%,
+    color-mix(in srgb, var(--tone) 55%, var(--text-heading)) 50%,
+    var(--tone) 100%
+  );
+  background-size: 200% 100%;
+  animation: sheen 1.8s linear infinite;
+}
+
+/* Running without a total: a segment sweeps across the track. */
+.bar:indeterminate {
+  background: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 35%,
+      var(--tone) 35%,
+      var(--tone) 65%,
+      transparent 65%,
+      transparent 100%
+    ),
+    var(--border);
+  background-size: 200% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: sweep 1.3s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.bar:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+.bar:indeterminate::-moz-progress-bar {
+  background: transparent;
+}
+
+/* Failed/cancelled without counters: the full bar, dimmed, to read as "stopped". */
+.stopped::-webkit-progress-value {
+  opacity: 0.4;
+}
+
+.stopped::-moz-progress-bar {
+  opacity: 0.4;
+}
+
+@keyframes sweep {
+  from { background-position: 150% 0, 0 0; }
+  to { background-position: -50% 0, 0 0; }
+}
+
+@keyframes sheen {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+/* ---- Text ----------------------------------------------------------------- */
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.rootLarge .meta {
+  font-size: 13px;
+}
+
+.counts {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.num {
+  color: var(--text);
+}
+
+.percent {
+  color: var(--text-heading);
+}
+
+.phaseCompact {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.phase {
+  color: var(--text-heading);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.message {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar::-webkit-progress-value {
+    transition: none;
+  }
+
+  .running::-webkit-progress-value,
+  .running::-moz-progress-bar {
+    animation: none;
+    background: var(--tone);
+  }
+
+  /* A still, half-filled hint instead of the sweep. */
+  .bar:indeterminate {
+    animation: none;
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--tone) 45%, transparent) 0%,
+        color-mix(in srgb, var(--tone) 45%, transparent) 100%
+      ),
+      var(--border);
+  }
+}

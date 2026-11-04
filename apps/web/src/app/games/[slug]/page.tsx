@@ -102,6 +102,12 @@ export default async function Game(props: GameProps) {
   return (
     <article>
       <header className={styles.hero}>
+        {game.coverImageUrl && (
+          <div className={styles.backdrop} aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={game.coverImageUrl} alt="" />
+          </div>
+        )}
         <div className={game.coverImageUrl ? styles.heroInner : `${styles.heroInner} ${styles.heroNoCover}`}>
           {game.coverImageUrl && (
             // eslint-disable-next-line @next/next/no-img-element

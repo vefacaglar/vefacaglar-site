@@ -347,7 +347,8 @@ export class TypesenseSearchReader implements ISearchReader {
     // without naming the collection, so match on status too.
     if (status === 404) return true;
     // The collection predates a field the query filters or sorts on; it is
-    // fixed by `search:reindex --drop`, and Postgres can answer meanwhile.
+    // fixed by a `search.reindex` job with `drop: true` (docs/jobs-worker.md),
+    // and Postgres can answer meanwhile.
     if (status === 400 && msg.includes("could not find a field")) return true;
     if (typeof status === "number" && status >= 500) return true;
     return false;

@@ -38,7 +38,8 @@ export class GetPublicLibraryHandler {
     return {
       user: { username: user.username, displayName: user.displayName, isProfilePublic: user.isProfilePublic },
       isOwner,
-      ...buildLibrary(logs, playtimeActivity),
+      // Log ids are only useful (and only exposed) to the owner, e.g. for editing from the library.
+      ...buildLibrary(logs, playtimeActivity, { includeLogIds: isOwner }),
     };
   }
 }

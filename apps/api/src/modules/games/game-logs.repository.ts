@@ -35,7 +35,13 @@ export class DrizzleGameLogsRepository implements IGameLogsRepository {
       .select({
         log: userGames,
         platformName: platforms.name,
-        game: { slug: games.slug, title: games.title, coverImageUrl: games.coverImageUrl },
+        game: {
+          slug: games.slug,
+          title: games.title,
+          coverImageUrl: games.coverImageUrl,
+          criticScore: games.criticScore,
+          criticScoreCount: games.criticScoreCount,
+        },
       })
       .from(userGames)
       .innerJoin(games, eq(userGames.gameId, games.id))

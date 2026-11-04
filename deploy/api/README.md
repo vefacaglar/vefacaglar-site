@@ -43,6 +43,7 @@ quotes. Add optional integrations using their existing values:
 | Typesense search | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`; `TYPESENSE_PUBLIC_URL` can replace explicit host/port/protocol |
 | Image uploads | `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_PUBLIC_KEY`, optionally `IMAGEKIT_FOLDER` |
 | IGDB imports | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
+| Live job stream (browser connects directly) | `JOB_STREAM_TOKEN_SECRET` (random, ≥ 32 bytes, e.g. `openssl rand -base64 48`; unset = random per-process key, single instance only), `WEB_ORIGINS` (origins allowed to open `/api/jobs/dashboard/:id/stream`; defaults to `https://vefacaglar.com,https://www.vefacaglar.com`) |
 | Additional runtime settings | `PG_POOL_MAX`, `API_URL` (defaults to `https://api2.vefacaglar.com`) |
 
 Alternatively, put a complete raw env file in the optional `API_ENV` secret.

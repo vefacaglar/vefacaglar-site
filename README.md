@@ -1,6 +1,8 @@
 # Vefa Çağlar Personal Website Monorepo
 
-Welcome to the personal developer website and API monorepo of Vefa Çağlar. This project is built using a highly efficient and modern TypeScript tech stack.
+Welcome to the personal developer website and API monorepo of Vefa Çağlar. It contains the personal site, the game library ("Vefa Library" at `/games`), the admin dashboard, the API and a Rust background worker.
+
+For how the pieces fit together, see [docs/architecture.md](docs/architecture.md).
 
 ---
 
@@ -8,9 +10,11 @@ Welcome to the personal developer website and API monorepo of Vefa Çağlar. Thi
 
 - **Monorepo Manager:** [Turborepo](https://turbo.build/)
 - **Package Manager:** [pnpm](https://pnpm.io/)
-- **Frontend:** [Next.js](https://nextjs.org/) (`apps/web`)
-- **Backend:** [Fastify](https://fastify.dev/) (`apps/api`)
-- **Database / ORM:** [Drizzle ORM](https://orm.drizzle.team/) & [Drizzle Kit](https://orm.drizzle.team/docs/kit-overview) (`packages/db`)
+- **Frontend:** [Next.js](https://nextjs.org/) 15 + React 19, CSS Modules (`apps/web`)
+- **Backend:** [Fastify](https://fastify.dev/) 5 (`apps/api`)
+- **Background Worker:** [Rust](https://www.rust-lang.org/) with tokio, sqlx and reqwest (`apps/worker`)
+- **Database / ORM:** PostgreSQL, [Drizzle ORM](https://orm.drizzle.team/) & [Drizzle Kit](https://orm.drizzle.team/docs/kit-overview) (`packages/db`)
+- **Job Queue:** PostgreSQL tables + `LISTEN/NOTIFY` (no Redis queue); live progress over Server-Sent Events
 - **Shared Utilities:** TypeScript shared package (`packages/shared`)
 - **Validation:** [TypeBox](https://github.com/sinclairzx81/typebox) (Runtime Validation & Schema Serialization)
 - **Testing:** [Vitest](https://vitest.dev/) (Handler-level unit tests in `apps/api`)
@@ -19,6 +23,7 @@ Welcome to the personal developer website and API monorepo of Vefa Çağlar. Thi
 - **API Documentation:** OpenAPI/Swagger (`@fastify/swagger` & `@fastify/swagger-ui`)
 - **Dependency Injection:** [`tsyringe`](https://github.com/microsoft/tsyringe)
 - **Image Hosting:** [ImageKit](https://imagekit.io/)
+- **Game Data:** [IGDB](https://api-docs.igdb.com/) (catalog import and popularity signals)
 
 ---
 
@@ -26,12 +31,21 @@ Welcome to the personal developer website and API monorepo of Vefa Çağlar. Thi
 
 ```txt
 apps/
-  ├── web/            # Next.js Frontend Application
-  └── api/            # Fastify Backend REST API
+  ├── web/            # Next.js: personal site, game library, admin dashboard
+  ├── api/            # Fastify REST API
+  └── worker/         # Rust background job worker (search reindex / sync)
 
 packages/
   ├── db/             # Drizzle ORM, Schemas, Migrations, and Seeders
   └── shared/         # Shared TypeScript utilities and helpers
+
+deploy/
+  ├── api/            # API Docker + Caddy blue-green deployment
+  └── worker/         # Worker Docker deployment
+
+docs/
+  ├── architecture.md # System overview
+  └── jobs-worker.md  # Background job system spec
 ```
 
 ---
@@ -58,6 +72,26 @@ Search across game-related entities (games, developers, publishers, genres, plat
 - **Decoupled Event-Driven Indexing:** To avoid blocking API request pipelines, indexing is completely decoupled from core database write operations. Instead of writing to Typesense inside feature handlers, we utilize a domestic **Domain Event Bus** (`games.events.ts`). DB modifications trigger lightweight events that are subscribed to asynchronously to propagate updates to Typesense.
 - **Resilient Fallback & Redis Circuit Breaker:** In the event of Typesense downtime or timeouts, the API gracefully and instantly falls back to standard PostgreSQL database queries. To avoid cascading failures, a **Redis Circuit Breaker** (`RedisCircuitBreaker`) tracks health state with a fast-expiry TTL, immediately opening the circuit if Typesense exhibits connectivity errors.
 - **English-Only Index:** Search indexes only the default (English) content into one collection per entity (`games_en`, `posts_en`, …). Every search reads these collections regardless of the request language; translations are not indexed.
+- **Aliases:** Each collection name is an alias pointing at a timestamped physical collection, so a full rebuild can switch over without downtime.
+- **Popularity Ranking:** Game browse results are sorted by a popularity score built from IGDB signals, then by release date.
+- **Bulk Work in the Worker:** The API only does per-document writes and bootstraps missing collections. Full rebuilds and gap filling are background jobs (see [Search Reindexing](#search-reindexing)).
+
+---
+
+## 🎮 Game Library
+
+The library (`/games`, `/movies`, `/profile`) is a separate product inside the web app, with its own header, footer, palette (graphite, Geist font) and link previews. It never links back to the main site.
+
+- **Catalog:** browse and search games, game detail pages, sign-in to log a game (status, rating, playtime, platform).
+- **Profiles:** `/profile/[username]` with an overview, a games shelf (status tabs, sorting, grid and list views, platform chart) and a movies placeholder. Profiles are private by default and can be made public in `/profile/settings`.
+- **Playtime audit:** every playtime increase is stored as a separate entry (`user_game_playtime_entries`).
+- **Movies:** placeholder, planned for a later phase.
+
+---
+
+## ⚡ Background Jobs
+
+Long-running work runs in the Rust worker (`apps/worker`), not in the API or on a developer machine. The API enqueues jobs into Postgres, the worker claims and runs them with checkpoints (resume after a crash or deploy), and the dashboard (`/dashboard/jobs`) shows runs and registered jobs with live progress and streaming logs. See [docs/jobs-worker.md](docs/jobs-worker.md).
 
 ---
 
@@ -91,6 +125,8 @@ Run them with `pnpm test` (all workspaces) or `pnpm --filter api test` (API only
 - **Node.js:** v20 or higher
 - **pnpm:** v11 or higher
 - **PostgreSQL Database** (e.g., Neon Postgres, Local Postgres)
+- **Typesense** and **Redis** (search; the API falls back to Postgres without them)
+- **Rust toolchain** (only for working on `apps/worker`)
 - **ImageKit Account** (for image uploads)
 
 ### Installation
@@ -111,8 +147,8 @@ cp .env.example .env
 
 ## 💻 Running the Project
 
-For the API-only VPS deployment with Docker, Caddy and GitHub Actions, see
-[the deployment guide](deploy/api/README.md).
+The web app deploys on Vercel. The API and the worker run as Docker containers on the VPS, deployed by GitHub Actions:
+[API deployment guide](deploy/api/README.md) · [worker deployment guide](deploy/worker/README.md).
 
 All commands should be executed from the **project root directory**:
 
@@ -146,16 +182,31 @@ pnpm --filter api test
 
 # API watch mode
 pnpm --filter api test:watch
+
+# Web (pure logic/helpers only) and its watch mode
+pnpm --filter web test
+pnpm --filter web test:watch
 ```
 
-### Search Indexing CLI
-Rebuild or re-sync Typesense search collections:
+### Background Worker
+The worker is not part of `pnpm dev`, because the local `.env` points at production services. Start it on its own:
 ```bash
-# Standard reindex
-pnpm --filter api search:reindex
+pnpm --filter worker worker:dev
+```
+Requires the Rust toolchain (`cargo`). Worker checks: `pnpm --filter worker typecheck`, `pnpm --filter worker test`, `pnpm --filter worker lint`.
 
-# Drop existing collections and recreate from scratch before indexing
-pnpm --filter api search:reindex -- --drop
+### Search Reindexing
+Search indexing runs as two registered jobs in the worker. Start them from **Dashboard → Jobs → Registered jobs**:
+
+- **`search.reindex`**: full rebuild. Loads everything into new timestamped collections, then switches all aliases at once. Search keeps serving the old data until the switch.
+- **`search.sync`**: adds documents that exist in Postgres but are missing from the live collections.
+
+Only one search job can run at a time. Neither job runs on a schedule.
+
+### Catalog Import & Popularity
+```bash
+pnpm --filter api catalog:import      # IGDB import (also runs every 6 hours in CI)
+pnpm --filter api catalog:popularity  # refresh popularity scores
 ```
 
 ---
@@ -188,7 +239,7 @@ Seed your database with default initial data (adds a default admin user `admin@v
 pnpm --filter @vefacaglar/db db:seed
 ```
 
-### 5. Drizzle Studio (Görsel Arayüz)
+### 5. Drizzle Studio (Visual UI)
 Explore your PostgreSQL database, manage tables, and edit data in a clean UI inside your browser:
 ```bash
 pnpm --filter @vefacaglar/db db:studio

@@ -4,6 +4,8 @@ import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections
  * Search is English-only: every entity has a single collection holding the
  * default (untranslated) content. The `_en` suffix is kept from the former
  * per-language layout so existing collections stay valid without a rename.
+ * Each name may be a real collection or an alias managed by the worker's
+ * `search.reindex` job (docs/jobs-worker.md).
  */
 export const SEARCH_COLLECTIONS = {
   games: "games_en",
@@ -14,9 +16,6 @@ export const SEARCH_COLLECTIONS = {
   themes: "themes_en",
   posts: "posts_en",
 } as const;
-
-/** Collections left over from the removed Turkish index; `search:reindex --drop` deletes them. */
-export const LEGACY_SEARCH_COLLECTIONS: readonly string[] = Object.keys(SEARCH_COLLECTIONS).map((base) => `${base}_tr`);
 
 export function buildGamesCollectionSchema(): CollectionCreateSchema {
   return {

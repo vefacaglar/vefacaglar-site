@@ -21,17 +21,20 @@ import { themesRoutes } from "./modules/catalog/themes.routes";
 import { platformsRoutes } from "./modules/catalog/platforms.routes";
 import { gameRelationsRoutes } from "./modules/catalog/relations.routes";
 import { packagesRoutes } from "./modules/packages/packages.routes";
+import { jobsRoutes } from "./modules/jobs/jobs.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
+import { serializeRequestForLog } from "./shared/log-redaction";
 import { createRedisClient, readRedisConfig } from "./shared/search/redis.client";
 import fastifyMultipart from "@fastify/multipart";
 
 const isProduction = process.env.NODE_ENV === "production";
 
 export const app = Fastify({
-  logger: true,
+  // Request URLs are logged; secret query values (job stream `?token=`) are redacted.
+  logger: { serializers: { req: serializeRequestForLog } },
   trustProxy: true,
   bodyLimit: 10 * 1024 * 1024,
 });
@@ -166,6 +169,7 @@ app.register(gamesRoutes, { prefix: "/api/catalog" });
 app.register(gameRelationsRoutes, { prefix: "/api/catalog" });
 app.register(packagesRoutes, { prefix: "/api/packages" });
 app.register(publicGamesRoutes, { prefix: "/api/games" });
+app.register(jobsRoutes, { prefix: "/api/jobs" });
 
 export default async function handler(req: any, res: any) {
   await app.ready();
