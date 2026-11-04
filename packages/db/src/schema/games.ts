@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index, doublePrecision } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 // Game Status Enum Values
@@ -29,6 +29,11 @@ export const games = pgTable('games', {
   // IGDB's aggregated critic rating (0-100) and how many critic reviews it averages.
   criticScore: integer('critic_score'),
   criticScoreCount: integer('critic_score_count'),
+  // IGDB's total_rating_count (user + critic ratings), refreshed on every import.
+  igdbRatingCount: integer('igdb_rating_count'),
+  // 0-1 blend of popularity signals, computed by the popularity refresh; null when the game has none.
+  popularityScore: doublePrecision('popularity_score'),
+  popularityUpdatedAt: timestamp('popularity_updated_at', { withTimezone: true, mode: 'date' }),
   hltbMainHours: decimal('hltb_main_hours', { precision: 6, scale: 1 }),
   hltbMainExtraHours: decimal('hltb_main_extra_hours', { precision: 6, scale: 1 }),
   hltbCompletionistHours: decimal('hltb_completionist_hours', { precision: 6, scale: 1 }),
@@ -37,6 +42,12 @@ export const games = pgTable('games', {
 }, (table) => ({
   // Public games list order (Postgres fallback when search is down).
   releaseDateTitleIdx: index('games_release_date_title_idx').on(table.releaseDate.desc().nullsLast(), table.title),
+  // Public games list "popular" order (Postgres fallback when search is down).
+  popularityScoreIdx: index('games_popularity_score_idx').on(
+    table.popularityScore.desc().nullsLast(),
+    table.releaseDate.desc().nullsLast(),
+    table.title
+  ),
   // Dashboard games list order.
   createdAtIdIdx: index('games_created_at_id_idx').on(table.createdAt.desc().nullsFirst(), table.id),
 }));
@@ -214,3 +225,16 @@ export type NewPlatform = typeof platforms.$inferInsert;
 
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
+
+// Raw IGDB popularity primitives per game, one row per popularity type (e.g. 4 = Played).
+// Values are only comparable within one type; the blended score lives on games.popularity_score.
+export const gamePopularitySignals = pgTable('game_popularity_signals', {
+  gameId: uuid('game_id')
+    .notNull()
+    .references(() => games.id, { onDelete: 'cascade' }),
+  popularityType: integer('popularity_type').notNull(),
+  value: doublePrecision('value').notNull(),
+  calculatedAt: timestamp('calculated_at', { withTimezone: true, mode: 'date' }),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.gameId, table.popularityType] }),
+}));

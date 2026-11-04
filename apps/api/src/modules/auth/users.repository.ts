@@ -82,6 +82,15 @@ export class DrizzleUsersRepository implements IUsersRepository {
     });
   }
 
+  async updateProfileVisibility(userId: string, isProfilePublic: boolean): Promise<User> {
+    const [row] = await this.dbProvider.client
+      .update(users)
+      .set({ isProfilePublic, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return row;
+  }
+
   /**
    * Atomically updates the password hash and revokes all other active sessions for the user.
    */

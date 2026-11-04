@@ -4,6 +4,8 @@ import { ErrorResponseSchema } from "../../shared/error-schema";
 import { ListGamesHandler } from "./list/list.handler";
 import { GetLibraryHandler } from "./library/library.handler";
 import { LibraryResponseSchema } from "./library/library.schema";
+import { GetPublicLibraryHandler } from "./public-library/public-library.handler";
+import { PublicLibraryParams, PublicLibraryParamsSchema, PublicLibraryResponseSchema } from "./public-library/public-library.schema";
 import { ListGamesQuery, ListGamesQuerySchema, ListGamesResponseSchema } from "./list/list.schema";
 import { GetGameHandler } from "./detail/detail.handler";
 import { GameDetailResponseSchema, GetGameParams, GetGameParamsSchema } from "./detail/detail.schema";
@@ -23,6 +25,7 @@ export async function publicGamesRoutes(app: FastifyInstance) {
   const listHandler = container.resolve(ListGamesHandler);
   const getHandler = container.resolve(GetGameHandler);
   const libraryHandler = container.resolve(GetLibraryHandler);
+  const publicLibraryHandler = container.resolve(GetPublicLibraryHandler);
   const listLogsHandler = container.resolve(ListGameLogsHandler);
   const createLogHandler = container.resolve(CreateGameLogHandler);
   const getLogHandler = container.resolve(GetGameLogHandler);
@@ -47,6 +50,25 @@ export async function publicGamesRoutes(app: FastifyInstance) {
       response: { 200: LibraryResponseSchema, 401: ErrorResponseSchema },
     },
   }, (request) => libraryHandler.handle(request));
+
+  app.get<{ Params: PublicLibraryParams }>("/users/:username/library", {
+    preHandler: app.tryAuth,
+    schema: {
+      description:
+        "A user's games library and play stats. 404 if the user is missing or inactive; a private profile " +
+        "is 401 for anonymous visitors, 403 for other signed-in users, and visible to its owner.",
+      tags: ["Games"],
+      // Optional auth: anonymous works, a bearer token lets owners see their private library.
+      security: [{}, { bearerAuth: [] }],
+      params: PublicLibraryParamsSchema,
+      response: {
+        200: PublicLibraryResponseSchema,
+        401: ErrorResponseSchema,
+        403: ErrorResponseSchema,
+        404: ErrorResponseSchema,
+      },
+    },
+  }, (request) => publicLibraryHandler.handle(request));
 
   app.get<{ Params: GetGameParams }>("/:slug", {
     schema: {

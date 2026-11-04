@@ -11,8 +11,10 @@ export class MeHandler {
       user: {
         id: user.id,
         email: user.email,
+        username: user.username,
         displayName: user.displayName,
         role: user.role,
+        isProfilePublic: user.isProfilePublic,
       },
     };
   }

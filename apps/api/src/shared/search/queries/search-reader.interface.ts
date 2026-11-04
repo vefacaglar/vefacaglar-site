@@ -18,8 +18,8 @@ import type {
 export interface ISearchReader {
   searchGames(query: SearchQuery): Promise<SearchResult<GameSearchItem>>;
   /**
-   * Public /games list. Without `q`, released games newest first; with `q`,
-   * best title matches first. Falls back to Postgres when Typesense is down.
+   * Public /games list. Without `q`, released games most popular first (then
+   * newest); with `q`, best title matches first, then most popular. Falls back to Postgres when Typesense is down.
    */
   searchPublicGames(query: SearchQuery): Promise<SearchResult<GameCard>>;
   searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>>;

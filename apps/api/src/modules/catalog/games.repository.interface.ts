@@ -51,6 +51,30 @@ export interface CatalogIndex {
   themes: LookupIdentity[];
 }
 
+/** A game that can be matched to IGDB popularity data, with its current score. */
+export type PopularitySource = {
+  id: string;
+  igdbId: number;
+  igdbRatingCount: number | null;
+  popularityScore: number | null;
+};
+
+export type PopularitySignal = {
+  gameId: string;
+  popularityType: number;
+  value: number;
+  calculatedAt: Date | null;
+};
+
+/** One full popularity refresh, written in a single transaction. */
+export type PopularityWrite = {
+  /** The signals of these types are replaced wholesale by `signals`. */
+  popularityTypes: number[];
+  signals: PopularitySignal[];
+  scores: { id: string; score: number | null }[];
+  updatedAt: Date;
+};
+
 /** The fields a public game card needs. */
 export type GameCard = Pick<Game, "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "criticScore" | "criticScoreCount">;
 
@@ -81,8 +105,8 @@ export interface IGamesRepository {
   ): Promise<string[]>;
 
   /**
-   * Public listing. Without `q`, released games newest first; with `q`, title
-   * matches ranked exact > prefix > substring, then newest first.
+   * Public listing. Without `q`, released games most popular first (then newest);
+   * with `q`, title matches ranked exact > prefix > substring, then by popularity.
    */
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
 
@@ -92,6 +116,11 @@ export interface IGamesRepository {
   /** Loads many games with their relations in a fixed number of queries. */
   findByIds(ids: string[]): Promise<GameWithRelations[]>;
   findLookupsByIds(kind: CatalogLookupKind, ids: string[]): Promise<CatalogLookupRow[]>;
+  /** Every game linked to IGDB, with what the popularity refresh needs. */
+  listPopularitySources(): Promise<PopularitySource[]>;
+  /** Replaces the popularity signals and writes every score in one transaction. Publishes no events. */
+  writePopularity(write: PopularityWrite): Promise<void>;
+
   /** Bulk-writes one import page in a single transaction. Publishes no events. */
   writeImportPage(write: CatalogImportWrite): Promise<CatalogImportWriteResult>;
 

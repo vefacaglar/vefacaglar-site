@@ -65,7 +65,7 @@ const LOOKUP_MAX = 120;
 /**
  * Imports games from IGDB: adds HLTB completion times, then creates each game
  * in the catalog or fills the fields an existing record is missing. Existing
- * values are never overwritten. A page of games is written in one transaction
+ * values are never overwritten, except the IGDB rating count, which is always refreshed. A page of games is written in one transaction
  * and indexed for search in one batch.
  */
 @injectable()
@@ -191,6 +191,7 @@ export class ImportGameHandler {
       releaseDate: source.releaseDate,
       criticScore: source.criticScore,
       criticScoreCount: source.criticScoreCount,
+      igdbRatingCount: source.ratingCount,
       hltbMainHours: toDecimal(times?.mainHours),
       hltbMainExtraHours: toDecimal(times?.mainExtraHours),
       hltbCompletionistHours: toDecimal(times?.completionistHours),
@@ -231,6 +232,9 @@ export class ImportGameHandler {
       patch.igdbId = source.igdbId;
       this.gameIndex?.byIgdbId.set(source.igdbId, existing.id);
     }
+    // The rating count drifts over time, so it is always refreshed. It only feeds the
+    // popularity refresh (not the search document), so it is bookkeeping here too.
+    if ((existing.igdbRatingCount ?? null) !== source.ratingCount) patch.igdbRatingCount = source.ratingCount;
     if (Object.keys(patch).length > 0) write.gameUpdates.push({ id: existing.id, patch: { ...patch, updatedAt: new Date() } });
     for (const kind of relationGaps) this.planLinks(write, kind, existing.id, source[LOOKUP_FIELDS[kind]]);
 

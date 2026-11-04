@@ -15,8 +15,10 @@ describe("MeHandler", () => {
       user: {
         id: "user-111",
         email: "vefa@example.com",
+        username: "vefa",
         displayName: "Vefa Çağlar",
         role: "admin",
+        isProfilePublic: true,
         passwordHash: "secret_hash",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -29,8 +31,10 @@ describe("MeHandler", () => {
       user: {
         id: "user-111",
         email: "vefa@example.com",
+        username: "vefa",
         displayName: "Vefa Çağlar",
         role: "admin",
+        isProfilePublic: true,
       },
     });
   });

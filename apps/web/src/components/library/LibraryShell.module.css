@@ -1,0 +1,173 @@
+/*
+ * The library is a section of its own: a wider frame, its own header and a
+ * lighter, larger type scale than the rest of the site.
+ */
+.shell {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  isolation: isolate;
+}
+
+.header {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "mark tabs utility";
+  align-items: stretch;
+  column-gap: 56px;
+  min-height: 72px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Wordmark */
+.wordmark {
+  grid-area: mark;
+  display: inline-flex;
+  align-items: center;
+  font-size: 17px;
+  letter-spacing: -0.05em;
+  text-decoration: none;
+  color: var(--text-heading);
+}
+
+.owner {
+  color: var(--muted);
+  font-weight: 400;
+  transition: color 0.15s ease;
+}
+
+.slash {
+  color: var(--accent);
+  margin: 0 2px;
+  font-weight: 300;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.wordmark:hover {
+  color: var(--text-heading);
+}
+
+.wordmark:hover .owner {
+  color: var(--text);
+}
+
+/* Section tabs */
+.tabs {
+  grid-area: tabs;
+  display: flex;
+  align-items: stretch;
+  gap: 32px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 15px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--text-heading);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--text-heading);
+  border-bottom-color: var(--accent);
+}
+
+/* Account: sign in, or the signed-in user's profile */
+.utility {
+  grid-area: utility;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.account {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.account:hover,
+.accountActive {
+  color: var(--text-heading);
+  border-color: var(--accent);
+}
+
+.wordmark:focus-visible,
+.tab:focus-visible,
+.account:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.body {
+  padding: 64px 0 128px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0 40px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.footerMark {
+  letter-spacing: -0.03em;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    width: calc(100% - 32px);
+  }
+
+  .header {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "mark utility"
+      "tabs tabs";
+    min-height: 0;
+  }
+
+  .wordmark,
+  .utility {
+    min-height: 60px;
+  }
+
+  .tabs {
+    gap: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .body {
+    padding: 40px 0 96px;
+  }
+}

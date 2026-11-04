@@ -3,10 +3,11 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import styles from "../../game.module.css";
 import { getActiveLanguage } from "../../../../../lib/lang";
-import { getDictionary, formatMetaTitle } from "../../../../../dictionaries";
+import { getDictionary } from "../../../../../dictionaries";
 import { localizeHref } from "../../../../../lib/localizeHref";
 import { httpClient } from "../../../../../lib/httpClient";
-import { getAuthMode } from "../../../../../lib/oidc";
+import { getLoginHref } from "../../../../../lib/oidc";
+import { libraryMetadata } from "../../../../../lib/librarySeo";
 import type { GameLog } from "../../GameLogs";
 import LogEditForm from "./LogEditForm";
 
@@ -22,7 +23,13 @@ interface LogPageProps {
 export async function generateMetadata() {
   const lang = await getActiveLanguage();
   // A user's own log page is private; keep it out of search results.
-  return { title: formatMetaTitle(getDictionary(lang).log_edit_title, lang), robots: { index: false } };
+  const dict = getDictionary(lang);
+  return libraryMetadata({
+    section: "games",
+    title: dict.log_edit_title,
+    description: dict.games_subtitle,
+    robots: { index: false },
+  });
 }
 
 export default async function GameLogPage(props: LogPageProps) {
@@ -41,7 +48,7 @@ export default async function GameLogPage(props: LogPageProps) {
   // Signed out (or session expired): sign in and come back to this log.
   if (!res || res.status === 401) {
     const here = localizeHref(`/games/${params.slug}/logs/${params.id}`, lang);
-    redirect(getAuthMode() === "oidc" ? `/dashboard/login/oidc?returnTo=${encodeURIComponent(here)}` : "/dashboard/login");
+    redirect(getLoginHref(here));
   }
   if (res.status === 404 || res.status === 400) notFound();
   if (!res.ok) throw new Error(`Game log fetch failed: ${res.status}`);
@@ -50,7 +57,7 @@ export default async function GameLogPage(props: LogPageProps) {
   if (game.slug !== params.slug) notFound();
 
   return (
-    <article>
+    <article className={styles.narrow}>
       <p className={styles.backLink}>
         <Link href={gameHref}>← {game.title}</Link>
       </p>

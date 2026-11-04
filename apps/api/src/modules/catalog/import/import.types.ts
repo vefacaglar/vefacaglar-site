@@ -11,6 +11,8 @@ export type ImportedGame = {
   /** Average external critic rating, 0-100, rounded. */
   criticScore: number | null;
   criticScoreCount: number | null;
+  /** IGDB `total_rating_count` (user + critic ratings); changes over time, so it is always refreshed. */
+  ratingCount: number | null;
   developers: ImportedLookup[];
   publishers: ImportedLookup[];
   genres: ImportedLookup[];
@@ -31,10 +33,23 @@ export type ImportedGamePage = {
   games: ImportedGame[];
 };
 
+/** One IGDB popularity primitive: a game's value for one popularity type. */
+export type PopularityPrimitive = {
+  igdbId: number;
+  popularityType: number;
+  value: number;
+  calculatedAt: Date | null;
+};
+
 export interface IIgdbClient {
   findGame(query: string): Promise<ImportedGame | null>;
   /** Walks the whole IGDB catalog in id order, one page per call. */
   listGames(afterId: number, options?: { minRatings?: number }): Promise<ImportedGamePage>;
+  /**
+   * Popularity primitives of the given types for the given IGDB game ids.
+   * Batches and throttles requests internally to respect IGDB's limits.
+   */
+  listPopularity(igdbIds: number[], popularityTypes: number[]): Promise<PopularityPrimitive[]>;
 }
 
 export interface IHltbClient {

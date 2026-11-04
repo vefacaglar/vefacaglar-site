@@ -5,15 +5,19 @@ import {
   type ImportedGame,
   type ImportedGamePage,
   type ImportedLookup,
+  type PopularityPrimitive,
 } from "./import.types";
 
 const TOKEN_URL = "https://id.twitch.tv/oauth2/token";
 const GAMES_URL = "https://api.igdb.com/v4/games";
+const POPULARITY_URL = "https://api.igdb.com/v4/popularity_primitives";
 const COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big";
 const PAGE_SIZE = 500; // IGDB's maximum per request
+// IGDB allows 4 requests per second; spacing calls a little wider avoids 429s.
+const MIN_REQUEST_INTERVAL_MS = 260;
 
 const FIELDS = [
-  "fields id,name,slug,summary,first_release_date,cover.image_id,game_type.type,aggregated_rating,aggregated_rating_count,",
+  "fields id,name,slug,summary,first_release_date,cover.image_id,game_type.type,aggregated_rating,aggregated_rating_count,total_rating_count,",
   "genres.name,genres.slug,themes.name,themes.slug,platforms.name,platforms.slug,",
   "involved_companies.developer,involved_companies.publisher,",
   "involved_companies.company.name,involved_companies.company.slug;",
@@ -34,19 +38,29 @@ type IgdbGame = {
   game_type?: { type: string };
   aggregated_rating?: number;
   aggregated_rating_count?: number;
+  total_rating_count?: number;
   genres?: IgdbNamed[];
   themes?: IgdbNamed[];
   platforms?: IgdbNamed[];
   involved_companies?: { developer: boolean; publisher: boolean; company: IgdbNamed }[];
+};
+type IgdbPopularityPrimitive = {
+  id: number;
+  game_id: number;
+  popularity_type: number;
+  value: number;
+  calculated_at?: number;
 };
 
 /** IGDB API v4 client, authenticated with Twitch client credentials. */
 @injectable()
 export class IgdbClient implements IIgdbClient {
   private token: { value: string; expiresAt: number } | null = null;
+  private lastRequestAt = 0;
 
   async findGame(query: string): Promise<ImportedGame | null> {
     const results = await this.query(
+      GAMES_URL,
       `search "${query.replace(/"/g, '\\"')}"; ${FIELDS} where version_parent = null; limit 10;`
     );
     if (results.length === 0) return null;
@@ -61,7 +75,7 @@ export class IgdbClient implements IIgdbClient {
     const where = [`id > ${afterId}`, "version_parent = null", "parent_game = null"];
     if (options.minRatings) where.push(`total_rating_count >= ${options.minRatings}`);
 
-    const results = await this.query(`${FIELDS} where ${where.join(" & ")}; sort id asc; limit ${PAGE_SIZE};`);
+    const results = await this.query(GAMES_URL, `${FIELDS} where ${where.join(" & ")}; sort id asc; limit ${PAGE_SIZE};`);
     return {
       lastId: results.length > 0 ? results[results.length - 1].id : null,
       games: results
@@ -70,17 +84,49 @@ export class IgdbClient implements IIgdbClient {
     };
   }
 
-  private async query(body: string): Promise<IgdbGame[]> {
+  async listPopularity(igdbIds: number[], popularityTypes: number[]): Promise<PopularityPrimitive[]> {
+    if (igdbIds.length === 0 || popularityTypes.length === 0) return [];
+    // Each game has at most one row per type, so ids x types <= 500 keeps a batch within one response.
+    const batchSize = Math.max(1, Math.floor(PAGE_SIZE / popularityTypes.length));
+    const types = popularityTypes.join(",");
+    const out: PopularityPrimitive[] = [];
+    for (let i = 0; i < igdbIds.length; i += batchSize) {
+      const ids = igdbIds.slice(i, i + batchSize).join(",");
+      const rows = await this.query<IgdbPopularityPrimitive>(
+        POPULARITY_URL,
+        `fields game_id,popularity_type,value,calculated_at; where popularity_type = (${types}) & game_id = (${ids}); limit ${PAGE_SIZE};`
+      );
+      for (const row of rows) {
+        out.push({
+          igdbId: row.game_id,
+          popularityType: row.popularity_type,
+          value: row.value,
+          calculatedAt: row.calculated_at ? new Date(row.calculated_at * 1000) : null,
+        });
+      }
+    }
+    return out;
+  }
+
+  private async query<T = IgdbGame>(url: string, body: string): Promise<T[]> {
     for (let attempt = 0; ; attempt++) {
-      const res = await fetch(GAMES_URL, { method: "POST", headers: await this.authHeaders(), body });
+      await this.throttle();
+      const res = await fetch(url, { method: "POST", headers: await this.authHeaders(), body });
       // 429 means we went over 4 req/s; back off briefly and retry.
       if (res.status === 429 && attempt < 5) {
         await sleep(1000 * (attempt + 1));
         continue;
       }
       if (!res.ok) throw new Error(`IGDB request failed: ${res.status} ${await res.text()}`);
-      return (await res.json()) as IgdbGame[];
+      return (await res.json()) as T[];
     }
+  }
+
+  /** Spaces requests out so callers never exceed IGDB's 4 req/s limit. */
+  private async throttle(): Promise<void> {
+    const wait = this.lastRequestAt + MIN_REQUEST_INTERVAL_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    this.lastRequestAt = Date.now();
   }
 
   private toImportedGame(game: IgdbGame): ImportedGame {
@@ -99,6 +145,7 @@ export class IgdbClient implements IIgdbClient {
         : null,
       criticScore: game.aggregated_rating != null ? Math.round(game.aggregated_rating) : null,
       criticScoreCount: game.aggregated_rating != null ? (game.aggregated_rating_count ?? null) : null,
+      ratingCount: game.total_rating_count ?? null,
       developers: lookup(companies.filter((c) => c.developer).map((c) => c.company)),
       publishers: lookup(companies.filter((c) => c.publisher).map((c) => c.company)),
       genres: lookup(game.genres),

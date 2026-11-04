@@ -29,6 +29,8 @@ import {
 } from "./games/delete/delete.schema";
 import { RelationsOptionsHandler } from "./options/options.handler";
 import { RelationsOptionsResponseSchema } from "./options/options.schema";
+import { RefreshPopularityHandler } from "./popularity/popularity.handler";
+import { RefreshPopularityResponseSchema } from "./popularity/popularity.schema";
 import { ErrorResponseSchema } from "../../shared/error-schema";
 
 export async function gamesRoutes(app: FastifyInstance) {
@@ -38,6 +40,7 @@ export async function gamesRoutes(app: FastifyInstance) {
   const updateGameHandler = container.resolve(UpdateGameHandler);
   const deleteGameHandler = container.resolve(DeleteGameHandler);
   const relationsOptionsHandler = container.resolve(RelationsOptionsHandler);
+  const refreshPopularityHandler = container.resolve(RefreshPopularityHandler);
 
   app.post<{ Body: CreateGameRequest }>("/games", {
     preHandler: app.requireAdmin,
@@ -127,4 +130,17 @@ export async function gamesRoutes(app: FastifyInstance) {
       },
     },
   }, (request) => relationsOptionsHandler.handle(request));
+
+  app.post("/popularity/refresh", {
+    preHandler: app.requireAdmin,
+    schema: {
+      description: "Refresh IGDB popularity signals, recompute popularity scores and reindex changed games",
+      tags: ["Games - Catalog"],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: RefreshPopularityResponseSchema,
+        401: ErrorResponseSchema,
+      },
+    },
+  }, () => refreshPopularityHandler.handle());
 }

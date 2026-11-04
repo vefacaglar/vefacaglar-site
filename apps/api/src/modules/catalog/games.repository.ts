@@ -10,8 +10,9 @@ import {
   gameGenres,
   gamePlatforms,
   gameThemes,
+  gamePopularitySignals,
 } from "@vefacaglar/db";
-import { and, asc, desc, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -25,6 +26,8 @@ import type {
   Game,
   NewGame,
   GameWithRelations,
+  PopularitySource,
+  PopularityWrite,
 } from "./games.repository.interface";
 
 const LOOKUP_KINDS: CatalogLookupKind[] = ["developer", "publisher", "genre", "platform", "theme"];
@@ -312,13 +315,18 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const whereExpr = pattern
       ? ilike(games.title, `%${pattern}%`)
       : lte(games.releaseDate, sql`current_date`);
+    // Matches games_popularity_score_idx, so browsing can read the top rows straight off the index.
+    const popularOrder = [
+      sql`${games.popularityScore} desc nulls last`,
+      sql`${games.releaseDate} desc nulls last`,
+      asc(games.title),
+    ];
     const order = pattern
       ? [
           asc(sql`case when lower(${games.title}) = lower(${q}) then 0 when ${games.title} ilike ${`${pattern}%`} then 1 else 2 end`),
-          sql`${games.releaseDate} desc nulls last`,
-          asc(games.title),
+          ...popularOrder,
         ]
-      : [sql`${games.releaseDate} desc nulls last`, asc(games.title)];
+      : popularOrder;
 
     const [countResult, rows] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(games).where(whereExpr),
@@ -374,6 +382,46 @@ export class DrizzleGamesRepository implements IGamesRepository {
     // The lookup tables share id/name/slug columns; the cast only narrows the type for Drizzle.
     const table = LOOKUP_TABLES[kind] as typeof genres;
     return this.dbProvider.client.select().from(table).where(inArray(table.id, ids));
+  }
+
+  async listPopularitySources(): Promise<PopularitySource[]> {
+    const rows = await this.dbProvider.client
+      .select({
+        id: games.id,
+        igdbId: games.igdbId,
+        igdbRatingCount: games.igdbRatingCount,
+        popularityScore: games.popularityScore,
+      })
+      .from(games)
+      .where(isNotNull(games.igdbId));
+    return rows.map((r) => ({ ...r, igdbId: r.igdbId! }));
+  }
+
+  async writePopularity(write: PopularityWrite): Promise<void> {
+    await this.dbProvider.transaction(async () => {
+      const db = this.dbProvider.client;
+
+      if (write.popularityTypes.length > 0) {
+        await db.delete(gamePopularitySignals).where(inArray(gamePopularitySignals.popularityType, write.popularityTypes));
+      }
+      for (const chunk of chunks(write.signals)) {
+        await db.insert(gamePopularitySignals).values(chunk);
+      }
+
+      // One UPDATE ... FROM (VALUES ...) per chunk instead of one statement per game.
+      for (const chunk of chunks(write.scores)) {
+        const values = sql.join(
+          chunk.map((s) => sql`(${s.id}::uuid, ${s.score}::double precision)`),
+          sql`, `
+        );
+        await db.execute(sql`
+          update ${games}
+          set popularity_score = v.score, popularity_updated_at = ${write.updatedAt.toISOString()}::timestamptz
+          from (values ${values}) as v(id, score)
+          where ${games.id} = v.id
+        `);
+      }
+    });
   }
 
   async writeImportPage(write: CatalogImportWrite): Promise<CatalogImportWriteResult> {

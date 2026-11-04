@@ -1,83 +1,252 @@
-.stats {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 40px 0;
+/* ---------- Profile header ---------- */
+
+.profileHeader {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  border: 1px solid var(--border);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "mono identity tools";
+  align-items: end;
+  gap: 32px;
+  padding-bottom: 40px;
 }
 
-.stats li {
-  padding: 16px;
+/* Library-card monogram: the first letter of the name on a finely hatched plate. */
+.monogram {
+  grid-area: mono;
+  width: 120px;
+  aspect-ratio: 1;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bg));
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 14%, transparent) 0 1px,
+      transparent 1px 7px
+    ),
+    color-mix(in srgb, var(--accent) 7%, var(--bg));
+  font-size: 64px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: var(--accent);
+  user-select: none;
 }
 
-.stats li + li {
-  border-left: 1px solid var(--border);
+.identity {
+  grid-area: identity;
+  min-width: 0;
 }
 
-.statValue {
-  font-size: 22px;
-  line-height: 1.3;
+.displayName {
+  margin: 0 0 14px -0.06em;
+  font-size: clamp(44px, 8vw, 112px);
+  font-weight: 300;
+  line-height: 0.88;
+  letter-spacing: -0.075em;
   color: var(--text-heading);
+  overflow-wrap: anywhere;
 }
 
-.statLabel {
-  font-size: 12px;
+.handle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0;
+  font-size: 15px;
   color: var(--muted);
 }
 
-.section {
-  margin-top: 40px;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
 }
 
-.library {
-  list-style: none;
-  padding: 0;
+.ownerTools {
+  grid-area: tools;
+  display: flex;
+  gap: 8px;
+}
+
+.settingsLink {
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+/* ---------- Profile tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 32px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 0;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--text-heading);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--text-heading);
+  border-bottom-color: var(--text-heading);
+}
+
+.tab:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tabCount {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabActive .tabCount {
+  color: var(--accent);
+}
+
+.content {
+  padding-top: 48px;
+}
+
+/* ---------- Stats ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0 0 72px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Value first visually, label first for screen readers (dt before dd). */
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 4px 24px 28px;
+}
+
+.stat:first-child {
+  padding-left: 0;
+}
+
+.stat + .stat {
+  border-left: 1px solid var(--border);
+}
+
+.statLabel {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.statValue {
   margin: 0;
 }
 
-.gameRow {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 0;
-}
-
-.gameRow + .gameRow {
-  border-top: 1px solid var(--border);
-}
-
-.thumb {
-  width: 48px;
-  flex-shrink: 0;
-  aspect-ratio: 3 / 4;
-  border: 1px solid var(--border);
-  object-fit: cover;
+.statNumber {
   display: block;
+  font-size: clamp(34px, 4.4vw, 56px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.07em;
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.gameInfo {
-  min-width: 0;
+.statUnit {
+  margin-left: 4px;
+  font-size: 0.34em;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--muted);
+}
+
+.statBar {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin-top: 16px;
+}
+
+.statBarTrack {
+  fill: var(--border);
+}
+
+.statBarFill {
+  fill: var(--accent);
+}
+
+/* ---------- Sections ---------- */
+
+.section + .section {
+  margin-top: 72px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  color: var(--text-heading);
+}
+
+.sectionLink {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sectionLink:hover {
+  color: var(--accent);
+}
+
+/* Game card caption (the card itself comes from the games shelf) */
+.cardCaption {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.gameTitle {
-  font-size: 14px;
-  line-height: 1.3;
-  color: var(--text-heading);
-  text-decoration: none;
-}
-
-.gameMeta {
+.cardMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: 0;
+  gap: 2px 10px;
   font-size: 12px;
   color: var(--muted);
 }
@@ -86,29 +255,327 @@
   color: var(--accent);
 }
 
+/* ---------- Empty states ---------- */
+
 .empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  color: var(--text-heading);
 }
 
 .muted {
+  margin: 0;
   color: var(--muted);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Private profile: a locked plate in place of the monogram, then a plain statement. */
+.privateState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 0 32px;
+}
+
+.privatePlate {
+  width: 120px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--muted) 12%, transparent) 0 1px,
+      transparent 1px 7px
+    ),
+    var(--bg);
+  color: var(--muted);
+}
+
+.privateHandle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.privateTitle {
+  max-width: 14ch;
+  margin: 0 0 8px -0.05em;
+  font-size: clamp(40px, 7vw, 96px);
+  font-weight: 300;
+  line-height: 0.92;
+  letter-spacing: -0.075em;
+  color: var(--text-heading);
+}
+
+.notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 48px 0 24px;
+}
+
+.notFoundCode {
+  margin: 0 0 0 -0.06em;
+  font-size: clamp(72px, 14vw, 168px);
+  font-weight: 300;
+  line-height: 0.86;
+  letter-spacing: -0.075em;
+  color: var(--text-heading);
+}
+
+/* ---------- Settings ---------- */
+
+.settings {
+  max-width: 720px;
+}
+
+.backLink {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+}
+
+.settingsTitle {
+  margin: 0 0 40px -0.05em;
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 300;
+  line-height: 0.92;
+  letter-spacing: -0.07em;
+  color: var(--text-heading);
+}
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.choiceGroup {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.settingsLabel {
+  display: block;
+  padding: 0;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Segmented choice: two square tiles backed by real radio inputs. */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choice {
+  position: relative;
+  display: block;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.choice:hover {
+  border-color: var(--muted);
+}
+
+.choice:has(.choiceInput:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+
+.choice:has(.choiceInput:focus-visible) {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.choiceInput {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
   margin: 0;
 }
 
-@media (max-width: 600px) {
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
+.choiceBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choiceTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--text-heading);
+}
+
+/* Square indicator, filled when chosen. */
+.choiceTitle::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border: 1px solid var(--muted);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.choiceInput:checked + .choiceBody .choiceTitle::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.choiceHint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.settingsActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.settingsStatus {
+  font-size: 13px;
+  color: var(--success);
+}
+
+.publicLink {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.publicLinkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.publicUrl {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 720px) {
+  .profileHeader {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "mono identity"
+      "tools tools";
+    gap: 20px;
+    padding-bottom: 28px;
   }
 
-  /* Two columns: dividers between neighbours, none on the outer edges. */
-  .stats li:nth-child(n + 3) {
+  /* Visitors see no owner tools, so no empty second row. */
+  .profileHeader:not(:has(.ownerTools)) {
+    grid-template-areas: "mono identity";
+  }
+
+  .privatePlate {
+    width: 88px;
+    margin-bottom: 8px;
+  }
+
+  .monogram {
+    width: 72px;
+    font-size: 40px;
+  }
+
+  .displayName {
+    font-size: clamp(36px, 11vw, 56px);
+    margin-bottom: 10px;
+  }
+
+  .handle {
+    font-size: 14px;
+  }
+
+  .tabs {
+    gap: 24px;
+  }
+
+  .content {
+    padding-top: 32px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 56px;
     border-top: 1px solid var(--border);
   }
 
-  .stats li:nth-child(2n + 1) {
+  .stat,
+  .stat:first-child {
+    padding: 20px 16px;
+  }
+
+  .stat:nth-child(odd) {
+    padding-left: 0;
     border-left: none;
+  }
+
+  .stat:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+
+  /* Five stats in two columns: the last one (average rating) takes the full row. */
+  .stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    padding-right: 0;
+  }
+
+  .statNumber {
+    font-size: 36px;
+  }
+
+  .section + .section {
+    margin-top: 56px;
+  }
+
+  .choices {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

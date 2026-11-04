@@ -16,6 +16,9 @@ export function buildGamesCollectionSchema(lang: SearchLanguage): CollectionCrea
       { name: "openCriticScore", type: "int32", optional: true },
       { name: "criticScore", type: "int32", optional: true },
       { name: "criticScoreCount", type: "int32", optional: true },
+      // 0-1 blended popularity; the public list's default sort. Unknown scores hold
+      // POPULARITY_UNKNOWN (-1) so they always sort after every scored game.
+      { name: "popularityScore", type: "float", optional: true, sort: true },
       // Release date as unix seconds, for the public list's "released" filter and
       // newest-first sort. Unknown dates hold RELEASE_UNKNOWN so they sort last.
       { name: "releaseTimestamp", type: "int64" },

@@ -8,6 +8,11 @@ export function getAuthMode(): AuthMode {
   return process.env.AUTH_MODE === "oidc" ? "oidc" : "password";
 }
 
+/** Sign-in URL that comes back to `returnTo` afterwards (the password login has no return support). */
+export function getLoginHref(returnTo: string): string {
+  return getAuthMode() === "oidc" ? `/dashboard/login/oidc?returnTo=${encodeURIComponent(returnTo)}` : "/dashboard/login";
+}
+
 export const OIDC_FLOW_COOKIE = "oidc_flow";
 export const OIDC_ID_TOKEN_COOKIE = "oidc_id_token";
 export const OIDC_FLOW_MAX_AGE = 10 * 60;

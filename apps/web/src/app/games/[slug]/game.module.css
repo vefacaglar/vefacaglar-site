@@ -1,85 +1,295 @@
+/* Hero: cover, title and critic score over a blurred wash of the cover art */
 .hero {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-  margin-bottom: 32px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: end;
+  gap: 56px;
+  padding-bottom: 56px;
+  margin-bottom: 56px;
+  border-bottom: 1px solid var(--border);
+}
+
+.heroNoCover {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Full-bleed, out-of-focus copy of the cover behind the hero and header. */
+.backdrop {
+  position: absolute;
+  z-index: -1;
+  top: -240px;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(64px) saturate(1.25);
+  opacity: 0.42;
+  transform: scale(1.2);
+}
+
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 30%, var(--bg) 100%),
+    radial-gradient(ellipse 70% 90% at 50% 20%, transparent 40%, var(--bg) 100%);
 }
 
 .cover {
-  width: 180px;
-  flex-shrink: 0;
+  width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  border: 1px solid var(--border);
+  display: block;
+  outline: 1px solid color-mix(in srgb, var(--text-heading) 14%, transparent);
+  outline-offset: -1px;
 }
 
 .heading {
-  flex: 1;
   min-width: 0;
 }
 
-.heading h1 {
-  margin-top: 0;
+.title {
+  margin: 0 0 24px -0.05em;
+  font-size: clamp(36px, 5.6vw, 76px);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.065em;
+  color: var(--text-heading);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.credits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.creditYear {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Critic score */
+.critic {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.criticScore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.criticScore[data-tier="high"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.criticScore[data-tier="mid"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.criticLabel {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-heading);
+}
+
+.criticCount {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Body: notes and logs on the left, the fact sheet on the right */
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-areas: "main aside";
+  gap: 80px;
+  align-items: start;
+}
+
+.main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.aside {
+  grid-area: aside;
+  position: sticky;
+  top: 32px;
 }
 
 .facts {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
 }
 
 .fact {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.fact:last-child {
+  border-bottom: 1px solid var(--border);
 }
 
 .fact dt {
+  font-size: 13px;
   color: var(--muted);
 }
 
 .fact dd {
   margin: 0;
+  color: var(--text-heading);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
 }
 
 .description {
-  line-height: 1.7;
+  max-width: 68ch;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text);
 }
 
 .section {
-  margin-top: 40px;
+  margin-top: 64px;
 }
 
+.main > .section:first-child {
+  margin-top: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 24px 0;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  color: var(--text-heading);
+}
+
+/* How long to beat: three times as bars, relative to the longest */
 .hltb {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  border: 1px solid var(--border);
-}
-
-.hltb li {
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
+  max-width: 640px;
 }
 
-.hltb li + li {
-  border-left: 1px solid var(--border);
+.hltbRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 20px;
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  height: 6px;
+}
+
+.barTrack {
+  fill: var(--border);
+}
+
+.barFill {
+  fill: var(--accent);
 }
 
 .hours {
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  text-align: right;
   color: var(--text-heading);
+  font-variant-numeric: tabular-nums;
 }
 
 .hoursLabel {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
+}
+
+/* Log edit page keeps a comfortable reading width inside the wide frame. */
+.narrow {
+  max-width: 720px;
+}
+
+.narrow h1 {
+  font-size: clamp(32px, 4.5vw, 48px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  margin: 0 0 32px -0.04em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .backdrop img {
+    animation: wash 1.4s ease-out both;
+  }
+}
+
+@keyframes wash {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.42;
+  }
 }
 
 .logs {
@@ -217,22 +427,77 @@
   gap: 16px;
 }
 
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 32px;
+  }
+
+  .heroNoCover {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "aside"
+      "main";
+    gap: 48px;
+  }
+
+  .aside {
+    position: static;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+
+  .fact:last-child {
+    border-bottom: none;
+  }
+}
+
 @media (max-width: 600px) {
   .hero {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding-bottom: 40px;
+    margin-bottom: 40px;
   }
 
   .cover {
-    width: 140px;
+    width: 56%;
+    max-width: 220px;
   }
 
-  .hltb,
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hltbRow {
+    grid-template-columns: minmax(0, 1fr) 56px;
+    grid-template-areas:
+      "label hours"
+      "bar bar";
+    gap: 6px 12px;
+  }
+
+  .hoursLabel {
+    grid-area: label;
+  }
+
+  .bar {
+    grid-area: bar;
+  }
+
+  .hours {
+    grid-area: hours;
+  }
+
   .formGrid {
     grid-template-columns: 1fr;
-  }
-
-  .hltb li + li {
-    border-left: none;
-    border-top: 1px solid var(--border);
   }
 }

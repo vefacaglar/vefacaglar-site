@@ -12,6 +12,7 @@ export interface IUsersRepository {
     userId: string,
     patch: { email: string; displayName: string }
   ): Promise<User>;
+  updateProfileVisibility(userId: string, isProfilePublic: boolean): Promise<User>;
   changePasswordAndRevokeOtherSessions(
     userId: string,
     currentSessionId: string,

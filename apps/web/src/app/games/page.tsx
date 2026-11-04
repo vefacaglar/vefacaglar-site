@@ -1,12 +1,15 @@
 import Link from "next/link";
 import styles from "./games.module.css";
 import { getActiveLanguage } from "../../lib/lang";
-import { getDictionary, formatMetaTitle } from "../../dictionaries";
+import { getDictionary } from "../../dictionaries";
 import { localizeHref } from "../../lib/localizeHref";
 import { localizedAlternates } from "../../lib/seo";
+import { libraryMetadata } from "../../lib/librarySeo";
 import { getPublicGames } from "../../lib/data";
 import Pagination from "../components/Pagination";
+import LibraryMasthead from "../../components/library/LibraryMasthead";
 import GamesSearch from "./GamesSearch";
+import { scoreTier } from "./scoreTier";
 
 type GameCard = {
   slug: string;
@@ -20,11 +23,12 @@ type GameCard = {
 export async function generateMetadata() {
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
-  return {
-    title: formatMetaTitle(dict.games, lang),
+  return libraryMetadata({
+    section: "games",
+    title: dict.games,
     description: dict.games_subtitle,
     alternates: localizedAlternates("/games", lang),
-  };
+  });
 }
 
 interface GamesProps {
@@ -43,10 +47,9 @@ export default async function Games(props: GamesProps) {
 
   return (
     <div>
-      <h1>{dict.games}</h1>
-      <p className={styles.subtitle}>{dict.games_subtitle}</p>
-
-      <GamesSearch initialQuery={query} />
+      <LibraryMasthead title={dict.games} subtitle={dict.games_subtitle}>
+        <GamesSearch initialQuery={query} />
+      </LibraryMasthead>
 
       {games.length === 0 ? (
         <p className={styles.noResults}>{dict.no_games}</p>
@@ -64,13 +67,19 @@ export default async function Games(props: GamesProps) {
                       <span className={styles.coverFallback}>{game.title}</span>
                     )}
                     {game.criticScore != null && (
-                      <span className={styles.score} aria-label={`${dict.critic_score}: ${game.criticScore}/100`}>
+                      <span
+                        className={styles.score}
+                        data-tier={scoreTier(game.criticScore)}
+                        aria-label={`${dict.critic_score}: ${game.criticScore}/100`}
+                      >
                         {game.criticScore}
                       </span>
                     )}
                   </div>
-                  <span className={styles.title}>{game.title}</span>
-                  {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
+                  <span className={styles.caption}>
+                    <span className={styles.title}>{game.title}</span>
+                    {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
+                  </span>
                 </Link>
               </li>
             ))}

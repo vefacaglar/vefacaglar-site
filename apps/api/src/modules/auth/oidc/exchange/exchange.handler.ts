@@ -7,6 +7,7 @@ import type { IOidcClient, OidcClaims } from "../oidc-client.interface";
 import { UnauthorizedError } from "../../../../shared/http-errors";
 import type { LoginResponse } from "../../login/login.schema";
 import type { OidcExchangeRequest } from "./exchange.schema";
+import { isReservedUsername } from "../../auth.utils";
 
 const DEFAULT_ROLE = "user";
 const MAX_USERNAME_ATTEMPTS = 10;
@@ -75,7 +76,8 @@ export class OidcExchangeHandler {
 
     let candidate = base;
     for (let attempt = 2; attempt <= MAX_USERNAME_ATTEMPTS; attempt++) {
-      if (!(await this.usersRepo.findByUsername(candidate))) return candidate;
+      // Reserved names collide with fixed web routes, so they are treated as taken.
+      if (!isReservedUsername(candidate) && !(await this.usersRepo.findByUsername(candidate))) return candidate;
       candidate = `${base}${attempt}`;
     }
     return `${base}-${claims.subject.slice(0, 8)}`;

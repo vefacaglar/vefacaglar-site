@@ -31,6 +31,20 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
 
   return (
     <form className={styles.searchForm} onSubmit={(e) => e.preventDefault()} role="search">
+      <svg
+        className={styles.searchIcon}
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="square"
+        aria-hidden="true"
+      >
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="M15.5 15.5L21 21" />
+      </svg>
       <input
         className={styles.searchInput}
         type="search"
@@ -38,6 +52,7 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={dict.games_search_placeholder}
+        aria-label={dict.games_search_placeholder}
         autoComplete="off"
       />
     </form>

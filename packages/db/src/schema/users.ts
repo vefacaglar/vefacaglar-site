@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   oidcSubject: text('oidc_subject'),
   role: text('role').notNull().default('user'),
   isActive: boolean('is_active').notNull().default(true),
+  isProfilePublic: boolean('is_profile_public').notNull().default(false),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true, mode: 'date' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),

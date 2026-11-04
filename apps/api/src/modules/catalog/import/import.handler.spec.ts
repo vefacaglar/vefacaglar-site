@@ -14,6 +14,7 @@ const igdbGame: ImportedGame = {
   releaseDate: "2017-02-24",
   criticScore: 87,
   criticScoreCount: 12,
+  ratingCount: 4200,
   developers: [{ name: "Team Cherry", slug: "team-cherry" }],
   publishers: [{ name: "Team Cherry", slug: "team-cherry" }],
   genres: [{ name: "Platform", slug: "platform" }],
@@ -35,6 +36,7 @@ const existingGame = {
   hltbCompletionistHours: "60.0",
   criticScore: null,
   criticScoreCount: null,
+  igdbRatingCount: null,
   developers: [],
   publishers: [],
   genres: [{ id: "gen-1", name: "Action", slug: "action" }],
@@ -73,7 +75,7 @@ describe("ImportGameHandler", () => {
         lookups: { ...noLookups(), platform: [{ id: "plat-new", slug: "win", created: true }] },
       })),
     } as unknown as Record<keyof IGamesRepository, any>;
-    igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn() };
+    igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn(), listPopularity: vi.fn() };
     hltb = {
       findTimes: vi.fn().mockResolvedValue({ mainHours: 27, mainExtraHours: 41.6, completionistHours: 65.6 }),
     };
@@ -103,7 +105,7 @@ describe("ImportGameHandler", () => {
     expect(gamesRepo.writeImportPage).toHaveBeenCalledTimes(1);
     const write = lastWrite();
     expect(write.newGames).toEqual([
-      expect.objectContaining({ igdbId: 14593, slug: "hollow-knight", criticScore: 87, hltbMainHours: "27", hltbMainExtraHours: "41.6" }),
+      expect.objectContaining({ igdbId: 14593, slug: "hollow-knight", criticScore: 87, igdbRatingCount: 4200, hltbMainHours: "27", hltbMainExtraHours: "41.6" }),
     ]);
     const gameId = write.newGames[0].id;
     expect(write.lookups.platform).toEqual([{ name: "PC", slug: "win" }]);
@@ -168,6 +170,7 @@ describe("ImportGameHandler", () => {
           criticScoreCount: 12,
           hltbMainHours: "27",
           hltbMainExtraHours: "41.6",
+          igdbRatingCount: 4200,
           updatedAt: expect.any(Date),
         },
       },
@@ -200,6 +203,7 @@ describe("ImportGameHandler", () => {
     withIndexedGame({}, {
       coverImageUrl: "x",
       criticScore: 80,
+      igdbRatingCount: 4200,
       hltbMainHours: "27.0",
       hltbMainExtraHours: "41.6",
       developers: [{ id: "d" }],
@@ -212,6 +216,25 @@ describe("ImportGameHandler", () => {
     expect(result.status).toBe("skipped");
     expect(lastWrite().gameUpdates).toEqual([{ id: "g-1", patch: { igdbId: 14593, updatedAt: expect.any(Date) } }]);
     expect(eventBus.publish).toHaveBeenCalledWith(expect.objectContaining({ gameIds: [] }));
+  });
+
+  it("always refreshes the IGDB rating count without marking the game updated", async () => {
+    withIndexedGame({ igdbId: 14593 }, {
+      igdbId: 14593,
+      coverImageUrl: "x",
+      criticScore: 80,
+      igdbRatingCount: 3000,
+      hltbMainHours: "27.0",
+      hltbMainExtraHours: "41.6",
+      developers: [{ id: "d" }],
+      publishers: [{ id: "p" }],
+      platforms: [{ id: "pl" }],
+    });
+
+    const result = await handler.handle("Hollow Knight");
+
+    expect(result.status).toBe("skipped");
+    expect(lastWrite().gameUpdates).toEqual([{ id: "g-1", patch: { igdbRatingCount: 4200, updatedAt: expect.any(Date) } }]);
   });
 
   it("creates the game when the indexed record was deleted meanwhile", async () => {

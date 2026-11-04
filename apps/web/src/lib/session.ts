@@ -3,7 +3,15 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { httpClient } from "./httpClient";
 
-export type SessionUser = { id: string; email: string; displayName: string; role: string };
+export type SessionUser = {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  role: string;
+  /** Whether the user's library profile is visible to anyone with the link. */
+  isProfilePublic: boolean;
+};
 
 /** The signed-in user for this request, or null. Memoized per request. */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {

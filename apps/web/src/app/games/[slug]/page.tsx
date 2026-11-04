@@ -3,14 +3,16 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import styles from "./game.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
-import { getDictionary, formatMetaTitle } from "../../../dictionaries";
+import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { localizedAlternates } from "../../../lib/seo";
+import { libraryMetadata } from "../../../lib/librarySeo";
 import { getGame } from "../../../lib/data";
 import { httpClient } from "../../../lib/httpClient";
-import { getAuthMode } from "../../../lib/oidc";
+import { getLoginHref } from "../../../lib/oidc";
 import { formatDate } from "../../../lib/formatDate";
 import GameLogs, { type GameLog } from "./GameLogs";
+import { scoreTier } from "../scoreTier";
 
 type Named = { name: string; slug: string };
 type GameDetail = {
@@ -39,13 +41,16 @@ export async function generateMetadata(props: GameProps) {
   const params = await props.params;
   const lang = await getActiveLanguage();
   const game = (await getGame(params.slug)) as GameDetail | null;
+  // Unknown game: the games layout's library metadata applies.
   if (!game) return {};
-  return {
-    title: formatMetaTitle(game.title, lang),
-    description: game.description?.slice(0, 160) ?? undefined,
+  return libraryMetadata({
+    section: "games",
+    title: game.title,
+    description: game.description?.slice(0, 160) || getDictionary(lang).games_subtitle,
+    // Games with a cover share it; the rest get the library preview card.
+    image: game.coverImageUrl,
     alternates: localizedAlternates(`/games/${game.slug}`, lang),
-    openGraph: game.coverImageUrl ? { images: [{ url: game.coverImageUrl }] } : undefined,
-  };
+  });
 }
 
 /** The signed-in user's logs, or null when nobody (valid) is signed in. */
@@ -68,89 +73,136 @@ export default async function Game(props: GameProps) {
   if (!game) notFound();
 
   const logs = await getMyLogs(game.slug);
-  const returnTo = localizeHref(`/games/${game.slug}`, lang);
-  const loginHref =
-    getAuthMode() === "oidc" ? `/dashboard/login/oidc?returnTo=${encodeURIComponent(returnTo)}` : "/dashboard/login";
+  const loginHref = getLoginHref(localizeHref(`/games/${game.slug}`, lang));
 
   const names = (items: Named[]) => items.map((i) => i.name).join(", ");
+  const year = game.releaseDate?.slice(0, 4) ?? null;
+  const developers = names(game.developers);
 
-  const facts: [string, string][] = (
+  type Fact = { label: string; text?: string; tags?: string[] };
+  const facts: Fact[] = (
     [
-      [dict.released, game.releaseDate ? formatDate(game.releaseDate, lang) : ""],
-      [
-        dict.critic_score,
-        game.criticScore !== null
-          ? `${game.criticScore}/100${
-              game.criticScoreCount ? ` · ${dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}` : ""
-            }`
-          : "",
-      ],
-      [dict.developers, names(game.developers)],
-      [dict.publishers, names(game.publishers)],
-      [dict.genres, names(game.genres)],
-      [dict.themes, names(game.themes)],
-      [dict.platforms, names(game.platforms)],
-    ] as [string, string][]
-  ).filter(([, value]) => value);
+      { label: dict.released, text: game.releaseDate ? formatDate(game.releaseDate, lang) : "" },
+      { label: dict.developers, text: developers },
+      { label: dict.publishers, text: names(game.publishers) },
+      { label: dict.genres, tags: game.genres.map((g) => g.name) },
+      { label: dict.themes, tags: game.themes.map((t) => t.name) },
+      { label: dict.platforms, tags: game.platforms.map((p) => p.name) },
+    ] as Fact[]
+  ).filter((fact) => fact.text || fact.tags?.length);
 
   const hltb: [string, number | null][] = [
     [dict.hltb_main, game.hltbMainHours],
     [dict.hltb_main_extra, game.hltbMainExtraHours],
     [dict.hltb_completionist, game.hltbCompletionistHours],
   ];
-  const hasHltb = hltb.some(([, hours]) => hours !== null);
+  const longest = Math.max(0, ...hltb.map(([, hours]) => hours ?? 0));
+  const hasHltb = longest > 0;
 
   return (
     <article>
-      <div className={styles.hero}>
+      <header className={game.coverImageUrl ? styles.hero : `${styles.hero} ${styles.heroNoCover}`}>
         {game.coverImageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className={styles.cover} src={game.coverImageUrl} alt="" />
-        )}
-        <div className={styles.heading}>
-          <h1>{game.title}</h1>
-          <dl className={styles.facts}>
-            {facts.map(([label, value]) => (
-              <div key={label} className={styles.fact}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-
-      {game.description && <p className={styles.description}>{game.description}</p>}
-
-      {hasHltb && (
-        <section className={styles.section}>
-          <h2>{dict.how_long_to_beat}</h2>
-          <ul className={styles.hltb}>
-            {hltb.map(([label, hours]) => (
-              <li key={label}>
-                <span className={styles.hours}>{hours !== null ? `${hours}${dict.hours_short}` : "—"}</span>
-                <span className={styles.hoursLabel}>{label}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className={styles.section}>
-        <h2>{dict.my_logs}</h2>
-        {logs === null ? (
-          <Link href={loginHref} className="btnAccent">
-            {dict.login_to_log}
-          </Link>
-        ) : (
           <>
-            <GameLogs slug={game.slug} logs={logs} />
-            <p className={styles.libraryLink}>
-              <Link href={localizeHref("/profile", lang)}>{dict.view_profile} →</Link>
-            </p>
+            <div className={styles.backdrop} aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={game.coverImageUrl} alt="" />
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.cover} src={game.coverImageUrl} alt="" />
           </>
         )}
-      </section>
+        <div className={styles.heading}>
+          <h1 className={styles.title}>{game.title}</h1>
+          {(year || developers) && (
+            <p className={styles.credits}>
+              {year && <span className={styles.creditYear}>{year}</span>}
+              {developers && <span>{developers}</span>}
+            </p>
+          )}
+          {game.criticScore !== null && (
+            <div className={styles.critic}>
+              <span className={styles.criticScore} data-tier={scoreTier(game.criticScore)}>
+                {game.criticScore}
+              </span>
+              <span className={styles.criticLabel}>
+                <span>{dict.critic_score}</span>
+                {game.criticScoreCount ? (
+                  <span className={styles.criticCount}>
+                    {dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className={styles.body}>
+        {facts.length > 0 && (
+          <aside className={styles.aside}>
+            <dl className={styles.facts}>
+              {facts.map((fact) => (
+                <div key={fact.label} className={styles.fact}>
+                  <dt>{fact.label}</dt>
+                  {fact.tags ? (
+                    <dd className={styles.tags}>
+                      {fact.tags.map((tag) => (
+                        <span key={tag} className={styles.tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </dd>
+                  ) : (
+                    <dd>{fact.text}</dd>
+                  )}
+                </div>
+              ))}
+            </dl>
+          </aside>
+        )}
+
+        <div className={styles.main}>
+          {game.description && <p className={styles.description}>{game.description}</p>}
+
+          {hasHltb && (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>{dict.how_long_to_beat}</h2>
+              <ul className={styles.hltb}>
+                {hltb.map(([label, hours]) => (
+                  <li key={label} className={styles.hltbRow}>
+                    <span className={styles.hoursLabel}>{label}</span>
+                    {/* Bar length is relative to the longest of the three times. */}
+                    <svg className={styles.bar} viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className={styles.barTrack} x="0" y="0" width="100" height="6" />
+                      {hours !== null && (
+                        <rect className={styles.barFill} x="0" y="0" width={(hours / longest) * 100} height="6" />
+                      )}
+                    </svg>
+                    <span className={styles.hours}>{hours !== null ? `${hours}${dict.hours_short}` : "—"}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>{dict.my_logs}</h2>
+            {logs === null ? (
+              <Link href={loginHref} className="btnAccent">
+                {dict.login_to_log}
+              </Link>
+            ) : (
+              <>
+                <GameLogs slug={game.slug} logs={logs} />
+                <p className={styles.libraryLink}>
+                  <Link href={localizeHref("/profile", lang)}>{dict.view_profile} →</Link>
+                </p>
+              </>
+            )}
+          </section>
+        </div>
+      </div>
     </article>
   );
 }

@@ -194,9 +194,13 @@ export class TypesenseSearchReader implements ISearchReader {
       q: q || "*",
       query_by: "title,originalTitle",
       // Browsing shows only released games; a search also finds unreleased ones.
+      // Unscored games carry POPULARITY_UNKNOWN (-1), so they sort after every scored one.
       ...(q
-        ? { sort_by: "_text_match:desc,releaseTimestamp:desc" }
-        : { filter_by: `releaseTimestamp:>${RELEASE_UNKNOWN} && releaseTimestamp:<=${now}`, sort_by: "releaseTimestamp:desc" }),
+        ? { sort_by: "_text_match:desc,popularityScore:desc" }
+        : {
+            filter_by: `releaseTimestamp:>${RELEASE_UNKNOWN} && releaseTimestamp:<=${now}`,
+            sort_by: "popularityScore:desc,releaseTimestamp:desc",
+          }),
       include_fields: "id,slug,title,coverImageUrl,releaseDate,criticScore,criticScoreCount",
       page: query.page ?? 1,
       per_page: query.limit ?? 24,

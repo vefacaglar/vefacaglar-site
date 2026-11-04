@@ -3,3 +3,10 @@
   margin: 0 auto;
   padding: 96px 0;
 }
+
+/* Library pages (games, movies) bring their own header and a wider frame. */
+.main:has([data-library]) {
+  width: 100%;
+  padding: 0;
+  overflow-x: clip;
+}

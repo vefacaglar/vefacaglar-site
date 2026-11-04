@@ -12,6 +12,7 @@ export const GAMES_COLLECTION: CollectionCreateSchema = {
     { name: "releaseDate", type: "string", optional: true, facet: true },
     { name: "metacriticScore", type: "int32", optional: true },
     { name: "openCriticScore", type: "int32", optional: true },
+    { name: "popularityScore", type: "float", optional: true, sort: true },
     { name: "hltbMainHours", type: "string", optional: true },
     { name: "hltbMainExtraHours", type: "string", optional: true },
     { name: "hltbCompletionistHours", type: "string", optional: true },

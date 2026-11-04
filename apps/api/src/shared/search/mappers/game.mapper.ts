@@ -6,6 +6,9 @@ export type GameTranslations = { field: string; value: string }[];
 /** `releaseTimestamp` of a game without a release date: earlier than any real one. */
 export const RELEASE_UNKNOWN = -9_999_999_999;
 
+/** `popularityScore` of a game without one: below any real (0-1) score, so it sorts last. */
+export const POPULARITY_UNKNOWN = -1;
+
 export interface GameDoc {
   id: string;
   slug: string;
@@ -18,6 +21,7 @@ export interface GameDoc {
   openCriticScore?: number;
   criticScore?: number;
   criticScoreCount?: number;
+  popularityScore?: number;
   releaseTimestamp: number;
   hltbMainHours?: string;
   hltbMainExtraHours?: string;
@@ -74,6 +78,7 @@ export function toGameDoc(
     openCriticScore: game.openCriticScore ?? undefined,
     criticScore: game.criticScore ?? undefined,
     criticScoreCount: game.criticScoreCount ?? undefined,
+    popularityScore: game.popularityScore ?? POPULARITY_UNKNOWN,
     releaseTimestamp: game.releaseDate ? toUnixSeconds(game.releaseDate) : RELEASE_UNKNOWN,
     hltbMainHours: game.hltbMainHours ?? undefined,
     hltbMainExtraHours: game.hltbMainExtraHours ?? undefined,
@@ -126,6 +131,7 @@ export function gameWithRelationsFromDoc(doc: GameDoc): GameWithRelations {
     openCriticScore: doc.openCriticScore ?? null,
     criticScore: doc.criticScore ?? null,
     criticScoreCount: doc.criticScoreCount ?? null,
+    popularityScore: doc.popularityScore != null && doc.popularityScore >= 0 ? doc.popularityScore : null,
     hltbMainHours: doc.hltbMainHours ?? null,
     hltbMainExtraHours: doc.hltbMainExtraHours ?? null,
     hltbCompletionistHours: doc.hltbCompletionistHours ?? null,

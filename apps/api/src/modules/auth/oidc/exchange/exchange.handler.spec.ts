@@ -128,6 +128,16 @@ describe("OidcExchangeHandler", () => {
     expect(usersRepo.create).toHaveBeenCalledWith(expect.objectContaining({ username: "vefa.caglar2" }));
   });
 
+  it("never assigns the reserved username \"settings\", whatever its casing", async () => {
+    oidcClient.verifyIdToken.mockResolvedValue({ ...claims, preferredUsername: "Settings" });
+    usersRepo.create.mockResolvedValue({ id: "user-2", isActive: true });
+
+    await handler.handle({ idToken: "jwt", nonce: "n1" });
+
+    expect(usersRepo.findByUsername).not.toHaveBeenCalledWith("settings");
+    expect(usersRepo.create).toHaveBeenCalledWith(expect.objectContaining({ username: "settings2" }));
+  });
+
   it("rejects when the provider returns no email for an unknown subject", async () => {
     oidcClient.verifyIdToken.mockResolvedValue({ ...claims, email: undefined });
 

@@ -7,14 +7,14 @@ import { useLocale } from "./LocaleProvider";
 import { localizeHref } from "../lib/localizeHref";
 import styles from "./Header.module.css";
 
+const LIBRARY_PREFIXES = ["/games", "/movies", "/profile"];
+
 interface HeaderProps {
   dict: {
     back_to_home: string;
     back_to_blog: string;
     about: string;
     projects: string;
-    games: string;
-    profile: string;
   };
 }
 
@@ -52,14 +52,6 @@ export default function Header({ dict }: HeaderProps) {
       } else {
         items.push({ label: dict.back_to_blog.toLowerCase(), href: null });
       }
-    } else if (pagePath.startsWith("/games")) {
-      if (pagePath !== "/games") {
-        items.push({ label: dict.games, href: href("/games") });
-      } else {
-        items.push({ label: dict.games, href: null });
-      }
-    } else if (pagePath.startsWith("/profile")) {
-      items.push({ label: dict.profile, href: null });
     } else if (pagePath.startsWith("/author/")) {
       const parts = pagePath.split("/");
       const username = parts[2] || "author";
@@ -68,6 +60,11 @@ export default function Header({ dict }: HeaderProps) {
 
     return items;
   };
+
+  // The library (games, movies, profile) is its own section with its own header.
+  if (LIBRARY_PREFIXES.some((prefix) => pagePath === prefix || pagePath.startsWith(`${prefix}/`))) {
+    return null;
+  }
 
   const breadcrumbs = getBreadcrumbs();
 

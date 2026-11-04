@@ -4,6 +4,8 @@
   "err_project_not_found": "Proje bulunamadı.",
   "err_package_not_found": "Paket bulunamadı.",
   "err_doc_not_found": "Doküman bulunamadı.",
+  "err_profile_not_found": "Profil bulunamadı.",
+  "err_profile_private": "Bu profil gizli.",
   "err_category_not_found": "Kategori bulunamadı.",
   "err_slug_already_exists": "Bu slug zaten kullanılıyor.",
   "err_already_exists": "Aynı benzersiz değere sahip bir kayıt zaten var.",

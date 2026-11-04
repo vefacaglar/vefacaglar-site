@@ -1,0 +1,47 @@
+.masthead {
+  margin-bottom: 56px;
+}
+
+/* Light, oversized and tightly set: the title reads like a title card. */
+.title {
+  margin: 0 0 28px -0.06em;
+  font-size: clamp(56px, 10.5vw, 132px);
+  font-weight: 300;
+  line-height: 0.86;
+  letter-spacing: -0.075em;
+  color: var(--text-heading);
+}
+
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 48px;
+  flex-wrap: wrap;
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--muted);
+}
+
+.tools {
+  flex: 0 1 340px;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .masthead {
+    margin-bottom: 40px;
+  }
+
+  .title {
+    margin-bottom: 20px;
+  }
+
+  .tools {
+    flex: 1 1 100%;
+  }
+}

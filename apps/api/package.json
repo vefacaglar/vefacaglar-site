@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "search:reindex": "ts-node-dev --no-deps --no-notify --quiet src/scripts/search-reindex.ts",
     "catalog:import": "ts-node --transpile-only src/scripts/import-games.ts",
+    "catalog:popularity": "ts-node --transpile-only src/scripts/refresh-popularity.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

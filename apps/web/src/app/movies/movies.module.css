@@ -1,0 +1,24 @@
+/* Coming-soon note under the masthead. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  color: var(--text-heading);
+}
+
+.emptyBody {
+  max-width: 46ch;
+  margin: 0 0 8px 0;
+  color: var(--muted);
+}

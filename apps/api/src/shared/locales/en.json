@@ -4,6 +4,8 @@
   "err_project_not_found": "Project not found.",
   "err_package_not_found": "Package not found.",
   "err_doc_not_found": "Document not found.",
+  "err_profile_not_found": "Profile not found.",
+  "err_profile_private": "This profile is private.",
   "err_category_not_found": "Category not found.",
   "err_slug_already_exists": "This slug is already in use.",
   "err_already_exists": "A record with the same unique value already exists.",

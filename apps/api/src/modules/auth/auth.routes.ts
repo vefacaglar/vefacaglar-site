@@ -15,6 +15,12 @@ import {
   ChangePasswordResponseSchema,
 } from "./profile/profile.schema";
 import { ProfileHandler } from "./profile/profile.handler";
+import {
+  UpdateProfileVisibilityRequest,
+  UpdateProfileVisibilityRequestSchema,
+  UpdateProfileVisibilityResponseSchema,
+} from "./profile-visibility/profile-visibility.schema";
+import { UpdateProfileVisibilityHandler } from "./profile-visibility/profile-visibility.handler";
 import { OidcExchangeRequest, OidcExchangeRequestSchema } from "./oidc/exchange/exchange.schema";
 import { OidcExchangeHandler } from "./oidc/exchange/exchange.handler";
 import { getAuthMode, AuthMode } from "./auth.mode";
@@ -36,6 +42,7 @@ export async function authRoutes(app: FastifyInstance) {
   const logoutHandler = container.resolve(LogoutHandler);
   const profileHandler = container.resolve(ProfileHandler);
   const oidcExchangeHandler = container.resolve(OidcExchangeHandler);
+  const profileVisibilityHandler = container.resolve(UpdateProfileVisibilityHandler);
 
   app.post<{ Body: LoginRequest }>("/login", {
     preHandler: onlyInAuthMode("password"),
@@ -108,6 +115,17 @@ export async function authRoutes(app: FastifyInstance) {
       response: { 200: UpdateProfileResponseSchema, 400: ErrorResponseSchema, 401: ErrorResponseSchema },
     },
   }, (request) => profileHandler.updateProfile(request, request.body));
+
+  app.put<{ Body: UpdateProfileVisibilityRequest }>("/profile/visibility", {
+    preHandler: app.requireAuth,
+    schema: {
+      description: "Make the current user's games library public or private",
+      tags: ["Auth"],
+      security: [{ bearerAuth: [] }],
+      body: UpdateProfileVisibilityRequestSchema,
+      response: { 200: UpdateProfileVisibilityResponseSchema, 400: ErrorResponseSchema, 401: ErrorResponseSchema },
+    },
+  }, (request) => profileVisibilityHandler.handle(request, request.body));
 
   app.put<{ Body: ChangePasswordRequest }>("/profile/password", {
     preHandler: [onlyInAuthMode("password"), app.requireAuth],
