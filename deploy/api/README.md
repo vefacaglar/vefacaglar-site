@@ -54,6 +54,9 @@ their contents. `DATABASE_URL`, `WEB_URL` and `AUTH_MODE` are required; OIDC mod
 also requires its issuer and client ID. The Compose file enforces production mode,
 the container's listening address and port.
 
+For [application logs](../../docs/application-logs.md), add
+`LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` to `API_ENV`.
+
 Every deploy replaces the full env file. To remove a setting, remove it from both
 its individual secret and `API_ENV`. Changing secrets alone does not trigger a
 deploy; select **Run workflow** afterwards. Files are private to the deployment

@@ -27,6 +27,7 @@ FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 COPY --from=builder /out/worker /usr/local/bin/worker
 ENV RUST_LOG=info \
     WORKER_LOG_FORMAT=json \
+    LOG_ENVIRONMENT=production \
     WORKER_HEALTH_FILE=/tmp/worker-health
 USER nonroot:nonroot
 # Exits 0 when the worker's DB heartbeat (written every 10 s) is < 30 s old.

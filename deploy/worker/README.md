@@ -72,6 +72,9 @@ them to the repository level or to `worker-production`.
 Every deploy replaces `worker.env`. Changing secrets alone does not deploy; use
 **Actions → Worker CI and deploy → Run workflow → main** afterwards.
 
+For [application logs](../../docs/application-logs.md), add
+`LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` to `WORKER_ENV`.
+
 ## Local development
 
 `pnpm --filter worker worker:dev` runs the worker with `cargo run`, loading the

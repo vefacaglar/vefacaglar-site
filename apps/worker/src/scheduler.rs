@@ -77,7 +77,7 @@ pub async fn tick(pool: &PgPool, registry: &Registry) -> Result<()> {
         match decide(row.cron.as_deref(), row.next_run_at, now) {
             Decision::ManualOnly => {}
             Decision::InvalidCron(reason) => {
-                tracing::warn!(recurring_job_id = %row.id, %reason, "skipping recurring job with invalid cron");
+                tracing::warn!(application_event = "recurring_job_invalid_cron", recurring_job_id = %row.id, %reason, "skipping recurring job with invalid cron");
             }
             Decision::ScheduleOnly { next_run_at } => {
                 sqlx::query(

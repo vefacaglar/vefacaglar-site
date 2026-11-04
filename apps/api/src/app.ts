@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
@@ -27,6 +28,7 @@ import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
 import { serializeRequestForLog } from "./shared/log-redaction";
+import { installApplicationLogs } from "./shared/application-logs/application-logs";
 import { createRedisClient, readRedisConfig } from "./shared/search/redis.client";
 import fastifyMultipart from "@fastify/multipart";
 
@@ -35,9 +37,13 @@ const isProduction = process.env.NODE_ENV === "production";
 export const app = Fastify({
   // Request URLs are logged; secret query values (job stream `?token=`) are redacted.
   logger: { serializers: { req: serializeRequestForLog } },
+  requestIdHeader: false,
+  genReqId: () => randomUUID(),
   trustProxy: true,
   bodyLimit: 10 * 1024 * 1024,
 });
+
+export const applicationLogs = installApplicationLogs(app);
 
 // Security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, ...)
 app.register(fastifyHelmet, {

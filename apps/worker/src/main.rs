@@ -55,7 +55,10 @@ async fn shutdown_signal(token: CancellationToken) {
 async fn run() -> Result<()> {
     let config = Config::from_env()?;
     if config.typesense.is_none() {
-        tracing::warn!("Typesense is not configured; search jobs will fail");
+        tracing::warn!(
+            application_event = "search_not_configured",
+            "Typesense is not configured; search jobs will fail"
+        );
     }
     let pool = PgPoolOptions::new()
         .max_connections(config.db_pool_max)
@@ -85,12 +88,20 @@ async fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     load_dotenv();
-    telemetry::init();
-    match run().await {
+    let logs = telemetry::init();
+    let status = match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            tracing::error!(error = format!("{e:#}"), "worker failed");
+            tracing::error!(
+                application_event = "worker_failed",
+                error = format!("{e:#}"),
+                "worker failed"
+            );
             ExitCode::FAILURE
         }
+    };
+    if let Some(logs) = logs {
+        logs.close().await;
     }
+    status
 }
