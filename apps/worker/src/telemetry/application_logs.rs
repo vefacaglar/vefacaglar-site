@@ -13,6 +13,7 @@ use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 
 use super::error_details::{application_stack, describe_error};
+use super::error_message::error_messages;
 
 const COLLECTION: &str = "application_logs_v1";
 const SCHEMA: &str = include_str!("../application_logs_v1.json");
@@ -43,6 +44,7 @@ struct LogFields {
     message: Option<String>,
     error_code: Option<String>,
     response_message: Option<String>,
+    diagnostic: Option<String>,
     error_source: Option<String>,
     origin_stack: Option<String>,
 }
@@ -54,6 +56,7 @@ impl Visit for LogFields {
             "message" => self.message = Some(value.to_owned()),
             "error_code" => self.error_code = Some(value.to_owned()),
             "response_message" => self.response_message = Some(value.to_owned()),
+            "diagnostic" => self.diagnostic = Some(value.to_owned()),
             "error_source" => self.error_source = Some(value.to_owned()),
             "origin_stack" => self.origin_stack = Some(value.to_owned()),
             _ => {}
@@ -71,6 +74,7 @@ impl Visit for LogFields {
             let (code, reason) = describe_error(value);
             self.error_code = Some(code);
             self.response_message = Some(reason.to_owned());
+            self.diagnostic = error_messages(value);
         }
     }
 }
@@ -108,7 +112,15 @@ impl<S: Subscriber> Layer<S> for LogLayer {
         };
         if let Some(reason) = &fields.response_message {
             message.push_str(": ");
-            message.push_str(reason);
+            let headline = match fields.error_code.as_deref() {
+                Some("worker_operation_error" | "permanent_job_error") => fields
+                    .diagnostic
+                    .as_deref()
+                    .and_then(|diagnostic| diagnostic.lines().next())
+                    .unwrap_or(reason),
+                _ => reason,
+            };
+            message.push_str(headline);
         }
         let (source, stack) = if level == "info" {
             (None, None)
@@ -144,7 +156,7 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             event,
             message,
             error_code: fields.error_code,
-            response_message: fields.response_message,
+            response_message: fields.diagnostic.or(fields.response_message),
             source,
             stack,
         };

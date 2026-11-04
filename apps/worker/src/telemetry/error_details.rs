@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io;
 
 use crate::handler::PermanentError;
+use crate::jobs::search::backend::TypesenseReplyError;
 
 pub fn application_stack(backtrace: &Backtrace) -> Option<String> {
     if backtrace.status() != BacktraceStatus::Captured {
@@ -112,6 +113,12 @@ pub(super) fn describe_error(mut error: &(dyn Error + 'static)) -> (String, &'st
         if let Some(error) = error.downcast_ref::<sqlx::Error>() {
             return database_error(error);
         }
+        if let Some(error) = error.downcast_ref::<TypesenseReplyError>() {
+            return (
+                format!("typesense_http_{}", error.status.as_u16()),
+                "Typesense rejected the request",
+            );
+        }
         if let Some(error) = error.downcast_ref::<reqwest::Error>() {
             if let Some(status) = error.status() {
                 return (
@@ -162,11 +169,11 @@ pub(super) fn describe_error(mut error: &(dyn Error + 'static)) -> (String, &'st
     if permanent {
         return (
             "permanent_job_error".into(),
-            "the job cannot succeed by retrying. See the job log for details",
+            "the job cannot succeed by retrying",
         );
     }
     (
         "worker_operation_error".into(),
-        "see the worker or job log for the full error",
+        "the worker operation failed",
     )
 }

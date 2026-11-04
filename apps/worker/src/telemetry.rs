@@ -4,9 +4,11 @@ use tracing_subscriber::{EnvFilter, prelude::*};
 
 mod application_logs;
 mod error_details;
+mod error_message;
 
 pub use application_logs::LogDrain;
 pub use error_details::{application_stack, database_error};
+pub use error_message::error_messages;
 
 /// Initializes tracing. Output is JSON unless stdout is a terminal, or as forced
 /// by `WORKER_LOG_FORMAT=json|pretty`. Filtering follows `RUST_LOG` (default `info`).

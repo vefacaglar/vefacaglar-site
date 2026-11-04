@@ -46,6 +46,25 @@ pub struct TypesenseClient {
 
 const ATTEMPTS: u32 = 3;
 
+#[derive(Debug, thiserror::Error)]
+#[error("{operation}: HTTP {status}: {body}")]
+pub(crate) struct TypesenseReplyError {
+    pub(crate) status: StatusCode,
+    operation: String,
+    body: String,
+    server_message: Option<String>,
+}
+
+impl TypesenseReplyError {
+    pub(crate) fn diagnostic(&self) -> String {
+        let summary = format!("Typesense {} returned HTTP {}", self.operation, self.status);
+        match self.server_message.as_deref() {
+            Some(message) => format!("{summary}: {message}"),
+            None => summary,
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct AliasBody {
     collection_name: String,
@@ -127,13 +146,19 @@ impl TypesenseClient {
         if status.is_success() {
             return Ok(response);
         }
-        let http_error = response.error_for_status_ref().err();
         let body = response.text().await.unwrap_or_default();
-        let detail = format!("{what}: HTTP {status}: {}", truncate(&body, 300));
-        match http_error {
-            Some(error) => Err(anyhow!(error).context(detail)),
-            None => Err(anyhow!(detail)),
+        let server_message = serde_json::from_str::<Value>(&body).ok().and_then(|body| {
+            body.get("message")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        });
+        Err(TypesenseReplyError {
+            status,
+            operation: what.to_owned(),
+            body: truncate(&body, 300),
+            server_message,
         }
+        .into())
     }
 }
 

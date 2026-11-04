@@ -10,12 +10,15 @@ events include the matched route template when available and the generated
 request ID returned in `X-Request-Id`. The worker exports lifecycle, job
 failure and infrastructure events.
 
-The message includes the diagnostic reason for recognized failures. Expand a
-record for the error code (including Postgres SQLSTATE), code location and
-application stack frames when available. The Docker API reports TypeScript
+The message includes the diagnostic reason, including Redis error replies.
+Expand a record for redacted exception messages, error codes such as Postgres
+SQLSTATE, code locations and application stack frames when available.
+The Docker API reports TypeScript
 line and column numbers. The worker uses Rust line tables and labels stacks
 captured at the reporting site. Status-only HTTP responses have no exception
 stack. Job progress and raw errors remain in the local logs and job dashboard.
+Redis authentication and permission failures stop reconnecting immediately.
+Transient outages get up to three retries.
 
 Set `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` in the runtime environment
 of both services. For GitHub deployment, add them as GitHub secrets (both

@@ -150,10 +150,12 @@ async fn main() -> ExitCode {
             let (code, reason) = failure.error.log_reason();
             let location = failure.location.to_string();
             let stack = telemetry::application_stack(&failure.backtrace);
+            let diagnostic = telemetry::error_messages(&failure.error);
             tracing::error!(
                 application_event = "worker_failed",
                 error_code = code.as_str(),
                 response_message = reason.as_str(),
+                diagnostic = diagnostic.as_deref(),
                 error_source = location.as_str(),
                 origin_stack = stack.as_deref(),
                 error = format!("{:#}", anyhow::Error::new(failure.error)),
