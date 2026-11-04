@@ -59,7 +59,7 @@ export class UploadImageHandler {
     } catch (err) {
       request.log.error(err, "Failed to upload image via ImageClient");
       if (err instanceof HttpError) throw err;
-      throw new HttpError(500, "An error occurred while uploading image.");
+      throw new HttpError(500, "An error occurred while uploading image.", undefined, { cause: err });
     }
   }
 }

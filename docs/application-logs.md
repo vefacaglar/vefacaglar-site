@@ -4,15 +4,18 @@ The API and worker can export events to the same Typesense
 `application_logs_v1` collection as authserver-go. In Log Tracker, select
 `vefacaglar-site-api` or `vefacaglar-site-worker` in the **Service** filter.
 
-The API exports startup events, server errors and HTTP 400, 401, 403 and 429
-responses. HTTP events include the matched route template when available and
-the generated request ID returned in `X-Request-Id`. The worker exports
-lifecycle, job failure and infrastructure events. The message includes the
-diagnostic reason for recognized failures. Details may include the error
-type, code (including Postgres SQLSTATE), or API source location. Expand an
-API error to see the application stack frames for the error and its causes.
-The Docker API uses source maps to report TypeScript line and column numbers.
-Job progress and raw errors remain in the local logs and the job dashboard.
+The API exports HTTP 4xx and 5xx responses and runtime failures, including
+dependency failures and fallback paths that do not fail the request. HTTP
+events include the matched route template when available and the generated
+request ID returned in `X-Request-Id`. The worker exports lifecycle, job
+failure and infrastructure events.
+
+The message includes the diagnostic reason for recognized failures. Expand a
+record for the error code (including Postgres SQLSTATE), code location and
+application stack frames when available. The Docker API reports TypeScript
+line and column numbers. The worker uses Rust line tables and labels stacks
+captured at the reporting site. Status-only HTTP responses have no exception
+stack. Job progress and raw errors remain in the local logs and job dashboard.
 
 Set `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` in the runtime environment
 of both services. For GitHub deployment, add them as GitHub secrets (both

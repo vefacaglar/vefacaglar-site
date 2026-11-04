@@ -1,3 +1,4 @@
+import { reportRuntimeFailure } from "../../shared/application-logs/runtime-failures";
 import { randomBytes } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { inject, injectable } from "tsyringe";
@@ -40,7 +41,12 @@ export class JobStreamTokenService implements IJobStreamTokenService {
   async sign(userId: string, jobId: string, now: Date = new Date()): Promise<{ token: string; expiresAt: Date }> {
     if (this.config.ephemeral && !this.warned) {
       this.warned = true;
-      console.warn("[jobs] JOB_STREAM_TOKEN_SECRET is not set; using a random per-process key for stream tokens.");
+      reportRuntimeFailure(
+        "job_stream_secret_missing",
+        "JOB_STREAM_TOKEN_SECRET is missing. Using a temporary key for stream tokens",
+        undefined,
+        "warning",
+      );
     }
     const iat = Math.floor(now.getTime() / 1000);
     const exp = iat + this.config.ttlSeconds;

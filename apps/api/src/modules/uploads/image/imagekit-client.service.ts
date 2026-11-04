@@ -37,7 +37,7 @@ export class ImageKitClient implements IImageClient {
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         console.error("ImageKit upload failed", response.status, errorText);
-        throw new HttpError(500, "Image upload failed.");
+        throw new HttpError(500, "Image upload failed.", `ImageKit rejected the upload with HTTP ${response.status}`);
       }
 
       const result = await response.json() as { url: string };
@@ -48,7 +48,7 @@ export class ImageKitClient implements IImageClient {
       return result.url;
     } catch (err) {
       if (err instanceof HttpError) throw err;
-      throw new HttpError(500, "An error occurred while uploading image to ImageKit.");
+      throw new HttpError(500, "An error occurred while uploading image to ImageKit.", undefined, { cause: err });
     }
   }
 }

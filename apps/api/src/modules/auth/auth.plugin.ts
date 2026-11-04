@@ -4,6 +4,7 @@ import type { User } from "./users.repository";
 import type { Session } from "./sessions.repository";
 import { UnauthorizedError } from "../../shared/http-errors";
 import { container } from "../../container";
+import { reportRuntimeFailure } from "../../shared/application-logs/runtime-failures";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -25,23 +26,20 @@ export function registerAuthDecorators(app: FastifyInstance): void {
       const { user, session } = await auth.authenticate(request);
       request.user = user;
       request.session = session;
-    } catch {
-      throw new UnauthorizedError("Unauthorized. Please log in.");
+    } catch (cause) {
+      throw new UnauthorizedError("Unauthorized. Please log in.", undefined, { cause });
     }
   };
 
   const requireAdmin = async (request: FastifyRequest) => {
-    try {
-      const { user, session } = await auth.authenticate(request);
-      if (user.role !== "admin") {
-        throw new UnauthorizedError("Unauthorized action. You must log in as admin.");
-      }
-      request.user = user;
-      request.session = session;
-    } catch (err) {
-      if (err instanceof UnauthorizedError) throw err;
-      throw new UnauthorizedError("Unauthorized action. You must log in as admin.");
+    const { user, session } = await auth.authenticate(request).catch((cause: unknown) => {
+      throw new UnauthorizedError("Unauthorized action. You must log in as admin.", undefined, { cause });
+    });
+    if (user.role !== "admin") {
+      throw new UnauthorizedError("Unauthorized action. You must log in as admin.", "The account does not have the admin role");
     }
+    request.user = user;
+    request.session = session;
   };
 
   const tryAuth = async (request: FastifyRequest) => {
@@ -49,8 +47,10 @@ export function registerAuthDecorators(app: FastifyInstance): void {
       const { user, session } = await auth.authenticate(request);
       request.user = user;
       request.session = session;
-    } catch {
-      // Public mode — leave request.user undefined
+    } catch (error) {
+      if (!(error instanceof UnauthorizedError)) {
+        reportRuntimeFailure("optional_auth_failed", "Optional authentication failed. Continuing without a session", error, "warning");
+      }
     }
   };
 

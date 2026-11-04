@@ -1,3 +1,5 @@
+use std::backtrace::Backtrace;
+use std::panic::Location;
 use std::path::Path;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -86,8 +88,26 @@ impl StartupError {
     }
 }
 
-async fn run() -> Result<(), StartupError> {
-    let config = Config::from_env()?;
+struct StartupFailure {
+    error: StartupError,
+    location: &'static Location<'static>,
+    backtrace: Backtrace,
+}
+
+impl StartupFailure {
+    #[track_caller]
+    fn new(error: StartupError) -> Self {
+        Self {
+            error,
+            location: Location::caller(),
+            backtrace: Backtrace::force_capture(),
+        }
+    }
+}
+
+async fn run() -> Result<(), StartupFailure> {
+    let config =
+        Config::from_env().map_err(|error| StartupFailure::new(StartupError::Config(error)))?;
     if config.typesense.is_none() {
         tracing::warn!(
             application_event = "search_not_configured",
@@ -99,7 +119,7 @@ async fn run() -> Result<(), StartupError> {
         .acquire_timeout(Duration::from_secs(30))
         .connect(&config.database_url)
         .await
-        .map_err(StartupError::Connect)?;
+        .map_err(|error| StartupFailure::new(StartupError::Connect(error)))?;
 
     let shutdown = CancellationToken::new();
     tokio::spawn(shutdown_signal(shutdown.clone()));
@@ -108,7 +128,7 @@ async fn run() -> Result<(), StartupError> {
     Worker::new(pool.clone(), config, registry, shutdown)
         .run()
         .await
-        .map_err(StartupError::Register)?;
+        .map_err(|error| StartupFailure::new(StartupError::Register(error)))?;
     pool.close().await;
     Ok(())
 }
@@ -126,13 +146,17 @@ async fn main() -> ExitCode {
     let logs = telemetry::init();
     let status = match run().await {
         Ok(()) => ExitCode::SUCCESS,
-        Err(e) => {
-            let (code, reason) = e.log_reason();
+        Err(failure) => {
+            let (code, reason) = failure.error.log_reason();
+            let location = failure.location.to_string();
+            let stack = telemetry::application_stack(&failure.backtrace);
             tracing::error!(
                 application_event = "worker_failed",
                 error_code = code.as_str(),
                 response_message = reason.as_str(),
-                error = format!("{:#}", anyhow::Error::new(e)),
+                error_source = location.as_str(),
+                origin_stack = stack.as_deref(),
+                error = format!("{:#}", anyhow::Error::new(failure.error)),
                 "worker failed"
             );
             ExitCode::FAILURE

@@ -11,6 +11,7 @@ import { app, applicationLogs } from "./app";
 import { container } from "./container";
 import { SEARCH_WRITER } from "./shared/search/search.tokens";
 import type { ISearchIndexWriter } from "./shared/search/commands/search-writer.interface";
+import { reportRuntimeFailure } from "./shared/application-logs/runtime-failures";
 
 const start = async () => {
   try {
@@ -24,16 +25,10 @@ const start = async () => {
       .resolve<ISearchIndexWriter>(SEARCH_WRITER)
       .ensureCollections()
       .catch((err) => {
-        app.log.error(err, "[search] collection bootstrap failed");
-        applicationLogs.write({
-          level: "error",
-          event: "search_collection_bootstrap_failed",
-          message: "Search collection bootstrap failed",
-        }, app.log, err);
+        reportRuntimeFailure("search_collection_bootstrap_failed", "Search collection bootstrap failed", err);
       });
   } catch (err) {
-    console.error(err);
-    applicationLogs.write({ level: "error", event: "api_start_failed", message: "API failed to start" }, app.log, err);
+    reportRuntimeFailure("api_start_failed", "API failed to start", err);
     await applicationLogs.close();
     process.exit(1);
   }
@@ -49,7 +44,8 @@ const shutdown = async () => {
     await app.close();
     process.exit(0);
   } catch (err) {
-    app.log.error(err, "Failed to shut down API");
+    reportRuntimeFailure("api_shutdown_failed", "API failed to shut down", err);
+    await applicationLogs.close();
     process.exit(1);
   }
 };

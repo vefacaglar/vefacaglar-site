@@ -1,3 +1,4 @@
+import { reportRuntimeFailure } from "../application-logs/runtime-failures";
 import Redis, { type Redis as RedisClient } from "ioredis";
 
 export interface RedisConfig {
@@ -22,7 +23,7 @@ export function createRedisClient(config: RedisConfig): RedisClient {
   });
 
   client.on("error", (err) => {
-    console.error("[redis] client error:", err.message);
+    reportRuntimeFailure("redis_client_error", "Redis client failed", err);
   });
 
   cachedClient = client;

@@ -1,3 +1,4 @@
+use std::backtrace::Backtrace;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -11,7 +12,7 @@ use tracing::field::{Field, Visit};
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
 
-use super::error_details::describe_error;
+use super::error_details::{application_stack, describe_error};
 
 const COLLECTION: &str = "application_logs_v1";
 const SCHEMA: &str = include_str!("../application_logs_v1.json");
@@ -32,6 +33,8 @@ struct LogDocument {
     response_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stack: Option<String>,
 }
 
 #[derive(Default)]
@@ -40,6 +43,8 @@ struct LogFields {
     message: Option<String>,
     error_code: Option<String>,
     response_message: Option<String>,
+    error_source: Option<String>,
+    origin_stack: Option<String>,
 }
 
 impl Visit for LogFields {
@@ -49,6 +54,8 @@ impl Visit for LogFields {
             "message" => self.message = Some(value.to_owned()),
             "error_code" => self.error_code = Some(value.to_owned()),
             "response_message" => self.response_message = Some(value.to_owned()),
+            "error_source" => self.error_source = Some(value.to_owned()),
+            "origin_stack" => self.origin_stack = Some(value.to_owned()),
             _ => {}
         }
     }
@@ -86,6 +93,12 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             Level::INFO => "info",
             _ => return,
         };
+        let Ok(permit) = self.sender.try_reserve() else {
+            if !self.sender.is_closed() && !self.overflow_reported.swap(true, Ordering::Relaxed) {
+                eprintln!("Typesense log queue full; dropping remote events");
+            }
+            return;
+        };
         // Tagged events use fixed messages and may supply a safe error reason.
         // Raw error and other tracing fields stay local.
         let mut fields = LogFields::default();
@@ -97,6 +110,32 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             message.push_str(": ");
             message.push_str(reason);
         }
+        let (source, stack) = if level == "info" {
+            (None, None)
+        } else {
+            let reported_at = metadata
+                .file()
+                .zip(metadata.line())
+                .map(|(file, line)| format!("{file}:{line}"));
+            let origin = fields
+                .origin_stack
+                .as_deref()
+                .and_then(|stack| stack.lines().next())
+                .map(str::to_owned);
+            let stack = fields.origin_stack.or_else(|| {
+                let reported_at = reported_at.as_deref()?;
+                let trace = application_stack(&Backtrace::force_capture());
+                let reporting_stack = match trace {
+                    Some(trace) => format!("Reported at {reported_at}\n{trace}"),
+                    None => format!("Reported at {reported_at}"),
+                };
+                Some(match fields.error_source.as_deref() {
+                    Some(location) => format!("Failure at {location}\n{reporting_stack}"),
+                    None => reporting_stack,
+                })
+            });
+            (fields.error_source.or(origin).or(reported_at), stack)
+        };
         let document = LogDocument {
             timestamp: chrono::Utc::now().timestamp_millis(),
             service: SERVICE,
@@ -106,18 +145,10 @@ impl<S: Subscriber> Layer<S> for LogLayer {
             message,
             error_code: fields.error_code,
             response_message: fields.response_message,
-            source: (level != "info")
-                .then(|| {
-                    let (file, line) = metadata.file().zip(metadata.line())?;
-                    Some(format!("{file}:{line}"))
-                })
-                .flatten(),
+            source,
+            stack,
         };
-        if let Err(mpsc::error::TrySendError::Full(_)) = self.sender.try_send(document)
-            && !self.overflow_reported.swap(true, Ordering::Relaxed)
-        {
-            eprintln!("Typesense log queue full; dropping remote events");
-        }
+        permit.send(document);
     }
 }
 

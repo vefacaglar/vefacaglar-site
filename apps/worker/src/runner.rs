@@ -248,28 +248,40 @@ impl Worker {
             )
             .await
             .map(|_| ()),
-            None => queue::requeue_for_shutdown(
-                pool,
-                job_id,
-                worker_id,
-                LogLevel::Warn,
-                "paused for shutdown (deadline reached); will resume from the last checkpoint",
-            )
-            .await
-            .map(|_| ()),
+            None => {
+                tracing::warn!(
+                    application_event = "job_shutdown_deadline",
+                    %job_id,
+                    "Job reached the shutdown deadline and will resume from its last checkpoint"
+                );
+                queue::requeue_for_shutdown(
+                    pool,
+                    job_id,
+                    worker_id,
+                    LogLevel::Warn,
+                    "paused for shutdown (deadline reached); will resume from the last checkpoint",
+                )
+                .await
+                .map(|_| ())
+            }
             Some(Err(error)) => {
                 let message = format!("{error:#}");
                 let permanent = is_permanent(&error);
                 let delay = retry_delay(attempt);
-                match queue::mark_failed(pool, job_id, worker_id, &message, delay, permanent).await
-                {
-                    Ok(result) => {
-                        let cause: &(dyn std::error::Error + 'static) = error.as_ref();
-                        tracing::error!(application_event = "job_attempt_failed", %job_id, ?result, error = cause, error_chain = %message, "job attempt failed");
-                        Ok(())
-                    }
-                    Err(e) => Err(e),
-                }
+                let result =
+                    queue::mark_failed(pool, job_id, worker_id, &message, delay, permanent).await;
+                let cause: &(dyn std::error::Error + 'static) = error.as_ref();
+                let stack = crate::telemetry::application_stack(error.backtrace());
+                tracing::error!(
+                    application_event = "job_attempt_failed",
+                    %job_id,
+                    ?result,
+                    error = cause,
+                    error_chain = %message,
+                    origin_stack = stack.as_deref(),
+                    "job attempt failed"
+                );
+                result.map(|_| ())
             }
         };
         if let Err(e) = outcome {

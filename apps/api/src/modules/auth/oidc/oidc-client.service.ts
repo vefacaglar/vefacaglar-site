@@ -26,12 +26,15 @@ export class OidcClient implements IOidcClient {
       ({ payload } = await jwtVerify(idToken, jwks, { issuer, audience: clientId }));
     } catch (error) {
       console.error(`OIDC id_token verification failed: ${error instanceof Error ? error.message : error}`);
-      throw new UnauthorizedError("Invalid identity token.");
+      throw new UnauthorizedError("Invalid identity token.", "Identity token verification failed", { cause: error });
     }
 
     if (payload.nonce !== nonce || typeof payload.sub !== "string") {
       console.error(`OIDC id_token rejected: nonce match=${payload.nonce === nonce}, sub present=${typeof payload.sub === "string"}`);
-      throw new UnauthorizedError("Invalid identity token.");
+      const reason = payload.nonce !== nonce
+        ? "The identity token nonce did not match"
+        : "The identity token did not contain a valid subject";
+      throw new UnauthorizedError("Invalid identity token.", reason);
     }
 
     return {

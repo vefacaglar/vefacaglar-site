@@ -29,7 +29,7 @@ export class AuthService {
   async authenticate(request: FastifyRequest): Promise<{ user: User; session: Session }> {
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError("Unauthorized", "A bearer token is required");
     }
 
     const token = authHeader.substring(7);
@@ -37,12 +37,12 @@ export class AuthService {
 
     const session = await this.sessionsRepo.findActiveByTokenHash(tokenHash);
     if (!session) {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError("Unauthorized", "The session token is invalid or expired");
     }
 
     const user = await this.usersRepo.findById(session.userId);
     if (!user || !user.isActive) {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError("Unauthorized", "The session belongs to a missing or disabled account");
     }
 
     return { user, session };

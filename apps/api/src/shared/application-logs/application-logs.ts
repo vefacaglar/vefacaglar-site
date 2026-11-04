@@ -2,6 +2,7 @@ import { STATUS_CODES } from "node:http";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import schema from "./application_logs_v1.json";
 import { describeLogError } from "./error-details";
+import { bindRuntimeFailureReporter } from "./runtime-failures";
 
 interface LogEvent {
   level: "info" | "warning" | "error";
@@ -127,16 +128,18 @@ export function installApplicationLogs(app: FastifyInstance) {
   const sink = configureSink(app.log);
   const requestErrors = new WeakMap<FastifyRequest, Error>();
 
-  function write(event: LogEvent, logger = app.log, error?: unknown): void {
-    const { reason, ...details } = describeLogError(error, event.level === "error");
-    const explanation = reason ?? (details.error_type && (
+  function write(event: LogEvent, logger = app.log, error?: unknown, reportedAt?: Error): void {
+    const { reason, ...details } = describeLogError(error, reportedAt);
+    const explanation = reason ?? (!reportedAt && details.error_type && (
       details.source ? `${details.error_type} at ${details.source}` : details.error_type
     ));
     const message = explanation ? `${explanation} | ${event.message}` : event.message;
     const document = { ...event, ...details, message, timestamp: Date.now(), service, environment };
     const { level, message: logMessage, ...fields } = document;
     const method = level === "warning" ? "warn" : level;
-    logger[method](fields, logMessage);
+    logger[method](reportedAt && error instanceof Error
+      ? { ...fields, error_message: error.message }
+      : fields, logMessage);
     sink?.enqueue(document);
   }
 
@@ -151,7 +154,7 @@ export function installApplicationLogs(app: FastifyInstance) {
   app.addHook("onResponse", async (request, reply) => {
     const status = reply.statusCode;
     const serverError = status >= 500;
-    if (!serverError && ![400, 401, 403, 429].includes(status)) return;
+    if (status < 400) return;
 
     const route = request.routeOptions.url;
     const statusText = STATUS_CODES[status];
@@ -167,7 +170,12 @@ export function installApplicationLogs(app: FastifyInstance) {
     }, request.log, requestErrors.get(request));
   });
 
-  const close = async () => sink?.close();
+  const unbindReporter = bindRuntimeFailureReporter((event, error, reportedAt) =>
+    write(event, app.log, error, reportedAt));
+  const close = async () => {
+    unbindReporter();
+    await sink?.close();
+  };
   app.addHook("onClose", close);
   return { write, close };
 }

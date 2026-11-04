@@ -26,6 +26,7 @@ RUN cargo build --release --locked --bin worker \
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 COPY --from=builder /out/worker /usr/local/bin/worker
 ENV RUST_LOG=info \
+    RUST_LIB_BACKTRACE=1 \
     WORKER_LOG_FORMAT=json \
     LOG_ENVIRONMENT=production \
     WORKER_HEALTH_FILE=/tmp/worker-health

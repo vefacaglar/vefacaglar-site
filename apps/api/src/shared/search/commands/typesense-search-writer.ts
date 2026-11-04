@@ -1,3 +1,4 @@
+import { reportRuntimeFailure } from "../../application-logs/runtime-failures";
 import { inject, injectable } from "tsyringe";
 import { Client as TypesenseClient } from "typesense";
 import type { Developer } from "../../../modules/catalog/developers.repository.interface";
@@ -84,7 +85,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().upsert(toGameDoc(game));
     } catch (err) {
-      console.error(`[search] failed to index game ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index game", err);
     }
   }
 
@@ -98,7 +99,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.typesense.collections(SEARCH_COLLECTIONS.posts).documents().upsert(toPostDoc(post));
     } catch (err) {
-      console.error(`[search] failed to index post ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index post", err);
     }
   }
 
@@ -112,7 +113,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.upsertLookup("developer", id, dev);
     } catch (err) {
-      console.error(`[search] failed to index developer ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index developer", err);
     }
   }
 
@@ -126,7 +127,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.upsertLookup("publisher", id, pub);
     } catch (err) {
-      console.error(`[search] failed to index publisher ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index publisher", err);
     }
   }
 
@@ -140,7 +141,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.upsertLookup("genre", id, genre);
     } catch (err) {
-      console.error(`[search] failed to index genre ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index genre", err);
     }
   }
 
@@ -154,7 +155,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.upsertLookup("platform", id, platform);
     } catch (err) {
-      console.error(`[search] failed to index platform ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index platform", err);
     }
   }
 
@@ -168,7 +169,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       }
       await this.upsertLookup("theme", id, theme);
     } catch (err) {
-      console.error(`[search] failed to index theme ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", "Could not index theme", err);
     }
   }
 
@@ -196,7 +197,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         const rows = await load(sliceIds);
         await this.bulkImportDocs(collection, rows.map(toDoc));
       } catch (err) {
-        console.error(`[search] failed to bulk-index ${sliceIds.length} ${collection}:`, (err as Error).message);
+        reportRuntimeFailure("search_bulk_index_failed", `Could not bulk index ${collection}`, err);
       }
     }
   }
@@ -205,7 +206,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     try {
       await this.typesense.collections(LOOKUP_COLLECTIONS[entityName]).documents().upsert(this.toLookupDoc(entityName, row));
     } catch (err) {
-      console.error(`[search] failed to upsert ${entityName} ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_index_failed", `Could not index ${entityName}`, err);
     }
 
     // Game documents denormalize lookup names (developerNames, genreNames, …),
@@ -220,7 +221,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.indexGame(gameId);
       }
     } catch (err) {
-      console.error(`[search] failed to cascade-reindex games for ${relation} ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_cascade_failed", `Could not reindex games related to a ${relation}`, err);
     }
   }
 
@@ -277,7 +278,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     } catch (err) {
       const status = (err as { httpStatus?: number }).httpStatus;
       if (status === 404) return;
-      console.error(`[search] failed to remove ${collectionName} ${id}:`, (err as Error).message);
+      reportRuntimeFailure("search_delete_failed", `Could not delete a document from ${collectionName}`, err);
     }
   }
 
@@ -302,7 +303,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         const msg = (err as Error).message ?? "";
         // Created concurrently (another instance or the worker); nothing to do.
         if (status === 409 || msg.includes("already exists")) continue;
-        console.error(`[search] failed to ensure collection ${schema.name}:`, msg);
+        reportRuntimeFailure("search_collection_bootstrap_failed", `Could not prepare search collection ${schema.name}`, err);
       }
     }
     console.log("[search] collections ready");
@@ -343,12 +344,14 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         : [];
       if (failures.length > 0) {
         const firstError = (failures[0] as { error?: string }).error ?? "unknown";
-        console.error(
-          `[search] bulk import ${collectionName}: ${failures.length}/${docs.length} documents failed. First error: ${firstError}`
+        reportRuntimeFailure(
+          "search_bulk_import_partial_failure",
+          `Typesense rejected ${failures.length} of ${docs.length} documents for ${collectionName}`,
+          new Error(firstError),
         );
       }
     } catch (err) {
-      console.error(`[search] bulk import ${collectionName} failed:`, (err as Error).message);
+      reportRuntimeFailure("search_bulk_import_failed", `Could not import documents into ${collectionName}`, err);
     }
   }
 }

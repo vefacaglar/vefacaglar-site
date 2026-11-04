@@ -42,6 +42,12 @@ const runtimeReasons: Record<string, string> = {
   FST_ERR_CTP_EMPTY_JSON_BODY: "The request has an empty JSON body",
   FST_ERR_FAILED_ERROR_SERIALIZATION: "Fastify could not serialize the error response",
   FST_ERR_RESPONSE_SERIALIZATION: "The response did not match the endpoint schema",
+  ERR_JWT_EXPIRED: "The identity token has expired",
+  ERR_JWT_CLAIM_VALIDATION_FAILED: "The identity token did not match the required claims",
+  ERR_JWS_SIGNATURE_VERIFICATION_FAILED: "The identity token signature could not be verified",
+  ERR_JWKS_TIMEOUT: "Fetching identity provider signing keys timed out",
+  ERR_JWKS_NO_MATCHING_KEY: "No signing key matched the identity token",
+  SEARCH_TIMEOUT: "The search operation timed out",
 };
 
 const appRoot = resolve(__dirname, "../..");
@@ -81,7 +87,7 @@ function applicationFrames(error: Error, limit: number): string[] {
   return frames;
 }
 
-export function describeLogError(error: unknown, includeStack = false) {
+export function describeLogError(error: unknown, reportedAt?: Error) {
   let reason: string | undefined;
   let error_code: string | undefined;
   let error_type: string | undefined;
@@ -92,12 +98,12 @@ export function describeLogError(error: unknown, includeStack = false) {
 
   // Follow wrapped errors without exporting SQL, parameters, or arbitrary exception text.
   for (let depth = 0; depth < 8 && current instanceof Error; depth++) {
-    const frames = applicationFrames(current, Math.max(1, includeStack ? remainingFrames : 1));
+    const frames = applicationFrames(current, Math.max(1, remainingFrames));
     source = frames[0] ?? source;
     const type = current.constructor?.name;
     const safeType = typeof type === "string" && /^[\w]{1,64}$/.test(type) ? type : undefined;
     error_type = safeType ?? error_type;
-    if (includeStack && remainingFrames > 0 && frames.length > 0) {
+    if (remainingFrames > 0 && frames.length > 0) {
       traces.push([safeType ?? "Error", ...frames.map((frame) => `  at ${frame}`)].join("\n"));
       remainingFrames -= frames.length;
     }
@@ -138,6 +144,13 @@ export function describeLogError(error: unknown, includeStack = false) {
     current = current.cause;
   }
 
+  if (!source && reportedAt) {
+    const frames = applicationFrames(reportedAt, maxStackFrames);
+    if (frames.length) {
+      source = frames[0];
+      traces.push(["Reported at", ...frames.map((frame) => `  at ${frame}`)].join("\n"));
+    }
+  }
   const stack = traces.length ? traces.join("\nCaused by ") : undefined;
   return { reason, error_code, error_type, source, stack };
 }

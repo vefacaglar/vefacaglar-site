@@ -6,7 +6,7 @@ mod application_logs;
 mod error_details;
 
 pub use application_logs::LogDrain;
-pub use error_details::database_error;
+pub use error_details::{application_stack, database_error};
 
 /// Initializes tracing. Output is JSON unless stdout is a terminal, or as forced
 /// by `WORKER_LOG_FORMAT=json|pretty`. Filtering follows `RUST_LOG` (default `info`).
@@ -30,6 +30,24 @@ pub fn init() -> Option<LogDrain> {
             .init();
     } else {
         subscriber.with(console).init();
+    }
+    if drain.is_some() {
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |panic| {
+            let location = panic.location().and_then(|location| {
+                let file = error_details::application_file(location.file())?;
+                Some(format!("{file}:{}:{}", location.line(), location.column()))
+            });
+            let stack = application_stack(&std::backtrace::Backtrace::force_capture());
+            tracing::error!(
+                application_event = "worker_panicked",
+                error_code = "worker_panic",
+                error_source = location.as_deref(),
+                origin_stack = stack.as_deref(),
+                "Worker task panicked"
+            );
+            previous_hook(panic);
+        }));
     }
     drain
 }

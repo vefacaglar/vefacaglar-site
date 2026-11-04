@@ -1,7 +1,58 @@
+use std::backtrace::{Backtrace, BacktraceStatus};
 use std::error::Error;
 use std::io;
 
 use crate::handler::PermanentError;
+
+pub fn application_stack(backtrace: &Backtrace) -> Option<String> {
+    if backtrace.status() != BacktraceStatus::Captured {
+        return None;
+    }
+    let text = backtrace.to_string();
+    let mut frames = Vec::new();
+    for line in text.lines() {
+        let Some(location) = line.trim().strip_prefix("at ") else {
+            continue;
+        };
+        let Some((file, line, column)) = parse_location(location) else {
+            continue;
+        };
+        let Some(file) = application_file(file) else {
+            continue;
+        };
+        if file.starts_with("src/telemetry") {
+            continue;
+        }
+        let frame = format!("{file}:{line}:{column}");
+        if frames.last() != Some(&frame) {
+            frames.push(frame);
+        }
+        if frames.len() == 12 {
+            break;
+        }
+    }
+    (!frames.is_empty()).then(|| frames.join("\n"))
+}
+
+pub(super) fn application_file(file: &str) -> Option<&str> {
+    let file = file
+        .strip_prefix(concat!(env!("CARGO_MANIFEST_DIR"), "/"))
+        .unwrap_or(file);
+    let file = file.strip_prefix("./").unwrap_or(file);
+    (file.starts_with("src/") && file.ends_with(".rs")).then_some(file)
+}
+
+fn parse_location(location: &str) -> Option<(&str, u32, u32)> {
+    let (location, column) = location.rsplit_once(':')?;
+    let (file, line) = location.rsplit_once(':')?;
+    if !file
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b"/_.-".contains(&b))
+    {
+        return None;
+    }
+    Some((file, line.parse().ok()?, column.parse().ok()?))
+}
 
 pub fn database_error(error: &sqlx::Error) -> (String, &'static str) {
     let (code, reason) = match error {
@@ -80,6 +131,15 @@ pub(super) fn describe_error(mut error: &(dyn Error + 'static)) -> (String, &'st
                     "the worker could not connect to the upstream HTTP service",
                 );
             }
+        }
+        if let Some(error) = error.downcast_ref::<serde_json::Error>() {
+            let reason = match error.classify() {
+                serde_json::error::Category::Syntax => "JSON syntax is invalid",
+                serde_json::error::Category::Data => "JSON data does not match the expected format",
+                serde_json::error::Category::Eof => "JSON data ended unexpectedly",
+                serde_json::error::Category::Io => "reading or writing JSON data failed",
+            };
+            return ("json_error".into(), reason);
         }
         if let Some(error) = error.downcast_ref::<io::Error>() {
             let (code, reason) = match error.kind() {

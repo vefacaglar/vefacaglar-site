@@ -1,3 +1,4 @@
+import { reportRuntimeFailure } from "../../application-logs/runtime-failures";
 import { inject, injectable } from "tsyringe";
 import { Client as TypesenseClient } from "typesense";
 import type { Developer } from "../../../modules/catalog/developers.repository.interface";
@@ -152,7 +153,7 @@ export class TypesenseSearchReader implements ISearchReader {
     } catch (err) {
       if (this.isFallbackEligibleError(err)) {
         await this.breaker.recordFailure();
-        console.warn(`[search] typesense ${entityLabel} search failed, falling back to postgres: ${(err as Error).message}`);
+        reportRuntimeFailure("search_fallback", `Typesense ${entityLabel} search failed. Using Postgres`, err, "warning");
         return fallback();
       }
       throw err;

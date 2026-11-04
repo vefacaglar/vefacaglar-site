@@ -1,3 +1,4 @@
+import { reportRuntimeFailure } from "../application-logs/runtime-failures";
 import { injectable } from "tsyringe";
 import type { DomainEvent, EventHandler, IEventBus } from "./event-bus";
 
@@ -27,7 +28,7 @@ export class InProcessEventBus implements IEventBus {
       try {
         await handler(event);
       } catch (err) {
-        console.error(`[events] handler for "${event.type}" failed:`, (err as Error).message);
+        reportRuntimeFailure("domain_event_handler_failed", "A domain event handler failed", err);
       }
     }
   }

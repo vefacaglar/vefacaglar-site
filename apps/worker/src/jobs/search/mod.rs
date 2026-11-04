@@ -102,7 +102,18 @@ impl JobHandler for SearchReindexHandler {
         };
         let checkpoint = match ctx.checkpoint_as::<full::FullCheckpoint>() {
             Ok(cp) => cp,
-            Err(_) => {
+            Err(error) => {
+                {
+                    let cause: &(dyn std::error::Error + 'static) = error.as_ref();
+                    let stack = crate::telemetry::application_stack(error.backtrace());
+                    tracing::warn!(
+                        application_event = "job_checkpoint_invalid",
+                        job_id = %ctx.job_id(),
+                        error = cause,
+                        origin_stack = stack.as_deref(),
+                        "Checkpoint could not be decoded. Starting a fresh reindex"
+                    );
+                }
                 ctx.warn("checkpoint not understood; starting a fresh reindex")
                     .await;
                 None

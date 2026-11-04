@@ -1,3 +1,4 @@
+import { reportRuntimeFailure } from "../../shared/application-logs/runtime-failures";
 import postgres from "postgres";
 import { injectable } from "tsyringe";
 import { JOB_EVENTS_CHANNEL, type IJobEventsListener } from "./job-events.listener.interface";
@@ -88,7 +89,7 @@ export class PgJobEventsListener implements IJobEventsListener {
       await sql.unsafe(`LISTEN ${JOB_EVENTS_CHANNEL}`);
     } catch (err) {
       if (this.sql !== sql) return;
-      console.error("[job-events] LISTEN failed:", (err as Error).message);
+      reportRuntimeFailure("job_events_listen_failed", "Could not listen for job events in Postgres", err);
       this.handleConnectionLost(sql);
       return;
     }
@@ -151,7 +152,7 @@ export class PgJobEventsListener implements IJobEventsListener {
     try {
       callback();
     } catch (err) {
-      console.error("[job-events] subscriber failed:", (err as Error).message);
+      reportRuntimeFailure("job_events_subscriber_failed", "A job events subscriber failed", err);
     }
   }
 }
