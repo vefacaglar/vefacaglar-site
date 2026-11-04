@@ -9,8 +9,10 @@ responses. HTTP events include the matched route template when available and
 the generated request ID returned in `X-Request-Id`. The worker exports
 lifecycle, job failure and infrastructure events. The message includes the
 diagnostic reason for recognized failures. Details may include the error
-type, code (including Postgres SQLSTATE), or API source location. Job progress
-and raw errors remain in the local logs and the job dashboard.
+type, code (including Postgres SQLSTATE), or API source location. Expand an
+API error to see the application stack frames for the error and its causes.
+The Docker API uses source maps to report TypeScript line and column numbers.
+Job progress and raw errors remain in the local logs and the job dashboard.
 
 Set `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` in the runtime environment
 of both services. For GitHub deployment, add them as GitHub secrets (both

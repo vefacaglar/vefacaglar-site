@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { DrizzleQueryError } from "drizzle-orm";
 import postgres from "postgres";
 import { Errors as TypesenseErrors } from "typesense";
@@ -45,6 +45,8 @@ const runtimeReasons: Record<string, string> = {
 };
 
 const appRoot = resolve(__dirname, "../..");
+const frameRoots = [resolve(dirname(appRoot), "src"), appRoot];
+const maxStackFrames = 12;
 const typesenseReasons: Record<number, string> = {
   400: "Typesense rejected an invalid request",
   401: "Typesense rejected the API key",
@@ -54,29 +56,51 @@ const typesenseReasons: Record<number, string> = {
   422: "Typesense could not process the document",
 };
 
-function sourceOf(error: Error): string | undefined {
-  if (typeof error.stack !== "string") return;
-  for (const line of error.stack.split("\n")) {
-    if (!line.trimStart().startsWith("at ")) continue;
-    const start = line.indexOf(`${appRoot}/`);
-    if (start === -1) continue;
-    const location = line.slice(start + appRoot.length + 1).replace(/\)$/, "");
-    if (/^[\w./-]+:\d+:\d+$/.test(location)) return location;
+function applicationFrames(error: Error, limit: number): string[] {
+  const stack = error.stack;
+  if (typeof stack !== "string") return [];
+
+  // Skip the entire exception header, which may contain multiple lines of input.
+  const header = Error.prototype.toString.call(error);
+  if (!stack.startsWith(`${header}\n`)) return [];
+
+  const frames: string[] = [];
+  for (const line of stack.slice(header.length + 1).split("\n")) {
+    const frame = line.trimStart();
+    if (!frame.startsWith("at ")) continue;
+    for (const root of frameRoots) {
+      const start = frame.indexOf(`${root}/`);
+      if (start === -1) continue;
+      const location = frame.slice(start + root.length + 1).replace(/\)$/, "");
+      if (!/^(?:[\w-]+\/)*[\w.-]+\.[cm]?[jt]s:\d+:\d+$/.test(location)) continue;
+      frames.push(`${basename(root)}/${location}`);
+      break;
+    }
+    if (frames.length === limit) break;
   }
+  return frames;
 }
 
-export function describeLogError(error: unknown) {
+export function describeLogError(error: unknown, includeStack = false) {
   let reason: string | undefined;
   let error_code: string | undefined;
   let error_type: string | undefined;
   let source: string | undefined;
   let current = error;
+  let remainingFrames = maxStackFrames;
+  const traces: string[] = [];
 
   // Follow wrapped errors without exporting SQL, parameters, or arbitrary exception text.
   for (let depth = 0; depth < 8 && current instanceof Error; depth++) {
-    source ??= sourceOf(current);
+    const frames = applicationFrames(current, Math.max(1, includeStack ? remainingFrames : 1));
+    source = frames[0] ?? source;
     const type = current.constructor?.name;
-    if (typeof type === "string" && /^[\w]{1,64}$/.test(type)) error_type = type;
+    const safeType = typeof type === "string" && /^[\w]{1,64}$/.test(type) ? type : undefined;
+    error_type = safeType ?? error_type;
+    if (includeStack && remainingFrames > 0 && frames.length > 0) {
+      traces.push([safeType ?? "Error", ...frames.map((frame) => `  at ${frame}`)].join("\n"));
+      remainingFrames -= frames.length;
+    }
 
     if (current instanceof postgres.PostgresError && /^[A-Z0-9]{5}$/.test(current.code)) {
       error_code = `sqlstate_${current.code}`;
@@ -114,5 +138,6 @@ export function describeLogError(error: unknown) {
     current = current.cause;
   }
 
-  return { reason, error_code, error_type, source };
+  const stack = traces.length ? traces.join("\nCaused by ") : undefined;
+  return { reason, error_code, error_type, source, stack };
 }

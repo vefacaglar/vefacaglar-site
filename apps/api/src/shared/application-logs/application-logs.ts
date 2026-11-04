@@ -128,7 +128,7 @@ export function installApplicationLogs(app: FastifyInstance) {
   const requestErrors = new WeakMap<FastifyRequest, Error>();
 
   function write(event: LogEvent, logger = app.log, error?: unknown): void {
-    const { reason, ...details } = describeLogError(error);
+    const { reason, ...details } = describeLogError(error, event.level === "error");
     const explanation = reason ?? (details.error_type && (
       details.source ? `${details.error_type} at ${details.source}` : details.error_type
     ));

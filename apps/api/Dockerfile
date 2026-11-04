@@ -22,4 +22,4 @@ COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/packages/db/dist ./packages/db/dist
 USER node
 EXPOSE 3001
-CMD ["node", "apps/api/dist/server.js"]
+CMD ["node", "--enable-source-maps", "apps/api/dist/server.js"]
