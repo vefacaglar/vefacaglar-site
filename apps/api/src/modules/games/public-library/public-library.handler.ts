@@ -30,12 +30,15 @@ export class GetPublicLibraryHandler {
       throw viewerId ? new ForbiddenError("err_profile_private") : new UnauthorizedError("err_profile_private");
     }
 
-    const logs = await this.logsRepo.listForUser(user.id);
+    const [logs, playtimeActivity] = await Promise.all([
+      this.logsRepo.listForUser(user.id),
+      this.logsRepo.listPlaytimeActivityForUser(user.id),
+    ]);
 
     return {
       user: { username: user.username, displayName: user.displayName, isProfilePublic: user.isProfilePublic },
       isOwner,
-      ...buildLibrary(logs),
+      ...buildLibrary(logs, playtimeActivity),
     };
   }
 }

@@ -1,13 +1,16 @@
-import type { GameLogWithGame } from "./game-logs.repository.interface";
+import type { GameLogWithGame, LogPlaytimeActivity } from "./game-logs.repository.interface";
 import type { LibraryGame, LibraryResponse } from "./library/library.schema";
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
 /**
  * Aggregates a user's play logs (newest first) into per-game rows and overall stats.
+ * `playtimeActivity` holds the latest playtime entry per log and only feeds `lastActivityAt`.
  * Only whitelisted, non-private fields are copied — notes, reviews and purchase data never leave here.
  */
-export function buildLibrary(logs: GameLogWithGame[]): LibraryResponse {
+export function buildLibrary(logs: GameLogWithGame[], playtimeActivity: LogPlaytimeActivity[]): LibraryResponse {
+  const lastEntryAt = new Map(playtimeActivity.map((a) => [a.userGameId, a.lastRecordedAt.getTime()]));
+
   // Newest first, so the first log seen for a game is its latest.
   const byGame = new Map<string, GameLogWithGame[]>();
   for (const log of logs) {
@@ -20,6 +23,18 @@ export function buildLibrary(logs: GameLogWithGame[]): LibraryResponse {
     const latest = gameLogs[0];
     const rated = gameLogs.find((l) => l.rating !== null);
     const hours = gameLogs.filter((l) => l.playtimeHours !== null).map((l) => Number(l.playtimeHours));
+    // "YYYY-MM-DD" strings sort chronologically, so the max string is the latest date.
+    const completedAt = gameLogs.reduce<string | null>(
+      (acc, l) => (l.completedAt !== null && (acc === null || l.completedAt > acc) ? l.completedAt : acc),
+      null
+    );
+    const lastActivity = Math.max(
+      ...gameLogs.flatMap((l) => [
+        l.createdAt.getTime(),
+        l.updatedAt?.getTime() ?? 0,
+        lastEntryAt.get(l.id) ?? 0,
+      ])
+    );
     return {
       slug: latest.game.slug,
       title: latest.game.title,
@@ -29,6 +44,8 @@ export function buildLibrary(logs: GameLogWithGame[]): LibraryResponse {
       playtimeHours: hours.length > 0 ? round1(hours.reduce((a, b) => a + b, 0)) : null,
       logCount: gameLogs.length,
       lastLoggedAt: latest.createdAt.toISOString(),
+      completedAt,
+      lastActivityAt: new Date(lastActivity).toISOString(),
     };
   });
 

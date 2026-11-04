@@ -20,7 +20,7 @@ const log = (over: Record<string, unknown>) => ({
   id: "l", userId: "u-1", gameId: "g-1", status: "playing", platformId: null, platformName: null,
   rating: null, startedAt: null, completedAt: null, playtimeHours: null,
   notes: "private note", reviewText: "private review", purchasePrice: "59.99",
-  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  createdAt: new Date("2026-01-01T00:00:00.000Z"), updatedAt: null,
   game: { slug: "doom", title: "Doom", coverImageUrl: null },
   ...over,
 });
@@ -35,20 +35,27 @@ describe("GetPublicLibraryHandler", () => {
 
   beforeEach(() => {
     usersRepo = { findByUsername: vi.fn() } as unknown as Record<keyof IUsersRepository, any>;
-    logsRepo = { listForUser: vi.fn().mockResolvedValue([]) } as unknown as Record<keyof IGameLogsRepository, any>;
+    logsRepo = {
+      listForUser: vi.fn().mockResolvedValue([]),
+      listPlaytimeActivityForUser: vi.fn().mockResolvedValue([]),
+    } as unknown as Record<keyof IGameLogsRepository, any>;
     handler = new GetPublicLibraryHandler(usersRepo, logsRepo);
   });
 
   it("returns the public user identity and library stats for a public profile", async () => {
     usersRepo.findByUsername.mockResolvedValue(user());
     logsRepo.listForUser.mockResolvedValue([
-      log({ id: "l2", gameId: "g-1", status: "completed", rating: 80, playtimeHours: "12" }),
+      log({ id: "l2", gameId: "g-1", status: "completed", rating: 80, playtimeHours: "12", completedAt: "2026-01-20" }),
+    ]);
+    logsRepo.listPlaytimeActivityForUser.mockResolvedValue([
+      { userGameId: "l2", lastRecordedAt: new Date("2026-01-20T18:30:00.000Z") },
     ]);
 
     const result = await handler.handle(request());
 
     expect(usersRepo.findByUsername).toHaveBeenCalledWith("vefa");
     expect(logsRepo.listForUser).toHaveBeenCalledWith("u-1");
+    expect(logsRepo.listPlaytimeActivityForUser).toHaveBeenCalledWith("u-1");
     expect(result).toEqual({
       user: { username: "vefa", displayName: "Vefa Çağlar", isProfilePublic: true },
       isOwner: false,
@@ -56,6 +63,7 @@ describe("GetPublicLibraryHandler", () => {
       games: [{
         slug: "doom", title: "Doom", coverImageUrl: null, status: "completed", rating: 80,
         playtimeHours: 12, logCount: 1, lastLoggedAt: "2026-01-01T00:00:00.000Z",
+        completedAt: "2026-01-20", lastActivityAt: "2026-01-20T18:30:00.000Z",
       }],
     });
   });
@@ -102,6 +110,7 @@ describe("GetPublicLibraryHandler", () => {
     expect(error.statusCode).toBe(401);
     expect(error.message).toBe("err_profile_private");
     expect(logsRepo.listForUser).not.toHaveBeenCalled();
+    expect(logsRepo.listPlaytimeActivityForUser).not.toHaveBeenCalled();
   });
 
   it("returns 403 with err_profile_private to a signed-in stranger viewing a private library", async () => {
@@ -113,6 +122,7 @@ describe("GetPublicLibraryHandler", () => {
     expect(error.statusCode).toBe(403);
     expect(error.message).toBe("err_profile_private");
     expect(logsRepo.listForUser).not.toHaveBeenCalled();
+    expect(logsRepo.listPlaytimeActivityForUser).not.toHaveBeenCalled();
   });
 
   it("returns 404 to the owner when their account is inactive", async () => {
@@ -134,5 +144,6 @@ describe("GetPublicLibraryHandler", () => {
       expect(error.message).toBe("err_profile_not_found");
     }
     expect(logsRepo.listForUser).not.toHaveBeenCalled();
+    expect(logsRepo.listPlaytimeActivityForUser).not.toHaveBeenCalled();
   });
 });

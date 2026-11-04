@@ -131,9 +131,32 @@
   border-color: var(--accent);
 }
 
+.signOutForm {
+  display: flex;
+  margin-left: 20px;
+}
+
+.signOut {
+  padding: 7px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.signOut:hover {
+  color: var(--text-heading);
+}
+
 .wordmark:focus-visible,
 .tab:focus-visible,
-.account:focus-visible {
+.account:focus-visible,
+.signOut:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 4px;
 }
@@ -195,6 +218,14 @@
     max-width: 160px;
     padding: 6px 12px;
     font-size: 14px;
+  }
+
+  .signOutForm {
+    margin-left: 14px;
+  }
+
+  .signOut {
+    font-size: 13px;
   }
 
   .tabs {

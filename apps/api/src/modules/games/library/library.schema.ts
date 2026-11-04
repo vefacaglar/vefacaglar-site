@@ -14,7 +14,12 @@ export const LibraryGameSchema = Type.Object({
   /** Playtime summed over all of this game's logs. */
   playtimeHours: NullableNumber,
   logCount: Type.Number(),
+  /** createdAt of the most recent log (ISO timestamp). */
   lastLoggedAt: Type.String(),
+  /** Latest completion date across this game's logs ("YYYY-MM-DD"), or null if never completed. */
+  completedAt: Type.Union([Type.String({ format: "date" }), Type.Null()]),
+  /** Latest of the logs' createdAt/updatedAt and their playtime entries' recordedAt (ISO timestamp). */
+  lastActivityAt: Type.String({ format: "date-time" }),
 });
 
 export const LibraryResponseSchema = Type.Object({

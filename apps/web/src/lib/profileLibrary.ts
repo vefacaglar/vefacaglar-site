@@ -18,6 +18,10 @@ export type LibraryGame = {
   playtimeHours: number | null;
   logCount: number;
   lastLoggedAt: string;
+  /** Latest completion date (YYYY-MM-DD), or null if never finished. */
+  completedAt: string | null;
+  /** ISO timestamp of the latest activity: a log created or updated, or playtime added. */
+  lastActivityAt: string;
 };
 
 export type LibrarySummary = {

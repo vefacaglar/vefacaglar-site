@@ -11,7 +11,11 @@ export class GetLibraryHandler {
   constructor(@inject(GAME_LOGS_REPOSITORY) private readonly logsRepo: IGameLogsRepository) {}
 
   async handle(request: FastifyRequest): Promise<LibraryResponse> {
-    const logs = await this.logsRepo.listForUser(request.user!.id);
-    return buildLibrary(logs);
+    const userId = request.user!.id;
+    const [logs, playtimeActivity] = await Promise.all([
+      this.logsRepo.listForUser(userId),
+      this.logsRepo.listPlaytimeActivityForUser(userId),
+    ]);
+    return buildLibrary(logs, playtimeActivity);
   }
 }

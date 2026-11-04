@@ -24,14 +24,52 @@ describe("UpdateGameLogHandler", () => {
     handler = new UpdateGameLogHandler(gamesRepo, logsRepo);
   });
 
-  const request = (userId: string) =>
-    ({ params: { id: "l-1" }, user: { id: userId }, body: { status: "completed" } }) as any;
+  const request = (userId: string, body: Record<string, unknown> = {}) =>
+    ({ params: { id: "l-1" }, user: { id: userId }, body: { status: "completed", ...body } }) as any;
 
   it("updates the owner's log", async () => {
     const result = await handler.handle(request("u-1"));
 
-    expect(logsRepo.update).toHaveBeenCalledWith("l-1", expect.objectContaining({ status: "completed", updatedAt: expect.any(Date) }));
+    expect(logsRepo.update).toHaveBeenCalledWith(
+      "l-1",
+      expect.objectContaining({ status: "completed", updatedAt: expect.any(Date) }),
+      null
+    );
     expect(result.status).toBe("completed");
+  });
+
+  it("records only the added hours when playtime increases", async () => {
+    logsRepo.findById.mockResolvedValue({ ...row, playtimeHours: "5.0" });
+
+    await handler.handle(request("u-1", { playtimeHours: 8 }));
+
+    expect(logsRepo.update).toHaveBeenCalledWith(
+      "l-1",
+      expect.objectContaining({ playtimeHours: "8" }),
+      { deltaHours: "3.0", previousHours: "5.0", newHours: "8.0" }
+    );
+  });
+
+  it("treats a log without playtime as zero hours", async () => {
+    await handler.handle(request("u-1", { playtimeHours: 4.5 }));
+
+    expect(logsRepo.update).toHaveBeenCalledWith(
+      "l-1",
+      expect.anything(),
+      { deltaHours: "4.5", previousHours: null, newHours: "4.5" }
+    );
+  });
+
+  it.each([
+    ["decreased", 3],
+    ["unchanged", 5],
+    ["cleared", null],
+  ])("records no playtime entry when playtime is %s", async (_label, playtimeHours) => {
+    logsRepo.findById.mockResolvedValue({ ...row, playtimeHours: "5.0" });
+
+    await handler.handle(request("u-1", { playtimeHours }));
+
+    expect(logsRepo.update).toHaveBeenCalledWith("l-1", expect.anything(), null);
   });
 
   it("hides another user's log as not found", async () => {

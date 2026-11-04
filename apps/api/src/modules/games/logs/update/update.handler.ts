@@ -7,6 +7,7 @@ import { GAME_LOGS_REPOSITORY } from "../../games.tokens";
 import type { IGameLogsRepository } from "../../game-logs.repository.interface";
 import { toGameLog, type GameLog, type GameLogBody } from "../game-log.schema";
 import { toGameLogValues } from "../game-log.values";
+import { playtimeIncrease } from "../../playtime-delta";
 import { GameLogIdParams } from "./update.schema";
 
 @injectable()
@@ -24,10 +25,13 @@ export class UpdateGameLogHandler {
     const game = await this.gamesRepo.findById(log.gameId);
     if (!game) throw new NotFoundError("Game not found.");
 
-    const updated = await this.logsRepo.update(log.id, {
-      ...toGameLogValues(request.body, game),
-      updatedAt: new Date(),
-    });
+    const values = toGameLogValues(request.body, game);
+    // Only playtime increases are audited; lowering or clearing it records nothing.
+    const updated = await this.logsRepo.update(
+      log.id,
+      { ...values, updatedAt: new Date() },
+      playtimeIncrease(log.playtimeHours, values.playtimeHours)
+    );
     return toGameLog(updated);
   }
 }

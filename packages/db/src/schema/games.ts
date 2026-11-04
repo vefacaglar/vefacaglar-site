@@ -138,6 +138,29 @@ export const userGames = pgTable('user_games', {
   userIdStatusIdx: index('user_games_user_id_status_idx').on(table.userId, table.status),
 }));
 
+// 8. UserGamePlaytimeEntries (append-only audit of playtime increases on a play log)
+// Only increases are recorded: deltaHours is always > 0; decreases/corrections leave no entry.
+export const userGamePlaytimeEntries = pgTable('user_game_playtime_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userGameId: uuid('user_game_id')
+    .notNull()
+    .references(() => userGames.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  gameId: uuid('game_id')
+    .notNull()
+    .references(() => games.id, { onDelete: 'cascade' }),
+  deltaHours: decimal('delta_hours', { precision: 7, scale: 1 }).notNull(),
+  // Null when the entry comes from the log's first recorded playtime.
+  previousHours: decimal('previous_hours', { precision: 7, scale: 1 }),
+  newHours: decimal('new_hours', { precision: 7, scale: 1 }).notNull(),
+  recordedAt: timestamp('recorded_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+}, (table) => ({
+  userIdRecordedAtIdx: index('user_game_playtime_entries_user_id_recorded_at_idx').on(table.userId, table.recordedAt),
+  userGameIdIdx: index('user_game_playtime_entries_user_game_id_idx').on(table.userGameId),
+}));
+
 // --- Join Tables ---
 
 // GameDevelopers
@@ -210,6 +233,9 @@ export type NewGame = typeof games.$inferInsert;
 
 export type UserGame = typeof userGames.$inferSelect;
 export type NewUserGame = typeof userGames.$inferInsert;
+
+export type UserGamePlaytimeEntry = typeof userGamePlaytimeEntries.$inferSelect;
+export type NewUserGamePlaytimeEntry = typeof userGamePlaytimeEntries.$inferInsert;
 
 export type Developer = typeof developers.$inferSelect;
 export type NewDeveloper = typeof developers.$inferInsert;

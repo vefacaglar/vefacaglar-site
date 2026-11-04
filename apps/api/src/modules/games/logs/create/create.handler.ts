@@ -7,6 +7,7 @@ import { GAME_LOGS_REPOSITORY } from "../../games.tokens";
 import type { IGameLogsRepository } from "../../game-logs.repository.interface";
 import { toGameLog, type GameLog, type GameLogBody } from "../game-log.schema";
 import { toGameLogValues } from "../game-log.values";
+import { playtimeIncrease } from "../../playtime-delta";
 import { CreateGameLogParams } from "./create.schema";
 
 @injectable()
@@ -21,12 +22,10 @@ export class CreateGameLogHandler {
     if (!game) throw new NotFoundError("Game not found.");
 
     const values = toGameLogValues(request.body, game);
-    const created = await this.logsRepo.create({
-      ...values,
-      status: request.body.status,
-      userId: request.user!.id,
-      gameId: game.id,
-    });
+    const created = await this.logsRepo.create(
+      { ...values, status: request.body.status, userId: request.user!.id, gameId: game.id },
+      playtimeIncrease(null, values.playtimeHours)
+    );
     return toGameLog(created);
   }
 }

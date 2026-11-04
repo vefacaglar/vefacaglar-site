@@ -6,7 +6,7 @@ import type { IGameLogsRepository } from "../game-logs.repository.interface";
 const log = (over: Record<string, unknown>) => ({
   id: "l", userId: "u-1", gameId: "g-1", status: "playing", platformId: null, platformName: null,
   rating: null, startedAt: null, completedAt: null, playtimeHours: null, notes: null,
-  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  createdAt: new Date("2026-01-01T00:00:00.000Z"), updatedAt: null,
   game: { slug: "doom", title: "Doom", coverImageUrl: null },
   ...over,
 });
@@ -16,7 +16,10 @@ describe("GetLibraryHandler", () => {
   let handler: GetLibraryHandler;
 
   beforeEach(() => {
-    logsRepo = { listForUser: vi.fn().mockResolvedValue([]) } as unknown as Record<keyof IGameLogsRepository, any>;
+    logsRepo = {
+      listForUser: vi.fn().mockResolvedValue([]),
+      listPlaytimeActivityForUser: vi.fn().mockResolvedValue([]),
+    } as unknown as Record<keyof IGameLogsRepository, any>;
     handler = new GetLibraryHandler(logsRepo);
   });
 
@@ -24,6 +27,7 @@ describe("GetLibraryHandler", () => {
     const result = await handler.handle({ user: { id: "u-1" } } as any);
 
     expect(logsRepo.listForUser).toHaveBeenCalledWith("u-1");
+    expect(logsRepo.listPlaytimeActivityForUser).toHaveBeenCalledWith("u-1");
     expect(result).toEqual({
       summary: { gameCount: 0, logCount: 0, completedCount: 0, playtimeHours: 0, averageRating: null },
       games: [],
@@ -33,7 +37,7 @@ describe("GetLibraryHandler", () => {
   it("groups logs per game: latest status, latest rating, summed hours", async () => {
     logsRepo.listForUser.mockResolvedValue([
       log({ id: "l3", gameId: "g-1", status: "playing", playtimeHours: "5.5", createdAt: new Date("2026-03-01T00:00:00.000Z") }),
-      log({ id: "l2", gameId: "g-1", status: "completed", rating: 90, playtimeHours: "20" }),
+      log({ id: "l2", gameId: "g-1", status: "completed", rating: 90, playtimeHours: "20", completedAt: "2026-02-01" }),
       log({ id: "l1", gameId: "g-2", status: "abandoned", rating: 40, game: { slug: "quake", title: "Quake", coverImageUrl: null } }),
     ]);
 
@@ -42,8 +46,41 @@ describe("GetLibraryHandler", () => {
     expect(result.games[0]).toEqual({
       slug: "doom", title: "Doom", coverImageUrl: null, status: "playing", rating: 90,
       playtimeHours: 25.5, logCount: 2, lastLoggedAt: "2026-03-01T00:00:00.000Z",
+      completedAt: "2026-02-01", lastActivityAt: "2026-03-01T00:00:00.000Z",
     });
-    expect(result.games[1]).toMatchObject({ slug: "quake", rating: 40, playtimeHours: null, logCount: 1 });
+    expect(result.games[1]).toMatchObject({
+      slug: "quake", rating: 40, playtimeHours: null, logCount: 1,
+      completedAt: null, lastActivityAt: "2026-01-01T00:00:00.000Z",
+    });
     expect(result.summary).toEqual({ gameCount: 2, logCount: 3, completedCount: 1, playtimeHours: 25.5, averageRating: 65 });
+  });
+
+  it("picks the latest completion date across a game's logs", async () => {
+    logsRepo.listForUser.mockResolvedValue([
+      log({ id: "l3", completedAt: null }),
+      log({ id: "l2", completedAt: "2025-06-10" }),
+      log({ id: "l1", completedAt: "2025-12-24" }),
+    ]);
+
+    const result = await handler.handle({ user: { id: "u-1" } } as any);
+
+    expect(result.games[0].completedAt).toBe("2025-12-24");
+  });
+
+  it("uses the latest of log creation, log updates and playtime entries as last activity", async () => {
+    logsRepo.listForUser.mockResolvedValue([
+      log({ id: "l2", createdAt: new Date("2026-03-01T00:00:00.000Z"), updatedAt: null }),
+      log({ id: "l1", createdAt: new Date("2026-01-01T00:00:00.000Z"), updatedAt: new Date("2026-04-01T00:00:00.000Z") }),
+      log({ id: "l9", gameId: "g-2", createdAt: new Date("2026-01-01T00:00:00.000Z"), game: { slug: "quake", title: "Quake", coverImageUrl: null } }),
+    ]);
+    logsRepo.listPlaytimeActivityForUser.mockResolvedValue([
+      { userGameId: "l2", lastRecordedAt: new Date("2026-03-15T00:00:00.000Z") },
+      { userGameId: "l9", lastRecordedAt: new Date("2026-05-05T10:00:00.000Z") },
+    ]);
+
+    const result = await handler.handle({ user: { id: "u-1" } } as any);
+
+    expect(result.games[0]).toMatchObject({ slug: "doom", lastActivityAt: "2026-04-01T00:00:00.000Z" });
+    expect(result.games[1]).toMatchObject({ slug: "quake", lastActivityAt: "2026-05-05T10:00:00.000Z" });
   });
 });

@@ -38,7 +38,15 @@ describe("CreateGameLogHandler", () => {
       notes: "great",
       userId: "u-1",
       gameId: "g-1",
-    });
+    }, { deltaHours: "12.0", previousHours: null, newHours: "12.0" });
+  });
+
+  it("records no playtime entry when the log has no playtime", async () => {
+    await handler.handle(request({ status: "playing" }));
+    expect(logsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ playtimeHours: null }), null);
+
+    await handler.handle(request({ status: "playing", playtimeHours: 0 }));
+    expect(logsRepo.create).toHaveBeenLastCalledWith(expect.objectContaining({ playtimeHours: "0" }), null);
   });
 
   it("rejects a platform the game is not on", async () => {

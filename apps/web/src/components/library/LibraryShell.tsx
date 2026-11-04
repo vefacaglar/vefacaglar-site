@@ -8,6 +8,7 @@ import { getSessionUser } from "../../lib/session";
 import { LIBRARY_NAME, LIBRARY_SECTIONS, type LibrarySection } from "../../lib/librarySeo";
 import { profilePath } from "../../lib/profileLibrary";
 import AccountLink from "./AccountLink";
+import { librarySignOutAction } from "./actions";
 import { librarySerif } from "./fonts";
 import styles from "./LibraryShell.module.css";
 
@@ -54,11 +55,19 @@ export default async function LibraryShell({
 
         <div className={styles.utility}>
           {user ? (
-            <AccountLink
-              href={localizeHref(profilePath(user.username), lang)}
-              profilePath={profilePath(user.username)}
-              label={user.displayName || user.username || dict.profile}
-            />
+            <>
+              <AccountLink
+                href={localizeHref(profilePath(user.username), lang)}
+                profilePath={profilePath(user.username)}
+                label={user.displayName || user.username || dict.profile}
+              />
+              <form action={librarySignOutAction} className={styles.signOutForm}>
+                <input type="hidden" name="returnTo" value={localizeHref("/games", lang)} />
+                <button type="submit" className={styles.signOut}>
+                  {dict.sign_out}
+                </button>
+              </form>
+            </>
           ) : (
             <Link href={getLoginHref(localizeHref(`/${section ?? "games"}`, lang))} className={styles.account}>
               {dict.sign_in}

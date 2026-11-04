@@ -8,6 +8,7 @@ import { decodeUsername, getProfileLibrary, profilePath } from "../../../lib/pro
 import ProfileGameGrid from "../components/ProfileGameGrid";
 import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
+import { sortShelf } from "../libraryShelf";
 
 const RECENT_COUNT = 6;
 
@@ -39,13 +40,10 @@ export default async function ProfileOverview(props: OverviewProps) {
   const { summary, games, user, isOwner } = library;
   const name = user.displayName || user.username;
 
-  const recent = [...games]
-    .sort((a, b) => Date.parse(b.lastLoggedAt) - Date.parse(a.lastLoggedAt))
-    .slice(0, RECENT_COUNT);
+  const recent = sortShelf(games, "activity").slice(0, RECENT_COUNT);
 
   const stats: Stat[] = [
     { label: dict.stat_games, value: String(summary.gameCount) },
-    { label: dict.stat_logs, value: String(summary.logCount) },
     {
       label: dict.stat_completed,
       value: String(summary.completedCount),
@@ -91,7 +89,7 @@ export default async function ProfileOverview(props: OverviewProps) {
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionTitle}>{dict.recently_logged}</h2>
+          <h2 className={styles.sectionTitle}>{dict.recent_activity}</h2>
           {games.length > recent.length && (
             <Link href={localizeHref(profilePath(user.username, "games"), lang)} className={styles.sectionLink}>
               {dict.see_all_games.replace("{count}", String(summary.gameCount))}
