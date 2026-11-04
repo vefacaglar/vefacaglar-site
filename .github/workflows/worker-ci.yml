@@ -116,7 +116,7 @@ jobs:
       contents: read
       packages: read
     environment:
-      name: worker-production
+      name: api-production
     env:
       WORKER_IMAGE: ${{ needs.image.outputs.image }}
       VPS_HOST: ${{ secrets.VPS_HOST }}

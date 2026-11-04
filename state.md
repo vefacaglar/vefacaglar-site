@@ -59,6 +59,13 @@ Target job design (user decision):
 - `search.reindex` (full): new physical collections `{alias}__{yyyymmddhhmmss}` for all collections → load everything → swap all aliases only after every collection is fully loaded → delete old physical collections. Resume continues into the same physical collections; cancel deletes the half-built ones.
 - `search.sync` (fill missing): per live collection, diff Typesense ids vs Postgres ids, upsert only missing documents; orphans only logged.
 
+## Production deploy checklist (CI does NOT run migrations)
+
+1. `pnpm --filter @vefacaglar/db db:migrate` against production BEFORE deploying API/worker code that needs new tables/columns (0019–0023: profile visibility, popularity, playtime entries, jobs, registered jobs).
+2. API deploy runs only if repo variable `API_DEPLOY_ENABLED=true`.
+3. Worker deploy runs only if REPOSITORY variable `WORKER_DEPLOY_ENABLED=true` (environment variables are not visible to job-level `if`). Worker deploy uses the `api-production` environment (shares VPS_*, DATABASE_URL, TYPESENSE_*, LOG_TYPESENSE_* secrets). Worker image builds amd64+arm64 under QEMU (~50 min uncached) — consider amd64-only once VPS arch is known. Adding a variable/secret does not deploy — re-run the workflow.
+4. Web (Vercel): redeploy after env changes (`NEXT_PUBLIC_API_URL`); deploy API first.
+
 ## Next steps
 
 1. fix-6 / fix-7 / des-4 / fix-8 DONE. Root `pnpm typecheck` (4/4) and `pnpm test` pass: web 23 files / 236 tests (Vitest, characterization), api 105 / 465, worker 43. Web specs found suspected bugs (asserted as-is with `// NOTE:`), awaiting user decision: `safeReturnPath` accepts `/\evil.com` and `/\t/evil.com` (open redirect → use `safeInternalPath`); `localizeHref` split(sep,2) truncates extra `#`/`?`; `sanitizeReturnTo` doesn't block `/dashboard#x`, `/Dashboard`; `apiAction` revalidates before invalid-JSON error; `seo.ts` strips only one trailing slash; `slugify` drops non-Turkish accents (Pokémon→pokmon); middleware `startsWith` matches `/apiary`, `/dashboards`; jobs `format.ts` "60 seconds ago" rounding; `parseDateKey` years <100 → null. (cron UI was removed, so no cronError to test.)
@@ -68,7 +75,7 @@ Target job design (user decision):
    2. `pnpm --filter worker worker:dev`
    3. `pnpm dev`, open `/dashboard/jobs` → Registered jobs → run `search.reindex`, watch live logs.
    4. `pnpm --filter api catalog:import --all --restart` then `pnpm --filter api catalog:popularity` if popularity data is still empty.
-3. Deploy worker: GitHub secrets/vars (`WORKER_DEPLOY_ENABLED`, environment `worker-production`, VPS secrets), see `deploy/worker/README.md`.
+3. Deploy worker: GitHub secrets/vars (repo variable `WORKER_DEPLOY_ENABLED`, environment `api-production`), see `deploy/worker/README.md`.
 4. Browser-check signed-in library pages; answer the open questions in section 1.
 5. Commit in logical chunks (English messages): library UI, profile + API, popularity, typesense en-only, jobs (db/api/web), worker + CI.
 6. Later: movies feature, popularity as a registered job.

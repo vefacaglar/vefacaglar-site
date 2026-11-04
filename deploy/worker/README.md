@@ -46,10 +46,10 @@ worker's own database heartbeat (written every 10 s) is less than 30 s old.
 
 ## GitHub configuration
 
-Create the **`worker-production`** environment (Settings → Environments). Secrets
-are read from repository secrets or from that environment; secrets that exist only
-in the `api-production` environment are **not** visible to this workflow, so copy
-them to the repository level or to `worker-production`.
+The deploy job uses the same **`api-production`** environment as the API, so the
+VPS, database and Typesense secrets are shared; repository secrets work too.
+`WORKER_DEPLOY_ENABLED` must be a **repository** variable (the job-level `if` is
+evaluated before the environment is entered).
 
 | Secret | Value |
 | --- | --- |
