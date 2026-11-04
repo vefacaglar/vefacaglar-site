@@ -40,7 +40,7 @@ quotes. Add optional integrations using their existing values:
 | Feature | Secrets |
 | --- | --- |
 | Redis cache/rate limiting | `REDIS_URL` |
-| Typesense search | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, `TYPESENSE_LANGUAGES`; `TYPESENSE_PUBLIC_URL` can replace explicit host/port/protocol |
+| Typesense search | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`; `TYPESENSE_PUBLIC_URL` can replace explicit host/port/protocol |
 | Image uploads | `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_PUBLIC_KEY`, optionally `IMAGEKIT_FOLDER` |
 | IGDB imports | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
 | Additional runtime settings | `PG_POOL_MAX`, `API_URL` (defaults to `https://api2.vefacaglar.com`) |

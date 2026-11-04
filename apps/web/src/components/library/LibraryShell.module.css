@@ -1,12 +1,20 @@
 /*
- * The library is a section of its own: a wider frame, its own header and a
- * lighter, larger type scale than the rest of the site.
+ * The library frame: its own palette (see the [data-library] block in
+ * globals.css), a serif text face and a wider measure than the main site.
+ * Words are set in Newsreader; small figures use Fira Code (--font-mono).
  */
 .shell {
-  width: min(1240px, calc(100% - 48px));
+  width: min(1240px, calc(100% - 64px));
   margin: 0 auto;
-  isolation: isolate;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: normal;
+  color: var(--text);
 }
+
+/* ---------- Header ---------- */
 
 .header {
   position: relative;
@@ -16,59 +24,66 @@
   grid-template-areas: "mark tabs utility";
   align-items: stretch;
   column-gap: 56px;
-  min-height: 72px;
-  border-bottom: 1px solid var(--border);
+  min-height: 76px;
 }
 
-/* Wordmark */
+/* The header rule runs edge to edge, like the bands below it. */
+.header::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 100vw;
+  transform: translateX(-50%);
+  border-bottom: 1px solid var(--border);
+  pointer-events: none;
+}
+
 .wordmark {
   grid-area: mark;
   display: inline-flex;
   align-items: center;
-  font-size: 17px;
-  letter-spacing: -0.05em;
+  gap: 6px;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.01em;
   text-decoration: none;
   color: var(--text-heading);
 }
 
 .owner {
-  color: var(--muted);
-  font-weight: 400;
-  transition: color 0.15s ease;
-}
-
-.slash {
-  color: var(--accent);
-  margin: 0 2px;
-  font-weight: 300;
+  font-weight: 600;
 }
 
 .name {
-  font-weight: 600;
+  font-weight: 400;
+  color: var(--muted);
+  transition: color 0.15s ease;
 }
 
 .wordmark:hover {
   color: var(--text-heading);
 }
 
-.wordmark:hover .owner {
+.wordmark:hover .name {
   color: var(--text);
 }
 
-/* Section tabs */
 .tabs {
   grid-area: tabs;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: stretch;
-  gap: 32px;
+  gap: 36px;
 }
 
 .tab {
   display: inline-flex;
   align-items: center;
   margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
-  font-size: 15px;
+  border-bottom: 1px solid transparent;
+  font-size: 17px;
   color: var(--muted);
   text-decoration: none;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -84,31 +99,35 @@
   border-bottom-color: var(--accent);
 }
 
-/* Account: sign in, or the signed-in user's profile */
 .utility {
   grid-area: utility;
   display: flex;
   align-items: center;
-  gap: 24px;
 }
 
 .account {
-  max-width: 200px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
+  padding: 7px 16px;
+  border: 1px solid var(--border-strong);
   border-radius: 0;
-  font-size: 13px;
-  color: var(--text);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text-heading);
   text-decoration: none;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.account:hover,
-.accountActive {
+.account:hover {
   color: var(--text-heading);
+  border-color: var(--muted);
+  background: var(--surface);
+}
+
+.accountActive,
+.accountActive:hover {
   border-color: var(--accent);
 }
 
@@ -119,8 +138,12 @@
   outline-offset: 4px;
 }
 
+/* ---------- Body & footer ---------- */
+
+/* Pages can pull full-bleed bands up to the header rule with --shell-pad-top. */
 .body {
-  padding: 64px 0 128px;
+  --shell-pad-top: 56px;
+  padding: var(--shell-pad-top) 0 120px;
 }
 
 .footer {
@@ -128,14 +151,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 24px 0 40px;
+  padding: 28px 0 44px;
   border-top: 1px solid var(--border);
-  font-size: 13px;
   color: var(--muted);
 }
 
 .footerMark {
-  letter-spacing: -0.03em;
+  font-size: 15px;
+  font-style: italic;
+}
+
+/* The shared language switch: show the code as a code. */
+.footer button {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 720px) {
@@ -156,18 +187,28 @@
     min-height: 60px;
   }
 
+  .wordmark {
+    font-size: 20px;
+  }
+
+  .account {
+    max-width: 160px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
   .tabs {
-    gap: 0;
+    gap: 28px;
     border-top: 1px solid var(--border);
   }
 
   .tab {
-    flex: 1;
-    justify-content: center;
-    min-height: 48px;
+    min-height: 46px;
+    font-size: 16px;
   }
 
   .body {
-    padding: 40px 0 96px;
+    --shell-pad-top: 36px;
+    padding-bottom: 88px;
   }
 }

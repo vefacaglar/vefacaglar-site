@@ -1,4 +1,27 @@
-/* ---------- Profile header ---------- */
+/* ==========================================================================
+   Profile: a raised band with the reader's card and tabs, then figures and
+   shelves on the ground below. Same type system as the game page.
+   ========================================================================== */
+
+.band {
+  position: relative;
+  isolation: isolate;
+  margin-top: calc(-1 * var(--shell-pad-top, 56px));
+  padding-top: 48px;
+}
+
+.band::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
 
 .profileHeader {
   display: grid;
@@ -6,29 +29,22 @@
   grid-template-areas: "mono identity tools";
   align-items: end;
   gap: 32px;
-  padding-bottom: 40px;
+  padding-bottom: 36px;
 }
 
-/* Library-card monogram: the first letter of the name on a finely hatched plate. */
+/* Monogram plate: the name's first letter, like a stamp on a library card. */
 .monogram {
   grid-area: mono;
-  width: 120px;
+  width: 112px;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bg));
-  background:
-    repeating-linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--accent) 14%, transparent) 0 1px,
-      transparent 1px 7px
-    ),
-    color-mix(in srgb, var(--accent) 7%, var(--bg));
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
   font-size: 64px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.06em;
   color: var(--accent);
   user-select: none;
 }
@@ -39,11 +55,11 @@
 }
 
 .displayName {
-  margin: 0 0 14px -0.06em;
-  font-size: clamp(44px, 8vw, 112px);
-  font-weight: 300;
-  line-height: 0.88;
-  letter-spacing: -0.075em;
+  margin: 0 0 10px -0.02em;
+  font-size: clamp(40px, 5.6vw, 76px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
@@ -52,9 +68,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: 8px 16px;
   margin: 0;
-  font-size: 15px;
+  font-family: var(--font-mono);
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -63,8 +80,9 @@
   align-items: center;
   gap: 6px;
   padding: 2px 8px;
-  border: 1px solid var(--border);
-  font-size: 12px;
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--text);
 }
@@ -76,16 +94,18 @@
 }
 
 .settingsLink {
-  font-size: 13px;
-  padding: 6px 14px;
+  font-size: 15px;
 }
 
-/* ---------- Profile tabs ---------- */
+/* ---------- Tabs (sit on the band's bottom rule) ---------- */
 
+/* The strip overlaps the band's rule by 1px so the active underline replaces it. */
 .tabs {
+  position: relative;
+  z-index: 1;
   display: flex;
-  gap: 32px;
-  border-bottom: 1px solid var(--border);
+  gap: 36px;
+  margin-bottom: -1px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -95,9 +115,8 @@
   align-items: baseline;
   gap: 8px;
   padding: 14px 0;
-  margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
-  font-size: 14px;
+  border-bottom: 1px solid transparent;
+  font-size: 17px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
@@ -111,7 +130,7 @@
 .tabActive,
 .tabActive:hover {
   color: var(--text-heading);
-  border-bottom-color: var(--text-heading);
+  border-bottom-color: var(--accent);
 }
 
 .tab:focus-visible {
@@ -120,82 +139,78 @@
 }
 
 .tabCount {
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-.tabActive .tabCount {
-  color: var(--accent);
-}
-
 .content {
-  padding-top: 48px;
+  padding-top: 52px;
 }
 
-/* ---------- Stats ---------- */
+/* ---------- Figures ---------- */
 
 .stats {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   margin: 0 0 72px 0;
-  border-bottom: 1px solid var(--border);
 }
 
-/* Value first visually, label first for screen readers (dt before dd). */
+/* Value, label, then the meter; the label comes first in the markup (dt before dd). */
 .stat {
   display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 4px 24px 28px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 28px;
+  border-left: 1px solid var(--border);
 }
 
 .stat:first-child {
   padding-left: 0;
-}
-
-.stat + .stat {
-  border-left: 1px solid var(--border);
+  border-left: none;
 }
 
 .statLabel {
-  font-size: 13px;
+  order: 2;
+  font-size: 15px;
+  font-style: italic;
   color: var(--muted);
 }
 
 .statValue {
+  order: 1;
   margin: 0;
-}
-
-.statNumber {
-  display: block;
-  font-size: clamp(34px, 4.4vw, 56px);
-  font-weight: 300;
+  font-size: clamp(36px, 4.2vw, 54px);
+  font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.07em;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;
 }
 
 .statUnit {
   margin-left: 4px;
-  font-size: 0.34em;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0;
   color: var(--muted);
+}
+
+.statMeter {
+  order: 3;
+  margin: 6px 0 0 0;
 }
 
 .statBar {
   display: block;
   width: 100%;
-  height: 3px;
-  margin-top: 16px;
+  height: 2px;
 }
 
 .statBarTrack {
-  fill: var(--border);
+  fill: var(--border-strong);
 }
 
 .statBarFill {
@@ -203,6 +218,11 @@
 }
 
 /* ---------- Sections ---------- */
+
+.section {
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
 
 .section + .section {
   margin-top: 72px;
@@ -218,22 +238,22 @@
 
 .sectionTitle {
   margin: 0;
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1.1;
-  letter-spacing: -0.055em;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 
 .sectionLink {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .sectionLink:hover {
-  color: var(--accent);
+  color: var(--text-heading);
 }
 
 /* Game card caption (the card itself comes from the games shelf) */
@@ -246,37 +266,39 @@
 .cardMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 10px;
-  font-size: 12px;
+  gap: 2px 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 
 .status {
-  color: var(--accent);
+  font-style: italic;
+  color: var(--text);
 }
 
-/* ---------- Empty states ---------- */
+/* ---------- Empty, private and missing states ---------- */
 
 .empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 16px;
-  padding: 40px 0;
-  border-top: 1px solid var(--border);
+  padding: 8px 0 24px;
 }
 
 .emptyTitle {
   margin: 0;
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1.1;
-  letter-spacing: -0.055em;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 
 .muted {
   margin: 0;
+  font-size: 18px;
+  font-style: italic;
   color: var(--muted);
 }
 
@@ -297,41 +319,36 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 14px;
   padding: 24px 0 32px;
 }
 
 .privatePlate {
-  width: 120px;
+  width: 112px;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-  background:
-    repeating-linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--muted) 12%, transparent) 0 1px,
-      transparent 1px 7px
-    ),
-    var(--bg);
+  margin-bottom: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
   color: var(--muted);
 }
 
 .privateHandle {
   margin: 0;
-  font-size: 15px;
+  font-family: var(--font-mono);
+  font-size: 13px;
   color: var(--muted);
 }
 
 .privateTitle {
-  max-width: 14ch;
-  margin: 0 0 8px -0.05em;
-  font-size: clamp(40px, 7vw, 96px);
-  font-weight: 300;
-  line-height: 0.92;
-  letter-spacing: -0.075em;
+  max-width: 16ch;
+  margin: 0 0 4px -0.02em;
+  font-size: clamp(40px, 5.6vw, 72px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
@@ -339,36 +356,45 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 24px;
-  padding: 48px 0 24px;
+  gap: 20px;
+  padding: 40px 0 24px;
 }
 
 .notFoundCode {
-  margin: 0 0 0 -0.06em;
-  font-size: clamp(72px, 14vw, 168px);
+  margin: 0 0 0 -0.04em;
+  font-size: clamp(88px, 14vw, 168px);
   font-weight: 300;
-  line-height: 0.86;
-  letter-spacing: -0.075em;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
   color: var(--text-heading);
 }
 
 /* ---------- Settings ---------- */
 
 .settings {
-  max-width: 720px;
+  max-width: 760px;
 }
 
 .backLink {
   margin: 0 0 24px 0;
-  font-size: 14px;
+  font-size: 15px;
+}
+
+.backLink a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.backLink a:hover {
+  color: var(--text-heading);
 }
 
 .settingsTitle {
-  margin: 0 0 40px -0.05em;
-  font-size: clamp(40px, 6vw, 72px);
-  font-weight: 300;
-  line-height: 0.92;
-  letter-spacing: -0.07em;
+  margin: 0 0 40px -0.02em;
+  font-size: clamp(40px, 5vw, 64px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
@@ -380,21 +406,27 @@
 
 .choiceGroup {
   margin: 0;
-  padding: 0;
+  padding: 22px 0 0 0;
   border: none;
+  border-top: 1px solid var(--border);
   min-width: 0;
 }
 
 .settingsLabel {
   display: block;
+  float: left;
+  width: 100%;
   padding: 0;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--muted);
+  margin-bottom: 18px;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
 }
 
 /* Segmented choice: two square tiles backed by real radio inputs. */
 .choices {
+  clear: both;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -403,7 +435,8 @@
 .choice {
   position: relative;
   display: block;
-  padding: 20px;
+  padding: 20px 22px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0;
   cursor: pointer;
@@ -411,12 +444,12 @@
 }
 
 .choice:hover {
-  border-color: var(--muted);
+  border-color: var(--border-strong);
 }
 
 .choice:has(.choiceInput:checked) {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+  background: var(--surface-2);
 }
 
 .choice:has(.choiceInput:focus-visible) {
@@ -441,8 +474,8 @@
 .choiceTitle {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 15px;
+  gap: 12px;
+  font-size: 19px;
   color: var(--text-heading);
 }
 
@@ -462,8 +495,10 @@
 }
 
 .choiceHint {
-  font-size: 13px;
-  line-height: 1.5;
+  padding-left: 22px;
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.45;
   color: var(--muted);
 }
 
@@ -474,13 +509,22 @@
 }
 
 .settingsStatus {
-  font-size: 13px;
+  font-size: 15px;
+  font-style: italic;
   color: var(--success);
 }
 
 .publicLink {
-  padding-top: 24px;
+  padding-top: 22px;
   border-top: 1px solid var(--border);
+}
+
+.publicLink .settingsLabel {
+  float: none;
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--muted);
 }
 
 .publicLinkRow {
@@ -493,20 +537,26 @@
 .publicUrl {
   flex: 1 1 260px;
   min-width: 0;
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-heading);
   overflow-wrap: anywhere;
 }
 
 /* ---------- Small screens ---------- */
 
 @media (max-width: 720px) {
+  .band {
+    padding-top: 28px;
+  }
+
   .profileHeader {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
       "mono identity"
       "tools tools";
-    gap: 20px;
-    padding-bottom: 28px;
+    gap: 18px 20px;
+    padding-bottom: 24px;
   }
 
   /* Visitors see no owner tools, so no empty second row. */
@@ -514,27 +564,22 @@
     grid-template-areas: "mono identity";
   }
 
-  .privatePlate {
-    width: 88px;
-    margin-bottom: 8px;
-  }
-
   .monogram {
     width: 72px;
-    font-size: 40px;
+    font-size: 42px;
   }
 
   .displayName {
-    font-size: clamp(36px, 11vw, 56px);
-    margin-bottom: 10px;
-  }
-
-  .handle {
-    font-size: 14px;
+    font-size: clamp(32px, 9vw, 48px);
+    margin-bottom: 8px;
   }
 
   .tabs {
-    gap: 24px;
+    gap: 28px;
+  }
+
+  .tab {
+    font-size: 16px;
   }
 
   .content {
@@ -543,7 +588,7 @@
 
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-bottom: 56px;
+    margin-bottom: 40px;
     border-top: 1px solid var(--border);
   }
 
@@ -557,22 +602,36 @@
     border-left: none;
   }
 
+  .stat:nth-child(even) {
+    border-left: 1px solid var(--border);
+  }
+
   .stat:nth-child(n + 3) {
     border-top: 1px solid var(--border);
   }
 
-  /* Five stats in two columns: the last one (average rating) takes the full row. */
+  /* Five figures in two columns: the last one takes the full row. */
   .stat:last-child:nth-child(odd) {
     grid-column: 1 / -1;
     padding-right: 0;
   }
 
-  .statNumber {
-    font-size: 36px;
+  .statValue {
+    font-size: 38px;
   }
 
   .section + .section {
     margin-top: 56px;
+  }
+
+  .sectionTitle,
+  .settingsLabel {
+    font-size: 24px;
+  }
+
+  .privatePlate {
+    width: 84px;
+    margin-bottom: 8px;
   }
 
   .choices {

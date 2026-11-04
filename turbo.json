@@ -22,7 +22,6 @@
         "TYPESENSE_PROTOCOL",
         "TYPESENSE_API_KEY",
         "TYPESENSE_PUBLIC_URL",
-        "TYPESENSE_LANGUAGES",
         "REDIS_URL"
       ],
       "outputs": [

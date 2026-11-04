@@ -1,7 +1,4 @@
 import type { GameCard, GameWithRelations } from "../../../modules/catalog/games.repository.interface";
-import type { SearchLanguage } from "../search.types";
-
-export type GameTranslations = { field: string; value: string }[];
 
 /** `releaseTimestamp` of a game without a release date: earlier than any real one. */
 export const RELEASE_UNKNOWN = -9_999_999_999;
@@ -51,27 +48,14 @@ function toUnixSeconds(value: Date | string | null | undefined): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-function pickTranslation<T extends string | null | undefined>(
-  raw: T,
-  translations: GameTranslations,
-  field: string
-): T {
-  if (translations.length === 0) return raw;
-  const tr = translations.find((t) => t.field === field);
-  return tr ? (tr.value as T) : raw;
-}
-
-export function toGameDoc(
-  game: GameWithRelations,
-  lang: SearchLanguage,
-  translations: GameTranslations = []
-): GameDoc {
+/** Maps a game's default (English) content to its search document. */
+export function toGameDoc(game: GameWithRelations): GameDoc {
   return {
     id: game.id,
     slug: game.slug,
-    title: pickTranslation(game.title, translations, "title"),
+    title: game.title,
     originalTitle: game.originalTitle ?? undefined,
-    description: pickTranslation(game.description, translations, "description") ?? undefined,
+    description: game.description ?? undefined,
     coverImageUrl: game.coverImageUrl ?? undefined,
     releaseDate: game.releaseDate ?? undefined,
     metacriticScore: game.metacriticScore ?? undefined,

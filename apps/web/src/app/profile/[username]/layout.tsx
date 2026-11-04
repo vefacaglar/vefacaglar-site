@@ -56,34 +56,36 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
 
   return (
     <div>
-      <header className={styles.profileHeader}>
-        <div className={styles.monogram} aria-hidden="true">
-          {initial}
-        </div>
-
-        <div className={styles.identity}>
-          <h1 className={styles.displayName}>{name}</h1>
-          <p className={styles.handle}>
-            <span>@{user.username}</span>
-            {isOwner && !user.isProfilePublic && (
-              <span className={styles.badge}>
-                <LockIcon />
-                {dict.profile_private}
-              </span>
-            )}
-          </p>
-        </div>
-
-        {isOwner && (
-          <div className={styles.ownerTools}>
-            <Link href={localizeHref("/profile/settings", lang)} className={`btnGhost ${styles.settingsLink}`}>
-              {dict.settings}
-            </Link>
+      <div className={styles.band}>
+        <header className={styles.profileHeader}>
+          <div className={styles.monogram} aria-hidden="true">
+            {initial}
           </div>
-        )}
-      </header>
 
-      <ProfileTabs basePath={profilePath(user.username)} gameCount={library.summary.gameCount} />
+          <div className={styles.identity}>
+            <h1 className={styles.displayName}>{name}</h1>
+            <p className={styles.handle}>
+              <span>@{user.username}</span>
+              {isOwner && !user.isProfilePublic && (
+                <span className={styles.badge}>
+                  <LockIcon />
+                  {dict.profile_private}
+                </span>
+              )}
+            </p>
+          </div>
+
+          {isOwner && (
+            <div className={styles.ownerTools}>
+              <Link href={localizeHref("/profile/settings", lang)} className={`btnGhost ${styles.settingsLink}`}>
+                {dict.settings}
+              </Link>
+            </div>
+          )}
+        </header>
+
+        <ProfileTabs basePath={profilePath(user.username)} gameCount={library.summary.gameCount} />
+      </div>
 
       <div className={styles.content}>{props.children}</div>
     </div>
@@ -92,7 +94,16 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
 
 function LockIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true">
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      aria-hidden="true"
+    >
       <rect x="5" y="11" width="14" height="10" />
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>

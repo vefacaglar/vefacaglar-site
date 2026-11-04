@@ -101,67 +101,48 @@ export default async function Game(props: GameProps) {
 
   return (
     <article>
-      <header className={game.coverImageUrl ? styles.hero : `${styles.hero} ${styles.heroNoCover}`}>
-        {game.coverImageUrl && (
-          <>
-            <div className={styles.backdrop} aria-hidden="true">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={game.coverImageUrl} alt="" />
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+      <header className={styles.hero}>
+        <div className={game.coverImageUrl ? styles.heroInner : `${styles.heroInner} ${styles.heroNoCover}`}>
+          {game.coverImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img className={styles.cover} src={game.coverImageUrl} alt="" />
-          </>
-        )}
-        <div className={styles.heading}>
-          <h1 className={styles.title}>{game.title}</h1>
-          {(year || developers) && (
-            <p className={styles.credits}>
-              {year && <span className={styles.creditYear}>{year}</span>}
-              {developers && <span>{developers}</span>}
+          )}
+          <div className={styles.heading}>
+            <p className={styles.back}>
+              <Link href={localizeHref("/games", lang)}>← {dict.back_to_games}</Link>
             </p>
-          )}
-          {game.criticScore !== null && (
-            <div className={styles.critic}>
-              <span className={styles.criticScore} data-tier={scoreTier(game.criticScore)}>
-                {game.criticScore}
-              </span>
-              <span className={styles.criticLabel}>
-                <span>{dict.critic_score}</span>
-                {game.criticScoreCount ? (
-                  <span className={styles.criticCount}>
-                    {dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}
-                  </span>
-                ) : null}
-              </span>
-            </div>
-          )}
+            <h1 className={styles.title}>{game.title}</h1>
+            {developers && <p className={styles.byline}>{developers}</p>}
+
+            {(year || game.criticScore !== null) && (
+              <dl className={styles.figures}>
+                {year && (
+                  <div className={styles.figure}>
+                    <dt>{dict.released}</dt>
+                    <dd className={styles.figureValue}>{year}</dd>
+                  </div>
+                )}
+                {game.criticScore !== null && (
+                  <div className={styles.figure} data-tier={scoreTier(game.criticScore)}>
+                    <dt>{dict.critic_score}</dt>
+                    <dd className={styles.figureValue}>
+                      {game.criticScore}
+                      <span className={styles.figureUnit}>/100</span>
+                    </dd>
+                    {game.criticScoreCount ? (
+                      <dd className={styles.figureNote}>
+                        {dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}
+                      </dd>
+                    ) : null}
+                  </div>
+                )}
+              </dl>
+            )}
+          </div>
         </div>
       </header>
 
       <div className={styles.body}>
-        {facts.length > 0 && (
-          <aside className={styles.aside}>
-            <dl className={styles.facts}>
-              {facts.map((fact) => (
-                <div key={fact.label} className={styles.fact}>
-                  <dt>{fact.label}</dt>
-                  {fact.tags ? (
-                    <dd className={styles.tags}>
-                      {fact.tags.map((tag) => (
-                        <span key={tag} className={styles.tag}>
-                          {tag}
-                        </span>
-                      ))}
-                    </dd>
-                  ) : (
-                    <dd>{fact.text}</dd>
-                  )}
-                </div>
-              ))}
-            </dl>
-          </aside>
-        )}
-
         <div className={styles.main}>
           {game.description && <p className={styles.description}>{game.description}</p>}
 
@@ -173,13 +154,22 @@ export default async function Game(props: GameProps) {
                   <li key={label} className={styles.hltbRow}>
                     <span className={styles.hoursLabel}>{label}</span>
                     {/* Bar length is relative to the longest of the three times. */}
-                    <svg className={styles.bar} viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
-                      <rect className={styles.barTrack} x="0" y="0" width="100" height="6" />
+                    <svg className={styles.bar} viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className={styles.barTrack} x="0" y="0" width="100" height="2" />
                       {hours !== null && (
-                        <rect className={styles.barFill} x="0" y="0" width={(hours / longest) * 100} height="6" />
+                        <rect className={styles.barFill} x="0" y="0" width={(hours / longest) * 100} height="2" />
                       )}
                     </svg>
-                    <span className={styles.hours}>{hours !== null ? `${hours}${dict.hours_short}` : "—"}</span>
+                    <span className={styles.hours}>
+                      {hours !== null ? (
+                        <>
+                          {hours}
+                          <span className={styles.hoursUnit}>{dict.hours_short}</span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -196,12 +186,26 @@ export default async function Game(props: GameProps) {
               <>
                 <GameLogs slug={game.slug} logs={logs} />
                 <p className={styles.libraryLink}>
-                  <Link href={localizeHref("/profile", lang)}>{dict.view_profile} →</Link>
+                  <Link href={localizeHref("/profile", lang)}>{dict.view_profile}</Link>
                 </p>
               </>
             )}
           </section>
         </div>
+
+        {facts.length > 0 && (
+          <aside className={styles.aside}>
+            <h2 className={styles.asideTitle}>{dict.details}</h2>
+            <dl className={styles.credits}>
+              {facts.map((fact) => (
+                <div key={fact.label} className={styles.credit}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.tags ? fact.tags.join(", ") : fact.text}</dd>
+                </div>
+              ))}
+            </dl>
+          </aside>
+        )}
       </div>
     </article>
   );

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 /** The library's own name; its pages never carry the personal site's branding. */
-export const LIBRARY_NAME = "vefa/library";
+export const LIBRARY_NAME = "Vefa Library";
 
 /**
  * Library sections, in tab order. To add one (e.g. books): add its key here, a
@@ -12,7 +12,7 @@ export const LIBRARY_SECTIONS = ["games", "movies"] as const;
 
 export type LibrarySection = (typeof LIBRARY_SECTIONS)[number];
 
-/** "Elden Ring · vefa/library", or just the library name. */
+/** "Elden Ring · Vefa Library", or just the library name. */
 export function libraryTitle(title?: string): string {
   return title ? `${title} · ${LIBRARY_NAME}` : LIBRARY_NAME;
 }

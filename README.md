@@ -57,7 +57,7 @@ Search across game-related entities (games, developers, publishers, genres, plat
 - **CQRS Search Pattern:** Search uses separate read and write contracts. Lookups and queries run via `ISearchReader` to fetch from Typesense, while index updates run via `ISearchIndexWriter`.
 - **Decoupled Event-Driven Indexing:** To avoid blocking API request pipelines, indexing is completely decoupled from core database write operations. Instead of writing to Typesense inside feature handlers, we utilize a domestic **Domain Event Bus** (`games.events.ts`). DB modifications trigger lightweight events that are subscribed to asynchronously to propagate updates to Typesense.
 - **Resilient Fallback & Redis Circuit Breaker:** In the event of Typesense downtime or timeouts, the API gracefully and instantly falls back to standard PostgreSQL database queries. To avoid cascading failures, a **Redis Circuit Breaker** (`RedisCircuitBreaker`) tracks health state with a fast-expiry TTL, immediately opening the circuit if Typesense exhibits connectivity errors.
-- **Language-Specific Collections:** Documents are indexed across language-specific collections (e.g., `games_en`, `games_tr`) based on per-request language resolutions determined by `LanguageProvider`.
+- **English-Only Index:** Search indexes only the default (English) content into one collection per entity (`games_en`, `posts_en`, …). Every search reads these collections regardless of the request language; translations are not indexed.
 
 ---
 

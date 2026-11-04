@@ -22,12 +22,9 @@ import type { IPlatformsRepository } from "../../../modules/catalog/platforms.re
 import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
-import { LOCALIZATIONS_REPOSITORY } from "../../../modules/localizations/localizations.tokens";
-import type { ILocalizationsRepository } from "../../../modules/localizations/localizations.repository.interface";
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";
-import { buildAllCollectionSchemas } from "../collections";
+import { buildAllCollectionSchemas, LEGACY_SEARCH_COLLECTIONS, SEARCH_COLLECTIONS } from "../collections";
 import type { ISearchIndexWriter } from "./search-writer.interface";
-import type { SearchLanguage } from "../search.types";
 import { toGameDoc } from "../mappers/game.mapper";
 import { toPostDoc } from "../mappers/post.mapper";
 import {
@@ -51,11 +48,17 @@ type LookupEntity = "developer" | "publisher" | "genre" | "platform" | "theme";
 type LookupRow = Developer | Publisher | Genre | Platform | Theme;
 type LookupDoc = DeveloperDoc | PublisherDoc | GenreDoc | PlatformDoc | ThemeDoc;
 
+const LOOKUP_COLLECTIONS: Record<LookupEntity, string> = {
+  developer: SEARCH_COLLECTIONS.developers,
+  publisher: SEARCH_COLLECTIONS.publishers,
+  genre: SEARCH_COLLECTIONS.genres,
+  platform: SEARCH_COLLECTIONS.platforms,
+  theme: SEARCH_COLLECTIONS.themes,
+};
+
 @injectable()
 export class TypesenseSearchWriter implements ISearchIndexWriter {
   readonly enabled: boolean;
-  private readonly languages: SearchLanguage[];
-  private readonly baseLanguage: SearchLanguage;
 
   constructor(
     @inject(TYPESENSE_CLIENT) private readonly typesense: TypesenseClient,
@@ -66,16 +69,9 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
-    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository,
-    @inject(LOCALIZATIONS_REPOSITORY) private readonly localizationsRepo: ILocalizationsRepository
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository
   ) {
     this.enabled = typesenseConfig.enabled;
-    this.languages = typesenseConfig.languages;
-    this.baseLanguage = typesenseConfig.languages[0] ?? "en";
-  }
-
-  private needsTranslations(lang: SearchLanguage): boolean {
-    return this.languages.length > 1 && lang !== this.baseLanguage;
   }
 
   // --- Public index methods ---
@@ -88,17 +84,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removeGame(id);
         return;
       }
-      for (const lang of this.languages) {
-        const translations = this.needsTranslations(lang)
-          ? await this.localizationsRepo.findByEntity("game", id, lang)
-          : [];
-        const doc = toGameDoc(game, lang, translations);
-        try {
-          await this.typesense.collections(`games_${lang}`).documents().upsert(doc);
-        } catch (err) {
-          console.error(`[search] failed to upsert game ${id} (${lang}):`, (err as Error).message);
-        }
-      }
+      await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().upsert(toGameDoc(game));
     } catch (err) {
       console.error(`[search] failed to index game ${id}:`, (err as Error).message);
     }
@@ -112,17 +98,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removePost(id);
         return;
       }
-      for (const lang of this.languages) {
-        const translations = this.needsTranslations(lang)
-          ? await this.localizationsRepo.findByEntity("post", id, lang)
-          : [];
-        const doc = toPostDoc(post, lang, translations);
-        try {
-          await this.typesense.collections(`posts_${lang}`).documents().upsert(doc);
-        } catch (err) {
-          console.error(`[search] failed to upsert post ${id} (${lang}):`, (err as Error).message);
-        }
-      }
+      await this.typesense.collections(SEARCH_COLLECTIONS.posts).documents().upsert(toPostDoc(post));
     } catch (err) {
       console.error(`[search] failed to index post ${id}:`, (err as Error).message);
     }
@@ -136,7 +112,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removeDeveloper(id);
         return;
       }
-      await this.upsertLookupInAllLanguages("developer", id, dev);
+      await this.upsertLookup("developer", id, dev);
     } catch (err) {
       console.error(`[search] failed to index developer ${id}:`, (err as Error).message);
     }
@@ -150,7 +126,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removePublisher(id);
         return;
       }
-      await this.upsertLookupInAllLanguages("publisher", id, pub);
+      await this.upsertLookup("publisher", id, pub);
     } catch (err) {
       console.error(`[search] failed to index publisher ${id}:`, (err as Error).message);
     }
@@ -164,7 +140,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removeGenre(id);
         return;
       }
-      await this.upsertLookupInAllLanguages("genre", id, genre);
+      await this.upsertLookup("genre", id, genre);
     } catch (err) {
       console.error(`[search] failed to index genre ${id}:`, (err as Error).message);
     }
@@ -178,7 +154,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removePlatform(id);
         return;
       }
-      await this.upsertLookupInAllLanguages("platform", id, platform);
+      await this.upsertLookup("platform", id, platform);
     } catch (err) {
       console.error(`[search] failed to index platform ${id}:`, (err as Error).message);
     }
@@ -192,74 +168,46 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removeTheme(id);
         return;
       }
-      await this.upsertLookupInAllLanguages("theme", id, theme);
+      await this.upsertLookup("theme", id, theme);
     } catch (err) {
       console.error(`[search] failed to index theme ${id}:`, (err as Error).message);
     }
   }
 
   async indexGames(ids: string[]): Promise<void> {
-    await this.bulkIndex("games", ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), "game", (game, lang, translations) =>
-      toGameDoc(game, lang, translations)
-    );
+    await this.bulkIndex(SEARCH_COLLECTIONS.games, ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), toGameDoc);
   }
 
   async indexLookups(kind: LookupEntity, ids: string[]): Promise<void> {
-    await this.bulkIndex(`${kind}s`, ids, (sliceIds) => this.gamesRepo.findLookupsByIds(kind, sliceIds), kind, (row, lang, translations) =>
-      this.toLookupDoc(kind, row, lang, translations)
+    await this.bulkIndex(LOOKUP_COLLECTIONS[kind], ids, (sliceIds) => this.gamesRepo.findLookupsByIds(kind, sliceIds), (row) =>
+      this.toLookupDoc(kind, row)
     );
   }
 
-  /**
-   * Loads the rows and every language's translations at once, then imports all
-   * languages in parallel: a bulk import costs a few round trips, not a few per
-   * language and slice.
-   */
+  /** Loads and imports the rows one slice at a time: a bulk import costs a few round trips, not one per row. */
   private async bulkIndex<T extends { id: string }>(
     collection: string,
     ids: string[],
     load: (ids: string[]) => Promise<T[]>,
-    entityType: string,
-    toDoc: (row: T, lang: SearchLanguage, translations: { field: string; value: string }[]) => object
+    toDoc: (row: T) => object
   ): Promise<void> {
     if (!this.enabled || ids.length === 0) return;
     for (let i = 0; i < ids.length; i += BULK_INDEX_SIZE) {
       const sliceIds = ids.slice(i, i + BULK_INDEX_SIZE);
       try {
-        const [rows, ...translations] = await Promise.all([
-          load(sliceIds),
-          ...this.languages.map((lang) =>
-            this.needsTranslations(lang)
-              ? this.localizationsRepo.findByEntities(entityType, sliceIds, lang)
-              : Promise.resolve({} as Record<string, { field: string; value: string }[]>)
-          ),
-        ]);
-        await Promise.all(
-          this.languages.map((lang, l) =>
-            this.bulkImportDocs(`${collection}_${lang}`, rows.map((row) => toDoc(row, lang, translations[l][row.id] ?? [])))
-          )
-        );
+        const rows = await load(sliceIds);
+        await this.bulkImportDocs(collection, rows.map(toDoc));
       } catch (err) {
         console.error(`[search] failed to bulk-index ${sliceIds.length} ${collection}:`, (err as Error).message);
       }
     }
   }
 
-  private async upsertLookupInAllLanguages(
-    entityName: LookupEntity,
-    id: string,
-    row: LookupRow
-  ): Promise<void> {
-    for (const lang of this.languages) {
-      const translations = this.needsTranslations(lang)
-        ? await this.localizationsRepo.findByEntity(entityName, id, lang)
-        : [];
-      const doc = this.toLookupDoc(entityName, row, lang, translations);
-      try {
-        await this.typesense.collections(`${entityName}s_${lang}`).documents().upsert(doc);
-      } catch (err) {
-        console.error(`[search] failed to upsert ${entityName} ${id} (${lang}):`, (err as Error).message);
-      }
+  private async upsertLookup(entityName: LookupEntity, id: string, row: LookupRow): Promise<void> {
+    try {
+      await this.typesense.collections(LOOKUP_COLLECTIONS[entityName]).documents().upsert(this.toLookupDoc(entityName, row));
+    } catch (err) {
+      console.error(`[search] failed to upsert ${entityName} ${id}:`, (err as Error).message);
     }
 
     // Game documents denormalize lookup names (developerNames, genreNames, …),
@@ -278,18 +226,13 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
   }
 
-  private toLookupDoc(
-    entityName: LookupEntity,
-    row: LookupRow,
-    lang: SearchLanguage,
-    translations: { field: string; value: string }[]
-  ): LookupDoc {
+  private toLookupDoc(entityName: LookupEntity, row: LookupRow): LookupDoc {
     switch (entityName) {
-      case "developer": return toDeveloperDoc(row as Developer, lang, translations);
-      case "publisher": return toPublisherDoc(row as Publisher, lang, translations);
-      case "genre": return toGenreDoc(row as Genre, lang, translations);
-      case "platform": return toPlatformDoc(row as Platform, lang, translations);
-      case "theme": return toThemeDoc(row as Theme, lang, translations);
+      case "developer": return toDeveloperDoc(row as Developer);
+      case "publisher": return toPublisherDoc(row as Publisher);
+      case "genre": return toGenreDoc(row as Genre);
+      case "platform": return toPlatformDoc(row as Platform);
+      case "theme": return toThemeDoc(row as Theme);
     }
   }
 
@@ -297,48 +240,46 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
 
   async removeGame(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("games", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.games, id);
   }
 
   async removePost(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("posts", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.posts, id);
   }
 
   async removeDeveloper(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("developers", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.developers, id);
   }
 
   async removePublisher(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("publishers", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.publishers, id);
   }
 
   async removeGenre(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("genres", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.genres, id);
   }
 
   async removePlatform(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("platforms", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.platforms, id);
   }
 
   async removeTheme(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeFromAllLanguages("themes", id);
+    await this.removeDocument(SEARCH_COLLECTIONS.themes, id);
   }
 
-  private async removeFromAllLanguages(collectionName: string, id: string): Promise<void> {
-    for (const lang of this.languages) {
-      try {
-        await this.typesense.collections(`${collectionName}_${lang}`).documents(id).delete();
-      } catch (err) {
-        const status = (err as { httpStatus?: number }).httpStatus;
-        if (status === 404) continue;
-        console.error(`[search] failed to remove ${collectionName} ${id} (${lang}):`, (err as Error).message);
-      }
+  private async removeDocument(collectionName: string, id: string): Promise<void> {
+    try {
+      await this.typesense.collections(collectionName).documents(id).delete();
+    } catch (err) {
+      const status = (err as { httpStatus?: number }).httpStatus;
+      if (status === 404) return;
+      console.error(`[search] failed to remove ${collectionName} ${id}:`, (err as Error).message);
     }
   }
 
@@ -349,8 +290,10 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       console.warn("[search] reindex skipped: typesense is not configured");
       return;
     }
-    const schemas = buildAllCollectionSchemas(this.languages);
-    for (const schema of schemas) {
+    if (options.drop) {
+      await this.dropLegacyCollections();
+    }
+    for (const schema of buildAllCollectionSchemas()) {
       try {
         if (options.drop) {
           try {
@@ -373,20 +316,13 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         console.error(`[search] failed to create collection ${schema.name}:`, (err as Error).message);
       }
     }
-    console.log(`[search] collections ready (langs: ${this.languages.join(", ")})`);
+    console.log("[search] collections ready");
 
     // Games are read and imported one page at a time, so a large catalog never sits in memory.
     let gameCount = 0;
     for (let page = 1; ; page++) {
       const { items: slice } = await this.gamesRepo.list({ page, limit: IMPORT_BATCH_SIZE });
-      const sliceIds = slice.map((g) => g.id);
-      for (const lang of this.languages) {
-        const translationsByEntity = this.needsTranslations(lang)
-          ? await this.localizationsRepo.findByEntities("game", sliceIds, lang)
-          : {};
-        const docs = slice.map((game) => toGameDoc(game, lang, translationsByEntity[game.id] ?? []));
-        await this.bulkImportDocs(`games_${lang}`, docs);
-      }
+      await this.bulkImportDocs(SEARCH_COLLECTIONS.games, slice.map(toGameDoc));
       gameCount += slice.length;
       if (slice.length < IMPORT_BATCH_SIZE) break;
     }
@@ -396,14 +332,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     let postCount = 0;
     for (let i = 0; i < allPublishedPosts.length; i += IMPORT_BATCH_SIZE) {
       const slice = allPublishedPosts.slice(i, i + IMPORT_BATCH_SIZE);
-      const sliceIds = slice.map((p) => p.id);
-      for (const lang of this.languages) {
-        const translationsByEntity = this.needsTranslations(lang)
-          ? await this.localizationsRepo.findByEntities("post", sliceIds, lang)
-          : {};
-        const docs = slice.map((post) => toPostDoc(post, lang, translationsByEntity[post.id] ?? []));
-        await this.bulkImportDocs(`posts_${lang}`, docs);
-      }
+      await this.bulkImportDocs(SEARCH_COLLECTIONS.posts, slice.map(toPostDoc));
       postCount += slice.length;
     }
     console.log(`[search] reindexed ${postCount} published posts`);
@@ -413,17 +342,25 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
       let count = 0;
       for (let i = 0; i < allRows.length; i += IMPORT_BATCH_SIZE) {
         const slice = allRows.slice(i, i + IMPORT_BATCH_SIZE);
-        const sliceIds = slice.map((r) => r.id);
-        for (const lang of this.languages) {
-          const translationsByEntity = this.needsTranslations(lang)
-            ? await this.localizationsRepo.findByEntities(builder.entityName, sliceIds, lang)
-            : {};
-          const docs = slice.map((row) => this.toLookupDoc(builder.entityName, row, lang, translationsByEntity[row.id] ?? []));
-          await this.bulkImportDocs(`${builder.entityName}s_${lang}`, docs);
-        }
+        const docs = slice.map((row) => this.toLookupDoc(builder.entityName, row));
+        await this.bulkImportDocs(LOOKUP_COLLECTIONS[builder.entityName], docs);
         count += slice.length;
       }
       console.log(`[search] reindexed ${count} ${builder.entityName}s`);
+    }
+  }
+
+  /** Deletes the collections of the removed Turkish index (`games_tr`, …); missing ones are skipped. */
+  private async dropLegacyCollections(): Promise<void> {
+    for (const name of LEGACY_SEARCH_COLLECTIONS) {
+      try {
+        await this.typesense.collections(name).delete();
+        console.log(`[search] dropped legacy collection ${name}`);
+      } catch (err) {
+        const status = (err as { httpStatus?: number }).httpStatus;
+        if (status === 404) continue;
+        console.error(`[search] failed to drop legacy collection ${name}:`, (err as Error).message);
+      }
     }
   }
 

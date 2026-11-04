@@ -6,8 +6,6 @@ import type { Platform } from "../../modules/catalog/platforms.repository.interf
 import type { Theme } from "../../modules/catalog/themes.repository.interface";
 import type { PostSearchItem } from "./mappers/post.mapper";
 
-export type SearchLanguage = "en" | "tr";
-
 export interface SearchResult<T> {
   items: T[];
   total: number;

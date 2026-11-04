@@ -177,7 +177,6 @@ jobs:
           TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
           TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
           TYPESENSE_PUBLIC_URL: ${{ secrets.TYPESENSE_PUBLIC_URL }}
-          TYPESENSE_LANGUAGES: ${{ secrets.TYPESENSE_LANGUAGES }}
           IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
           IMAGEKIT_PUBLIC_KEY: ${{ secrets.IMAGEKIT_PUBLIC_KEY }}
           IMAGEKIT_FOLDER: ${{ secrets.IMAGEKIT_FOLDER }}

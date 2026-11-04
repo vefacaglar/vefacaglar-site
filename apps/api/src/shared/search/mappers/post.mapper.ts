@@ -1,8 +1,5 @@
 import type { PostWithAuthor } from "../../../modules/posts/posts.repository";
-import type { SearchLanguage } from "../search.types";
 import { stripMdx } from "./strip-mdx";
-
-export type PostTranslations = { field: string; value: string }[];
 
 export interface PostDoc {
   id: string;
@@ -41,33 +38,17 @@ function toUnixSeconds(value: Date | string | null | undefined): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-function pickTranslation<T extends string | null | undefined>(
-  raw: T,
-  translations: PostTranslations,
-  field: string
-): T {
-  if (translations.length === 0) return raw;
-  const tr = translations.find((t) => t.field === field);
-  return tr ? (tr.value as T) : raw;
-}
-
-export function toPostDoc(
-  post: PostWithAuthor,
-  lang: SearchLanguage,
-  translations: PostTranslations = []
-): PostDoc {
-  const rawContent = post.content ?? "";
-  const translatedContent = pickTranslation(rawContent, translations, "content");
-
+/** Maps a post's default (English) content to its search document. */
+export function toPostDoc(post: PostWithAuthor): PostDoc {
   return {
     id: post.id,
     slug: post.slug,
-    title: pickTranslation(post.title, translations, "title"),
-    excerpt: pickTranslation(post.excerpt ?? null, translations, "excerpt") ?? undefined,
-    content: stripMdx(translatedContent) || undefined,
+    title: post.title,
+    excerpt: post.excerpt ?? undefined,
+    content: stripMdx(post.content ?? "") || undefined,
     coverImageUrl: post.coverImageUrl ?? undefined,
-    seoTitle: pickTranslation(post.seoTitle ?? null, translations, "seoTitle") ?? undefined,
-    seoDescription: pickTranslation(post.seoDescription ?? null, translations, "seoDescription") ?? undefined,
+    seoTitle: post.seoTitle ?? undefined,
+    seoDescription: post.seoDescription ?? undefined,
     authorUsername: post.authorUsername ?? undefined,
     authorDisplayName: post.authorDisplayName ?? undefined,
     publishedAt: toUnixSeconds(post.publishedAt),

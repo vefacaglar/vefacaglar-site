@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useLocale } from "../../components/LocaleProvider";
-import { getDictionary } from "../../dictionaries";
+import { getDictionary, type Dictionary } from "../../dictionaries";
 import { formatDate, parseDateKey } from "../../lib/formatDate";
 import styles from "./DatePicker.module.css";
 
@@ -48,11 +48,30 @@ interface DatePickerProps {
   onChange?: (value: string) => void;
   id?: string;
   disabled?: boolean;
+  /** Wording overrides for sections with their own voice (the library uses sentence case). */
+  labels?: Partial<Pick<Dictionary, DateLabelKey>>;
 }
 
-export default function DatePicker({ name, defaultValue, value: controlledValue, onChange, id, disabled }: DatePickerProps) {
+type DateLabelKey =
+  | "date_today"
+  | "date_clear"
+  | "date_choose"
+  | "date_previous_month"
+  | "date_next_month"
+  | "date_previous_year"
+  | "date_next_year";
+
+export default function DatePicker({
+  name,
+  defaultValue,
+  value: controlledValue,
+  onChange,
+  id,
+  disabled,
+  labels,
+}: DatePickerProps) {
   const locale = useLocale();
-  const dict = getDictionary(locale);
+  const dict = { ...getDictionary(locale), ...labels };
 
   const [uncontrolledValue, setUncontrolledValue] = useState(() => normalizeDateKey(defaultValue));
   const isControlled = controlledValue !== undefined;

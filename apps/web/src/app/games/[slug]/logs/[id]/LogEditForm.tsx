@@ -29,6 +29,15 @@ export default function LogEditForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const gameHref = localizeHref(`/games/${slug}`, locale);
+  const dateLabels = {
+    date_today: dict.library_date_today,
+    date_clear: dict.library_date_clear,
+    date_choose: dict.library_date_choose,
+    date_previous_month: dict.library_date_previous_month,
+    date_next_month: dict.library_date_next_month,
+    date_previous_year: dict.library_date_previous_year,
+    date_next_year: dict.library_date_next_year,
+  };
 
   const run = (action: () => Promise<{ error?: string }>) => {
     setError(null);
@@ -129,13 +138,13 @@ export default function LogEditForm({
             <label className="label" htmlFor="startedAt">
               {dict.log_started}
             </label>
-            <DatePicker id="startedAt" name="startedAt" defaultValue={log.startedAt} />
+            <DatePicker id="startedAt" name="startedAt" defaultValue={log.startedAt} labels={dateLabels} />
           </div>
           <div className="field">
             <label className="label" htmlFor="completedAt">
               {dict.log_completed}
             </label>
-            <DatePicker id="completedAt" name="completedAt" defaultValue={log.completedAt} />
+            <DatePicker id="completedAt" name="completedAt" defaultValue={log.completedAt} labels={dateLabels} />
           </div>
         </div>
         <label className="field">

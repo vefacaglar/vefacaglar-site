@@ -68,23 +68,23 @@ export default async function ProfileOverview(props: OverviewProps) {
           <div key={stat.label} className={styles.stat}>
             <dt className={styles.statLabel}>{stat.label}</dt>
             <dd className={styles.statValue}>
-              <span className={styles.statNumber}>
-                {stat.value}
-                {stat.unit && <span className={styles.statUnit}>{stat.unit}</span>}
-              </span>
-              {stat.share !== undefined && (
-                <svg className={styles.statBar} viewBox="0 0 100 3" preserveAspectRatio="none" aria-hidden="true">
-                  <rect className={styles.statBarTrack} x="0" y="0" width="100" height="3" />
+              {stat.value}
+              {stat.unit && <span className={styles.statUnit}>{stat.unit}</span>}
+            </dd>
+            {stat.share !== undefined && (
+              <dd className={styles.statMeter} aria-hidden="true">
+                <svg className={styles.statBar} viewBox="0 0 100 2" preserveAspectRatio="none">
+                  <rect className={styles.statBarTrack} x="0" y="0" width="100" height="2" />
                   <rect
                     className={styles.statBarFill}
                     x="0"
                     y="0"
                     width={Math.min(1, Math.max(0, stat.share)) * 100}
-                    height="3"
+                    height="2"
                   />
                 </svg>
-              )}
-            </dd>
+              </dd>
+            )}
           </div>
         ))}
       </dl>

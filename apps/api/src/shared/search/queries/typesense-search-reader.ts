@@ -25,8 +25,8 @@ import type { IPostsRepository } from "../../../modules/posts/posts.repository.i
 import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, type TypesenseConfig } from "../search.tokens";
 import type { Redis as RedisClient } from "ioredis";
 import type { ISearchReader } from "./search-reader.interface";
-import type { SearchQuery, SearchResult, SearchLanguage, PostSearchItem } from "../search.types";
-import { LanguageProvider } from "../../localization";
+import type { SearchQuery, SearchResult, PostSearchItem } from "../search.types";
+import { SEARCH_COLLECTIONS } from "../collections";
 import { RedisCircuitBreaker } from "../circuit-breaker";
 import { withTimeout } from "../with-timeout";
 import { gameCardFromDoc, gameWithRelationsFromDoc, RELEASE_UNKNOWN, type GameDoc } from "../mappers/game.mapper";
@@ -49,8 +49,6 @@ const SEARCH_TIMEOUT_MS = 3000;
 @injectable()
 export class TypesenseSearchReader implements ISearchReader {
   private readonly enabled: boolean;
-  private readonly languages: SearchLanguage[];
-  private readonly baseLanguage: SearchLanguage;
   private readonly breaker: RedisCircuitBreaker;
 
   constructor(
@@ -63,12 +61,9 @@ export class TypesenseSearchReader implements ISearchReader {
     @inject(PLATFORMS_REPOSITORY) private readonly platformsRepo: IPlatformsRepository,
     @inject(THEMES_REPOSITORY) private readonly themesRepo: IThemesRepository,
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
-    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository,
-    private readonly languageProvider: LanguageProvider
+    @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository
   ) {
     this.enabled = typesenseConfig.enabled;
-    this.languages = typesenseConfig.languages;
-    this.baseLanguage = typesenseConfig.languages[0] ?? "en";
     this.breaker = new RedisCircuitBreaker(redis);
   }
 
@@ -138,11 +133,6 @@ export class TypesenseSearchReader implements ISearchReader {
     );
   }
 
-  private getLang(): SearchLanguage {
-    const raw = this.languageProvider.getLanguage();
-    return (this.languages as readonly string[]).includes(raw) ? (raw as SearchLanguage) : this.baseLanguage;
-  }
-
   private async runSearch<T>(
     typesenseCall: () => Promise<T>,
     fallback: () => Promise<T>,
@@ -172,8 +162,7 @@ export class TypesenseSearchReader implements ISearchReader {
   // --- Private: search runners ---
 
   private async runGamesSearch(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`games_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().search({
       q: query.q?.trim() || "*",
       query_by: "title,originalTitle,description,slug,developerNames,publisherNames,genreNames,platformNames,themeNames",
       page: query.page ?? 1,
@@ -187,10 +176,9 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runPublicGamesSearch(query: SearchQuery): Promise<SearchResult<GameCard>> {
-    const lang = this.getLang();
     const q = query.q?.trim();
     const now = Math.floor(Date.now() / 1000);
-    const res = await this.typesense.collections(`games_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().search({
       q: q || "*",
       query_by: "title,originalTitle",
       // Browsing shows only released games; a search also finds unreleased ones.
@@ -213,8 +201,7 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`posts_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.posts).documents().search({
       q: query.q?.trim() || "*",
       query_by: "title,content",
       query_by_weights: "4,1",
@@ -229,8 +216,7 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runDevelopersSearch(query: SearchQuery): Promise<SearchResult<Developer>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`developers_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.developers).documents().search({
       q: query.q?.trim() || "*",
       query_by: "name,slug",
       page: query.page ?? 1,
@@ -244,8 +230,7 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runPublishersSearch(query: SearchQuery): Promise<SearchResult<Publisher>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`publishers_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.publishers).documents().search({
       q: query.q?.trim() || "*",
       query_by: "name,slug",
       page: query.page ?? 1,
@@ -259,8 +244,7 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runGenresSearch(query: SearchQuery): Promise<SearchResult<Genre>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`genres_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.genres).documents().search({
       q: query.q?.trim() || "*",
       query_by: "name,slug",
       page: query.page ?? 1,
@@ -274,8 +258,7 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runPlatformsSearch(query: SearchQuery): Promise<SearchResult<Platform>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`platforms_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.platforms).documents().search({
       q: query.q?.trim() || "*",
       query_by: "name,slug",
       page: query.page ?? 1,
@@ -289,8 +272,7 @@ export class TypesenseSearchReader implements ISearchReader {
   }
 
   private async runThemesSearch(query: SearchQuery): Promise<SearchResult<Theme>> {
-    const lang = this.getLang();
-    const res = await this.typesense.collections(`themes_${lang}`).documents().search({
+    const res = await this.typesense.collections(SEARCH_COLLECTIONS.themes).documents().search({
       q: query.q?.trim() || "*",
       query_by: "name,slug",
       page: query.page ?? 1,

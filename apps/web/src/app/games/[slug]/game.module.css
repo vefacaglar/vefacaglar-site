@@ -1,48 +1,39 @@
-/* Hero: cover, title and critic score over a blurred wash of the cover art */
+/* ==========================================================================
+   Game page: a programme spread. A raised band with the cover and title,
+   then notes and logs beside a credits column.
+   ========================================================================== */
+
 .hero {
   position: relative;
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  align-items: end;
-  gap: 56px;
-  padding-bottom: 56px;
-  margin-bottom: 56px;
-  border-bottom: 1px solid var(--border);
+  isolation: isolate;
+  margin-top: calc(-1 * var(--shell-pad-top, 56px));
+  padding: 48px 0 56px;
+  margin-bottom: 64px;
 }
 
-.heroNoCover {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* Full-bleed, out-of-focus copy of the cover behind the hero and header. */
-.backdrop {
+/* The band runs edge to edge; the content keeps the shell's measure. */
+.hero::before {
+  content: "";
   position: absolute;
   z-index: -1;
-  top: -240px;
+  top: 0;
   bottom: 0;
   left: 50%;
   width: 100vw;
   transform: translateX(-50%);
-  overflow: hidden;
-  pointer-events: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
-.backdrop img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: blur(64px) saturate(1.25);
-  opacity: 0.42;
-  transform: scale(1.2);
+.heroInner {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: end;
+  gap: 56px;
 }
 
-.backdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to bottom, transparent 30%, var(--bg) 100%),
-    radial-gradient(ellipse 70% 90% at 50% 20%, transparent 40%, var(--bg) 100%);
+.heroNoCover {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .cover {
@@ -50,200 +41,230 @@
   aspect-ratio: 3 / 4;
   object-fit: cover;
   display: block;
-  outline: 1px solid color-mix(in srgb, var(--text-heading) 14%, transparent);
+  background: var(--surface-2);
+  outline: 1px solid color-mix(in srgb, var(--text-heading) 10%, transparent);
   outline-offset: -1px;
 }
 
 .heading {
   min-width: 0;
+  padding-bottom: 4px;
+}
+
+.back {
+  margin: 0 0 28px 0;
+  font-size: 15px;
+}
+
+.back a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.back a:hover {
+  color: var(--text-heading);
 }
 
 .title {
-  margin: 0 0 24px -0.05em;
-  font-size: clamp(36px, 5.6vw, 76px);
-  font-weight: 300;
-  line-height: 0.95;
-  letter-spacing: -0.065em;
+  margin: 0 0 12px -0.02em;
+  font-size: clamp(40px, 5.2vw, 72px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
 
-.credits {
+.byline {
+  margin: 0;
+  font-size: 21px;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* Key figures: release year and critic score, separated by rules. */
+.figures {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 20px;
-  margin: 0;
-  font-size: 15px;
-  color: var(--text);
+  gap: 20px 0;
+  margin: 36px 0 0 0;
 }
 
-.creditYear {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Critic score */
-.critic {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 32px;
-}
-
-.criticScore {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.06em;
-  color: var(--text-heading);
-  font-variant-numeric: tabular-nums;
-}
-
-.criticScore[data-tier="high"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
-}
-
-.criticScore[data-tier="mid"] {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.criticLabel {
+.figure {
   display: flex;
   flex-direction: column;
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--text-heading);
+  gap: 6px;
+  padding: 0 36px;
+  border-left: 1px solid var(--border-strong);
 }
 
-.criticCount {
+.figure:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.figure dt {
+  font-size: 15px;
+  font-style: italic;
   color: var(--muted);
-  font-size: 13px;
 }
 
-/* Body: notes and logs on the left, the fact sheet on the right */
+.figure dd {
+  margin: 0;
+}
+
+.figureValue {
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.figure[data-tier="high"] .figureValue {
+  color: var(--accent);
+}
+
+.figureUnit {
+  margin-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.figureNote {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- Body ---------- */
+
 .body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  grid-template-areas: "main aside";
-  gap: 80px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 88px;
   align-items: start;
 }
 
+/* Both columns open on a rule, so notes and credits start on the same line. */
 .main {
-  grid-area: main;
   min-width: 0;
-}
-
-.aside {
-  grid-area: aside;
-  position: sticky;
-  top: 32px;
-}
-
-.facts {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.fact {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px 0;
+  padding-top: 22px;
   border-top: 1px solid var(--border);
-  font-size: 14px;
-}
-
-.fact:last-child {
-  border-bottom: 1px solid var(--border);
-}
-
-.fact dt {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.fact dd {
-  margin: 0;
-  color: var(--text-heading);
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tag {
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text);
 }
 
 .description {
-  max-width: 68ch;
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.8;
+  max-width: 62ch;
+  margin: 0 0 64px 0;
+  font-size: 19px;
+  line-height: 1.65;
   color: var(--text);
 }
 
 .section {
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+
+/* Without a description the first section shares the column's opening rule. */
+.main > .section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.section + .section {
   margin-top: 64px;
 }
 
-.main > .section:first-child {
-  margin-top: 0;
-}
-
 .sectionTitle {
-  margin: 0 0 24px 0;
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1.1;
-  letter-spacing: -0.055em;
+  margin: 0 0 26px 0;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 
-/* How long to beat: three times as bars, relative to the longest */
+/* Credits column */
+.aside {
+  position: sticky;
+  top: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+
+.asideTitle {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+}
+
+.credits {
+  margin: 0;
+}
+
+.credit {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.credit dt {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.credit dd {
+  margin: 0;
+  color: var(--text-heading);
+}
+
+/* How long to beat: three times as thin bars, relative to the longest. */
 .hltb {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-width: 640px;
+  max-width: 680px;
 }
 
 .hltbRow {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) 64px;
+  grid-template-columns: 160px minmax(0, 1fr) 84px;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
+  padding: 12px 0;
+}
+
+.hltbRow + .hltbRow {
+  border-top: 1px solid var(--border);
+}
+
+.hoursLabel {
+  font-size: 17px;
+  color: var(--text);
 }
 
 .bar {
   display: block;
   width: 100%;
-  height: 6px;
+  height: 2px;
 }
 
 .barTrack {
-  fill: var(--border);
+  fill: var(--border-strong);
 }
 
 .barFill {
@@ -251,57 +272,33 @@
 }
 
 .hours {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.05em;
+  font-size: 28px;
+  line-height: 1;
   text-align: right;
   color: var(--text-heading);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
-.hoursLabel {
-  font-size: 13px;
+.hoursUnit {
+  margin-left: 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--muted);
 }
 
-/* Log edit page keeps a comfortable reading width inside the wide frame. */
-.narrow {
-  max-width: 720px;
-}
-
-.narrow h1 {
-  font-size: clamp(32px, 4.5vw, 48px);
-  font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.06em;
-  margin: 0 0 32px -0.04em;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .backdrop img {
-    animation: wash 1.4s ease-out both;
-  }
-}
-
-@keyframes wash {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 0.42;
-  }
-}
+/* ---------- Logs ---------- */
 
 .logs {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   align-items: flex-start;
 }
 
 .muted {
-  color: var(--muted);
   margin: 0;
+  font-style: italic;
+  color: var(--muted);
 }
 
 .logList {
@@ -311,49 +308,122 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .logList:empty {
   display: none;
 }
 
-.logItem {
-  border: 1px solid var(--border);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  text-decoration: none;
-  color: var(--text);
-}
-
-.logItem:hover {
-  border-color: var(--text);
-}
-
 .logRow {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: stretch;
 }
 
-.logRow .logItem {
+.logItem {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s ease;
 }
 
-.deleteButton {
-  padding: 0 14px;
+.logItem:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.logItem:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.logSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.status {
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .logEdit {
   margin-left: auto;
+  color: var(--text-heading);
+}
+
+.notes {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.deleteButton {
+  padding: 0 16px;
+}
+
+.libraryLink {
+  margin: 24px 0 0 0;
+  font-size: 15px;
+}
+
+/* ---------- Log edit page ---------- */
+
+.narrow {
+  max-width: 760px;
 }
 
 .backLink {
-  font-size: 14px;
-  margin-bottom: 24px;
+  margin: 0 0 24px 0;
+  font-size: 15px;
+}
+
+.backLink a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.backLink a:hover {
+  color: var(--text-heading);
+}
+
+.narrow h1 {
+  margin: 0 0 32px -0.02em;
+  font-size: clamp(36px, 4.6vw, 56px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+.logForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 }
 
 /* An input with a fixed unit shown inside its right edge, e.g. "/100". */
@@ -365,7 +435,7 @@
 .suffixField input {
   flex: 1;
   min-width: 0;
-  padding-right: 52px;
+  padding-right: 56px;
 }
 
 .suffix {
@@ -373,64 +443,30 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 13px;
   color: var(--muted);
-  font-size: 14px;
   pointer-events: none;
 }
 
 .formFooter {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-}
-
-.logSummary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.status {
-  color: var(--accent);
-}
-
-.libraryLink {
-  margin: 16px 0 0 0;
-  font-size: 14px;
-}
-
-.notes {
-  margin: 0;
-  font-size: 14px;
-  white-space: pre-wrap;
+  gap: 10px;
+  padding-top: 8px;
 }
 
 .logActions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
-.logForm {
-  width: 100%;
-  border: 1px solid var(--border);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+/* ---------- Smaller screens ---------- */
 
-.formGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 900px) {
-  .hero {
-    grid-template-columns: 200px minmax(0, 1fr);
-    gap: 32px;
+@media (max-width: 960px) {
+  .heroInner {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 36px;
   }
 
   .heroNoCover {
@@ -439,50 +475,76 @@
 
   .body {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "aside"
-      "main";
-    gap: 48px;
+    gap: 64px;
   }
 
   .aside {
     position: static;
   }
 
-  .facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 24px;
-  }
-
-  .fact:last-child {
-    border-bottom: none;
+  /* Single column: the band's edge already opens the notes. */
+  .main {
+    padding-top: 0;
+    border-top: none;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .hero {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-    padding-bottom: 40px;
+    padding: 28px 0 36px;
     margin-bottom: 40px;
   }
 
-  .cover {
-    width: 56%;
-    max-width: 220px;
+  .heroInner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
   }
 
-  .facts {
-    grid-template-columns: minmax(0, 1fr);
+  .cover {
+    width: 58%;
+    max-width: 230px;
+  }
+
+  .back {
+    margin-bottom: 20px;
+  }
+
+  .byline {
+    font-size: 18px;
+  }
+
+  .figures {
+    margin-top: 28px;
+  }
+
+  .figure {
+    padding: 0 24px;
+  }
+
+  .figureValue {
+    font-size: 36px;
+  }
+
+  .description {
+    font-size: 17px;
+    margin-bottom: 48px;
+  }
+
+  .sectionTitle,
+  .asideTitle {
+    font-size: 24px;
+  }
+
+  .credit {
+    grid-template-columns: 96px minmax(0, 1fr);
   }
 
   .hltbRow {
-    grid-template-columns: minmax(0, 1fr) 56px;
+    grid-template-columns: minmax(0, 1fr) 72px;
     grid-template-areas:
       "label hours"
       "bar bar";
-    gap: 6px 12px;
+    gap: 10px 12px;
   }
 
   .hoursLabel {
@@ -495,9 +557,14 @@
 
   .hours {
     grid-area: hours;
+    font-size: 24px;
+  }
+
+  .logForm {
+    padding: 20px;
   }
 
   .formGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

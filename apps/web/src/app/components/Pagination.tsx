@@ -9,9 +9,13 @@ import styles from "./Pagination.module.css";
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
+  /** Overrides for sections with their own wording (the library uses sentence case). */
+  labels?: { previous: string; next: string; pageOf: string };
+  /** Extra class for the nav, for sections with their own look. */
+  className?: string;
 }
 
-export default function Pagination({ currentPage, totalPages }: PaginationProps) {
+export default function Pagination({ currentPage, totalPages, labels, className }: PaginationProps) {
   const rawPath = usePathname();
   const searchParams = useSearchParams();
   const locale = useLocale();
@@ -19,6 +23,10 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
   const pathname = rawPath || "/";
 
   if (totalPages <= 1) return null;
+
+  const previous = labels?.previous ?? dict.previous;
+  const next = labels?.next ?? dict.next;
+  const pageOf = labels?.pageOf ?? dict.page_of;
 
   const createPageUrl = (pageNumber: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -28,28 +36,28 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
   };
 
   return (
-    <nav className={styles.pagination} aria-label={dict.pagination_aria}>
+    <nav className={className ? `${styles.pagination} ${className}` : styles.pagination} aria-label={dict.pagination_aria}>
       {currentPage > 1 ? (
         <Link href={createPageUrl(currentPage - 1)} className={styles.pageButton}>
-          {dict.previous}
+          {previous}
         </Link>
       ) : (
         <span className={`${styles.pageButton} ${styles.disabled}`}>
-          {dict.previous}
+          {previous}
         </span>
       )}
 
       <div className={styles.pageInfo}>
-        {dict.page_of.replace("{current}", String(currentPage)).replace("{total}", String(totalPages))}
+        {pageOf.replace("{current}", String(currentPage)).replace("{total}", String(totalPages))}
       </div>
 
       {currentPage < totalPages ? (
         <Link href={createPageUrl(currentPage + 1)} className={styles.pageButton}>
-          {dict.next}
+          {next}
         </Link>
       ) : (
         <span className={`${styles.pageButton} ${styles.disabled}`}>
-          {dict.next}
+          {next}
         </span>
       )}
     </nav>

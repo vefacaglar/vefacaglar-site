@@ -247,3 +247,87 @@ html {
 
 
 
+
+/* ==========================================================================
+   Library sub-brand (games, movies, profiles: everything inside LibraryShell).
+   A warm, dark "cinema programme" palette that only applies while a library
+   page is on screen. It is set on the root (via :has) so the page background,
+   scrollbars and top-layer dialogs follow it, and on the shell itself as a
+   fallback for browsers without :has(). The main site keeps the palette above.
+   ========================================================================== */
+:root:has([data-library]),
+[data-library] {
+  --bg: #171411;            /* espresso ground */
+  --surface: #201c18;       /* raised bands: game hero, profile header, panels */
+  --surface-2: #2a251f;     /* covers before they load, plates, inputs */
+  --text: #e8e0d2;          /* cream body text */
+  --text-heading: #f6efe2;  /* titles */
+  --muted: #a29788;         /* warm grey: secondary text, labels */
+  --faint: #756c60;         /* quiet figures, disabled */
+  --border: #36302a;        /* hairline rules */
+  --border-strong: #514840; /* hover / focus rules */
+  --accent: #cfa35e;        /* brass: the one accent */
+  --on-accent: #171411;     /* text on brass */
+  --success: #9aab86;
+  --warning: #c7a27a;
+  --info: #93a3b5;
+  --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Library buttons: brass for the primary action, quiet outline otherwise. */
+[data-library] .btnAccent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent) !important;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 9px 18px;
+}
+
+[data-library] .btnAccent:hover {
+  opacity: 1;
+  background: var(--text-heading);
+  border-color: var(--text-heading);
+  color: var(--on-accent) !important;
+}
+
+[data-library] .btnGhost {
+  border-color: var(--border-strong);
+  color: var(--text-heading);
+  font-size: 15px;
+  padding: 9px 18px;
+}
+
+[data-library] .btnGhost:hover {
+  background-color: var(--surface-2);
+  border-color: var(--muted);
+}
+
+[data-library] .btnAccent:focus-visible,
+[data-library] .btnGhost:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Form fields inside the library sit on a raised surface. */
+[data-library] .input,
+[data-library] .textarea {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text-heading);
+  font-size: 15px;
+  padding: 10px 12px;
+}
+
+[data-library] .input:focus,
+[data-library] .textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+[data-library] .label {
+  font-size: 14px;
+  color: var(--muted);
+  font-style: italic;
+}

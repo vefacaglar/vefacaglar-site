@@ -84,7 +84,12 @@ export default async function Games(props: GamesProps) {
               </li>
             ))}
           </ul>
-          <Pagination currentPage={page} totalPages={data?.totalPages ?? 0} />
+          <Pagination
+            currentPage={page}
+            totalPages={data?.totalPages ?? 0}
+            className={styles.pagination}
+            labels={{ previous: dict.library_previous, next: dict.library_next, pageOf: dict.library_page_of }}
+          />
         </>
       )}
     </div>

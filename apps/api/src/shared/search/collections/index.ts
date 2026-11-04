@@ -1,9 +1,26 @@
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
-import type { SearchLanguage } from "../search.types";
 
-export function buildGamesCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+/**
+ * Search is English-only: every entity has a single collection holding the
+ * default (untranslated) content. The `_en` suffix is kept from the former
+ * per-language layout so existing collections stay valid without a rename.
+ */
+export const SEARCH_COLLECTIONS = {
+  games: "games_en",
+  developers: "developers_en",
+  publishers: "publishers_en",
+  genres: "genres_en",
+  platforms: "platforms_en",
+  themes: "themes_en",
+  posts: "posts_en",
+} as const;
+
+/** Collections left over from the removed Turkish index; `search:reindex --drop` deletes them. */
+export const LEGACY_SEARCH_COLLECTIONS: readonly string[] = Object.keys(SEARCH_COLLECTIONS).map((base) => `${base}_tr`);
+
+export function buildGamesCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `games_${lang}`,
+    name: SEARCH_COLLECTIONS.games,
     fields: [
       { name: "id", type: "string" },
       { name: "slug", type: "string", facet: true },
@@ -47,9 +64,9 @@ export function buildGamesCollectionSchema(lang: SearchLanguage): CollectionCrea
   };
 }
 
-export function buildDevelopersCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+export function buildDevelopersCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `developers_${lang}`,
+    name: SEARCH_COLLECTIONS.developers,
     fields: [
       { name: "id", type: "string" },
       { name: "name", type: "string" },
@@ -62,9 +79,9 @@ export function buildDevelopersCollectionSchema(lang: SearchLanguage): Collectio
   };
 }
 
-export function buildPublishersCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+export function buildPublishersCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `publishers_${lang}`,
+    name: SEARCH_COLLECTIONS.publishers,
     fields: [
       { name: "id", type: "string" },
       { name: "name", type: "string" },
@@ -77,9 +94,9 @@ export function buildPublishersCollectionSchema(lang: SearchLanguage): Collectio
   };
 }
 
-export function buildGenresCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+export function buildGenresCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `genres_${lang}`,
+    name: SEARCH_COLLECTIONS.genres,
     fields: [
       { name: "id", type: "string" },
       { name: "name", type: "string" },
@@ -91,9 +108,9 @@ export function buildGenresCollectionSchema(lang: SearchLanguage): CollectionCre
   };
 }
 
-export function buildPlatformsCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+export function buildPlatformsCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `platforms_${lang}`,
+    name: SEARCH_COLLECTIONS.platforms,
     fields: [
       { name: "id", type: "string" },
       { name: "name", type: "string" },
@@ -105,9 +122,9 @@ export function buildPlatformsCollectionSchema(lang: SearchLanguage): Collection
   };
 }
 
-export function buildThemesCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+export function buildThemesCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `themes_${lang}`,
+    name: SEARCH_COLLECTIONS.themes,
     fields: [
       { name: "id", type: "string" },
       { name: "name", type: "string" },
@@ -119,9 +136,9 @@ export function buildThemesCollectionSchema(lang: SearchLanguage): CollectionCre
   };
 }
 
-export function buildPostsCollectionSchema(lang: SearchLanguage): CollectionCreateSchema {
+export function buildPostsCollectionSchema(): CollectionCreateSchema {
   return {
-    name: `posts_${lang}`,
+    name: SEARCH_COLLECTIONS.posts,
     fields: [
       { name: "id", type: "string" },
       { name: "slug", type: "string", facet: true },
@@ -141,16 +158,14 @@ export function buildPostsCollectionSchema(lang: SearchLanguage): CollectionCrea
   };
 }
 
-export function buildAllCollectionSchemas(languages: SearchLanguage[]): CollectionCreateSchema[] {
-  const schemas: CollectionCreateSchema[] = [];
-  for (const lang of languages) {
-    schemas.push(buildGamesCollectionSchema(lang));
-    schemas.push(buildDevelopersCollectionSchema(lang));
-    schemas.push(buildPublishersCollectionSchema(lang));
-    schemas.push(buildGenresCollectionSchema(lang));
-    schemas.push(buildPlatformsCollectionSchema(lang));
-    schemas.push(buildThemesCollectionSchema(lang));
-    schemas.push(buildPostsCollectionSchema(lang));
-  }
-  return schemas;
+export function buildAllCollectionSchemas(): CollectionCreateSchema[] {
+  return [
+    buildGamesCollectionSchema(),
+    buildDevelopersCollectionSchema(),
+    buildPublishersCollectionSchema(),
+    buildGenresCollectionSchema(),
+    buildPlatformsCollectionSchema(),
+    buildThemesCollectionSchema(),
+    buildPostsCollectionSchema(),
+  ];
 }

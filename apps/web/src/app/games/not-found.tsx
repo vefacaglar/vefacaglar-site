@@ -12,7 +12,7 @@ export default async function GameNotFound() {
   return (
     <div className={styles.notFound}>
       <p className={styles.notFoundCode}>{dict.not_found_title}</p>
-      <p className={styles.notFoundText}>{dict.page_not_found}</p>
+      <p className={styles.notFoundText}>{dict.library_not_found}</p>
       <Link href={localizeHref("/games", lang)} className="btnGhost">
         {dict.browse_games}
       </Link>

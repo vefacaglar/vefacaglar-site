@@ -1,47 +1,61 @@
+/* Section heading for a shelf: serif title, italic standfirst, tools on the right. */
 .masthead {
-  margin-bottom: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title tools"
+    "subtitle tools";
+  align-items: end;
+  column-gap: 48px;
+  padding-bottom: 28px;
+  margin-bottom: 44px;
+  border-bottom: 1px solid var(--border);
 }
 
-/* Light, oversized and tightly set: the title reads like a title card. */
 .title {
-  margin: 0 0 28px -0.06em;
-  font-size: clamp(56px, 10.5vw, 132px);
-  font-weight: 300;
-  line-height: 0.86;
-  letter-spacing: -0.075em;
+  grid-area: title;
+  margin: 0 0 10px -0.03em;
+  font-size: clamp(44px, 5.4vw, 68px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
-
-.row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px 48px;
-  flex-wrap: wrap;
-}
-
 .subtitle {
+  grid-area: subtitle;
   margin: 0;
-  max-width: 46ch;
+  max-width: 52ch;
+  font-size: 19px;
+  font-style: italic;
+  line-height: 1.45;
   color: var(--muted);
 }
 
 .tools {
-  flex: 0 1 340px;
-  min-width: 0;
+  grid-area: tools;
+  width: 340px;
+  align-self: end;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   .masthead {
-    margin-bottom: 40px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "title"
+      "subtitle"
+      "tools";
+    row-gap: 0;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
   }
 
-  .title {
-    margin-bottom: 20px;
+  .subtitle {
+    font-size: 17px;
   }
 
   .tools {
-    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 24px;
   }
 }

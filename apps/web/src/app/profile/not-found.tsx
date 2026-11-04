@@ -12,7 +12,7 @@ export default async function ProfileNotFound() {
   return (
     <div className={styles.notFound}>
       <p className={styles.notFoundCode}>{dict.not_found_title}</p>
-      <p className={styles.muted}>{dict.page_not_found}</p>
+      <p className={styles.muted}>{dict.library_not_found}</p>
       <Link href={localizeHref("/games", lang)} className="btnGhost">
         {dict.browse_games}
       </Link>

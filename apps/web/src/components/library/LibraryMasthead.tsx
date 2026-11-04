@@ -1,6 +1,6 @@
 import styles from "./LibraryMasthead.module.css";
 
-/** Oversized section title used at the top of each library shelf. */
+/** Section heading at the top of each library shelf: title, standfirst, optional tools. */
 export default function LibraryMasthead({
   title,
   subtitle,
@@ -14,10 +14,8 @@ export default function LibraryMasthead({
   return (
     <div className={styles.masthead}>
       <h1 className={styles.title}>{title}</h1>
-      <div className={styles.row}>
-        <p className={styles.subtitle}>{subtitle}</p>
-        {children && <div className={styles.tools}>{children}</div>}
-      </div>
+      <p className={styles.subtitle}>{subtitle}</p>
+      {children && <div className={styles.tools}>{children}</div>}
     </div>
   );
 }

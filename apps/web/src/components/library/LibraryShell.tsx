@@ -8,6 +8,7 @@ import { getSessionUser } from "../../lib/session";
 import { LIBRARY_NAME, LIBRARY_SECTIONS, type LibrarySection } from "../../lib/librarySeo";
 import { profilePath } from "../../lib/profileLibrary";
 import AccountLink from "./AccountLink";
+import { librarySerif } from "./fonts";
 import styles from "./LibraryShell.module.css";
 
 export type { LibrarySection };
@@ -30,13 +31,12 @@ export default async function LibraryShell({
   const user = await getSessionUser();
 
   return (
-    <div className={styles.shell} data-library="">
+    <div className={`${styles.shell} ${librarySerif.variable}`} data-library="">
       <header className={styles.header}>
         {/* The library's home is /games; the name is a brand, so it is not translated. */}
         <Link href={localizeHref("/games", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>
-          <span className={styles.owner}>vefa</span>
-          <span className={styles.slash} aria-hidden="true">/</span>
-          <span className={styles.name}>library</span>
+          <span className={styles.owner}>Vefa</span>
+          <span className={styles.name}>Library</span>
         </Link>
 
         <nav className={styles.tabs} aria-label={dict.library_nav}>
