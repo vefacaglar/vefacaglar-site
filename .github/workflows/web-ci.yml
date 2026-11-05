@@ -1,0 +1,185 @@
+name: Web CI and deploy
+
+on:
+  pull_request:
+    paths: &web_paths
+      - "apps/web/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/web-ci.yml"
+      - "deploy/web/**"
+      - "deploy/api/configure-caddy.py"
+  push:
+    branches: [main]
+    paths: *web_paths
+  workflow_dispatch:
+    inputs:
+      verify_https:
+        description: "Verify VPS HTTPS (disable only for first staging before DNS cutover)"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api2.vefacaglar.com' }}
+  NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://vefacaglar.com' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
+      - name: Check deployment scripts
+        run: |
+          bash -n deploy/web/receive.sh deploy/web/ssh-deploy.sh
+          shellcheck deploy/web/receive.sh deploy/web/ssh-deploy.sh
+          python3 -m unittest discover -s deploy/web -p 'test_*.py'
+      - name: Validate generated Caddy route
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import runpy
+          import shutil
+          import tempfile
+          with tempfile.TemporaryDirectory() as directory:
+              directory = Path(directory)
+              shutil.copyfile('deploy/web/deploy.py', directory / 'deploy.py')
+              shutil.copyfile('deploy/web/persist-caddy-network.py', directory / 'persist-caddy-network.py')
+              shutil.copyfile('deploy/api/configure-caddy.py', directory / 'caddy-target.py')
+              web = runpy.run_path(str(directory / 'deploy.py'))
+              config = web['caddy_config']('auth.vefacaglar.com {\n    reverse_proxy authserver:5175\n}\n', {}, 'vefacaglar-web-blue-1:3000', 'blue-1')
+              (Path(os.environ['RUNNER_TEMP']) / 'web-test-Caddyfile').write_text(config)
+          PY
+          docker run --rm --mount "type=bind,src=$RUNNER_TEMP/web-test-Caddyfile,dst=/etc/caddy/Caddyfile,readonly" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}@${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Image name
+        id: name
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "image=ghcr.io/${REPOSITORY,,}-web" >> "$GITHUB_OUTPUT"
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish web
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    needs: image
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.WEB_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    # Reuse the existing VPS and OIDC secrets; do not duplicate production credentials.
+    environment:
+      name: api-production
+      url: https://vefacaglar.com
+    env:
+      WEB_IMAGE: ${{ needs.image.outputs.image }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          test -n "$KNOWN_HOSTS"
+          test -n "$SSH_KEY" || test -n "$SSH_PASSWORD"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [[ -n "$SSH_KEY" ]]; then
+            printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/vefacaglar-web-ssh-key"
+            chmod 600 "$RUNNER_TEMP/vefacaglar-web-ssh-key"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+      - name: Prepare web runtime configuration
+        env:
+          WEB_ENV: ${{ secrets.WEB_ENV }}
+          API_URL: ${{ vars.WEB_API_URL || 'https://api2.vefacaglar.com' }}
+          AUTH_MODE: ${{ secrets.AUTH_MODE }}
+          OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ secrets.OIDC_CLIENT_ID }}
+          WEB_DOCKER_NETWORK: ${{ vars.WEB_DOCKER_NETWORK || 'vefacaglar-web' }}
+          WEB_CADDY_CONTAINER: ${{ vars.WEB_CADDY_CONTAINER }}
+          WEB_CADDY_CONFIG_PATH: ${{ vars.WEB_CADDY_CONFIG_PATH }}
+          WEB_VERIFY_HTTPS: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_https || github.event_name != 'workflow_dispatch' && vars.WEB_VERIFY_HTTPS != 'false' }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 deploy/web/prepare-deploy.py "$RUNNER_TEMP/vefacaglar-web-bundle"
+      - name: Deploy published image
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: bash deploy/web/ssh-deploy.sh
+      - name: Verify public HTTPS
+        if: github.event_name == 'workflow_dispatch' && inputs.verify_https || github.event_name != 'workflow_dispatch' && vars.WEB_VERIFY_HTTPS != 'false'
+        run: |
+          for domain in vefacaglar.com www.vefacaglar.com; do
+            curl --connect-to "$domain:443:$VPS_HOST:443" --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 "https://$domain/health" | jq -e '.status == "ok"' > /dev/null
+            curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 "https://$domain/health" | jq -e '.status == "ok"' > /dev/null
+          done
+      - name: Remove temporary credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/vefacaglar-web-ssh-key"
+          rm -rf "$RUNNER_TEMP/vefacaglar-web-bundle"

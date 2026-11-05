@@ -1,6 +1,6 @@
 // Load the monorepo root .env so the web app reads the same env as the API during
 // local dev. Next.js only reads .env from the app dir; vars like API_URL live in the
-// root .env. On Vercel the file is absent and platform env vars are used instead.
+// root .env. Production containers use injected environment variables instead.
 (() => {
   const fs = require("fs");
   const path = require("path");
@@ -53,6 +53,8 @@ const securityHeaders = [
 const noIndexHeaders = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: require("path").join(__dirname, "../.."),
   poweredByHeader: false,
   experimental: {
     // Editor image uploads go through a Server Action; match the API's 10MB multipart limit.

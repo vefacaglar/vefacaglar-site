@@ -27,7 +27,7 @@ How the pieces of this monorepo fit together. Coding rules live in
 
 | Part | Tech | Runs on | Purpose |
 |---|---|---|---|
-| `apps/web` | Next.js 15, React 19, CSS Modules | Vercel (free Hobby tier) | Personal site, game library (`/games`, `/movies`, `/profile`), admin dashboard |
+| `apps/web` | Next.js 15, React 19, CSS Modules | Docker on the VPS (standalone Node server) | Personal site, game library (`/games`, `/movies`, `/profile`), admin dashboard |
 | `apps/api` | Fastify 5, TypeBox, tsyringe, Drizzle | Docker on the VPS (`dist/server.js`); Vercel entry `dist/app.js` kept | REST API, auth, catalog, search reads + incremental writes, job enqueueing |
 | `apps/worker` | Rust (tokio, sqlx, reqwest) | Docker on the same VPS as the API, single replica | Long-running jobs: full search reindex, index sync |
 | `packages/db` | Drizzle ORM + Drizzle Kit | — | Schema, generated migrations, seeds |
@@ -37,8 +37,9 @@ How the pieces of this monorepo fit together. Coding rules live in
 
 **Boundary rule:** the web app talks only to the API. It never connects to
 Postgres, Typesense or the worker. The API and the worker share one VPS.
-Because the web app runs on Vercel's free tier, long-lived requests (streams,
-long polling) should not be held open inside Vercel functions.
+Browsers connect directly to the API for job SSE streams; the web server does
+not proxy those long-lived requests. See [web deployment](../deploy/web/README.md)
+for the initial DNS cutover and routine GitHub deployments.
 
 ## Web (`apps/web`)
 

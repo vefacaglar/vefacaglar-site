@@ -146,8 +146,9 @@ cp .env.example .env
 
 ## 💻 Running the Project
 
-The web app deploys on Vercel. The API and the worker run as Docker containers on the VPS, deployed by GitHub Actions:
-[API deployment guide](deploy/api/README.md) · [worker deployment guide](deploy/worker/README.md).
+The web, API and worker have Docker deployments on the VPS through GitHub Actions:
+[web deployment guide](deploy/web/README.md) · [API deployment guide](deploy/api/README.md) · [worker deployment guide](deploy/worker/README.md).
+The initial web migration still requires the domain owner to complete DNS cutover.
 
 All commands should be executed from the **project root directory**:
 

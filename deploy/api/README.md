@@ -1,7 +1,7 @@
 # API deployment through GitHub
 
-The API runs at `https://api2.vefacaglar.com` on the VPS. The web app stays on
-Vercel. GitHub Actions verifies the API, builds amd64/arm64 images and publishes
+The API runs at `https://api2.vefacaglar.com` on the VPS. The web app has its own
+[VPS deployment](../web/README.md). GitHub Actions verifies the API, builds amd64/arm64 images and publishes
 `ghcr.io/vefacaglar/vefacaglar-site-api:<commit>` on `main`. Deployment uses the
 immutable digest. Pull requests never publish or deploy.
 
@@ -110,9 +110,8 @@ DNS. This prevents an old hosting provider from satisfying the VPS health gate.
 
 ## Web cutover and recovery
 
-Verify a data endpoint, dashboard sign-in, search and image upload. Then set both
-`API_URL` and `NEXT_PUBLIC_API_URL` on the Vercel **web** project to
-`https://api2.vefacaglar.com` and redeploy the web app. Keep API `WEB_URL` aligned
+Verify a data endpoint, dashboard sign-in, search and image upload. The web deployment defaults both its runtime API and public browser API to
+`https://api2.vefacaglar.com`; use the [web workflow](../web/README.md) to redeploy. Keep API `WEB_URL` aligned
 with the actual frontend origins. The web app's OIDC settings and registered
 redirect URIs must agree with the existing client configuration.
 

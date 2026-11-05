@@ -88,3 +88,12 @@ deploy/api/.pending-release.tmp
 deploy/worker/worker.env
 deploy/worker/.worker-image
 deploy/worker/.deploy.lock
+
+# Web deployment runtime
+deploy/web/__pycache__/
+deploy/web/web.env
+deploy/web/releases/
+deploy/web/.deploy.lock
+deploy/web/.releases.*
+deploy/web/.pending-release.*
+deploy/web/.caddy-compose-backup.yaml
