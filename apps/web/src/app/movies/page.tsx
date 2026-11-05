@@ -36,7 +36,7 @@ export default async function Movies({ searchParams }: {
       </LibraryMasthead>
       {data?.items.length ? (
         <>
-          <p className={styles.summary}>{data.total.toLocaleString("en-US")} movies</p>
+          <p className={styles.summary}>{data.total.toLocaleString("en-US")} {data.total === 1 ? "movie" : "movies"}</p>
           <ul className={styles.grid}>
             {data.items.map((movie) => (
               <li key={movie.slug}>

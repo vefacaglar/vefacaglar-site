@@ -22,7 +22,10 @@ export default async function Movie({ params }: Props) {
   const movie = await getMovie(slug);
   if (!movie) notFound();
   const lang = await getActiveLanguage();
-  const credits = movie.credits.filter((credit) => credit.rank !== "deprecated");
+  const sourceCredits = movie.credits.filter((credit) => credit.rank !== "deprecated");
+  const credits = sourceCredits.filter((credit) => !!credit.name);
+  const companies = movie.companies.filter((company) => !!company.name);
+  const pendingCredits = sourceCredits.some((credit) => !credit.name) || companies.length !== movie.companies.length;
   const people = (role: MovieCredit["role"]) => credits.filter((credit) => credit.role === role);
   const sections: { title: string; items: MovieCredit[] }[] = [
     { title: "Directors", items: people("director") },
@@ -42,23 +45,24 @@ export default async function Movie({ params }: Props) {
           {movie.description && <p className={styles.description}>{movie.description}</p>}
         </div>
       </header>
+      {pendingCredits && <p className={styles.pending}>Additional credits are syncing.</p>}
       {sections.filter((section) => section.items.length > 0).map((section) => (
         <section className={styles.section} key={section.title}>
           <h2>{section.title}</h2>
           <ul className={styles.credits}>
             {section.items.map((person) => (
               <li key={person.statementId}>
-                <a href={`https://www.wikidata.org/wiki/${person.wikidataId}`}>{person.name ?? person.wikidataId}</a>
+                <a href={`https://www.wikidata.org/wiki/${person.wikidataId}`}>{person.name}</a>
                 {person.characterNames.length > 0 && <span className={styles.character}>{person.characterNames.join(", ")}</span>}
               </li>
             ))}
           </ul>
         </section>
       ))}
-      {movie.companies.length > 0 && <section className={styles.section}>
+      {companies.length > 0 && <section className={styles.section}>
         <h2>Production companies</h2>
-        <ul className={styles.credits}>{movie.companies.map((company) => (
-          <li key={company.wikidataId}><a href={`https://www.wikidata.org/wiki/${company.wikidataId}`}>{company.name ?? company.wikidataId}</a></li>
+        <ul className={styles.credits}>{companies.map((company) => (
+          <li key={company.wikidataId}><a href={`https://www.wikidata.org/wiki/${company.wikidataId}`}>{company.name}</a></li>
         ))}</ul>
       </section>}
       <footer className={styles.source}>
