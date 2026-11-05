@@ -94,7 +94,7 @@ export type PopularityWrite = {
 
 /** The fields a public game card needs. */
 export type GameCard = Pick<Game,
-  "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "criticScore" | "criticScoreCount" |
+  "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "metacriticScore" | "openCriticScore" | "criticScore" | "criticScoreCount" |
   "popularityScore" | "hltbMainHours" | "hltbMainExtraHours" | "hltbCompletionistHours"
 >;
 

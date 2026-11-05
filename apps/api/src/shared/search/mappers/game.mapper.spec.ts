@@ -11,10 +11,15 @@ describe("gameCardFromDoc", () => {
   });
 
   it("maps old or unknown indexed values to nullable public fields", () => {
-    expect(gameCardFromDoc(doc)).toMatchObject({ popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
+    expect(gameCardFromDoc(doc)).toMatchObject({ metacriticScore: null, openCriticScore: null, popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     for (const popularityScore of [POPULARITY_UNKNOWN, Number.NaN, Number.POSITIVE_INFINITY, 2]) {
       expect(gameCardFromDoc({ ...doc, popularityScore }).popularityScore).toBeNull();
     }
     expect(gameCardFromDoc({ ...doc, popularityScore: 0 }).popularityScore).toBe(0);
+  });
+
+  it("keeps indexed Metacritic and OpenCritic values, including zero", () => {
+    expect(gameCardFromDoc({ ...doc, metacriticScore: 0, openCriticScore: 89 }))
+      .toMatchObject({ metacriticScore: 0, openCriticScore: 89 });
   });
 });

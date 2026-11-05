@@ -10,16 +10,17 @@ import Pagination from "../components/Pagination";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
 import GamesSearch from "./GamesSearch";
 import { scoreTier } from "./scoreTier";
-import { formatHltbHours, formatPopularity } from "./cardMetrics";
+import { formatHltbHours, formatReviewScore, selectReviewScores } from "./cardMetrics";
 
 type GameCard = {
   slug: string;
   title: string;
   coverImageUrl: string | null;
   releaseDate: string | null;
-  // Optional: cached list responses from before the field existed lack it.
+  // Optional while an older API deployment does not expose the provider fields.
+  metacriticScore?: number | null;
+  openCriticScore?: number | null;
   criticScore?: number | null;
-  popularityScore?: number | null;
   hltbMainHours?: string | null;
   hltbMainExtraHours?: string | null;
   hltbCompletionistHours?: string | null;
@@ -62,7 +63,7 @@ export default async function Games(props: GamesProps) {
         <>
           <ul className={styles.grid}>
             {games.map((game) => {
-              const popularity = formatPopularity(game.popularityScore, lang);
+              const reviews = selectReviewScores(game);
               const durations = [
                 { label: "Main story", hours: formatHltbHours(game.hltbMainHours, lang) },
                 { label: "Main + extras", hours: formatHltbHours(game.hltbMainExtraHours, lang) },
@@ -79,22 +80,20 @@ export default async function Games(props: GamesProps) {
                       ) : (
                         <span className={styles.coverFallback}>{game.title}</span>
                       )}
-                      {game.criticScore != null && (
-                        <span
-                          className={styles.score}
-                          data-tier={scoreTier(game.criticScore)}
-                          aria-label={`${dict.critic_score}: ${game.criticScore}/100`}
-                        >
-                          {game.criticScore}
-                        </span>
-                      )}
                     </div>
                     <span className={styles.caption}>
                       <span className={styles.title}>{game.title}</span>
                       {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
-                      {popularity !== null && (
-                        <span className={styles.popularity} aria-label={`Popularity index: ${popularity} out of 100`}>
-                          Popularity {popularity}/100
+                      {reviews.length > 0 && (
+                        <span className={styles.ratings}>
+                          {reviews.map(({ source, value }) => (
+                            <span className={styles.rating} key={source}>
+                              <span className={styles.ratingSource}>{source}</span>
+                              <span className={styles.ratingValue} data-tier={scoreTier(value)}>
+                                {formatReviewScore(value, lang)}/100
+                              </span>
+                            </span>
+                          ))}
                         </span>
                       )}
                       {durations.length > 0 && (

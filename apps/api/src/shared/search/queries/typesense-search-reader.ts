@@ -182,7 +182,7 @@ export class TypesenseSearchReader implements ISearchReader {
         : {
             sort_by: "popularityScore:desc,releaseTimestamp:desc",
           }),
-      include_fields: "id,slug,title,coverImageUrl,releaseDate,criticScore,criticScoreCount,popularityScore,hltbMainHours,hltbMainExtraHours,hltbCompletionistHours",
+      include_fields: "id,slug,title,coverImageUrl,releaseDate,metacriticScore,openCriticScore,criticScore,criticScoreCount,popularityScore,hltbMainHours,hltbMainExtraHours,hltbCompletionistHours",
       page: query.page ?? 1,
       per_page: query.limit ?? 24,
     });

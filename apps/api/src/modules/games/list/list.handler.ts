@@ -23,7 +23,9 @@ export class ListGamesHandler {
         title: g.title,
         coverImageUrl: g.coverImageUrl,
         releaseDate: g.releaseDate,
-        criticScore: publicCriticScore(g.criticScore, g.criticScoreCount),
+        metacriticScore: publicReviewScore(g.metacriticScore),
+        openCriticScore: publicReviewScore(g.openCriticScore),
+        criticScore: publicReviewScore(publicCriticScore(g.criticScore, g.criticScoreCount)),
         popularityScore: Number.isFinite(g.popularityScore) && g.popularityScore! >= 0 && g.popularityScore! <= 1 ? g.popularityScore : null,
         hltbMainHours: publicHours(g.hltbMainHours),
         hltbMainExtraHours: publicHours(g.hltbMainExtraHours),
@@ -35,6 +37,10 @@ export class ListGamesHandler {
       totalPages: Math.ceil(total / limit),
     };
   }
+}
+
+function publicReviewScore(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
 }
 
 function publicHours(value: string | null | undefined): string | null {
