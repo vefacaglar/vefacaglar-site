@@ -1,13 +1,21 @@
 import { cookies } from "next/headers";
 import { httpClient } from "./httpClient";
 import { getAuthMode, getOidcConfig, getOidcDiscovery, OIDC_FLOW_COOKIE, OIDC_ID_TOKEN_COOKIE } from "./oidc";
+import { safeInternalPath } from "./safePath";
+import { SITE_URL } from "./seo";
 
 /** Where /oidc-logout sends the user after the identity provider has ended its session. */
 export const POST_LOGOUT_COOKIE = "post_logout_to";
 
 /** Only same-origin paths are accepted as post-logout targets. */
 export function safeReturnPath(value: string | undefined, fallback: string): string {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : fallback;
+  const path = safeInternalPath(value);
+  return path && !path.includes("\\") ? path : fallback;
+}
+
+/** Standalone Next.js request URLs can contain its internal bind address. */
+export function postLogoutRedirectUrl(value: string | undefined): URL {
+  return new URL(safeReturnPath(value, "/dashboard/login"), SITE_URL);
 }
 
 /**

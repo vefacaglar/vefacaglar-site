@@ -8,12 +8,13 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/headers", () => ({ cookies: async () => mocks.cookieStore }));
 vi.mock("./httpClient", () => ({ httpClient: { post: mocks.post } }));
+vi.mock("./seo", () => ({ SITE_URL: "https://vefacaglar.com" }));
 vi.mock("./oidc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./oidc")>()),
   getOidcDiscovery: mocks.getOidcDiscovery,
 }));
 
-import { endSession, POST_LOGOUT_COOKIE, safeReturnPath } from "./logout";
+import { endSession, POST_LOGOUT_COOKIE, postLogoutRedirectUrl, safeReturnPath } from "./logout";
 
 function withCookies(values: Record<string, string>) {
   mocks.cookieStore.get.mockImplementation((name: string) => (name in values ? { value: values[name] } : undefined));
@@ -60,11 +61,28 @@ describe("safeReturnPath", () => {
     expect(safeReturnPath("//evil.com", "/fallback")).toBe("/fallback");
   });
 
-  it("accepts backslash and control-character tricks that safeInternalPath rejects", () => {
-    // NOTE: weaker than safeInternalPath — browsers can treat "/\evil.com" and "/\t/evil.com" as
-    // protocol-relative ("//evil.com"), so these are potential open redirects.
-    expect(safeReturnPath("/\\evil.com", "/fallback")).toBe("/\\evil.com");
-    expect(safeReturnPath("/\t/evil.com", "/fallback")).toBe("/\t/evil.com");
+  it.each(["/\\evil.com", "/a\\b", "/\t/evil.com", "/\n/evil.com", "/a\u0000", "/a\u007f"])("rejects backslash and control-character target %j", (target) => {
+    expect(safeReturnPath(target, "/fallback")).toBe("/fallback");
+  });
+});
+
+describe("postLogoutRedirectUrl", () => {
+  it("returns to the canonical site without requiring OIDC configuration", () => {
+    vi.stubEnv("AUTH_MODE", "password");
+    vi.stubEnv("OIDC_ISSUER", "");
+    vi.stubEnv("OIDC_CLIENT_ID", "");
+    expect(postLogoutRedirectUrl(undefined).href).toBe("https://vefacaglar.com/dashboard/login");
+  });
+
+  it("preserves a legitimate return path, query and locale", () => {
+    expect(postLogoutRedirectUrl("/games?lang=tr#library").href).toBe("https://vefacaglar.com/games?lang=tr#library");
+    expect(postLogoutRedirectUrl("/").href).toBe("https://vefacaglar.com/");
+  });
+
+  it.each(["//evil.com", "/\\evil.com", "/\t/evil.com", "https://evil.com", "http://0.0.0.0:3000/dashboard/login"])("keeps invalid return target %j on the canonical origin", (target) => {
+    const url = postLogoutRedirectUrl(target);
+    expect(url.origin).toBe("https://vefacaglar.com");
+    expect(url.pathname).toBe("/dashboard/login");
   });
 });
 

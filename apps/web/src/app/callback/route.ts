@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { httpClient } from "../../lib/httpClient";
+import { SITE_URL } from "../../lib/seo";
 import {
   getAuthMode,
   getOidcConfig,
@@ -16,7 +17,7 @@ const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
 export async function GET(request: NextRequest) {
   if (getAuthMode() !== "oidc") {
-    return NextResponse.redirect(new URL("/dashboard/login", request.url));
+    return NextResponse.redirect(new URL("/dashboard/login", SITE_URL));
   }
 
   const { siteUrl, clientId, redirectUri } = getOidcConfig();

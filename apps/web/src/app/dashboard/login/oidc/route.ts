@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createPkceFlow, getAuthMode, getOidcConfig, getOidcDiscovery, OIDC_FLOW_COOKIE, OIDC_FLOW_MAX_AGE, sanitizeReturnTo } from "../../../../lib/oidc";
+import { SITE_URL } from "../../../../lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   if (getAuthMode() !== "oidc") {
-    return NextResponse.redirect(new URL("/dashboard/login", request.url));
+    return NextResponse.redirect(new URL("/dashboard/login", SITE_URL));
   }
 
   const { siteUrl, clientId, redirectUri } = getOidcConfig();
