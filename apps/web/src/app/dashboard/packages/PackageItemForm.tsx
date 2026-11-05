@@ -136,13 +136,13 @@ export default function PackageItemForm({ groups, initialGroupId, groupSlug, ini
         </Link>
       </div>
 
-      <h1>{initialData ? "edit package" : "add package"}</h1>
+      <h1>{initialData ? "Edit package" : "Add package"}</h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         {error && <div className="errorMsg">{error}</div>}
 
         <div className="field">
-          <label className="label">package group</label>
+          <label className="label">Package group</label>
           <select value={groupId} onChange={(event) => setGroupId(event.target.value)} className={styles.select} required>
             {groups.map((group) => (
               <option key={group.id} value={group.id}>
@@ -153,37 +153,37 @@ export default function PackageItemForm({ groups, initialGroupId, groupSlug, ini
         </div>
 
         <div className="field">
-          <label className="label">package name</label>
+          <label className="label">Package name</label>
           <input value={name} onChange={(event) => setName(event.target.value)} className="input" required />
         </div>
 
         <div className="field">
-          <label className="label">slug</label>
+          <label className="label">Slug</label>
           <input value={slug} onChange={(event) => setSlug(slugify(event.target.value))} className="input" required />
         </div>
 
         <div className="field">
-          <label className="label">description</label>
+          <label className="label">Description</label>
           <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} className="textarea" />
         </div>
 
         <div className="field">
-          <label className="label">nuget url</label>
+          <label className="label">NuGet URL</label>
           <input value={nugetUrl} onChange={(event) => setNugetUrl(event.target.value)} className="input" />
         </div>
 
         <div className="field">
-          <label className="label">npm url</label>
+          <label className="label">npm URL</label>
           <input value={npmUrl} onChange={(event) => setNpmUrl(event.target.value)} className="input" />
         </div>
 
         <div className="field">
-          <label className="label">github url</label>
+          <label className="label">GitHub URL</label>
           <input value={githubUrl} onChange={(event) => setGithubUrl(event.target.value)} className="input" />
         </div>
 
         <div className="field">
-          <label className="label">content</label>
+          <label className="label">Content</label>
           <MarkdownEditor
             value={content}
             onChange={setContent}
@@ -193,7 +193,7 @@ export default function PackageItemForm({ groups, initialGroupId, groupSlug, ini
 
         <div className={styles.formRowAlignCenter}>
           <div className={`field ${styles.formCol}`}>
-            <label className="label">latest version</label>
+            <label className="label">Latest version</label>
             <input value={latestVersion} onChange={(event) => setLatestVersion(event.target.value)} className="input" required />
           </div>
 

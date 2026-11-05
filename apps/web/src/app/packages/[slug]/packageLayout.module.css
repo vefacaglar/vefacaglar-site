@@ -106,3 +106,14 @@
 .content {
   min-width: 0;
 }
+
+.tocGroup {
+  margin-bottom: 16px;
+}
+
+.tocCategoryTitle {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--muted);
+  margin-bottom: 4px;
+}

@@ -15,11 +15,11 @@ import styles from "./layout.module.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "vefa çağlar",
-  description: "personal website of vefa çağlar",
+  title: "Vefa Çağlar",
+  description: "Personal website of Vefa Çağlar",
   openGraph: {
     type: "website",
-    siteName: "vefa çağlar",
+    siteName: "Vefa Çağlar",
     images: [DEFAULT_OG_IMAGE],
   },
   twitter: {

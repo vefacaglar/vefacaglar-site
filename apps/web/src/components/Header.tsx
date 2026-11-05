@@ -32,29 +32,29 @@ export default function Header({ dict }: HeaderProps) {
     if (isHome) return items;
 
     if (pagePath.startsWith("/about")) {
-      items.push({ label: dict.about.toLowerCase(), href: null });
+      items.push({ label: dict.about, href: null });
     } else if (pagePath.startsWith("/projects")) {
       if (pagePath !== "/projects") {
-        items.push({ label: dict.projects.toLowerCase(), href: href("/projects") });
+        items.push({ label: dict.projects, href: href("/projects") });
       } else {
-        items.push({ label: dict.projects.toLowerCase(), href: null });
+        items.push({ label: dict.projects, href: null });
       }
     } else if (pagePath.startsWith("/packages")) {
       if (pagePath !== "/packages") {
-        items.push({ label: "packages", href: "/packages" });
+        items.push({ label: "Packages", href: "/packages" });
       } else {
-        items.push({ label: "packages", href: null });
+        items.push({ label: "Packages", href: null });
       }
     } else if (pagePath.startsWith("/blog")) {
       if (pagePath !== "/blog") {
-        items.push({ label: dict.back_to_blog.toLowerCase(), href: href("/blog") });
+        items.push({ label: dict.back_to_blog, href: href("/blog") });
       } else {
-        items.push({ label: dict.back_to_blog.toLowerCase(), href: null });
+        items.push({ label: dict.back_to_blog, href: null });
       }
     } else if (pagePath.startsWith("/author/")) {
       const parts = pagePath.split("/");
-      const username = parts[2] || "author";
-      items.push({ label: username.toLowerCase(), href: null });
+      const username = parts[2] || "Author";
+      items.push({ label: username, href: null });
     }
 
     return items;

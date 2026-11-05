@@ -75,6 +75,6 @@ describe("toggleRelation", () => {
     await toggleRelation({ ...input, relation: rpg });
 
     expect(input.setSelected.mock.calls).toEqual([[[]], [[rpg]]]);
-    expect(input.setError).toHaveBeenCalledWith("failed to link/unlink developer.");
+    expect(input.setError).toHaveBeenCalledWith("Failed to link/unlink developer.");
   });
 });

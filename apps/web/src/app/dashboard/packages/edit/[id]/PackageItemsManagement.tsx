@@ -31,7 +31,7 @@ export default function PackageItemsManagement({ groupId, groupSlug, packages }:
   const confirm = useConfirm();
 
   const handleDelete = async (item: PackageItem) => {
-    if (!await confirm(`Are you sure you want to delete package "${item.name}"?`, { title: "delete package" })) return;
+    if (!await confirm(`Are you sure you want to delete package "${item.name}"?`, { title: "Delete package" })) return;
 
     const result = await deletePackageItemAction(groupId, item.id, groupSlug);
     if (result && result.error) {
@@ -71,15 +71,15 @@ export default function PackageItemsManagement({ groupId, groupSlug, packages }:
                 <tr key={item.id} className={styles.tr}>
                   <td className={styles.td}>
                     <span>{item.name}</span>
-                    <div className={styles.meta}>slug: /{item.slug}</div>
+                    <div className={styles.meta}>Slug: /{item.slug}</div>
                   </td>
                   <td className={styles.td}>{item.latestVersion}</td>
                   <td className={styles.td}>
-                    {[item.nugetUrl && "nuget", item.npmUrl && "npm", item.githubUrl && "github"].filter(Boolean).join(", ") || "none"}
+                    {[item.nugetUrl && "NuGet", item.npmUrl && "npm", item.githubUrl && "GitHub"].filter(Boolean).join(", ") || "None"}
                   </td>
                   <td className={styles.td}>
                     <span className={item.isActive ? styles.statusPublished : styles.statusDraft}>
-                      {item.isActive ? "active" : "inactive"}
+                      {item.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className={styles.tdRight}>

@@ -69,7 +69,7 @@ export default function RelationPicker({
       <input
         type="text"
         className={`${styles.input} ${styles.searchInputBottom}`}
-        placeholder={ds.games.placeholders.searchRelation.replace("{label}", label.toLowerCase())}
+        placeholder={ds.games.placeholders.searchRelation.replace("{label}", label)}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         disabled={disabled}

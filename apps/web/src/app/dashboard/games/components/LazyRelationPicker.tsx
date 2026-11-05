@@ -48,7 +48,7 @@ export default function LazyRelationPicker({
       <input
         type="text"
         className={`${styles.input} ${styles.searchInputBottom}`}
-        placeholder={ds.games.placeholders.filterRelation.replace("{label}", label.toLowerCase())}
+        placeholder={ds.games.placeholders.filterRelation.replace("{label}", label)}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         disabled={disabled}

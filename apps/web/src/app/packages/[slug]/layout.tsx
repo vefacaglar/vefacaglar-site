@@ -39,11 +39,11 @@ export default async function PackageLayout(
         </div>
 
         <ul className={styles.metaList}>
-          <li className={styles.metaItem}>version: {pkg.latestVersion}</li>
+          <li className={styles.metaItem}>Version: {pkg.latestVersion}</li>
           {pkg.nugetUrl && (
             <li className={styles.metaItem}>
               <a href={pkg.nugetUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
-                nuget
+                NuGet
               </a>
             </li>
           )}
@@ -57,14 +57,14 @@ export default async function PackageLayout(
           {pkg.githubUrl && (
             <li className={styles.metaItem}>
               <a href={pkg.githubUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
-                github
+                GitHub
               </a>
             </li>
           )}
           {(pkg.docs || pkg.docsList.length > 0) && (
             <li className={styles.metaItem}>
               <Link href={`/packages/${pkg.slug}/docs`} className={styles.metaLink}>
-                documentation
+                Documentation
               </Link>
             </li>
           )}
@@ -74,7 +74,7 @@ export default async function PackageLayout(
           <div className={styles.tocTitle}>Documentation</div>
 
           {uncategorizedDocs.length > 0 && (
-            <ul className={styles.tocList} style={{ marginBottom: "16px" }}>
+            <ul className={`${styles.tocList} ${styles.tocGroup}`}>
               {uncategorizedDocs.map((doc) => (
                 <li key={doc.id} className={styles.tocItem}>
                   <Link href={`/packages/${pkg!.slug}/docs/${doc.slug}`} className={styles.tocItemLink}>
@@ -89,8 +89,8 @@ export default async function PackageLayout(
             const catDocs = docsByCategory[cat.id] || [];
             if (catDocs.length === 0) return null;
             return (
-              <div key={cat.id} style={{ marginBottom: "16px" }}>
-                <div style={{ fontSize: "12px", fontWeight: "bold", textTransform: "lowercase", color: "var(--muted)", marginBottom: "4px" }}>
+              <div key={cat.id} className={styles.tocGroup}>
+                <div className={styles.tocCategoryTitle}>
                   {cat.title}
                 </div>
                 <ul className={styles.tocList}>

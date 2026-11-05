@@ -123,11 +123,11 @@ export default function PackagesDashboardClient({
                   <div className={styles.cardHeader}>
                     <h3 className={styles.cardTitle}>{pkg.name}</h3>
                     <span className={pkg.isActive ? styles.statusPublished : styles.statusDraft}>
-                      {pkg.isActive ? "active" : "inactive"}
+                      {pkg.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
                   <div className={styles.cardMeta}>
-                    <div>slug: {pkg.slug}</div>
+                    <div>Slug: {pkg.slug}</div>
                     <div>{pkg.packageCount ?? 0} packages</div>
                     <div className={styles.cardVersion}>
                       <code>v{pkg.latestVersion}</code>
