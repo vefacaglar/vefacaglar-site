@@ -15,7 +15,7 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
   const locale = useLocale();
   const dict = getDictionary(locale);
   const [value, setValue] = useState(initialQuery);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const lastSent = useRef(initialQuery);
 
   useEffect(() => {
@@ -30,7 +30,12 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
   }, [value, locale, router]);
 
   return (
-    <form className={styles.searchForm} onSubmit={(e) => e.preventDefault()} role="search">
+    <form
+      className={styles.searchForm}
+      data-pending={isPending ? "" : undefined}
+      onSubmit={(e) => e.preventDefault()}
+      role="search"
+    >
       <svg
         className={styles.searchIcon}
         width="16"
@@ -55,6 +60,16 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
         aria-label={dict.games_search_placeholder}
         autoComplete="off"
       />
+      {value.length > 0 && (
+        <button
+          type="button"
+          className={styles.searchClear}
+          onClick={() => setValue("")}
+          aria-label={dict.library_date_clear}
+        >
+          ×
+        </button>
+      )}
     </form>
   );
 }

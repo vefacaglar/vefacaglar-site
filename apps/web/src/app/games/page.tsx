@@ -66,20 +66,24 @@ export default async function Games(props: GamesProps) {
                     ) : (
                       <span className={styles.coverFallback}>{game.title}</span>
                     )}
-                    {game.criticScore != null && (
-                      <span
-                        className={styles.score}
-                        data-tier={scoreTier(game.criticScore)}
-                        aria-label={`${dict.critic_score}: ${game.criticScore}/100`}
-                      >
-                        {game.criticScore}
-                      </span>
-                    )}
                   </div>
-                  <span className={styles.caption}>
+                  <div className={styles.caption}>
                     <span className={styles.title}>{game.title}</span>
-                    {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
-                  </span>
+                    <div className={styles.cardMeta}>
+                      <span className={styles.year}>
+                        {game.releaseDate ? game.releaseDate.slice(0, 4) : dict.separator_dash}
+                      </span>
+                      {game.criticScore != null && (
+                        <span
+                          className={styles.score}
+                          data-tier={scoreTier(game.criticScore)}
+                          aria-label={`${dict.critic_score}: ${game.criticScore}/100`}
+                        >
+                          {game.criticScore}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </Link>
               </li>
             ))}
