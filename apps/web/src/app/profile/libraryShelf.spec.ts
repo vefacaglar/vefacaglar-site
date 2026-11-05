@@ -8,14 +8,17 @@ import {
   parseView,
   platformCounts,
   readStoredSort,
+  readStoredTab,
   readStoredView,
   SHELF_SORT_STORAGE_KEY,
+  SHELF_TAB_STORAGE_KEY,
   SHELF_TABS,
   SHELF_VIEW_STORAGE_KEY,
   shelfQuery,
   sortsFor,
   sortShelf,
   writeStoredSort,
+  writeStoredTab,
   writeStoredView,
 } from "./libraryShelf";
 
@@ -165,6 +168,14 @@ describe("readStoredView / writeStoredView / readStoredSort / writeStoredSort", 
     expect(readStoredSort("all", memoryStorage({ [SHELF_SORT_STORAGE_KEY]: "invalid" }))).toBe("activity");
   });
 
+  it("reads and persists status tab in storage", () => {
+    const store = memoryStorage();
+    expect(readStoredTab(store)).toBe("all");
+    writeStoredTab("completed", store);
+    expect(readStoredTab(store)).toBe("completed");
+    expect(readStoredTab(memoryStorage({ [SHELF_TAB_STORAGE_KEY]: "invalid" }))).toBe("all");
+  });
+
   it("swallows storage errors gracefully", () => {
     const broken = {
       getItem: () => {
@@ -176,8 +187,10 @@ describe("readStoredView / writeStoredView / readStoredSort / writeStoredSort", 
     };
     expect(readStoredView(broken)).toBe("grid");
     expect(readStoredSort("all", broken)).toBe("activity");
+    expect(readStoredTab(broken)).toBe("all");
     expect(() => writeStoredView("list", broken)).not.toThrow();
     expect(() => writeStoredSort("playtime", broken)).not.toThrow();
+    expect(() => writeStoredTab("completed", broken)).not.toThrow();
   });
 });
 

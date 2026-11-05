@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import styles from "../profile.module.css";
 import { getDictionary } from "../../../dictionaries";
-import { localizeHref } from "../../../lib/localizeHref";
-import type { LibraryGame } from "../../../lib/profileLibrary";
+import type { LibraryGame, LibraryPlatformCount } from "../../../lib/profileLibrary";
 import { statusLabel } from "../../games/gameLogStatus";
 import ProfileGameGrid from "./ProfileGameGrid";
 import ProfileGameList from "./ProfileGameList";
+import ProfilePlatforms from "./ProfilePlatforms";
 import {
-  defaultSort,
+  SHELF_TABS,
+  platformCounts,
   readStoredSort,
+  readStoredTab,
   readStoredView,
-  shelfQuery,
   sortsFor,
   sortShelf,
   writeStoredSort,
+  writeStoredTab,
   writeStoredView,
   type ShelfSort,
   type ShelfTab,
@@ -25,33 +26,54 @@ import {
 
 type ProfileGamesShelfProps = {
   games: LibraryGame[];
+  summaryPlatforms: LibraryPlatformCount[];
   lang: string;
   isOwner: boolean;
   ownerName: string;
-  basePath: string;
-  tab: ShelfTab;
-  tabs: { key: ShelfTab; count: number }[];
-  emptyMessage: string;
 };
 
-export default function ProfileGamesShelf({
+const emptySubscribe = () => () => {};
+
+/**
+ * Client-side games shelf so `localStorage` preferences (`view`, `sort`, `tab`)
+ * are read synchronously on first client mount without any SSR flash or server round-trip.
+ */
+export default function ProfileGamesShelf(props: ProfileGamesShelfProps) {
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+  if (!mounted) return null;
+  return <ProfileGamesShelfClient {...props} />;
+}
+
+function ProfileGamesShelfClient({
   games,
+  summaryPlatforms,
   lang,
   isOwner,
   ownerName,
-  basePath,
-  tab,
-  tabs,
-  emptyMessage,
 }: ProfileGamesShelfProps) {
   const dict = getDictionary(lang);
-  const [view, setView] = useState<ShelfView>("grid");
-  const [sort, setSort] = useState<ShelfSort>(() => defaultSort(tab));
 
-  useEffect(() => {
-    setView(readStoredView(window.localStorage));
-    setSort(readStoredSort(tab, window.localStorage));
-  }, [tab]);
+  const [tab, setTab] = useState<ShelfTab>(() => {
+    const stored = readStoredTab(window.localStorage);
+    return stored !== "all" && !games.some((g) => g.status === stored) ? "all" : stored;
+  });
+  const [view, setView] = useState<ShelfView>(() => readStoredView(window.localStorage));
+  const [sort, setSort] = useState<ShelfSort>(() => readStoredSort(tab, window.localStorage));
+
+  const selectTab = (nextTab: ShelfTab) => {
+    setTab(nextTab);
+    writeStoredTab(nextTab, window.localStorage);
+    // Keep sort valid for the newly selected tab.
+    setSort((currentSort) => {
+      const allowed = sortsFor(nextTab);
+      if (allowed.includes(currentSort)) return currentSort;
+      return readStoredSort(nextTab, window.localStorage);
+    });
+  };
 
   const selectView = (nextView: ShelfView) => {
     setView(nextView);
@@ -63,7 +85,27 @@ export default function ProfileGamesShelf({
     writeStoredSort(nextSort, window.localStorage);
   };
 
-  const shown = useMemo(() => sortShelf(games, sort), [games, sort]);
+  const tabs = useMemo(() => {
+    const countOf = (t: ShelfTab) =>
+      t === "all" ? games.length : games.filter((game) => game.status === t).length;
+    return SHELF_TABS.map((t) => ({ key: t, count: countOf(t) })).filter(
+      (t) => t.key === "all" || t.key === tab || t.count > 0,
+    );
+  }, [games, tab]);
+
+  const filtered = useMemo(
+    () => (tab === "all" ? games : games.filter((game) => game.status === tab)),
+    [games, tab],
+  );
+
+  const shown = useMemo(() => sortShelf(filtered, sort), [filtered, sort]);
+
+  const platforms = useMemo(
+    () => (tab === "all" && summaryPlatforms.length > 0 ? summaryPlatforms : platformCounts(filtered)),
+    [filtered, summaryPlatforms, tab],
+  );
+
+  const emptyMessage = tab === "all" ? dict.no_library : dict[`profile_empty_${tab}` as const];
 
   const viewLabels: Record<ShelfView, string> = {
     grid: dict.profile_view_grid,
@@ -77,92 +119,97 @@ export default function ProfileGamesShelf({
   };
 
   return (
-    <section>
-      <h2 className={styles.visuallyHidden}>{dict.games}</h2>
+    <>
+      <section>
+        <h2 className={styles.visuallyHidden}>{dict.games}</h2>
 
-      <div className={styles.shelfBar}>
-        <nav className={styles.statusTabs} aria-label={dict.profile_status_tabs}>
-          {tabs.map((t) => {
-            const active = t.key === tab;
-            return (
-              <Link
-                key={t.key}
-                href={localizeHref(`${basePath}${shelfQuery(t.key, defaultSort(t.key))}`, lang)}
-                scroll={false}
-                className={active ? `${styles.statusTab} ${styles.statusTabActive}` : styles.statusTab}
-                aria-current={active ? "page" : undefined}
-              >
-                {t.key === "all" ? dict.profile_status_all : statusLabel(dict, t.key)}
-                <span className={styles.tabCount}>{t.count}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className={styles.shelfTools}>
-          {shown.length > 0 && (
-            <div className={styles.sortBar} role="group" aria-label={dict.profile_sort_label}>
-              <span className={styles.sortLabel} aria-hidden="true">
-                {dict.profile_sort_label}
-              </span>
-              {sortsFor(tab).map((s) => {
-                const active = s === sort;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => selectSort(s)}
-                    className={active ? `${styles.sortOption} ${styles.sortOptionActive}` : styles.sortOption}
-                    aria-pressed={active}
-                  >
-                    {sortLabels[s]}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className={styles.viewToggle} role="group" aria-label={dict.profile_view_label}>
-            {(["grid", "list"] as const).map((v) => {
-              const active = v === view;
+        <div className={styles.shelfBar}>
+          <div className={styles.statusTabs} role="tablist" aria-label={dict.profile_status_tabs}>
+            {tabs.map((t) => {
+              const active = t.key === tab;
               return (
                 <button
-                  key={v}
+                  key={t.key}
                   type="button"
-                  onClick={() => selectView(v)}
-                  className={active ? `${styles.viewOption} ${styles.viewOptionActive}` : styles.viewOption}
-                  aria-pressed={active}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => selectTab(t.key)}
+                  className={active ? `${styles.statusTab} ${styles.statusTabActive}` : styles.statusTab}
                 >
-                  {v === "grid" ? <GridIcon /> : <ListIcon />}
-                  <span>{viewLabels[v]}</span>
+                  {t.key === "all" ? dict.profile_status_all : statusLabel(dict, t.key)}
+                  <span className={styles.tabCount}>{t.count}</span>
                 </button>
               );
             })}
           </div>
-        </div>
-      </div>
 
-      {shown.length === 0 ? (
-        <p className={`${styles.muted} ${styles.shelfEmpty}`}>{emptyMessage}</p>
-      ) : view === "list" ? (
-        <ProfileGameList
-          games={shown}
-          lang={lang}
-          isOwner={isOwner}
-          ownerName={ownerName}
-          sortedByPlaytime={sort === "playtime"}
-          showCompletedAt={sort === "completed"}
-        />
-      ) : (
-        <ProfileGameGrid
-          games={shown}
-          lang={lang}
-          isOwner={isOwner}
-          showCompletedAt={sort === "completed"}
-          hideStatus={tab !== "all"}
-        />
-      )}
-    </section>
+          <div className={styles.shelfTools}>
+            {shown.length > 0 && (
+              <div className={styles.sortBar} role="group" aria-label={dict.profile_sort_label}>
+                <span className={styles.sortLabel} aria-hidden="true">
+                  {dict.profile_sort_label}
+                </span>
+                {sortsFor(tab).map((s) => {
+                  const active = s === sort;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => selectSort(s)}
+                      className={active ? `${styles.sortOption} ${styles.sortOptionActive}` : styles.sortOption}
+                      aria-pressed={active}
+                    >
+                      {sortLabels[s]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className={styles.viewToggle} role="group" aria-label={dict.profile_view_label}>
+              {(["grid", "list"] as const).map((v) => {
+                const active = v === view;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => selectView(v)}
+                    className={active ? `${styles.viewOption} ${styles.viewOptionActive}` : styles.viewOption}
+                    aria-pressed={active}
+                  >
+                    {v === "grid" ? <GridIcon /> : <ListIcon />}
+                    <span>{viewLabels[v]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {shown.length === 0 ? (
+          <p className={`${styles.muted} ${styles.shelfEmpty}`}>{emptyMessage}</p>
+        ) : view === "list" ? (
+          <ProfileGameList
+            games={shown}
+            lang={lang}
+            isOwner={isOwner}
+            ownerName={ownerName}
+            sortedByPlaytime={sort === "playtime"}
+            showCompletedAt={sort === "completed"}
+          />
+        ) : (
+          <ProfileGameGrid
+            games={shown}
+            lang={lang}
+            isOwner={isOwner}
+            showCompletedAt={sort === "completed"}
+            hideStatus={tab !== "all"}
+          />
+        )}
+      </section>
+
+      {shown.length > 0 && platforms.length > 0 && <ProfilePlatforms platforms={platforms} lang={lang} />}
+    </>
   );
 }
 

@@ -42,8 +42,27 @@ export function parseView(raw: string | string[] | undefined): ShelfView {
 
 export const SHELF_VIEW_STORAGE_KEY = "library_shelf_view";
 export const SHELF_SORT_STORAGE_KEY = "library_shelf_sort";
+export const SHELF_TAB_STORAGE_KEY = "library_shelf_tab";
 
 export type ShelfStorage = Pick<Storage, "getItem" | "setItem">;
+
+/** Reads the saved shelf tab from storage (`localStorage`), falling back to `"all"`. */
+export function readStoredTab(storage?: ShelfStorage | null): ShelfTab {
+  try {
+    return parseTab(storage?.getItem(SHELF_TAB_STORAGE_KEY) ?? undefined);
+  } catch {
+    return "all";
+  }
+}
+
+/** Saves the chosen shelf tab to storage (`localStorage`). */
+export function writeStoredTab(tab: ShelfTab, storage?: ShelfStorage | null): void {
+  try {
+    storage?.setItem(SHELF_TAB_STORAGE_KEY, tab);
+  } catch {
+    // Ignore storage quota or privacy-mode errors.
+  }
+}
 
 /** Reads the saved shelf view from storage (`localStorage`), falling back to `"grid"`. */
 export function readStoredView(storage?: ShelfStorage | null): ShelfView {
