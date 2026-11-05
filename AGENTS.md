@@ -144,3 +144,15 @@ All visible UI text in `apps/web` must be in **English**.
 All git commit messages must be in **English**.
 
 Keep the codebase, comments, logs, and user-facing copy in English only.
+
+## Delegation and Agent Roles
+
+The primary conversational model only coordinates the work: it interprets requests, assigns repository exploration, implementation, and verification to the project agents below, tracks their work, reviews returned evidence, and communicates the result to the user. It may split work, set scope, and synthesize or review results, but must not take over repository exploration, edits, or verification.
+
+Use `site_explorer` for repository exploration, tracing behavior, and read-only investigation. Choose it for every coding task's initial codebase mapping. Use `site_routine_coder` for clear, low-to-medium-complexity implementation, including documentation and configuration changes. Use `site_complex_coder` for ambiguous, cross-cutting, architecture-sensitive, or otherwise difficult implementation. If a routine task proves materially more complex than expected, pause that assignment and delegate the expanded scope to `site_complex_coder`; do not continue the implementation in the coordinator.
+
+Codex model mapping: `site_explorer` uses GPT-6 Luna, `site_routine_coder` uses GPT-6.1 Terra, and `site_complex_coder` uses GPT-6.1 Sol. Claude Code mapping: the corresponding roles use Haiku, Sonnet, and Opus. These are distinct native project agents in `.codex/agents/` and `.claude/agents/`. Route work to the agent for the active harness. Keep the primary conversational model unchanged. The explorer role is configured for read-oriented work; its tool restrictions reduce available capabilities but do not constitute a security boundary, so it must be instructed not to mutate files or perform external actions.
+
+Use no more than two agents concurrently. This coordinator-only restriction applies to the primary conversation, not to execution agents; assigned subagents perform their scoped investigation, edits, and checks themselves. Give each agent a precise task and disjoint write scope; reuse active agents when practical. Delegate code and documentation edits as well as exploration. Agents should return the findings, changed paths, and checks they actually ran. The coordinator integrates the results, reviews the changed files, and reports the outcome. Subagents do not start further subagents.
+
+Do not silently substitute another model or move delegated work back to the coordinator when a requested role or model is unavailable. Report the limitation to the user clearly and continue only with independent work that remains possible. A project agent's configured model applies when that agent is loaded by a new or reloaded session; if the current session cannot load it or select its model, say so and do not claim it ran under that model.
