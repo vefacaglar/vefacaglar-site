@@ -40,6 +40,28 @@ export function parseView(raw: string | string[] | undefined): ShelfView {
   return first(raw) === "list" ? "list" : "grid";
 }
 
+export const SHELF_VIEW_STORAGE_KEY = "library_shelf_view";
+
+export type ViewStorage = Pick<Storage, "getItem" | "setItem">;
+
+/** Reads the saved shelf view from storage (`localStorage`), falling back to `"grid"`. */
+export function readStoredView(storage?: ViewStorage | null): ShelfView {
+  try {
+    return storage?.getItem(SHELF_VIEW_STORAGE_KEY) === "list" ? "list" : "grid";
+  } catch {
+    return "grid";
+  }
+}
+
+/** Saves the chosen shelf view (`"grid"` or `"list"`) to storage (`localStorage`). */
+export function writeStoredView(view: ShelfView, storage?: ViewStorage | null): void {
+  try {
+    storage?.setItem(SHELF_VIEW_STORAGE_KEY, view);
+  } catch {
+    // Ignore storage quota or privacy-mode errors.
+  }
+}
+
 /** Query string for a tab + sort + view, leaving out whatever is already the default. */
 export function shelfQuery(tab: ShelfTab, sort: ShelfSort, view: ShelfView = "grid"): string {
   const params = new URLSearchParams();

@@ -235,16 +235,26 @@ export default function ProfileGameList({
               <>
                 <th scope="row" className={styles.titleCell}>
                   <span className={styles.marker} aria-hidden="true" />
-                  <span className={styles.titleBlock}>
-                    <Link href={href} className={styles.titleLink}>
-                      {game.title}
-                    </Link>
-                    {game.platformName && <span className={styles.platform}>{game.platformName}</span>}
-                    {finished && (
-                      <time className={styles.finished} dateTime={game.completedAt ?? undefined}>
-                        {dict.list_finished_on.replace("{date}", finished)}
-                      </time>
-                    )}
+                  <span className={styles.titleRow}>
+                    <span className={styles.thumb} aria-hidden="true">
+                      {game.coverImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={game.coverImageUrl} alt="" loading="lazy" />
+                      ) : (
+                        <span className={styles.thumbFallback}>{game.title.slice(0, 1)}</span>
+                      )}
+                    </span>
+                    <span className={styles.titleBlock}>
+                      <Link href={href} className={styles.titleLink}>
+                        {game.title}
+                      </Link>
+                      {game.platformName && <span className={styles.platform}>{game.platformName}</span>}
+                      {finished && (
+                        <time className={styles.finished} dateTime={game.completedAt ?? undefined}>
+                          {dict.list_finished_on.replace("{date}", finished)}
+                        </time>
+                      )}
+                    </span>
                   </span>
                 </th>
                 <td className={styles.figure}>

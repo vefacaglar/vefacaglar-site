@@ -7,10 +7,13 @@ import {
   parseTab,
   parseView,
   platformCounts,
+  readStoredView,
   SHELF_TABS,
+  SHELF_VIEW_STORAGE_KEY,
   shelfQuery,
   sortsFor,
   sortShelf,
+  writeStoredView,
 } from "./libraryShelf";
 
 function game(overrides: Partial<LibraryGame> = {}): LibraryGame {
@@ -113,6 +116,47 @@ describe("parseView", () => {
     expect(parseView("grid")).toBe("grid");
     expect(parseView("LIST")).toBe("grid");
     expect(parseView(["grid", "list"])).toBe("grid");
+  });
+});
+
+describe("readStoredView / writeStoredView", () => {
+  function memoryStorage(initial?: Record<string, string>) {
+    const map = new Map<string, string>(Object.entries(initial ?? {}));
+    return {
+      getItem: (key: string) => map.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        map.set(key, value);
+      },
+    };
+  }
+
+  it("reads 'list' when stored and defaults to 'grid' otherwise", () => {
+    expect(readStoredView(memoryStorage({ [SHELF_VIEW_STORAGE_KEY]: "list" }))).toBe("list");
+    expect(readStoredView(memoryStorage({ [SHELF_VIEW_STORAGE_KEY]: "grid" }))).toBe("grid");
+    expect(readStoredView(memoryStorage({ [SHELF_VIEW_STORAGE_KEY]: "other" }))).toBe("grid");
+    expect(readStoredView(memoryStorage())).toBe("grid");
+    expect(readStoredView(null)).toBe("grid");
+  });
+
+  it("persists the selected view mode in storage", () => {
+    const store = memoryStorage();
+    writeStoredView("list", store);
+    expect(readStoredView(store)).toBe("list");
+    writeStoredView("grid", store);
+    expect(readStoredView(store)).toBe("grid");
+  });
+
+  it("swallows storage errors gracefully", () => {
+    const broken = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    };
+    expect(readStoredView(broken)).toBe("grid");
+    expect(() => writeStoredView("list", broken)).not.toThrow();
   });
 });
 
