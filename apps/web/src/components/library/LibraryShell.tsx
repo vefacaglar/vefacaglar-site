@@ -30,7 +30,7 @@ export default async function LibraryShell({
   const user = await getSessionUser();
 
   return (
-    <div className={styles.shell} data-library="">
+    <div className={styles.shell} data-library="" data-ui-theme="graphite">
       <header className={styles.header}>
         {/* The library's home is /games; uses the main site's vefacaglar wordmark. */}
         <Link href={localizeHref("/games", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>

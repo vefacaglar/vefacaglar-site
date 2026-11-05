@@ -157,7 +157,7 @@ export default function DocManagement({ packageId, groupSlug, categories, docs }
   };
 
   const handleDeleteCategory = async (catId: string, title: string) => {
-    if (!await confirm(`Are you sure you want to delete category "${title}"? Associated documents will be uncategorized.`, { title: "delete category" })) return;
+    if (!await confirm(`Are you sure you want to delete category "${title}"? Associated documents will be uncategorized.`, { title: "Delete category" })) return;
 
     const res = await deleteCategoryAction(packageId, catId);
     if (res && res.error) {
@@ -170,7 +170,7 @@ export default function DocManagement({ packageId, groupSlug, categories, docs }
   };
 
   const handleDeleteDoc = async (docId: string, title: string) => {
-    if (!await confirm(`Are you sure you want to delete documentation page "${title}"?`, { title: "delete documentation page" })) return;
+    if (!await confirm(`Are you sure you want to delete documentation page "${title}"?`, { title: "Delete documentation page" })) return;
 
     const res = await deleteDocAction(packageId, docId, groupSlug);
     if (res && res.error) {
@@ -253,7 +253,7 @@ export default function DocManagement({ packageId, groupSlug, categories, docs }
                         </td>
                         <td className={styles.td}>
                           <span className={doc.isPublished ? styles.statusPublished : styles.statusDraft}>
-                            {doc.isPublished ? "published" : "draft"}
+                            {doc.isPublished ? "Published" : "Draft"}
                           </span>
                         </td>
                         <td className={styles.tdRight}>

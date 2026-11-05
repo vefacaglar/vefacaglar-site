@@ -4,6 +4,7 @@ on:
   pull_request:
     paths: &web_paths
       - "apps/web/**"
+      - "packages/ui/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -43,6 +44,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @vefacaglar/ui typecheck
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web test
       - name: Check deployment scripts

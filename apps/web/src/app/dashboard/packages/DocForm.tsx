@@ -118,7 +118,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
       </div>
 
       <h1>
-        {initialData ? "edit documentation page" : "add new documentation page"}
+        {initialData ? "Edit documentation page" : "Add new documentation page"}
       </h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
@@ -129,7 +129,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
         )}
 
         <div className="field">
-          <label className="label">page title</label>
+          <label className="label">Page title</label>
           <input
             type="text"
             required
@@ -140,7 +140,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
         </div>
 
         <div className="field">
-          <label className="label">slug (url path)</label>
+          <label className="label">Slug (URL path)</label>
           <input
             type="text"
             required
@@ -151,7 +151,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
         </div>
 
         <div className="field">
-          <label className="label">category (optional)</label>
+          <label className="label">Category (optional)</label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
@@ -167,7 +167,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
         </div>
 
         <div className="field">
-          <label className="label">seo description (optional)</label>
+          <label className="label">SEO description (optional)</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -177,7 +177,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
         </div>
 
         <div className="field">
-          <label className="label">markdown file path (physical path on server, optional)</label>
+          <label className="label">Markdown file path (physical path on server, optional)</label>
           <input
             type="text"
             value={filePath}
@@ -188,7 +188,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
         </div>
 
         <div className="field">
-          <label className="label">MDX Content (Direct Database Content)</label>
+          <label className="label">MDX content (direct database content)</label>
           <MarkdownEditor
             value={content}
             onChange={setContent}
@@ -198,7 +198,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
 
         <div className={styles.formRowAlignCenter}>
           <div className={`field ${styles.formCol}`}>
-            <label className="label">display order</label>
+            <label className="label">Display order</label>
             <input
               type="text"
               inputMode="numeric"
@@ -227,7 +227,7 @@ export default function DocForm({ packageId, groupSlug, categories, initialData 
           type="submit"
           disabled={loading}
         >
-          {loading ? "saving..." : initialData ? "save changes" : "create page"}
+          {loading ? "Saving..." : initialData ? "Save changes" : "Create page"}
         </Button>
       </form>
     </div>

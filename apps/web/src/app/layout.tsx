@@ -9,16 +9,17 @@ import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
 import { getAuthMode } from "../lib/oidc";
+import "@vefacaglar/ui/styles.css";
 import "./globals.css";
 import styles from "./layout.module.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "vefa çağlar",
-  description: "personal website of vefa çağlar",
+  title: "Vefa Çağlar",
+  description: "Personal website of Vefa Çağlar",
   openGraph: {
     type: "website",
-    siteName: "vefa çağlar",
+    siteName: "Vefa Çağlar",
     images: [DEFAULT_OG_IMAGE],
   },
   twitter: {

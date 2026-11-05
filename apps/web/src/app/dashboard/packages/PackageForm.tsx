@@ -110,7 +110,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
       </div>
 
       <h1>
-        {initialData ? "edit package group" : "add new package group"}
+        {initialData ? "Edit package group" : "Add new package group"}
       </h1>
 
       <form onSubmit={handleSubmit} className={styles.form}>
@@ -162,7 +162,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">repository url</label>
+          <label className="label">Repository URL</label>
           <input
             type="url"
             value={githubUrl}
@@ -173,7 +173,7 @@ export default function PackageForm({ initialData }: PackageFormProps) {
         </div>
 
         <div className="field">
-          <label className="label">Default Docs Page Slug (optional)</label>
+          <label className="label">Default docs page slug (optional)</label>
           <input
             type="text"
             value={docsUrl}

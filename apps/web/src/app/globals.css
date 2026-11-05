@@ -1,32 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap');
 
 :root {
-  --bg: #000000; /* Pure black site background */
-  --text: #eaeaea; /* Crisp, premium off-white text for supreme contrast */
-  --text-heading: #ffffff; /* Brilliant pure white headings */
-  --muted: #8e8e8e; /* Muted off-white/light-grey */
-  --border: #2d2d2d; /* Clean, crisp charcoal borders */
-  --accent: #A89276; /* Highly desaturated, soft faded warm amber-bronze accent */
-  --success: #728477; /* Soft faded green */
-  --warning: #9F8E7D; /* Soft faded sand */
-  --info: #7087A3;
-  --on-accent: #1a1a1a;
   --max: 960px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000; /* Keep the background pure black in OS dark mode */
-    --text: #eaeaea;
-    --text-heading: #ffffff;
-    --muted: #8e8e8e;
-    --border: #2d2d2d;
-    --accent: #A89276;
-    --success: #728477;
-    --warning: #9F8E7D;
-    --info: #7087A3;
-    --on-accent: #1a1a1a;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -35,7 +10,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-body);
   line-height: 1.65;
   font-size: 15.5px;
   font-weight: 500; /* Thicker (Medium) weight for strong, crisp monospace presence */
@@ -88,102 +63,7 @@ p {
   margin: 0 0 24px 0;
 }
 
-/* Shared utility classes */
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.label {
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.input {
-  border: 1px solid var(--border);
-  padding: 8px 12px;
-  font-family: inherit;
-  font-size: 14px;
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 0;
-}
-
-.textarea {
-  border: 1px solid var(--border);
-  padding: 8px 12px;
-  font-family: inherit;
-  font-size: 14px;
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 0;
-  resize: vertical;
-}
-
-.btnGhost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 8px 16px;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
-  border-radius: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
-}
-
-.btnGhost:hover {
-  background-color: var(--border);
-  border-color: var(--text-heading);
-  transform: translateY(-1px);
-}
-
-.btnGhost:active {
-  transform: translateY(0);
-}
-
-.btnGhost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btnAccent {
-  font-size: 14px;
-  background: var(--text-heading);
-  color: var(--bg) !important;
-  text-decoration: none;
-  border: 1px solid var(--text-heading);
-  padding: 8px 16px;
-  border-radius: 0;
-  font-weight: bold;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.2s ease, transform 0.15s ease;
-}
-
-.btnAccent:hover {
-  opacity: 0.9;
-  color: var(--bg) !important;
-  transform: translateY(-1px);
-}
-
-.btnAccent:active {
-  transform: translateY(0);
-}
-
-.btnAccent:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+/* Site utility classes. Shared fields and buttons come from @vefacaglar/ui/styles.css. */
 .errorMsg {
   color: var(--accent);
   padding: 12px;
@@ -242,99 +122,4 @@ html {
   textarea {
     font-size: 16px !important;
   }
-}
-
-
-
-
-
-/* ==========================================================================
-   Library sub-brand (games, movies, profiles: everything inside LibraryShell).
-   A neutral graphite palette that only applies while a library page is on
-   screen. It is set on the root (via :has) so the page background, scrollbars
-   and top-layer dialogs follow it, and on the shell itself as a fallback for
-   browsers without :has(). The main site keeps the palette above.
-   ========================================================================== */
-:root:has([data-library]),
-[data-library] {
-  --bg: #000000;            /* vefacaglar.com pure black ground */
-  --surface: #0b0b0b;       /* subtle raised areas: game header, profile header, panels */
-  --surface-2: #161616;     /* controls, inputs, plates, covers before they load */
-  --text: #eaeaea;          /* crisp off-white body text */
-  --text-heading: #ffffff;  /* pure white titles */
-  --muted: #8e8e8e;         /* secondary text, labels */
-  --faint: #5a5a5a;         /* quiet figures, disabled */
-  --border: #222222;        /* subtle dividers */
-  --border-strong: #333333; /* hover surfaces */
-  --accent: #A89276;        /* vefacaglar.com warm amber-bronze accent */
-  --on-accent: #1a1a1a;     /* text on the accent */
-  --success: #728477;
-  --warning: #9F8E7D;
-  --info: #7087A3;
-  --font-sans: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-display: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-/* Library buttons: borderless flat surfaces in the main site's palette. */
-[data-library] .btnAccent {
-  background: var(--text-heading);
-  border: 1px solid transparent;
-  color: var(--bg) !important;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 16px;
-}
-
-[data-library] .btnAccent:hover {
-  opacity: 1;
-  background: var(--accent);
-  border-color: transparent;
-  color: var(--on-accent) !important;
-}
-
-[data-library] .btnGhost {
-  background: var(--surface-2);
-  border: 1px solid transparent;
-  color: var(--text-heading);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 16px;
-}
-
-[data-library] .btnGhost:hover {
-  background-color: var(--border-strong);
-  border-color: transparent;
-}
-
-[data-library] .btnAccent:hover,
-[data-library] .btnGhost:hover {
-  transform: none;
-}
-
-[data-library] .btnAccent:focus-visible,
-[data-library] .btnGhost:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Form fields inside the library sit on a borderless raised surface. */
-[data-library] .input,
-[data-library] .textarea {
-  background: var(--surface-2);
-  border: 1px solid transparent;
-  color: var(--text-heading);
-  font-size: 14px;
-  padding: 9px 12px;
-}
-
-[data-library] .input:focus,
-[data-library] .textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-[data-library] .label {
-  font-size: 13px;
-  color: var(--muted);
 }

@@ -1,0 +1,160 @@
+/* Shared legacy class contract, consumed by React components and plain HTML alike. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.input {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 0;
+}
+
+.textarea {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 0;
+  resize: vertical;
+}
+
+.btnGhost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+}
+
+.btnGhost:hover {
+  background-color: var(--border);
+  border-color: var(--text-heading);
+  transform: translateY(-1px);
+}
+
+.btnGhost:active {
+  transform: translateY(0);
+}
+
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnAccent {
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--text-heading);
+  color: var(--bg) !important;
+  text-decoration: none;
+  border: 1px solid var(--text-heading);
+  padding: 8px 16px;
+  border-radius: 0;
+  font-weight: bold;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.btnAccent:hover {
+  opacity: 0.9;
+  color: var(--bg) !important;
+  transform: translateY(-1px);
+}
+
+.btnAccent:active {
+  transform: translateY(0);
+}
+
+.btnAccent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Library buttons: borderless flat surfaces in the main site's palette. */
+[data-ui-theme="graphite"] .btnAccent {
+  background: var(--text-heading);
+  border: 1px solid transparent;
+  color: var(--bg) !important;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+[data-ui-theme="graphite"] .btnAccent:hover {
+  opacity: 1;
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--on-accent) !important;
+}
+
+[data-ui-theme="graphite"] .btnGhost {
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+}
+
+[data-ui-theme="graphite"] .btnGhost:hover {
+  background-color: var(--border-strong);
+  border-color: transparent;
+}
+
+[data-ui-theme="graphite"] .btnAccent:hover,
+[data-ui-theme="graphite"] .btnGhost:hover {
+  transform: none;
+}
+
+[data-ui-theme="graphite"] .btnAccent:focus-visible,
+[data-ui-theme="graphite"] .btnGhost:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Form fields inside the library sit on a borderless raised surface. */
+[data-ui-theme="graphite"] .input,
+[data-ui-theme="graphite"] .textarea {
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  color: var(--text-heading);
+  font-size: 14px;
+  padding: 9px 12px;
+}
+
+[data-ui-theme="graphite"] .input:focus,
+[data-ui-theme="graphite"] .textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+[data-ui-theme="graphite"] .label {
+  font-size: 13px;
+  color: var(--muted);
+}

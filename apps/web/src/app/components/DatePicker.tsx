@@ -97,7 +97,7 @@ export default function DatePicker({
       firstDayOfWeek,
       month: new Intl.DateTimeFormat(tag, { month: "long" }),
       weekdays: Array.from({ length: WEEKDAY_COUNT }, (_, index) =>
-        weekday.format(new Date(2024, 0, 7 + firstDayOfWeek + index)).toLowerCase(),
+        weekday.format(new Date(2024, 0, 7 + firstDayOfWeek + index)),
       ),
     };
   }, [locale]);
@@ -109,7 +109,7 @@ export default function DatePicker({
   const monthStart = new Date(focusDate.getFullYear(), focusDate.getMonth(), 1);
   const leadingDays = (monthStart.getDay() - formatters.firstDayOfWeek + WEEKDAY_COUNT) % WEEKDAY_COUNT;
   const days = Array.from({ length: CALENDAR_CELL_COUNT }, (_, index) => addDays(monthStart, index - leadingDays));
-  const monthTitle = `${formatters.month.format(monthStart).toLowerCase()} ${monthStart.getFullYear()}`;
+  const monthTitle = `${formatters.month.format(monthStart)} ${monthStart.getFullYear()}`;
   const triggerText = selectedDate ? formatDate(selectedDate, locale) : "";
 
   useEffect(() => {

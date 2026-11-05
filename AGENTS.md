@@ -42,17 +42,18 @@ Do not add database logic unless explicitly requested.
 
 To maintain a consistent minimalist aesthetic and pristine code quality:
 - **No Inline CSS**: Never use the `style={{ ... }}` attribute in React/Next.js components under any circumstances.
-- **CSS Modules Only**: All component styles must be declared inside modular CSS files (`*.module.css`) and imported as `styles`. Do not add custom global stylesheets or Tailwind classes.
-- **Color Palette Variables**: Do not hardcode hex, rgb, or named colors in CSS files. Always use the predefined CSS variables from [globals.css](file:///Users/vefa/Projects/vefacaglar-site/apps/web/src/app/globals.css):
+- **CSS Modules Only**: All component-specific styles must be declared inside modular CSS files (`*.module.css`) and imported as `styles`. Do not add custom global stylesheets or Tailwind classes. The deliberate shared-design exception is `packages/ui/src/theme.css` and `controls.css`, exported through `@vefacaglar/ui/styles.css` and imported once before the existing web globals. Keep canonical palette and shared control rules there; do not duplicate them in apps.
+- **Color Palette Variables**: Do not hardcode hex, rgb, or named colors in component CSS files. Define palette values only in `packages/ui/src/theme.css` and use its predefined CSS variables, loaded by the web root layout:
   - Background: `var(--bg)`
   - Primary Text: `var(--text)`
   - Headings: `var(--text-heading)`
   - Muted: `var(--muted)`
   - Borders: `var(--border)`
   - Accents: `var(--accent)`
-- **Predefined Button Classes**: Buttons must strictly use the standard classes defined in `globals.css`:
-  - Primary / Action buttons: Use `btnAccent` from `globals.css` (imported or referenced).
-  - Secondary / Outline buttons: Use `btnGhost` from `globals.css`.
+- **Predefined Button Classes**: Buttons must use the standard shared classes from `packages/ui/src/controls.css` (loaded through `@vefacaglar/ui/styles.css`):
+  - Primary / Action buttons: Use `btnAccent`, or the shared `Button` component.
+  - Secondary / Outline buttons: Use `btnGhost`, or `Button` with `variant="ghost"`.
+  - Keep framework-specific link/navigation adapters inside their consuming app.
 - **No Rounded Corners (Sharp Flat Aesthetic)**: All buttons, links styled as buttons, inputs, textareas, selectors, pagination controls, editor tabs, and interactive chips must have sharp, flat 90-degree square corners (`border-radius: 0;`). Under no circumstances should rounded corners (`border-radius` > 0) be added to interactive controls or standard components.
 
 ## Repository Structure
@@ -67,6 +68,7 @@ apps/
 packages/
   shared/
   db/
+  ui/
 ```
 
 ## API Architecture & Conventions
@@ -139,7 +141,7 @@ To verify code changes (syntax and TypeScript correctness) without disrupting th
 
 ## Language
 
-All visible UI text in `apps/web` must be in **English**.
+All visible UI text in `apps/web` must be in **English**. Use natural sentence capitalization and preserve proper product names. Do not force interface text to lowercase through CSS or string transformations; preserve user-authored content, URLs, slugs, and identifiers.
 
 All git commit messages must be in **English**.
 
@@ -151,7 +153,7 @@ The primary conversational model only coordinates the work: it interprets reques
 
 Use `site_explorer` for repository exploration, tracing behavior, and read-only investigation. Choose it for every coding task's initial codebase mapping. Use `site_routine_coder` for clear, low-to-medium-complexity implementation, including documentation and configuration changes. Use `site_complex_coder` for ambiguous, cross-cutting, architecture-sensitive, or otherwise difficult implementation. If a routine task proves materially more complex than expected, pause that assignment and delegate the expanded scope to `site_complex_coder`; do not continue the implementation in the coordinator.
 
-Codex model mapping: `site_explorer` uses GPT-6 Luna, `site_routine_coder` uses GPT-6.1 Terra, and `site_complex_coder` uses GPT-6.1 Sol. Claude Code mapping: the corresponding roles use Haiku, Sonnet, and Opus. These are distinct native project agents in `.codex/agents/` and `.claude/agents/`. Route work to the agent for the active harness. Keep the primary conversational model unchanged. The explorer role is configured for read-oriented work; its tool restrictions reduce available capabilities but do not constitute a security boundary, so it must be instructed not to mutate files or perform external actions.
+Codex model mapping: `site_explorer` uses GPT-6 Luna, `site_routine_coder` uses GPT-6.1 Terra, and `site_complex_coder` uses GPT-6.1 Sol. Ask GPT-6 Astra for read-only architectural guidance on package boundaries, shared design contracts, and other cross-cutting decisions before implementation. Run Astra through an available explicit model selection; do not claim a native architect role exists unless it is actually configured. Terra also handles focused independent verification and routine follow-up fixes. Luna and Astra do not edit files or perform external actions. The primary conversation remains the coordinator throughout, including documentation edits and verification; it must delegate those tasks too. Claude Code mapping: the corresponding roles use Haiku, Sonnet, and Opus. These are distinct native project agents in `.codex/agents/` and `.claude/agents/`. Route work to the agent for the active harness. Keep the primary conversational model unchanged. The explorer role is configured for read-oriented work; its tool restrictions reduce available capabilities but do not constitute a security boundary, so it must be instructed not to mutate files or perform external actions.
 
 Use no more than two agents concurrently. This coordinator-only restriction applies to the primary conversation, not to execution agents; assigned subagents perform their scoped investigation, edits, and checks themselves. Give each agent a precise task and disjoint write scope; reuse active agents when practical. Delegate code and documentation edits as well as exploration. Agents should return the findings, changed paths, and checks they actually ran. The coordinator integrates the results, reviews the changed files, and reports the outcome. Subagents do not start further subagents.
 

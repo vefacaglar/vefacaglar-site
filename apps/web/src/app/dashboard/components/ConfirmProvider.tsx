@@ -35,9 +35,9 @@ export default function ConfirmProvider({ children }: { children: React.ReactNod
       setState({
         isOpen: true,
         message,
-        title: options?.title || "confirm action",
-        confirmText: options?.confirmText || "yes, delete",
-        cancelText: options?.cancelText || "cancel",
+        title: options?.title || "Confirm action",
+        confirmText: options?.confirmText || "Yes, delete",
+        cancelText: options?.cancelText || "Cancel",
         resolve,
       });
     });

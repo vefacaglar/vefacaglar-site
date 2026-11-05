@@ -41,11 +41,11 @@ export default async function PackagesPage(props: PackagesProps) {
 
   return (
     <div>
-      <h1>packages</h1>
-      <p className={styles.subtitle}>open source package groups and documentation.</p>
+      <h1>Packages</h1>
+      <p className={styles.subtitle}>Open-source package groups and documentation.</p>
 
       {packageGroups.length === 0 ? (
-        <p className={styles.empty}>no package groups published yet.</p>
+        <p className={styles.empty}>No package groups published yet.</p>
       ) : (
         <>
           <ul className={styles.list}>

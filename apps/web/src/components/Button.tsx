@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { Button as NativeButton, buttonClassName } from "@vefacaglar/ui";
 
 interface BaseButtonProps {
   variant?: "accent" | "ghost";
@@ -25,8 +26,7 @@ export default function Button({
   href,
   ...props
 }: ButtonProps) {
-  const baseClass = variant === "accent" ? "btnAccent" : "btnGhost";
-  const combinedClassName = className ? `${baseClass} ${className}` : baseClass;
+  const combinedClassName = buttonClassName(variant, className);
 
   if (href !== undefined) {
     const linkProps = props as React.AnchorHTMLAttributes<HTMLAnchorElement>;
@@ -39,8 +39,8 @@ export default function Button({
 
   const buttonProps = props as React.ButtonHTMLAttributes<HTMLButtonElement>;
   return (
-    <button className={combinedClassName} {...buttonProps}>
+    <NativeButton variant={variant} className={className} {...buttonProps}>
       {children}
-    </button>
+    </NativeButton>
   );
 }

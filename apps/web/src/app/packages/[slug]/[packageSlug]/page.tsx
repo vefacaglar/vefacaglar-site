@@ -44,17 +44,17 @@ export default async function PackageItemPage(props: { params: Promise<{ slug: s
         <h2 className={styles.sectionTitle}>Details</h2>
         <dl className={styles.detailList}>
           <div className={styles.detailRow}>
-            <dt>group</dt>
+            <dt>Group</dt>
             <dd>
               <Link href={`/packages/${pkg.groupSlug}`}>{pkg.groupName}</Link>
             </dd>
           </div>
           <div className={styles.detailRow}>
-            <dt>version</dt>
+            <dt>Version</dt>
             <dd>{pkg.latestVersion}</dd>
           </div>
           <div className={styles.detailRow}>
-            <dt>slug</dt>
+            <dt>Slug</dt>
             <dd>{pkg.slug}</dd>
           </div>
         </dl>

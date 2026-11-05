@@ -15,6 +15,7 @@
 .agents
 apps/api
 apps/worker
-packages
+packages/*
+!packages/ui
 coverage
 deploy
