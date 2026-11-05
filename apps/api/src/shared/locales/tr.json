@@ -18,5 +18,6 @@
   "err_job_unknown_type": "Bilinmeyen iş türü.",
   "err_job_invalid_payload": "Geçersiz iş verisi.",
   "err_job_invalid_state": "Bu işlem, işin mevcut durumunda yapılamaz.",
-  "err_job_invalid_cron": "Geçersiz cron ifadesi. Standart 5 alanlı bir ifade kullanın (dakika saat gün ay haftanın-günü)."
+  "err_job_invalid_cron": "Geçersiz cron ifadesi. Standart 5 alanlı bir ifade kullanın (dakika saat gün ay haftanın-günü).",
+  "err_movie_not_found": "Film bulunamadı."
 }

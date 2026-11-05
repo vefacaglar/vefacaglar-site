@@ -43,8 +43,17 @@ import { SearchEventSubscriber } from "./shared/search/commands/search-event-sub
 import { EVENT_BUS } from "./shared/events/events.tokens";
 import { InProcessEventBus } from "./shared/events/in-process-event-bus";
 
+import { MOVIES_REPOSITORY, WIKIDATA_ENTITY_CLIENT } from "./modules/movies/movies.tokens";
+import { DrizzleMoviesRepository } from "./modules/movies/movies.repository";
+import { WikidataEntityClient } from "./modules/movies/import/wikidata-entity.client";
+import { MOVIE_DISCOVERY_CLIENT } from "./modules/movies/import/wikidata-discovery.types";
+import { WikidataFilmDiscoveryClient } from "./modules/movies/import/wikidata-discovery.client";
+
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
+container.registerSingleton(MOVIES_REPOSITORY, DrizzleMoviesRepository);
+container.registerSingleton(WIKIDATA_ENTITY_CLIENT, WikidataEntityClient);
+container.registerSingleton(MOVIE_DISCOVERY_CLIENT, WikidataFilmDiscoveryClient);
 container.registerSingleton(POSTS_REPOSITORY, DrizzlePostsRepository);
 container.registerSingleton(PAGES_REPOSITORY, DrizzlePagesRepository);
 container.registerSingleton(PROJECTS_REPOSITORY, DrizzleProjectsRepository);

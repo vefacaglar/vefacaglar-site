@@ -18,5 +18,6 @@
   "err_job_unknown_type": "Unknown job type.",
   "err_job_invalid_payload": "Invalid job payload.",
   "err_job_invalid_state": "This action is not allowed in the job's current state.",
-  "err_job_invalid_cron": "Invalid cron expression. Use a standard 5-field expression (minute hour day month weekday)."
+  "err_job_invalid_cron": "Invalid cron expression. Use a standard 5-field expression (minute hour day month weekday).",
+  "err_movie_not_found": "Movie not found."
 }

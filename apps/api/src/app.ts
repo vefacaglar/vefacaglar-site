@@ -23,6 +23,7 @@ import { platformsRoutes } from "./modules/catalog/platforms.routes";
 import { gameRelationsRoutes } from "./modules/catalog/relations.routes";
 import { packagesRoutes } from "./modules/packages/packages.routes";
 import { jobsRoutes } from "./modules/jobs/jobs.routes";
+import { moviesRoutes } from "./modules/movies/movies.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
@@ -167,6 +168,7 @@ app.register(gameRelationsRoutes, { prefix: "/api/catalog" });
 app.register(packagesRoutes, { prefix: "/api/packages" });
 app.register(publicGamesRoutes, { prefix: "/api/games" });
 app.register(jobsRoutes, { prefix: "/api/jobs" });
+app.register(moviesRoutes, { prefix: "/api/movies" });
 
 export default async function handler(req: any, res: any) {
   await app.ready();
