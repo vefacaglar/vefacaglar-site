@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { logoutAction, deletePostAction, deletePageAction, deleteProjectAction } from "./actions";
 import DashboardListsContainer from "./components/DashboardListsContainer";
+import { loadContentList, parseContentQuery, type ContentList } from "./components/content-list";
 import styles from "./dashboard.module.css";
 import { httpClient } from "../../lib/httpClient";
 import ds from "../../lib/dashboard-strings";
@@ -11,45 +12,8 @@ import { requireAdmin } from "../../lib/session";
 
 export const dynamic = "force-dynamic";
 
-interface PostItem {
-  id: string;
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  createdAt: string;
-}
-
-interface PageItem {
-  id: string;
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  createdAt: string;
-}
-
-interface ProjectItem {
-  id: string;
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  createdAt: string;
-}
-
-interface ListResponse<T> {
-  items?: T[];
-  total?: number;
-  totalPages?: number;
-}
-
 interface PageProps {
-  searchParams: Promise<{
-    postsPage?: string;
-    postsLimit?: string;
-    projectsPage?: string;
-    projectsLimit?: string;
-    pagesPage?: string;
-    pagesLimit?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function AdminDashboard(props: PageProps) {
@@ -62,29 +26,27 @@ export default async function AdminDashboard(props: PageProps) {
   }
   await requireAdmin();
 
-  const postsPage = Number(searchParams.postsPage) || 1;
-  const postsLimit = Number(searchParams.postsLimit) || 10;
-  const projectsPage = Number(searchParams.projectsPage) || 1;
-  const projectsLimit = Number(searchParams.projectsLimit) || 10;
-  const pagesPage = Number(searchParams.pagesPage) || 1;
-  const pagesLimit = Number(searchParams.pagesLimit) || 10;
-
+  const state = parseContentQuery(searchParams);
   const headers = { Authorization: `Bearer ${token}` };
-
-  const [postsRes, pagesRes, projectsRes] = await Promise.all([
-    httpClient.get(`/api/posts/dashboard?page=${postsPage}&limit=${postsLimit}`, { headers }).catch(() => null),
-    httpClient.get(`/api/pages/dashboard?page=${pagesPage}&limit=${pagesLimit}`, { headers }).catch(() => null),
-    httpClient.get(`/api/projects/dashboard?page=${projectsPage}&limit=${projectsLimit}`, { headers }).catch(() => null),
-  ]);
-
-  const postsData: ListResponse<PostItem> = postsRes?.ok ? await postsRes.json() : {};
-  const pagesData: ListResponse<PageItem> = pagesRes?.ok ? await pagesRes.json() : {};
-  const projectsData: ListResponse<ProjectItem> = projectsRes?.ok ? await projectsRes.json() : {};
+  let data: ContentList & { page: number } = { items: [], total: 0, totalPages: 0, page: state.page };
+  let error = false;
+  try {
+    data = await loadContentList(state, async (page, limit) => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (state.status) params.set("status", state.status);
+      const response = await httpClient.get(`/api/${state.type}/dashboard?${params}`, { headers });
+      if (!response.ok) throw new Error("Content list request failed.");
+      return await response.json() as ContentList;
+    });
+  } catch (requestError) {
+    unstable_rethrow(requestError);
+    error = true;
+  }
 
   return (
     <div>
       <div className={styles.header}>
-          <h1 className={styles.title}>{ds.nav.dashboard}</h1>
+        <h1 className={styles.title}>{ds.nav.dashboard}</h1>
         <div className={styles.actions}>
           <Link href="/dashboard/profile" className="btnGhost">
             {ds.nav.profile}
@@ -113,21 +75,11 @@ export default async function AdminDashboard(props: PageProps) {
       </div>
 
       <DashboardListsContainer
-        posts={postsData.items ?? []}
-        postsTotal={postsData.total ?? 0}
-        postsPage={postsPage}
-        postsLimit={postsLimit}
-        postsTotalPages={postsData.totalPages ?? 0}
-        projects={projectsData.items ?? []}
-        projectsTotal={projectsData.total ?? 0}
-        projectsPage={projectsPage}
-        projectsLimit={projectsLimit}
-        projectsTotalPages={projectsData.totalPages ?? 0}
-        pages={pagesData.items ?? []}
-        pagesTotal={pagesData.total ?? 0}
-        pagesPage={pagesPage}
-        pagesLimit={pagesLimit}
-        pagesTotalPages={pagesData.totalPages ?? 0}
+        state={{ ...state, page: data.page }}
+        items={data.items}
+        total={data.total}
+        totalPages={data.totalPages}
+        error={error}
         deletePostAction={deletePostAction}
         deleteProjectAction={deleteProjectAction}
         deletePageAction={deletePageAction}

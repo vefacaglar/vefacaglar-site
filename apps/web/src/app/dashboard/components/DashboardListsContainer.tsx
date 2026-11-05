@@ -1,270 +1,188 @@
 "use client";
 
-import React from "react";
+import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import DeleteButton from "./DeleteButton";
-import SimplePagination from "./SimplePagination";
-import styles from "../dashboard.module.css";
-import ds from "../../../lib/dashboard-strings";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useConfirm } from "./ConfirmProvider";
+import { formatDate } from "../../../lib/formatDate";
+import { CONTENT_LABELS, CONTENT_TYPES, contentHref, type ContentItem, type ContentQuery } from "./content-list";
+import styles from "./DashboardListsContainer.module.css";
 
-interface PostItem {
-  id: string;
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  createdAt: string;
-}
-
-interface PageItem {
-  id: string;
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  createdAt: string;
-}
-
-interface ProjectItem {
-  id: string;
-  slug: string;
-  title: string;
-  status: "draft" | "published";
-  createdAt: string;
-}
+type DeleteAction = (id: string) => Promise<{ success?: boolean; error?: string }>;
 
 interface DashboardListsContainerProps {
-  posts: PostItem[];
-  postsTotal: number;
-  postsPage: number;
-  postsLimit: number;
-  postsTotalPages: number;
-
-  projects: ProjectItem[];
-  projectsTotal: number;
-  projectsPage: number;
-  projectsLimit: number;
-  projectsTotalPages: number;
-
-  pages: PageItem[];
-  pagesTotal: number;
-  pagesPage: number;
-  pagesLimit: number;
-  pagesTotalPages: number;
-
-  deletePostAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
-  deleteProjectAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
-  deletePageAction: (id: string) => Promise<{ success?: boolean; error?: string }>;
+  state: ContentQuery;
+  items: ContentItem[];
+  total: number;
+  totalPages: number;
+  error: boolean;
+  deletePostAction: DeleteAction;
+  deleteProjectAction: DeleteAction;
+  deletePageAction: DeleteAction;
 }
 
-const statusLabel = (status: "draft" | "published") =>
-  status === "published" ? ds.content.status.published : ds.content.status.draft;
-
-const renderTableHeaders = () => (
-  <tr>
-    <th className={styles.th}>{ds.content.table.title}</th>
-    <th className={styles.th}>{ds.content.table.status}</th>
-    <th className={styles.thRight}>{ds.content.table.actions}</th>
-  </tr>
-);
-
-export default function DashboardListsContainer({
-  posts,
-  postsTotal,
-  postsPage,
-  postsLimit,
-  postsTotalPages,
-  projects,
-  projectsTotal,
-  projectsPage,
-  projectsLimit,
-  projectsTotalPages,
-  pages,
-  pagesTotal,
-  pagesPage,
-  pagesLimit,
-  pagesTotalPages,
-  deletePostAction,
-  deleteProjectAction,
-  deletePageAction,
-}: DashboardListsContainerProps) {
+function DeleteContentButton({ item, type, onDelete }: { item: ContentItem; type: string; onDelete: DeleteAction }) {
+  const confirm = useConfirm();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
 
-  const updateQueryParam = (updates: Record<string, string | number>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(updates).forEach(([key, value]) => {
-      params.set(key, value.toString());
+  async function handleDelete() {
+    if (!await confirm(`Are you sure you want to delete the ${type} "${item.title}"?`, { title: `Delete ${type}` })) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await onDelete(item.id);
+        if (result.error) setError(result.error);
+        else router.refresh();
+      } catch {
+        setError(`Could not delete ${type}. Please try again.`);
+      }
     });
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  }
 
   return (
-    <div>
-      {/* Posts Section */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>{ds.content.posts}</h2>
-          <Link href="/dashboard/posts/new" className="btnAccent">
-            {ds.content.newPost}
-          </Link>
-        </div>
-
-        {postsTotal === 0 ? (
-          <p className={styles.empty}>{ds.content.noPosts}</p>
-        ) : (
-          <>
-            <div className={styles.cardsGrid}>
-              {posts.map((post) => (
-                <div key={post.id} className={styles.card}>
-                  <div>
-                    <div className={styles.cardHeader}>
-                      <h3 className={styles.cardTitle}>
-                        <Link href={`/blog/${post.slug}`} target="_blank" className={styles.cardTitleLink}>
-                          {post.title}
-                        </Link>
-                      </h3>
-                      <span className={post.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {statusLabel(post.status)}
-                      </span>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span>/blog/{post.slug}</span>
-                    </div>
-                  </div>
-                  <div className={styles.cardFooter}>
-                    <div className={styles.cardActions}>
-                      <Link href={`/dashboard/posts/edit/${post.id}`} className={styles.editLink}>
-                        {ds.content.edit}
-                      </Link>
-                      <DeleteButton id={post.id} type="post" title={post.title} onDelete={deletePostAction} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-             <SimplePagination
-               currentPage={postsPage}
-               totalPages={postsTotalPages}
-               limit={postsLimit}
-               onPageChange={(page) => updateQueryParam({ postsPage: page })}
-               onLimitChange={(limit) => updateQueryParam({ postsLimit: limit, postsPage: 1 })}
-               selectId="postsPageSize"
-             />
-          </>
-        )}
-      </section>
-
-      {/* Projects Section */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>{ds.content.projects}</h2>
-          <Link href="/dashboard/projects/new" className="btnAccent">
-            {ds.content.newProject}
-          </Link>
-        </div>
-
-        {projectsTotal === 0 ? (
-          <p className={styles.empty}>{ds.content.noProjects}</p>
-        ) : (
-          <>
-            <div className={styles.cardsGrid}>
-              {projects.map((project) => (
-                <div key={project.id} className={styles.card}>
-                  <div>
-                    <div className={styles.cardHeader}>
-                      <h3 className={styles.cardTitle}>
-                        <Link href={`/projects/${project.slug}`} target="_blank" className={styles.cardTitleLink}>
-                          {project.title}
-                        </Link>
-                      </h3>
-                      <span className={project.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {statusLabel(project.status)}
-                      </span>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span>/projects/{project.slug}</span>
-                    </div>
-                  </div>
-                  <div className={styles.cardFooter}>
-                    <div className={styles.cardActions}>
-                      <Link href={`/dashboard/projects/edit/${project.id}`} className={styles.editLink}>
-                        {ds.content.edit}
-                      </Link>
-                      <DeleteButton id={project.id} type="project" title={project.title} onDelete={deleteProjectAction} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-             <SimplePagination
-               currentPage={projectsPage}
-               totalPages={projectsTotalPages}
-               limit={projectsLimit}
-               onPageChange={(page) => updateQueryParam({ projectsPage: page })}
-               onLimitChange={(limit) => updateQueryParam({ projectsLimit: limit, projectsPage: 1 })}
-               selectId="projectsPageSize"
-             />
-          </>
-        )}
-      </section>
-
-      {/* Pages Section */}
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>{ds.content.pages}</h2>
-          <Link href="/dashboard/pages/new" className="btnAccent">
-            {ds.content.newPage}
-          </Link>
-        </div>
-
-        {pagesTotal === 0 ? (
-          <p className={styles.empty}>{ds.content.noPages}</p>
-        ) : (
-          <>
-            <div className={styles.cardsGrid}>
-              {pages.map((page) => (
-                <div key={page.id} className={styles.card}>
-                  <div>
-                    <div className={styles.cardHeader}>
-                      <h3 className={styles.cardTitle}>
-                        <Link href={`/${page.slug}`} target="_blank" className={styles.cardTitleLink}>
-                          {page.title}
-                        </Link>
-                      </h3>
-                      <span className={page.status === "published" ? styles.statusPublished : styles.statusDraft}>
-                        {statusLabel(page.status)}
-                      </span>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span>/{page.slug}</span>
-                    </div>
-                  </div>
-                  <div className={styles.cardFooter}>
-                    <div className={styles.cardActions}>
-                      <Link href={`/dashboard/pages/edit/${page.id}`} className={styles.editLink}>
-                        {ds.content.edit}
-                      </Link>
-                      <DeleteButton id={page.id} type="page" title={page.title} onDelete={deletePageAction} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-             <SimplePagination
-               currentPage={pagesPage}
-               totalPages={pagesTotalPages}
-               limit={pagesLimit}
-               onPageChange={(page) => updateQueryParam({ pagesPage: page })}
-               onLimitChange={(limit) => updateQueryParam({ pagesLimit: limit, pagesPage: 1 })}
-               selectId="pagesPageSize"
-             />
-          </>
-        )}
-      </section>
+    <div className={styles.deleteAction}>
+      <button type="button" className={`btnGhost ${styles.rowButton}`} onClick={handleDelete} disabled={pending} aria-label={`Delete ${item.title}`}>
+        {pending ? "Deleting…" : "Delete"}
+      </button>
+      {error && <span className={styles.actionError} role="alert">{error}</span>}
     </div>
+  );
+}
+
+export default function DashboardListsContainer({
+  state, items, total, totalPages, error,
+  deletePostAction, deleteProjectAction, deletePageAction,
+}: DashboardListsContainerProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [pending, startTransition] = useTransition();
+  const meta = CONTENT_LABELS[state.type];
+  const deleteAction = { posts: deletePostAction, projects: deleteProjectAction, pages: deletePageAction }[state.type];
+  const currentParams = searchParams.toString();
+  const update = (updates: Parameters<typeof contentHref>[2]) => {
+    startTransition(() => router.push(contentHref(currentParams, state.type, updates), { scroll: false }));
+  };
+  const filtered = Boolean(state.query || state.status);
+  const first = total === 0 ? 0 : (state.page - 1) * state.limit + 1;
+  const last = Math.min(state.page * state.limit, total);
+
+  return (
+    <section className={styles.content} aria-label="Content management" aria-busy={pending}>
+      <nav className={styles.tabs} aria-label="Content types">
+        {CONTENT_TYPES.map((type) => (
+          <Link
+            key={type}
+            href={contentHref(currentParams, type)}
+            className={`${styles.tab} ${state.type === type ? styles.activeTab : ""}`}
+            aria-current={state.type === type ? "page" : undefined}
+            scroll={false}
+            prefetch={false}
+          >
+            {CONTENT_LABELS[type].label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className={styles.heading}>
+        <h2 className={styles.title}>{meta.label}</h2>
+        <Link href={`/dashboard/${state.type}/new`} className="btnAccent">+ New {meta.singular}</Link>
+      </div>
+
+      <form
+        key={`${state.type}:${state.query}:${state.status}`}
+        className={styles.filters}
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const status = form.get("status");
+          update({ query: String(form.get("query") ?? "").trim(), status: status === "draft" || status === "published" ? status : "" });
+        }}
+      >
+        <div className={styles.searchField}>
+          <label htmlFor="content-search">Search {meta.label.toLowerCase()}</label>
+          <input id="content-search" name="query" type="search" defaultValue={state.query} placeholder="Search title or slug" className={styles.input} disabled={pending} />
+        </div>
+        <div className={styles.statusField}>
+          <label htmlFor="content-status">Status</label>
+          <select id="content-status" name="status" defaultValue={state.status} className={styles.input} disabled={pending} onChange={(event) => event.currentTarget.form?.requestSubmit()}>
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </div>
+        <button type="submit" className="btnGhost" disabled={pending}>Search</button>
+        {filtered && <button type="button" className="btnGhost" disabled={pending} onClick={() => update({ query: "", status: "" })}>Clear</button>}
+      </form>
+
+      {error ? (
+        <div className={styles.error} role="alert">
+          <p>Could not load {meta.label.toLowerCase()}. Please try again.</p>
+          <button type="button" className="btnGhost" onClick={() => startTransition(() => router.refresh())} disabled={pending}>Retry</button>
+        </div>
+      ) : (
+        <>
+          <p className={styles.summary} role="status">{pending ? "Loading…" : `${total} ${filtered ? "matching " : ""}${total === 1 ? meta.singular : meta.label.toLowerCase()}`}</p>
+          <div className={styles.tableWrapper} role="region" aria-label={`${meta.label} table`} tabIndex={0}>
+            <table className={styles.table}>
+              <caption className={styles.srOnly}>{meta.label} content management</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Path</th>
+                  <th scope="col">Status</th>
+                  {state.type === "posts" && <th scope="col">Author</th>}
+                  {state.type === "projects" && <><th scope="col">Featured</th><th scope="col">Order</th></>}
+                  <th scope="col">Updated</th>
+                  <th scope="col" className={styles.actionsHeading}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <th scope="row" className={styles.itemTitle}>
+                      <Link href={`/dashboard/${state.type}/edit/${item.id}`}>{item.title}</Link>
+                    </th>
+                    <td className={styles.path}>{meta.path}{item.slug}</td>
+                    <td><span className={item.status === "published" ? styles.published : styles.draft}>{item.status === "published" ? "Published" : "Draft"}</span></td>
+                    {state.type === "posts" && <td>{item.author?.displayName ?? item.author?.username ?? "—"}</td>}
+                    {state.type === "projects" && <><td>{item.featured ? "Yes" : "No"}</td><td>{item.sortOrder ?? 0}</td></>}
+                    <td className={styles.date}><time dateTime={item.updatedAt}>{formatDate(item.updatedAt, "en")}</time></td>
+                    <td>
+                      <div className={styles.rowActions}>
+                        {item.status === "published" && <Link href={`${meta.path}${item.slug}`} target="_blank" rel="noopener noreferrer" className={`btnGhost ${styles.rowButton}`} aria-label={`View ${item.title} (opens in a new tab)`}>View</Link>}
+                        <Link href={`/dashboard/${state.type}/edit/${item.id}`} className={`btnGhost ${styles.rowButton}`} aria-label={`Edit ${item.title}`}>Edit</Link>
+                        <DeleteContentButton item={item} type={meta.singular} onDelete={deleteAction} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {items.length === 0 && (
+                  <tr><td colSpan={state.type === "projects" ? 7 : state.type === "posts" ? 6 : 5} className={styles.empty}>
+                    {filtered ? `No ${meta.label.toLowerCase()} match your search or filters.` : `No ${meta.label.toLowerCase()} added yet.`}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className={styles.pagination}>
+            <div className={styles.pageControls} aria-label="Content pagination">
+              <button type="button" className="btnGhost" disabled={pending || state.page <= 1} onClick={() => update({ page: state.page - 1 })}>← Previous</button>
+              <span>Page {state.page} of {Math.max(1, totalPages)}</span>
+              <button type="button" className="btnGhost" disabled={pending || state.page >= totalPages} onClick={() => update({ page: state.page + 1 })}>Next →</button>
+            </div>
+            <div className={styles.pageSize}>
+              <span>{first}–{last} of {total}</span>
+              <label htmlFor="content-page-size">Rows per page</label>
+              <select id="content-page-size" value={state.limit} disabled={pending} className={styles.input} onChange={(event) => update({ limit: Number(event.target.value) })}>
+                <option value="10">10</option><option value="50">50</option><option value="100">100</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
