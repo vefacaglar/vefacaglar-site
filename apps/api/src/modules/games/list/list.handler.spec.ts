@@ -41,7 +41,7 @@ describe("ListGamesHandler", () => {
 
     expect(reader.searchPublicGames).toHaveBeenCalledWith({ page: 2, limit: 24, q: "doom" });
     expect(result).toEqual({
-      items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85,
+      items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", metacriticScore: null, openCriticScore: null, criticScore: 85,
         popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null }],
       total: 49,
       page: 2,
@@ -51,6 +51,22 @@ describe("ListGamesHandler", () => {
 
     await handler.handle({ query: { q: "   " } } as any);
     expect(reader.searchPublicGames).toHaveBeenLastCalledWith({ page: 1, limit: 24, q: undefined });
+  });
+
+  it("exposes stored provider scores independently and rejects invalid values", async () => {
+    reader.searchPublicGames.mockResolvedValue({ items: [
+      { slug: "providers", title: "Providers", metacriticScore: 87, openCriticScore: 89, criticScore: 95, criticScoreCount: 5 },
+      { slug: "zero", title: "Zero", metacriticScore: 0, openCriticScore: 0, criticScore: 0, criticScoreCount: 3 },
+      { slug: "invalid", title: "Invalid", metacriticScore: Number.NaN, openCriticScore: 101, criticScore: -1, criticScoreCount: 5 },
+      { slug: "few-reviews", title: "Few reviews", criticScore: 100, criticScoreCount: 2 },
+    ], total: 4 });
+    const result = await handler.handle({ query: {} } as any);
+    expect(result.items.map(({ metacriticScore, openCriticScore, criticScore }) => ({ metacriticScore, openCriticScore, criticScore }))).toEqual([
+      { metacriticScore: 87, openCriticScore: 89, criticScore: 95 },
+      { metacriticScore: 0, openCriticScore: 0, criticScore: 0 },
+      { metacriticScore: null, openCriticScore: null, criticScore: null },
+      { metacriticScore: null, openCriticScore: null, criticScore: null },
+    ]);
   });
 
   it("exposes popularity and completion hours without inventing missing values", async () => {

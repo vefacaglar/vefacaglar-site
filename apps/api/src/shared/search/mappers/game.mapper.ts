@@ -136,6 +136,8 @@ export function gameCardFromDoc(doc: GameDoc): GameCard {
     title: doc.title,
     coverImageUrl: doc.coverImageUrl ?? null,
     releaseDate: doc.releaseDate ?? null,
+    metacriticScore: doc.metacriticScore ?? null,
+    openCriticScore: doc.openCriticScore ?? null,
     criticScore: doc.criticScore ?? null,
     criticScoreCount: doc.criticScoreCount ?? null,
     popularityScore: doc.popularityScore != null && Number.isFinite(doc.popularityScore) && doc.popularityScore >= 0 && doc.popularityScore <= 1 ? doc.popularityScore : null,

@@ -337,6 +337,8 @@ export class DrizzleGamesRepository implements IGamesRepository {
           title: games.title,
           coverImageUrl: games.coverImageUrl,
           releaseDate: games.releaseDate,
+          metacriticScore: games.metacriticScore,
+          openCriticScore: games.openCriticScore,
           criticScore: games.criticScore,
           criticScoreCount: games.criticScoreCount,
           popularityScore: games.popularityScore,
