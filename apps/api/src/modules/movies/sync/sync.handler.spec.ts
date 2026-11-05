@@ -4,7 +4,7 @@ import type { IMoviesRepository, MovieSourceState } from "../movies.repository.i
 import { MovieSyncService } from "./movie-sync.service";
 import { SyncMoviesHandler } from "./sync.handler";
 const state = (): MovieSourceState => ({ discoveryComplete: true, discoveryCycle: 1, discoveryStrategy: "wikidata-direct-film-v1", nextDiscoveryAt: new Date("2099-01-01"), cooldownUntil: null, failureCount: 0, refreshCursor: null, lastSuccessAt: null });
-const entity = (qid = "Q47703") => ({ id: qid, type: "item", labels: { en: { value: "The Godfather" } }, lastrevid: 42,
+const entity = (qid = "Q47703") => ({ id: qid, type: "item", labels: { en: { value: "The Godfather" } }, lastrevid: 42, modified: "2026-11-05T00:00:00Z",
   claims: { P31: [{ id: `${qid}$class`, rank: "normal", mainsnak: { property: "P31", snaktype: "value", datavalue: { value: { id: "Q11424" } } } }] } });
 let repo: Record<keyof IMoviesRepository, any>;
 let client: { fetchEntities: any; fetchLabels: any };
@@ -13,7 +13,7 @@ const run = (options = {}) => new SyncMoviesHandler(new MovieSyncService(repo, c
 beforeEach(() => {
   repo = { ensureSourceAndSeeds: vi.fn().mockResolvedValue({ inserted: 0, state: state() }), sourceState: vi.fn(), saveSourceState: vi.fn(), insertDiscovered: vi.fn().mockResolvedValue(0),
     hydrationCandidates: vi.fn().mockResolvedValue([]), refreshCandidates: vi.fn().mockResolvedValue([]), persistMovie: vi.fn().mockResolvedValue("updated"), markEntityFailure: vi.fn(),
-    findLabels: vi.fn().mockResolvedValue({}), unresolvedLabels: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicBySlug: vi.fn() };
+    findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicBySlug: vi.fn() };
   client = { fetchEntities: vi.fn().mockResolvedValue({ Q47703: entity() }), fetchLabels: vi.fn().mockResolvedValue({}) };
   discovery = { discover: vi.fn() };
 });
@@ -81,4 +81,49 @@ describe("bounded movie sync handler", () => {
     repo.persistMovie.mockResolvedValue("imdb_conflict");
     expect(await run({ maxRequests: 1 })).toMatchObject({ hydrated: 1, imdbConflicts: 1 });
   });
+  it("does not replace a known movie with an unversioned entity response", async () => {
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: 41 }]);
+    const raw = entity() as Record<string, unknown>;
+    delete raw.lastrevid;
+    client.fetchEntities.mockResolvedValue({ Q47703: raw });
+    expect(await run({ maxRequests: 1 })).toMatchObject({ failed: 1, hydrated: 0 });
+    expect(repo.persistMovie).not.toHaveBeenCalled();
+  });
+  it("removes public film classification only from a complete newer snapshot", async () => {
+    repo.refreshCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: 41 }]);
+    client.fetchEntities.mockResolvedValue({ Q47703: { ...entity(), claims: {} } });
+    expect(await run({ maxRequests: 1 })).toMatchObject({ refreshed: 1 });
+    expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ isFilm: false, sourceRevision: 42 }), expect.any(Date));
+  });
+  it("refreshes known stale supporting names within the request budget", async () => {
+    const raw = entity();
+    (raw.claims as any).P57 = [{ id: "Q47703$director", rank: "normal", mainsnak: { property: "P57", snaktype: "value", datavalue: { value: { id: "Q123" } } } }];
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: null }]);
+    repo.findLabels.mockResolvedValue({ Q123: { name: "Previous name", checkedAt: new Date(Date.now() - 8 * 86_400_000) } });
+    client.fetchEntities.mockResolvedValue({ Q47703: raw });
+    client.fetchLabels.mockResolvedValue({ Q123: "Current name" });
+    expect(await run({ maxRequests: 2 })).toMatchObject({ requests: 2, labelsChecked: 1 });
+    expect(repo.writeLabels).toHaveBeenCalledWith({ Q123: "Current name" }, expect.any(Date));
+  });
+  it("honors a provider cooldown longer than one day", async () => {
+    const retryAfter = new Date(Date.now() + 3 * 86_400_000);
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: null }]);
+    client.fetchEntities.mockRejectedValue({ retryAfter });
+    const result = await run();
+    expect(result.nextRunAt).toBe(retryAfter.toISOString());
+    expect(repo.saveSourceState).toHaveBeenCalledWith(expect.objectContaining({ cooldownUntil: retryAfter }));
+  });
+  it("continues a rotating refresh after durably wrapping the cursor", async () => {
+    repo.ensureSourceAndSeeds.mockResolvedValue({ inserted: 0, state: { ...state(), refreshCursor: "last" } });
+    repo.refreshCandidates.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: "first", wikidataId: "Q1", sourceRevision: 1 }]);
+    expect(await run()).toMatchObject({ hasMore: true, progressMade: true, requests: 0 });
+    expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: null });
+  });
+
+  it("ends the chain after wrapping a cursor when remaining work is not due", async () => {
+    repo.ensureSourceAndSeeds.mockResolvedValue({ inserted: 0, state: { ...state(), refreshCursor: "last" } });
+    expect(await run()).toMatchObject({ hasMore: false, progressMade: true, requests: 0 });
+    expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: null });
+  });
+
 });

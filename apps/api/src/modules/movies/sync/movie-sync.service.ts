@@ -3,7 +3,7 @@ import { MOVIES_REPOSITORY, WIKIDATA_ENTITY_CLIENT } from "../movies.tokens";
 import type { IMoviesRepository, MovieCandidate } from "../movies.repository.interface";
 import type { EntityLabels, IWikidataEntityClient, NormalizedMovie } from "../import/movie-source.types";
 import { MOVIE_DISCOVERY_CLIENT, type IFilmDiscoveryClient } from "../import/wikidata-discovery.types";
-import { addCharacterLabels, normalizeMovie, supportingQids } from "../import/wikidata-normalizer";
+import { normalizeMovie, supportingQids } from "../import/wikidata-normalizer";
 
 const DAY = 86_400_000;
 export type MovieSyncOptions = { budgetMs?: number; maxRequests?: number; maxMovies?: number };
@@ -39,7 +39,7 @@ export class MovieSyncService {
       providerStopped = true;
       const retry = (error as { retryAfter?: unknown })?.retryAfter;
       const retryAt = retry instanceof Date && Number.isFinite(retry.getTime()) ? retry : new Date(Date.now() + 60_000);
-      const until = new Date(Math.max(Date.now() + 30_000, Math.min(Date.now() + DAY, retryAt.getTime())));
+      const until = new Date(Math.max(Date.now() + 30_000, retryAt.getTime()));
       await save({ cooldownUntil: until, failureCount: state.failureCount + 1 });
       result.progressMade = true;
     };
@@ -54,7 +54,7 @@ export class MovieSyncService {
     const labelsFor = async (qids: string[], requestLimit: number): Promise<EntityLabels> => {
       const cached = await this.repo.findLabels(qids);
       const labels: EntityLabels = Object.fromEntries(Object.entries(cached).map(([qid, entry]) => [qid, entry.name]));
-      const missing = qids.filter((qid) => !cached[qid] || (!cached[qid].name && cached[qid].checkedAt.getTime() < Date.now() - 7 * DAY));
+      const missing = qids.filter((qid) => !cached[qid] || cached[qid].checkedAt.getTime() < Date.now() - 7 * DAY);
       for (let offset = 0, calls = 0; offset < missing.length && calls < requestLimit && room(); offset += 50, calls++) {
         const batch = missing.slice(offset, offset + 50);
         result.requests++;
@@ -89,9 +89,9 @@ export class MovieSyncService {
       }
       // Labels are supporting data: a provider outage here never discards validated claims.
       const qids = [...new Set(valid.flatMap(supportingQids))];
-      const labels = await labelsFor(qids, refresh ? 1 : 2);
+      await labelsFor(qids, refresh ? 1 : 2);
       for (const movie of valid) {
-        const outcome = await this.repo.persistMovie(addCharacterLabels(movie, labels), now());
+        const outcome = await this.repo.persistMovie(movie, now());
         if (outcome === "imdb_conflict") result.imdbConflicts++;
         if (refresh) result.refreshed++; else result.hydrated++;
         result.progressMade = true;
@@ -130,16 +130,19 @@ export class MovieSyncService {
     if (room()) {
       const refresh = await this.repo.refreshCandidates(state.refreshCursor, 50, new Date(Date.now() - DAY), now());
       if (refresh.length) await hydrate(refresh, true);
-      else if (state.refreshCursor) await save({ refreshCursor: null });
+      else if (state.refreshCursor) {
+        await save({ refreshCursor: null });
+        result.progressMade = true;
+      }
     }
     while (room() && result.hydrated + result.failed < maxMovies) {
       const candidates = await this.repo.hydrationCandidates(Math.min(50, maxMovies - result.hydrated - result.failed), now());
       if (!candidates.length) break;
       await hydrate(candidates, false);
     }
-    // A separate cache rotates unresolved references; no per-person request fanout.
+    // Rotate stale labels as well as unresolved references; no per-person request fanout.
     if (room()) {
-      const unresolved = await this.repo.unresolvedLabels(50, new Date(Date.now() - 7 * DAY));
+      const unresolved = await this.repo.labelRefreshCandidates(50, new Date(Date.now() - 7 * DAY));
       if (unresolved.length) await labelsFor(unresolved, 1);
     }
     if (successfulRequest && !providerStopped) await save({ cooldownUntil: null, failureCount: 0, lastSuccessAt: now() });

@@ -39,6 +39,10 @@ function statements(claims: Record<string, unknown>, property: string, qid: stri
 /** Only complete item/claims responses can replace a relationship snapshot. */
 export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMovie {
   if (!isQid(expectedQid) || !object(raw) || raw.id !== expectedQid || raw.type !== "item" || "missing" in raw || !object(raw.claims)) throw new Error("partial_or_missing_entity");
+  // Both info and claims were requested. Without revision metadata this is not
+  // a complete snapshot that may replace facts or remove a classification.
+  if (!Number.isSafeInteger(raw.lastrevid) || raw.lastrevid <= 0 ||
+      typeof raw.modified !== "string" || !Number.isFinite(Date.parse(raw.modified))) throw new Error("incomplete_entity_info");
   const claims = raw.claims;
   const checked = new Map(["P31", "P1476", "P345", "P577", "P2047", "P161", "P57", "P162", "P272", "P136"].map((property) => [property, statements(claims, property, expectedQid)]));
   const all = [...checked.values()].flat();
@@ -46,7 +50,6 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   for (const property of ["P31", "P272", "P136"]) {
     if (checked.get(property)!.some((row) => row.mainsnak.snaktype === "value" && !isQid(value(row)?.id))) throw new Error("invalid_entity_reference");
   }
-  if (!checked.get("P31")!.length) throw new Error("classification_missing");
   const originalTitle = best(checked.get("P1476")!).map((row) => text(value(row)?.text)).find(Boolean) ?? null;
   const title = sourceLabel(raw) ?? originalTitle;
   if (!title) throw new Error("title_missing");
@@ -79,7 +82,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
       const qualifierValue = (snak: any) => snak?.snaktype === "value" ? snak.datavalue?.value : undefined;
       credits.push({ statementId: row.id.toLowerCase(), personQid, roleProperty, rank: row.rank as StatementRank, qualifiers,
         characterNames: (Array.isArray(qualifiers.P4633) ? qualifiers.P4633 : []).map(qualifierValue).map(text).filter((name: string | null): name is string => !!name),
-        characterQids: (Array.isArray(qualifiers.P453) ? qualifiers.P453 : []).map(qualifierValue).map((v: any) => v?.id).filter(isQid),
+        characterQids: characterQidsFromQualifiers(qualifiers),
       });
     }
   }
@@ -88,7 +91,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
     imdbId: imdbIds.length === 1 ? imdbIds[0] : null, imdbConflict: imdbIds.length > 1,
     releaseDate: dates[0]?.date ?? null, releaseYear: dates[0]?.year ?? null, releasePrecision: dates[0]?.precision ?? null,
     runtimeMinutes: runtimes.length === 1 ? runtimes[0] : null,
-    isFilm: qids(checked.get("P31")!).includes("Q11424"),
+    isFilm: qids(best(checked.get("P31")!)).includes("Q11424"),
     sourceRevision: Number.isSafeInteger(raw.lastrevid) && raw.lastrevid > 0 ? raw.lastrevid : null,
     sourceModifiedAt: modified, credits, companyQids: qids(checked.get("P272")!), genreQids: qids(checked.get("P136")!) };
 }
@@ -100,4 +103,18 @@ export function addCharacterLabels(movie: NormalizedMovie, labels: EntityLabels)
   return { ...movie, credits: movie.credits.map((credit) => ({ ...credit,
     characterNames: [...new Set([...credit.characterNames, ...credit.characterQids.map((qid) => labels[qid]).filter((name): name is string => !!name)])],
   })) };
+}
+
+/** Explicit character references remain resolvable after an initially missing label arrives. */
+export function characterQidsFromQualifiers(qualifiers: unknown): string[] {
+  if (!object(qualifiers) || !Array.isArray(qualifiers.P453)) return [];
+  return [...new Set(qualifiers.P453.filter((snak: any) => snak?.snaktype === "value")
+    .map((snak: any) => snak.datavalue?.value?.id).filter(isQid))];
+}
+
+/** Equal revisions normally avoid rewrites, but an IMDb ownership conflict may clear later. */
+export function movieSnapshotDisposition(incoming: number | null, stored: number | null, hydrated: boolean, imdbConflict: boolean): "replace" | "unchanged" {
+  if (incoming === null || !Number.isSafeInteger(incoming) || incoming <= 0) throw new Error("incomplete_entity_info");
+  if (stored !== null && incoming < stored) throw new Error("stale_source_revision");
+  return hydrated && incoming === stored && !imdbConflict ? "unchanged" : "replace";
 }

@@ -30,7 +30,7 @@ export default async function Movies({ searchParams }: {
         <form className={styles.search} action={localizeHref("/movies", lang)} role="search">
           {lang !== "en" && <input type="hidden" name="lang" value={lang} />}
           <input className={styles.searchInput} type="search" name="q" defaultValue={query}
-            placeholder="Search movies" aria-label="Search movies" maxLength={200} />
+            placeholder="Search movies" aria-label="Search movies" maxLength={140} />
           <button className="btnGhost" type="submit">Search</button>
         </form>
       </LibraryMasthead>

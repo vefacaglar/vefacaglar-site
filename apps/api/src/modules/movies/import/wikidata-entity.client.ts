@@ -1,4 +1,5 @@
 import { injectable } from "tsyringe";
+import { wikidataRetryAfter } from "./wikidata-retry-after";
 import { isQid, sourceLabel } from "./wikidata-normalizer";
 import type { EntityLabels, IWikidataEntityClient } from "./movie-source.types";
 
@@ -22,26 +23,34 @@ export class WikidataEntityClient implements IWikidataEntityClient {
     let response: Response;
     try { response = await fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: requestSignal, redirect: "error" }); }
     catch { throw new MovieSourceError("wikidata_request_failed", new Date(Date.now() + 60_000)); }
-    const retryRaw = response.headers.get("retry-after");
-    const retrySeconds = retryRaw && /^\d+$/.test(retryRaw) ? Number(retryRaw) : 0;
-    const retryDate = retryRaw && !retrySeconds && Number.isFinite(Date.parse(retryRaw)) ? Date.parse(retryRaw) : 0;
-    const cooldown = new Date(Math.max(Date.now() + 30_000, retryDate, Date.now() + Math.min(86_400, retrySeconds || 60) * 1000));
-    if ([429, 503, 504].includes(response.status)) throw new MovieSourceError(`wikidata_http_${response.status}`, cooldown);
-    if (!response.ok) throw new MovieSourceError(`wikidata_http_${response.status}`, cooldown);
+    const cooldown = new Date(Math.max(Date.now() + 30_000,
+      wikidataRetryAfter(response.headers.get("retry-after"))?.getTime() ?? Date.now() + 60_000));
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new MovieSourceError(`wikidata_http_${response.status}`, cooldown);
+    }
     const length = Number(response.headers.get("content-length") ?? 0);
-    if (length > 24 * 1024 * 1024) throw new MovieSourceError("wikidata_response_too_large");
+    if (length > 24 * 1024 * 1024) {
+      await response.body?.cancel();
+      throw new MovieSourceError("wikidata_response_too_large");
+    }
     let data: any;
     try {
       if (!response.body) throw new Error("body_missing");
       const reader = response.body.getReader();
       const parts: Uint8Array[] = [];
       let bytes = 0;
-      for (;;) {
-        const next = await reader.read();
-        if (next.done) break;
-        bytes += next.value.byteLength;
-        if (bytes > 24 * 1024 * 1024) { await reader.cancel(); throw new MovieSourceError("wikidata_response_too_large"); }
-        parts.push(next.value);
+      try {
+        for (;;) {
+          const next = await reader.read();
+          if (next.done) break;
+          bytes += next.value.byteLength;
+          if (bytes > 24 * 1024 * 1024) throw new MovieSourceError("wikidata_response_too_large");
+          parts.push(next.value);
+        }
+      } finally {
+        await reader.cancel().catch(() => undefined);
+        reader.releaseLock();
       }
       data = JSON.parse(Buffer.concat(parts).toString("utf8"));
     } catch (error) {

@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { describe, expect, it } from "vitest";
-import { addCharacterLabels, isImdbId, movieSlug, normalizeMovie } from "./wikidata-normalizer";
+import { addCharacterLabels, characterQidsFromQualifiers, isImdbId, movieSlug, movieSnapshotDisposition, normalizeMovie } from "./wikidata-normalizer";
 const statement = (property: string, value: unknown, id = property) => ({ id: `Q47703$${id}`, rank: "normal", mainsnak: { property, snaktype: "value", datavalue: { value } } });
 const movie = (extra: Record<string, unknown> = {}) => ({ id: "Q47703", type: "item", labels: { en: { value: "The Godfather" } },
   lastrevid: 123, modified: "2026-11-05T00:00:00Z", claims: { P31: [statement("P31", { id: "Q11424" })], ...extra } });
@@ -41,4 +41,30 @@ describe("Wikidata movie normalization", () => {
     expect(result.imdbId).toBeNull(); expect(result.imdbConflict).toBe(true);
     expect(isImdbId("https://imdb.com/tt0068646")).toBe(false);
   });
+  it("rejects incomplete info but accepts an explicit complete classification removal", () => {
+    for (const key of ["lastrevid", "modified"]) {
+      const raw = movie() as Record<string, unknown>;
+      delete raw[key];
+      expect(() => normalizeMovie(raw, "Q47703")).toThrow("incomplete_entity_info");
+    }
+    expect(normalizeMovie({ ...movie(), claims: {} }, "Q47703").isFilm).toBe(false);
+  });
+  it("preserves monotonic snapshots and retries IMDb ownership conflicts at the same revision", () => {
+    expect(() => movieSnapshotDisposition(null, 42, true, false)).toThrow("incomplete_entity_info");
+    expect(() => movieSnapshotDisposition(41, 42, true, false)).toThrow("stale_source_revision");
+    expect(movieSnapshotDisposition(42, 42, true, false)).toBe("unchanged");
+    expect(movieSnapshotDisposition(42, 42, true, true)).toBe("replace");
+    expect(movieSnapshotDisposition(43, 42, true, false)).toBe("replace");
+  });
+  it("retains only explicit character references for later cached-label resolution", () => {
+    const reference = { snaktype: "value", datavalue: { value: { id: "Q456" } } };
+    expect(characterQidsFromQualifiers({ P453: [reference, reference, { snaktype: "somevalue" }, { ...reference, datavalue: { value: { id: "invalid" } } }] })).toEqual(["Q456"]);
+    expect(characterQidsFromQualifiers({})).toEqual([]);
+  });
+
+  it("matches the truthy classification used by direct-film discovery", () => {
+    const preferred = { ...statement("P31", { id: "Q5" }, "preferred-class"), rank: "preferred" };
+    expect(normalizeMovie(movie({ P31: [statement("P31", { id: "Q11424" }), preferred] }), "Q47703").isFilm).toBe(false);
+  });
+
 });

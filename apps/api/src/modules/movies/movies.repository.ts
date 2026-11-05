@@ -4,7 +4,7 @@ import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, mo
 import { DbProvider } from "../../db.provider";
 import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
-import { isQid, movieSlug } from "./import/wikidata-normalizer";
+import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
 
 const publicMovie = () => and(eq(movies.isFilm, true), isNotNull(movies.hydratedAt), isNotNull(movies.title));
 const chunks = <T>(rows: T[], size = 500): T[][] => Array.from({ length: Math.ceil(rows.length / size) }, (_, i) => rows.slice(i * size, (i + 1) * size));
@@ -54,9 +54,9 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     }
     return out;
   }
-  async unresolvedLabels(limit: number, before: Date) {
+  async labelRefreshCandidates(limit: number, before: Date) {
     return (await this.dbProvider.client.select({ qid: movieEntityLabels.wikidataId }).from(movieEntityLabels)
-      .where(and(isNull(movieEntityLabels.name), lt(movieEntityLabels.checkedAt, before))).orderBy(asc(movieEntityLabels.checkedAt), asc(movieEntityLabels.wikidataId)).limit(Math.min(50, limit))).map((row) => row.qid);
+      .where(lt(movieEntityLabels.checkedAt, before)).orderBy(asc(movieEntityLabels.checkedAt), asc(movieEntityLabels.wikidataId)).limit(Math.min(50, limit))).map((row) => row.qid);
   }
   async writeLabels(labels: EntityLabels, now: Date) {
     await this.dbProvider.transaction(async () => {
@@ -81,7 +81,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const db = this.dbProvider.client;
       const [existing] = await db.select().from(movies).where(eq(movies.wikidataId, movie.wikidataId)).for("update");
       if (!existing) throw new Error("Movie stub is missing");
-      if (movie.sourceRevision !== null && existing.sourceRevision !== null && movie.sourceRevision <= existing.sourceRevision && existing.hydratedAt !== null) {
+      if (movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict) === "unchanged") {
         await db.update(movies).set({ checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
         return "unchanged";
       }
@@ -121,7 +121,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
   async hasPendingWork(now: Date) {
     const pending = await this.dbProvider.client.select({ id: movies.id }).from(movies).where(and(isNull(movies.hydratedAt), due(now))).limit(1);
     if (pending.length) return true;
-    return (await this.unresolvedLabels(1, new Date(now.getTime() - 7 * 24 * 60 * 60_000))).length > 0;
+    return (await this.labelRefreshCandidates(1, new Date(now.getTime() - 7 * 24 * 60 * 60_000))).length > 0;
   }
   async listPublic(filter: { page: number; limit: number; q?: string }) {
     const tokens = filter.q?.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu)?.slice(0, 8) ?? [];
@@ -140,17 +140,19 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     if (!movie) return null;
     const [credits, companies, genres] = await Promise.all([
       db.select({ statementId: movieCredits.statementId, roleProperty: movieCredits.roleProperty, wikidataId: moviePeople.wikidataId, name: moviePeople.name,
-        characterNames: movieCredits.characterNames, rank: movieCredits.rank }).from(movieCredits).innerJoin(moviePeople, eq(moviePeople.id, movieCredits.personId))
+        characterNames: movieCredits.characterNames, qualifiers: movieCredits.qualifiers, rank: movieCredits.rank }).from(movieCredits).innerJoin(moviePeople, eq(moviePeople.id, movieCredits.personId))
         .where(and(eq(movieCredits.movieId, movie.id), ne(movieCredits.rank, "deprecated"))).orderBy(asc(movieCredits.roleProperty), asc(moviePeople.name), asc(movieCredits.statementId)),
       db.select({ wikidataId: movieCompanies.wikidataId, name: movieCompanies.name }).from(movieCompanyLinks).innerJoin(movieCompanies, eq(movieCompanies.id, movieCompanyLinks.companyId))
         .where(eq(movieCompanyLinks.movieId, movie.id)).orderBy(asc(movieCompanies.name)),
       db.select({ name: movieGenres.name, slug: movieGenres.slug }).from(movieGenreLinks).innerJoin(movieGenres, eq(movieGenres.id, movieGenreLinks.genreId))
         .where(and(eq(movieGenreLinks.movieId, movie.id), isNotNull(movieGenres.name))).orderBy(asc(movieGenres.name)),
     ]);
+    const characterLabels = await this.findLabels([...new Set(credits.flatMap((credit) => characterQidsFromQualifiers(credit.qualifiers)))]);
     return { slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate, releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes,
       posterImageUrl: null, wikidataId: movie.wikidataId, imdbId: movie.imdbConflict ? null : movie.imdbId, description: movie.description, originalTitle: movie.originalTitle,
       sourceUpdatedAt: movie.sourceModifiedAt?.toISOString() ?? null, genres: genres.map((genre) => ({ ...genre, name: genre.name! })), companies,
       credits: credits.map((credit) => ({ statementId: credit.statementId, role: ({ P161: "cast", P57: "director", P162: "producer" } as const)[credit.roleProperty as "P161" | "P57" | "P162"],
-        wikidataId: credit.wikidataId, name: credit.name, characterNames: credit.characterNames, rank: credit.rank as "normal" | "preferred" | "deprecated" })) };
+        wikidataId: credit.wikidataId, name: credit.name, characterNames: [...new Set([...credit.characterNames,
+          ...characterQidsFromQualifiers(credit.qualifiers).map((qid) => characterLabels[qid]?.name).filter((name): name is string => !!name)])], rank: credit.rank as "normal" | "preferred" | "deprecated" })) };
   }
 }

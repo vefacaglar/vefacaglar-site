@@ -14,7 +14,7 @@ export interface IMoviesRepository {
   persistMovie(movie: NormalizedMovie, now: Date): Promise<"updated" | "unchanged" | "imdb_conflict">;
   markEntityFailure(qid: string, code: string, now: Date): Promise<void>;
   findLabels(qids: string[]): Promise<Record<string, { name: string | null; checkedAt: Date }>>;
-  unresolvedLabels(limit: number, before: Date): Promise<string[]>;
+  labelRefreshCandidates(limit: number, before: Date): Promise<string[]>;
   writeLabels(labels: EntityLabels, now: Date): Promise<void>;
   hasPendingWork(now: Date): Promise<boolean>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number }>;

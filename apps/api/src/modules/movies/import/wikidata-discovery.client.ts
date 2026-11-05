@@ -1,4 +1,5 @@
 import { injectable } from "tsyringe";
+import { wikidataRetryAfter } from "./wikidata-retry-after";
 import {
   FILM_DISCOVERY_STRATEGY,
   type FilmDiscoveryResult,
@@ -38,13 +39,8 @@ export class WikidataFilmDiscoveryClient implements IFilmDiscoveryClient {
       signal,
     });
     if (!response.ok) {
-      const raw = response.headers.get("retry-after");
-      const seconds = raw !== null && /^\d+$/.test(raw) ? Number(raw) : NaN;
-      const date = raw ? new Date(raw) : null;
-      const retryAfter = Number.isFinite(seconds)
-        ? new Date(Date.now() + seconds * 1000)
-        : date && Number.isFinite(date.getTime()) ? date
-        : [429, 503].includes(response.status) ? new Date(Date.now() + 60_000) : undefined;
+      const retryAfter = wikidataRetryAfter(response.headers.get("retry-after")) ??
+        ([429, 503].includes(response.status) ? new Date(Date.now() + 60_000) : undefined);
       await response.body?.cancel();
       throw new FilmDiscoveryError(`Wikidata film discovery returned HTTP ${response.status}`, retryAfter);
     }
