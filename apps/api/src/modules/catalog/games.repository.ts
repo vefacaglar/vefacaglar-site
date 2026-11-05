@@ -13,7 +13,7 @@ import {
   gamePopularitySignals,
   gameHltbPopularity,
 } from "@vefacaglar/db";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -30,6 +30,7 @@ import type {
   PopularitySource,
   PopularityWrite,
 } from "./games.repository.interface";
+import type { GameModeCandidate, GameModeCursor, OwnerRankingSource } from "./popularity/owner-ranking.types";
 
 const LOOKUP_KINDS: CatalogLookupKind[] = ["developer", "publisher", "genre", "platform", "theme"];
 
@@ -52,6 +53,25 @@ const LINK_TABLES = {
 
 // Postgres caps a statement at 65535 bind parameters; this keeps every bulk insert well below it.
 const INSERT_CHUNK = 1000;
+
+// Domain metadata is read with indexed EXISTS clauses, without fan-out or per-game queries.
+const OWNER_METADATA = {
+  hasAction: sql<boolean>`exists (
+    select 1 from ${gameThemes} inner join ${themes} on ${gameThemes.themeId} = ${themes.id}
+    where ${gameThemes.gameId} = ${games.id} and ${themes.slug} = 'action'
+  ) or exists (
+    select 1 from ${gameGenres} inner join ${genres} on ${gameGenres.genreId} = ${genres.id}
+    where ${gameGenres.gameId} = ${games.id} and ${genres.slug} = 'action'
+  )`,
+  hasRpg: sql<boolean>`exists (
+    select 1 from ${gameGenres} inner join ${genres} on ${gameGenres.genreId} = ${genres.id}
+    where ${gameGenres.gameId} = ${games.id} and ${genres.slug} in ('role-playing-rpg', 'rpg')
+  )`,
+  hasOpenWorld: sql<boolean>`exists (
+    select 1 from ${gameThemes} inner join ${themes} on ${gameThemes.themeId} = ${themes.id}
+    where ${gameThemes.gameId} = ${games.id} and ${themes.slug} = 'open-world'
+  )`,
+};
 
 function chunks<T>(items: T[], size = INSERT_CHUNK): T[][] {
   const out: T[][] = [];
@@ -315,11 +335,12 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const pattern = q?.replace(/[\\%_]/g, (c) => `\\${c}`);
     // Current interest can include announced games and games without a release date.
     const whereExpr = pattern ? ilike(games.title, `%${pattern}%`) : undefined;
-    // Matches games_popularity_score_idx, so browsing can read the top rows straight off the index.
+    // Matches games_recommendation_score_idx. Before the first refresh, null recommendations retain interest order.
     const popularOrder = [
+      sql`${games.recommendationScore} desc nulls last`,
       sql`${games.popularityScore} desc nulls last`,
-      sql`${games.releaseDate} desc nulls last`,
       asc(games.title),
+      asc(games.id),
     ];
     const order = pattern
       ? [
@@ -397,6 +418,9 @@ export class DrizzleGamesRepository implements IGamesRepository {
         igdbId: games.igdbId,
         igdbRatingCount: games.igdbRatingCount,
         popularityScore: games.popularityScore,
+        recommendationScore: games.recommendationScore,
+        gameModeIds: games.gameModeIds,
+        ...OWNER_METADATA,
         title: games.title,
         originalTitle: games.originalTitle,
         releaseDate: games.releaseDate,
@@ -412,6 +436,56 @@ export class DrizzleGamesRepository implements IGamesRepository {
       .leftJoin(gameHltbPopularity, eq(gameHltbPopularity.gameId, games.id))
       .where(isNotNull(games.igdbId));
     return rows.map((r) => ({ ...r, igdbId: r.igdbId! }));
+  }
+
+  async findOwnerRankingSource(gameId: string): Promise<OwnerRankingSource | null> {
+    const [row] = await this.dbProvider.client.select({
+      id: games.id,
+      gameModeIds: games.gameModeIds,
+      popularityScore: games.popularityScore,
+      recommendationScore: games.recommendationScore,
+      ...OWNER_METADATA,
+    }).from(games).where(eq(games.id, gameId)).limit(1);
+    return row ?? null;
+  }
+
+  async listGameModeCandidates(cursor: GameModeCursor | null, limit: number, staleBefore: Date): Promise<GameModeCandidate[]> {
+    const after = !cursor ? undefined : cursor.popularityScore === null
+      ? and(isNull(games.popularityScore), gt(games.id, cursor.id))
+      : or(
+          lt(games.popularityScore, cursor.popularityScore),
+          isNull(games.popularityScore),
+          and(eq(games.popularityScore, cursor.popularityScore), gt(games.id, cursor.id))
+        );
+    const rows = await this.dbProvider.client.select({
+      id: games.id,
+      igdbId: games.igdbId,
+      popularityScore: games.popularityScore,
+    }).from(games).where(and(
+      isNotNull(games.igdbId),
+      or(isNull(games.gameModesCheckedAt), lt(games.gameModesCheckedAt, staleBefore)),
+      or(OWNER_METADATA.hasAction, OWNER_METADATA.hasRpg, OWNER_METADATA.hasOpenWorld),
+      after
+    )).orderBy(sql`${games.popularityScore} desc nulls last`, asc(games.id))
+      .limit(Math.max(1, Math.min(500, Math.trunc(limit))));
+    return rows.map((row) => ({ ...row, igdbId: row.igdbId! }));
+  }
+
+  async writeGameModes(updates: { id: string; gameModeIds: number[] | null }[], checkedAt: Date): Promise<void> {
+    if (updates.length === 0) return;
+    await this.dbProvider.transaction(async () => {
+      for (const chunk of chunks(updates, 500)) {
+        const values = sql.join(chunk.map((row) => sql`(${row.id}::uuid, ${row.gameModeIds === null ? null : JSON.stringify(row.gameModeIds)}::jsonb)`), sql`, `);
+        await this.dbProvider.client.execute(sql`
+          update ${games}
+          set game_mode_ids = case when v.modes is null then ${games.gameModeIds}
+              else array(select jsonb_array_elements_text(v.modes)::integer) end,
+              game_modes_checked_at = ${checkedAt.toISOString()}::timestamptz
+          from (values ${values}) as v(id, modes)
+          where ${games.id} = v.id
+        `);
+      }
+    });
   }
 
   async writePopularity(write: PopularityWrite): Promise<void> {
@@ -441,16 +515,19 @@ export class DrizzleGamesRepository implements IGamesRepository {
         }
       }
 
-      // One UPDATE ... FROM (VALUES ...) per chunk instead of one statement per game.
+      // Interest and recommendation scores commit together, with bounded bulk statements.
+      const recommendationById = new Map(write.recommendationScores.map((score) => [score.id, score.score]));
       for (const chunk of chunks(write.scores)) {
         const values = sql.join(
-          chunk.map((s) => sql`(${s.id}::uuid, ${s.score}::double precision)`),
+          chunk.map((s) => sql`(${s.id}::uuid, ${s.score}::double precision, ${recommendationById.get(s.id) ?? null}::double precision)`),
           sql`, `
         );
         await db.execute(sql`
           update ${games}
-          set popularity_score = v.score, popularity_updated_at = ${write.updatedAt.toISOString()}::timestamptz
-          from (values ${values}) as v(id, score)
+          set popularity_score = v.score, popularity_updated_at = ${write.updatedAt.toISOString()}::timestamptz,
+              recommendation_score = v.recommendation_score, recommendation_version = ${write.recommendationVersion},
+              recommendation_updated_at = ${write.updatedAt.toISOString()}::timestamptz
+          from (values ${values}) as v(id, score, recommendation_score)
           where ${games.id} = v.id
         `);
       }

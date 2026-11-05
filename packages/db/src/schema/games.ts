@@ -34,6 +34,14 @@ export const games = pgTable('games', {
   // 0-1 blend of popularity signals, computed by the popularity refresh; null when the game has none.
   popularityScore: doublePrecision('popularity_score'),
   popularityUpdatedAt: timestamp('popularity_updated_at', { withTimezone: true, mode: 'date' }),
+  // Owner-taste recommendation, separate from current interest. Filled by the catalog refresh.
+  recommendationScore: doublePrecision('recommendation_score'),
+  recommendationVersion: varchar('recommendation_version', { length: 64 }),
+  recommendationUpdatedAt: timestamp('recommendation_updated_at', { withTimezone: true, mode: 'date' }),
+  // null = unchecked; [] = checked with no known modes; IGDB 1 = single player.
+  gameModeIds: integer('game_mode_ids').array(),
+  // Last complete mode lookup attempt; an omitted game keeps its modes unknown/unchanged.
+  gameModesCheckedAt: timestamp('game_modes_checked_at', { withTimezone: true, mode: 'date' }),
   hltbMainHours: decimal('hltb_main_hours', { precision: 6, scale: 1 }),
   hltbMainExtraHours: decimal('hltb_main_extra_hours', { precision: 6, scale: 1 }),
   hltbCompletionistHours: decimal('hltb_completionist_hours', { precision: 6, scale: 1 }),
@@ -48,6 +56,13 @@ export const games = pgTable('games', {
     table.releaseDate.desc().nullsLast(),
     table.title
   ),
+  recommendationScoreIdx: index('games_recommendation_score_idx').on(
+    table.recommendationScore.desc().nullsLast(),
+    table.popularityScore.desc().nullsLast(),
+    table.title,
+    table.id
+  ),
+  gameModesRefreshIdx: index('games_game_modes_refresh_idx').on(table.gameModesCheckedAt, table.id),
   // Dashboard games list order.
   createdAtIdIdx: index('games_created_at_id_idx').on(table.createdAt.desc().nullsFirst(), table.id),
 }));

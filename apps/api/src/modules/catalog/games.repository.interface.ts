@@ -6,6 +6,7 @@ import type { Genre } from "./genres.repository.interface";
 import type { Theme } from "./themes.repository.interface";
 import type { Platform } from "./platforms.repository.interface";
 import type { ImportedTimes } from "./import/import.types";
+import type { GameModeCandidate, GameModeCursor, OwnerRankingSource } from "./popularity/owner-ranking.types";
 
 export type Game = InferSelectModel<typeof games>;
 export type NewGame = InferInsertModel<typeof games>;
@@ -53,7 +54,7 @@ export interface CatalogIndex {
 }
 
 /** A game that can be matched to IGDB popularity data, with its current score. */
-export type PopularitySource = {
+export type PopularitySource = OwnerRankingSource & {
   id: string;
   igdbId: number;
   igdbRatingCount: number | null;
@@ -87,6 +88,8 @@ export type PopularityWrite = {
   popularityTypes: number[];
   signals: PopularitySignal[];
   scores: { id: string; score: number | null }[];
+  recommendationScores: { id: string; score: number }[];
+  recommendationVersion: string;
   /** Only verified matches are upserted; an unavailable provider never deletes snapshots. */
   hltbUpdates: HltbPopularityUpdate[];
   updatedAt: Date;
@@ -125,8 +128,8 @@ export interface IGamesRepository {
   ): Promise<string[]>;
 
   /**
-   * Public listing, including announced games. Without `q`, current interest first;
-   * with `q`, title matches ranked exact > prefix > substring, then by popularity.
+   * Public listing, including announced games. Without `q`, owner taste first, then current interest;
+   * with `q`, title matches ranked exact > prefix > substring, then the same order.
    */
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
 
@@ -138,6 +141,11 @@ export interface IGamesRepository {
   findLookupsByIds(kind: CatalogLookupKind, ids: string[]): Promise<CatalogLookupRow[]>;
   /** Every game linked to IGDB, with what the popularity refresh needs. */
   listPopularitySources(): Promise<PopularitySource[]>;
+  findOwnerRankingSource(gameId: string): Promise<OwnerRankingSource | null>;
+  /** Relevant unchecked/stale games, current-interest keyset order, at most 500. */
+  listGameModeCandidates(cursor: GameModeCursor | null, limit: number, staleBefore: Date): Promise<GameModeCandidate[]>;
+  /** null modes record an omitted-id attempt without erasing previously known modes. */
+  writeGameModes(updates: { id: string; gameModeIds: number[] | null }[], checkedAt: Date): Promise<void>;
   /** Replaces the popularity signals and writes every score in one transaction. Publishes no events. */
   writePopularity(write: PopularityWrite): Promise<void>;
 

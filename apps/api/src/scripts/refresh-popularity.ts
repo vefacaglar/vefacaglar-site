@@ -35,7 +35,8 @@ async function main() {
   console.log(
     `[catalog:popularity] done in ${(result.durationMs / 1000).toFixed(1)}s: ` +
       `${result.gameCount} games, ${result.signalCount} signals, ` +
-      `${result.scoredCount} scored, ${result.reindexedCount} reindexed; ` +
+      `${result.scoredCount} interest scores, ${result.recommendationScoredCount} owner scores, ${result.reindexedCount} reindexed; ` +
+      `game modes ${result.gameModesStatus}: ${result.gameModesCheckedCount} checked; ` +
       `HLTB ${result.hltbStatus}: ${result.hltbMatchedCount}/${result.hltbFetchedCount} matched`
   );
   process.exit(0);

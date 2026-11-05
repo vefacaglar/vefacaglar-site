@@ -13,6 +13,8 @@ export type ImportedGame = {
   criticScoreCount: number | null;
   /** IGDB `total_rating_count` (user + critic ratings); changes over time, so it is always refreshed. */
   ratingCount: number | null;
+  /** Explicit IGDB mode ids; missing means this import did not fetch modes. */
+  gameModeIds?: number[];
   developers: ImportedLookup[];
   publishers: ImportedLookup[];
   genres: ImportedLookup[];
@@ -61,6 +63,8 @@ export interface IIgdbClient {
    * primitive id. The caller matches them to its catalog. No partial result is returned.
    */
   listPopularity(popularityTypes: number[]): Promise<PopularityPrimitive[]>;
+  /** At most 500 explicit ids; omitted games are not reported as empty modes. */
+  listGameModes(igdbIds: number[], signal?: AbortSignal): Promise<{ igdbId: number; gameModeIds: number[] }[]>;
 }
 
 export interface IHltbClient {

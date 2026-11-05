@@ -13,6 +13,9 @@ import {
   REFRESHED_POPULARITY_TYPES,
   type PopularityInput,
 } from "./popularity-score";
+import { OwnerRankingService } from "./owner-ranking.service";
+import { ownerRankingBreakdown } from "./owner-ranking";
+import { OWNER_RANKING_CONFIG } from "./owner-ranking.config";
 import type { RefreshPopularityResponse } from "./popularity.schema";
 
 const SCORE_EPSILON = 1e-9;
@@ -20,7 +23,7 @@ const SCORE_EPSILON = 1e-9;
 /**
  * Pulls current IGDB interest signals, stores those belonging to the catalog,
  * supplements HLTB data separately, and recomputes each game's trend score
- * and reindexes changed games. Strict CLI runs resynchronize all considered
+ * and owner-taste recommendation, and reindexes changed games. Strict CLI runs resynchronize all considered
  * games so retrying a failed search write also repairs unchanged scores.
  */
 @injectable()
@@ -29,14 +32,16 @@ export class RefreshPopularityHandler {
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(IGDB_CLIENT) private readonly igdb: IIgdbClient,
     @inject(EVENT_BUS) private readonly eventBus: IEventBus,
-    @inject(HLTB_CLIENT) private readonly hltb: IHltbClient
+    @inject(HLTB_CLIENT) private readonly hltb: IHltbClient,
+    private readonly ownerRanking: OwnerRankingService
   ) {}
 
   async handle(options: { requireSearchSync?: boolean } = {}): Promise<RefreshPopularityResponse> {
     const startedAt = Date.now();
+    const modes = await this.ownerRanking.backfillGameModes();
     const sources = await this.gamesRepo.listPopularitySources();
     if (sources.length === 0) {
-      return { gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0, hltbStatus: "updated", hltbFetchedCount: 0, hltbMatchedCount: 0, durationMs: Date.now() - startedAt };
+      return { gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0, hltbStatus: "updated", hltbFetchedCount: 0, hltbMatchedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
     }
     const gameIdByIgdbId = new Map(sources.map((s) => [s.igdbId, s.id]));
 
@@ -95,19 +100,30 @@ export class RefreshPopularityHandler {
     const scoreById = computePopularityScores(inputs);
     const scores = sources.map((s) => ({ id: s.id, score: scoreById.get(s.id) ?? null }));
 
+    const recommendationScores = sources.map((source) => ({
+      id: source.id,
+      score: ownerRankingBreakdown({ ...source, popularityScore: scoreById.get(source.id) ?? null }).score,
+    }));
+
     await this.gamesRepo.writePopularity({
       popularityTypes: REFRESHED_POPULARITY_TYPES,
       signals,
       scores,
+      recommendationScores,
+      recommendationVersion: OWNER_RANKING_CONFIG.version,
       hltbUpdates,
       updatedAt: new Date(),
     });
 
     const previous = new Map(sources.map((s) => [s.id, s.popularityScore]));
+    const sourcesById = new Map(sources.map((source) => [source.id, source]));
     const changedIds = options.requireSearchSync
       ? sources.map((source) => source.id)
       : [...new Set([
           ...scores.filter((s) => scoreChanged(previous.get(s.id) ?? null, s.score)).map((s) => s.id),
+          ...recommendationScores.filter((score) => scoreChanged(
+            sourcesById.get(score.id)?.recommendationScore ?? null, score.score
+          )).map((score) => score.id),
           ...hltbUpdates.map((update) => update.gameId),
         ])];
     // The bulk-change event reindexes the games in batches through the search subscriber.
@@ -124,6 +140,9 @@ export class RefreshPopularityHandler {
       hltbStatus,
       hltbFetchedCount,
       hltbMatchedCount: hltbUpdates.length,
+      recommendationScoredCount: recommendationScores.length,
+      gameModesCheckedCount: modes.checkedCount,
+      gameModesStatus: modes.status,
       durationMs: Date.now() - startedAt,
     };
   }

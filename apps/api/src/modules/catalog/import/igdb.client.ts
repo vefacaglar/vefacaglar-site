@@ -8,6 +8,7 @@ import {
   type PopularityPrimitive,
 } from "./import.types";
 import { readPopularityPages } from "./igdb-popularity";
+import { parseGameModeRows, parseGameModeIds } from "./igdb-game-modes";
 
 const TOKEN_URL = "https://id.twitch.tv/oauth2/token";
 const GAMES_URL = "https://api.igdb.com/v4/games";
@@ -18,7 +19,7 @@ const PAGE_SIZE = 500; // IGDB's maximum per request
 const MIN_REQUEST_INTERVAL_MS = 260;
 
 const FIELDS = [
-  "fields id,name,slug,summary,first_release_date,cover.image_id,game_type.type,aggregated_rating,aggregated_rating_count,total_rating_count,",
+  "fields id,name,slug,summary,first_release_date,cover.image_id,game_type.type,game_modes,aggregated_rating,aggregated_rating_count,total_rating_count,",
   "genres.name,genres.slug,themes.name,themes.slug,platforms.name,platforms.slug,",
   "involved_companies.developer,involved_companies.publisher,",
   "involved_companies.company.name,involved_companies.company.slug;",
@@ -37,6 +38,7 @@ type IgdbGame = {
   first_release_date?: number;
   cover?: { image_id: string };
   game_type?: { type: string };
+  game_modes?: number[];
   aggregated_rating?: number;
   aggregated_rating_count?: number;
   total_rating_count?: number;
@@ -82,13 +84,26 @@ export class IgdbClient implements IIgdbClient {
     return readPopularityPages(popularityTypes, (query) => this.query<unknown>(POPULARITY_URL, query));
   }
 
-  private async query<T = IgdbGame>(url: string, body: string): Promise<T[]> {
+  async listGameModes(igdbIds: number[], signal?: AbortSignal): Promise<{ igdbId: number; gameModeIds: number[] }[]> {
+    if (igdbIds.length === 0) return [];
+    if (igdbIds.length > PAGE_SIZE || igdbIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+      throw new Error("Invalid IGDB game-mode batch");
+    }
+    const ids = [...new Set(igdbIds)];
+    const rows = await this.query<unknown>(GAMES_URL,
+      `fields id,game_modes; where id = (${ids.join(",")}); limit ${PAGE_SIZE};`, signal);
+    return parseGameModeRows(rows, ids);
+  }
+
+  private async query<T = IgdbGame>(url: string, body: string, signal?: AbortSignal): Promise<T[]> {
     for (let attempt = 0; ; attempt++) {
+      signal?.throwIfAborted();
       await this.throttle();
-      const res = await fetch(url, { method: "POST", headers: await this.authHeaders(), body });
+      const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000);
+      const res = await fetch(url, { method: "POST", headers: await this.authHeaders(requestSignal), body, signal: requestSignal });
       // 429 means we went over 4 req/s; back off briefly and retry.
       if (res.status === 429 && attempt < 5) {
-        await sleep(1000 * (attempt + 1));
+        await sleep(1000 * (attempt + 1), signal);
         continue;
       }
       if (!res.ok) throw new Error(`IGDB request failed: ${res.status} ${await res.text()}`);
@@ -120,6 +135,7 @@ export class IgdbClient implements IIgdbClient {
       criticScore: game.aggregated_rating != null ? Math.round(game.aggregated_rating) : null,
       criticScoreCount: game.aggregated_rating != null ? (game.aggregated_rating_count ?? null) : null,
       ratingCount: game.total_rating_count ?? null,
+      gameModeIds: parseGameModeIds(game.game_modes),
       developers: lookup(companies.filter((c) => c.developer).map((c) => c.company)),
       publishers: lookup(companies.filter((c) => c.publisher).map((c) => c.company)),
       genres: lookup(game.genres),
@@ -128,7 +144,7 @@ export class IgdbClient implements IIgdbClient {
     };
   }
 
-  private async authHeaders(): Promise<Record<string, string>> {
+  private async authHeaders(signal?: AbortSignal): Promise<Record<string, string>> {
     const clientId = process.env.IGDB_CLIENT_ID;
     const clientSecret = process.env.IGDB_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
@@ -141,7 +157,7 @@ export class IgdbClient implements IIgdbClient {
         client_secret: clientSecret,
         grant_type: "client_credentials",
       });
-      const res = await fetch(`${TOKEN_URL}?${params}`, { method: "POST" });
+      const res = await fetch(`${TOKEN_URL}?${params}`, { method: "POST", signal: signal ?? AbortSignal.timeout(20_000) });
       if (!res.ok) throw new Error(`Twitch token request failed: ${res.status}`);
       const data = (await res.json()) as { access_token: string; expires_in: number };
       // Refresh a minute early so a long run never sends an expired token.
@@ -156,6 +172,12 @@ export class IgdbClient implements IIgdbClient {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const finish = () => { signal?.removeEventListener("abort", abort); resolve(); };
+    const timer = setTimeout(finish, ms);
+    const abort = () => { clearTimeout(timer); reject(signal?.reason); };
+    signal?.addEventListener("abort", abort, { once: true });
+  });
 }

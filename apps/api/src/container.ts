@@ -26,6 +26,7 @@ import { DrizzlePlatformsRepository } from "./modules/catalog/platforms.reposito
 import { DrizzleGamesRepository } from "./modules/catalog/games.repository";
 import { IGDB_CLIENT, HLTB_CLIENT } from "./modules/catalog/import/import.tokens";
 import { IgdbClient } from "./modules/catalog/import/igdb.client";
+import { OwnerRankingService } from "./modules/catalog/popularity/owner-ranking.service";
 import { HltbClient } from "./modules/catalog/import/hltb.client";
 import { GAME_LOGS_REPOSITORY } from "./modules/games/games.tokens";
 import { DrizzleGameLogsRepository } from "./modules/games/game-logs.repository";
@@ -70,6 +71,7 @@ container.registerSingleton(PLATFORMS_REPOSITORY, DrizzlePlatformsRepository);
 container.registerSingleton(GAMES_REPOSITORY, DrizzleGamesRepository);
 container.registerSingleton(IGDB_CLIENT, IgdbClient);
 container.registerSingleton(HLTB_CLIENT, HltbClient);
+container.registerSingleton(OwnerRankingService);
 container.registerSingleton(GAME_LOGS_REPOSITORY, DrizzleGameLogsRepository);
 container.registerSingleton(PACKAGES_REPOSITORY, DrizzlePackagesRepository);
 container.registerSingleton(JOBS_REPOSITORY, DrizzleJobsRepository);

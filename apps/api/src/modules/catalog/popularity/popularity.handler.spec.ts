@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { OwnerRankingService } from "./owner-ranking.service";
 import { RefreshPopularityHandler } from "./popularity.handler";
 import { computePopularityScores, percentileRanks, type PopularityInput } from "./popularity-score";
 import type { IGamesRepository } from "../games.repository.interface";
@@ -84,6 +85,7 @@ describe("RefreshPopularityHandler", () => {
   let eventBus: Record<keyof IEventBus, any>;
   let hltb: Record<keyof IHltbClient, any>;
   let handler: RefreshPopularityHandler;
+  let ownerRanking: { backfillGameModes: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     gamesRepo = {
@@ -106,8 +108,39 @@ describe("RefreshPopularityHandler", () => {
     };
     eventBus = { publish: vi.fn().mockResolvedValue(undefined), subscribe: vi.fn() };
     hltb = { findTimes: vi.fn(), listPopular: vi.fn().mockResolvedValue([]) };
+    ownerRanking = { backfillGameModes: vi.fn().mockResolvedValue({ checkedCount: 0, status: "complete" }) };
     handler = new RefreshPopularityHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient,
-      eventBus as unknown as IEventBus, hltb as unknown as IHltbClient);
+      eventBus as unknown as IEventBus, hltb as unknown as IHltbClient, ownerRanking as unknown as OwnerRankingService);
+  });
+
+
+  it("writes versioned taste scores from refreshed interest and verified metadata", async () => {
+    const sources = await gamesRepo.listPopularitySources();
+    Object.assign(sources[0], { hasAction: true, hasRpg: true, hasOpenWorld: true, gameModeIds: [1] });
+    Object.assign(sources[1], { hasAction: true, hasRpg: false, hasOpenWorld: false, gameModeIds: [2] });
+    ownerRanking.backfillGameModes.mockResolvedValue({ checkedCount: 500, status: "budget" });
+    const result = await handler.handle();
+    expect(gamesRepo.writePopularity.mock.calls[0][0]).toMatchObject({
+      recommendationVersion: "owner-taste-v1",
+      recommendationScores: [{ id: "g-a", score: 1 }, { id: "g-b", score: 0 }, { id: "g-c", score: 0 }],
+    });
+    expect(result).toMatchObject({ recommendationScoredCount: 3, gameModesCheckedCount: 500, gameModesStatus: "budget" });
+  });
+
+  it("reindexes a changed taste score even when current interest is unchanged", async () => {
+    const sources = await gamesRepo.listPopularitySources();
+    Object.assign(sources[0], { popularityScore: 1, recommendationScore: 0.35, hasRpg: true, gameModeIds: [1] });
+    Object.assign(sources[1], { popularityScore: 0, recommendationScore: 0 });
+    Object.assign(sources[2], { popularityScore: null, recommendationScore: 0 });
+    await handler.handle();
+    expect(eventBus.publish).toHaveBeenCalledWith(expect.objectContaining({ gameIds: ["g-a"] }), { throwOnError: undefined });
+  });
+
+  it("keeps unknown mode metadata usable when optional mode hydration is unavailable", async () => {
+    ownerRanking.backfillGameModes.mockResolvedValue({ checkedCount: 0, status: "unavailable" });
+    const result = await handler.handle();
+    expect(result.gameModesStatus).toBe("unavailable");
+    expect(gamesRepo.writePopularity.mock.calls[0][0].recommendationScores[0]).toEqual({ id: "g-a", score: 0.35 });
   });
 
   it("fetches current types globally and matches the returned game ids locally", async () => {
@@ -124,8 +157,8 @@ describe("RefreshPopularityHandler", () => {
 
   it("reindexes changed games and reports counts", async () => {
     const result = await handler.handle();
-    expect(eventBus.publish).toHaveBeenCalledWith(expect.objectContaining({ type: "games.imported", gameIds: ["g-a", "g-b"] }), { throwOnError: undefined });
-    expect(result).toMatchObject({ gameCount: 3, signalCount: 2, scoredCount: 2, reindexedCount: 2 });
+    expect(eventBus.publish).toHaveBeenCalledWith(expect.objectContaining({ type: "games.imported", gameIds: ["g-a", "g-b", "g-c"] }), { throwOnError: undefined });
+    expect(result).toMatchObject({ gameCount: 3, signalCount: 2, scoredCount: 2, reindexedCount: 3 });
   });
 
   it("does not fetch or write for an empty catalog", async () => {

@@ -192,6 +192,8 @@ export class ImportGameHandler {
       criticScore: source.criticScore,
       criticScoreCount: source.criticScoreCount,
       igdbRatingCount: source.ratingCount,
+      gameModeIds: source.gameModeIds,
+      gameModesCheckedAt: source.gameModeIds === undefined ? undefined : new Date(),
       hltbMainHours: toDecimal(times?.mainHours),
       hltbMainExtraHours: toDecimal(times?.mainExtraHours),
       hltbCompletionistHours: toDecimal(times?.completionistHours),
@@ -235,6 +237,10 @@ export class ImportGameHandler {
     // The rating count drifts over time, so it is always refreshed. It only feeds the
     // popularity refresh (not the search document), so it is bookkeeping here too.
     if ((existing.igdbRatingCount ?? null) !== source.ratingCount) patch.igdbRatingCount = source.ratingCount;
+    if (source.gameModeIds !== undefined) {
+      patch.gameModeIds = source.gameModeIds;
+      patch.gameModesCheckedAt = new Date();
+    }
     if (Object.keys(patch).length > 0) write.gameUpdates.push({ id: existing.id, patch: { ...patch, updatedAt: new Date() } });
     for (const kind of relationGaps) this.planLinks(write, kind, existing.id, source[LOOKUP_FIELDS[kind]]);
 
