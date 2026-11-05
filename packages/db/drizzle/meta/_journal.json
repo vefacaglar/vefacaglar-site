@@ -190,6 +190,13 @@
       "when": 1793909166463,
       "tag": "0026_catalog_popularity_job",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793919486439,
+      "tag": "0027_movies_catalog",
+      "breakpoints": true
     }
   ]
 }
