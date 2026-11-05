@@ -54,6 +54,7 @@ const noIndexHeaders = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig = {
   output: "standalone",
+  transpilePackages: ["@vefacaglar/ui"],
   outputFileTracingRoot: require("path").join(__dirname, "../.."),
   poweredByHeader: false,
   experimental: {

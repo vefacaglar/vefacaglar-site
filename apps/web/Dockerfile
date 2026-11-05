@@ -3,8 +3,10 @@ WORKDIR /app
 RUN npm install --global pnpm@11.2.2
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/ui/package.json ./packages/ui/package.json
 RUN pnpm install --frozen-lockfile --filter web...
 COPY apps/web ./apps/web
+COPY packages/ui ./packages/ui
 # Public values are compiled into the image. No runtime credentials enter the build.
 ARG NEXT_PUBLIC_API_URL=https://api2.vefacaglar.com
 ARG NEXT_PUBLIC_SITE_URL=https://vefacaglar.com

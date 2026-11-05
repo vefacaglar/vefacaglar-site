@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@vefacaglar/ui": "workspace:*",
     "next": "15.5.28",
     "nprogress": "^0.2.0",
     "react": "^19.3.1",

@@ -9,6 +9,7 @@ import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
 import { getAuthMode } from "../lib/oidc";
+import "@vefacaglar/ui/styles.css";
 import "./globals.css";
 import styles from "./layout.module.css";
 
