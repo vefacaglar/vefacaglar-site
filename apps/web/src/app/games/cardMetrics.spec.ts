@@ -3,7 +3,9 @@ import { formatHltbHours, formatPopularity } from "./cardMetrics";
 
 describe("game card metrics", () => {
   it("formats a normalized popularity index on a 0–100 scale", () => {
-    expect(formatPopularity(0.826, "en")).toBe("83");
+    expect(formatPopularity(0.826, "en")).toBe("82.6");
+    expect(formatPopularity(0.9997, "en")).toBe("99.97");
+    expect(formatPopularity(0.9997, "tr")).toBe("99,97");
     expect(formatPopularity(0.98, "tr")).toBe("98");
     expect(formatPopularity(0, "en")).toBe("0");
     expect(formatPopularity(1, "en")).toBe("100");
