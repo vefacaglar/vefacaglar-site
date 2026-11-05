@@ -150,6 +150,8 @@ exec "$@"
         calls = (self.root / "ssh-calls").read_text()
         self.assertIn("rm -rf ~/vefacaglar-api/.incoming-123-1", calls)
         self.assertIn("StrictHostKeyChecking=yes", calls)
+        self.assertIn("ServerAliveInterval=30", calls)
+        self.assertIn("ServerAliveCountMax=10", calls)
         self.assertNotIn("ci-ssh-password", calls + result.stdout + result.stderr)
         self.assertNotIn("ci-registry-token", calls + result.stdout + result.stderr)
         if fail_upload:

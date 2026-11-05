@@ -9,7 +9,7 @@ test -n "$REGISTRY_TOKEN"
 
 ssh_command=(ssh)
 scp_command=(scp)
-options=(-o StrictHostKeyChecking=yes -o ConnectTimeout=15)
+options=(-o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
 if [[ -s "$RUNNER_TEMP/vefacaglar-api-ssh-key" ]]; then
   options+=(-o BatchMode=yes -o IdentitiesOnly=yes -i "$RUNNER_TEMP/vefacaglar-api-ssh-key")
 else

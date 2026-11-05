@@ -80,7 +80,8 @@ class BlueGreenTest(unittest.TestCase):
                 patch.object(BG, "run", side_effect=self.command), \
                 patch.object(BG, "verify", side_effect=self.verify), \
                 patch.object(BG.time, "time_ns", return_value=self.counter), \
-                patch.object(BG.time, "sleep", side_effect=self.sleep):
+                patch.object(BG.time, "sleep", side_effect=self.sleep), \
+                patch("builtins.print", side_effect=lambda message, **kwargs: self.events.append(("log", message, kwargs.get("flush", False)))):
             BG.deploy(self.root, self.bundle, IMAGE)
 
     def test_first_deploy_then_alternating_releases_stop_previous_after_ten_minutes(self):
@@ -96,12 +97,17 @@ class BlueGreenTest(unittest.TestCase):
         state = BG.read(self.root / ".releases.json")
         self.assertEqual(state["active"]["id"], "green-2")
         self.assertEqual(state["previous"]["id"], "blue-1")
-        self.assertIn(("sleep", 600), self.events)
+        sleeps = [(index, event[1]) for index, event in enumerate(self.events) if event[0] == "sleep"]
+        self.assertEqual(sum(seconds for _, seconds in sleeps), 600)
+        self.assertLessEqual(max(seconds for _, seconds in sleeps), 30)
+        progress = [event for event in self.events if event[0] == "log" and "retirement grace:" in event[1]]
+        self.assertTrue(progress)
+        self.assertTrue(all(event[2] for event in progress))
         stopped = self.events.index(("blue-1", "stop", "--timeout", "30", "api"))
-        self.assertLess(self.events.index(("sleep", 600)), stopped)
+        self.assertLess(sleeps[-1][0], stopped)
         verified = [index for index, event in enumerate(self.events) if event == ("verify", "green-2")]
         self.assertEqual(len(verified), 2)
-        self.assertLess(self.events.index(("sleep", 600)), verified[-1])
+        self.assertLess(sleeps[-1][0], verified[-1])
         self.assertLess(verified[-1], stopped)
         self.assertNotIn(("blue-1", "down", "--timeout", "30"), self.events)
         self.deploy()
@@ -111,7 +117,9 @@ class BlueGreenTest(unittest.TestCase):
     def test_original_single_container_is_retired_after_the_same_grace_period(self):
         self.legacy = "a" * 12
         self.deploy()
-        self.assertLess(self.events.index(("sleep", 600)), self.events.index(("docker", "stop", "--time", "30", self.legacy)))
+        sleeps = [(index, event[1]) for index, event in enumerate(self.events) if event[0] == "sleep"]
+        self.assertEqual(sum(seconds for _, seconds in sleeps), 600)
+        self.assertLess(sleeps[-1][0], self.events.index(("docker", "stop", "--time", "30", self.legacy)))
         self.assertIn(("docker", "rm", self.legacy), self.events)
 
     def test_regression_at_end_of_window_keeps_previous_running(self):

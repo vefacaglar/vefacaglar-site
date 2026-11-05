@@ -182,7 +182,14 @@ def deploy(root, bundle, image):
             raise RuntimeError("Invalid legacy container ID")
         if active or legacy:
             print("Keeping the previous API running for 10 minutes before retirement.", flush=True)
-            time.sleep(PREVIOUS_RELEASE_GRACE_SECONDS)
+            remaining = PREVIOUS_RELEASE_GRACE_SECONDS
+            while remaining > 0:
+                interval = min(30, remaining)
+                time.sleep(interval)
+                remaining -= interval
+                # Keep the remote channel active and expose progress during the
+                # otherwise silent drain period without shortening retention.
+                print(f"Previous API retirement grace: {remaining}s remaining.", flush=True)
             # Never discard the running fallback if the new release regressed.
             verify(candidate)
         if active:
