@@ -22,8 +22,8 @@
   grid-template-columns: auto 1fr auto;
   grid-template-areas: "mark tabs utility";
   align-items: stretch;
-  column-gap: 40px;
-  min-height: 60px;
+  column-gap: 36px;
+  min-height: 64px;
 }
 
 /* The header divider runs edge to edge. */
@@ -42,8 +42,8 @@
   grid-area: mark;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 16px;
+  gap: 8px;
+  font-size: 15px;
   line-height: 1;
   letter-spacing: -0.01em;
   text-decoration: none;
@@ -51,12 +51,22 @@
 }
 
 .owner {
+  padding: 4px 7px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-heading);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .name {
-  font-weight: 500;
-  color: var(--muted);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.015em;
+  color: var(--text);
   transition: color 0.15s ease;
 }
 
@@ -64,8 +74,13 @@
   color: var(--text-heading);
 }
 
+.wordmark:hover .owner {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
 .wordmark:hover .name {
-  color: var(--text);
+  color: var(--text-heading);
 }
 
 .tabs {
@@ -80,9 +95,11 @@
 .tab {
   display: inline-flex;
   align-items: center;
+  padding: 0 2px;
   margin-bottom: -1px;
   border-bottom: 2px solid transparent;
   font-size: 14px;
+  letter-spacing: 0.01em;
   color: var(--muted);
   text-decoration: none;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -91,12 +108,14 @@
 
 .tab:hover {
   color: var(--text-heading);
+  border-bottom-color: var(--border-strong);
 }
 
 .tabActive,
 .tabActive:hover {
   color: var(--text-heading);
   border-bottom-color: var(--accent);
+  font-weight: 600;
 }
 
 .utility {
@@ -110,7 +129,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 6px 12px;
+  padding: 6px 14px;
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   font-size: 13px;
@@ -123,23 +143,24 @@
 
 .account:hover {
   color: var(--text-heading);
-  border-color: var(--muted);
-  background: var(--surface);
+  border-color: var(--accent);
+  background: var(--surface-2);
 }
 
 .accountActive,
 .accountActive:hover {
   border-color: var(--accent);
+  background: var(--surface-2);
 }
 
 .signOutForm {
   display: flex;
-  margin-left: 20px;
+  margin-left: 16px;
 }
 
 .signOut {
-  padding: 7px 0;
-  border: 0;
+  padding: 6px 10px;
+  border: 1px solid transparent;
   border-radius: 0;
   background: none;
   font: inherit;
@@ -147,11 +168,13 @@
   line-height: 1.4;
   color: var(--muted);
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .signOut:hover {
   color: var(--text-heading);
+  border-color: var(--border);
+  background: var(--surface);
 }
 
 .wordmark:focus-visible,
@@ -166,7 +189,7 @@
 
 /* Pages can pull full-bleed bands up to the header rule with --shell-pad-top. */
 .body {
-  --shell-pad-top: 40px;
+  --shell-pad-top: 44px;
   padding: var(--shell-pad-top) 0 120px;
 }
 
@@ -175,14 +198,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 20px 0 32px;
+  padding: 24px 0 36px;
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 13px;
 }
 
 .footerMark {
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 
 /* The shared language switch: show the language code in capitals. */
@@ -222,7 +249,7 @@
   }
 
   .signOutForm {
-    margin-left: 14px;
+    margin-left: 10px;
   }
 
   .signOut {
@@ -230,7 +257,7 @@
   }
 
   .tabs {
-    gap: 28px;
+    gap: 24px;
     border-top: 1px solid var(--border);
   }
 

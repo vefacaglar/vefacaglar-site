@@ -257,20 +257,20 @@ html {
    ========================================================================== */
 :root:has([data-library]),
 [data-library] {
-  --bg: #141414;            /* page */
-  --surface: #1a1a1a;       /* raised areas: game header, profile header, panels */
-  --surface-2: #222222;     /* inputs, plates, covers before they load */
-  --text: #e4e4e4;          /* body text */
-  --text-heading: #f4f4f4;  /* titles */
-  --muted: #9b9b9b;         /* secondary text, labels */
-  --faint: #6c6c6c;         /* quiet figures, disabled */
-  --border: #292929;        /* dividers */
-  --border-strong: #3a3a3a; /* control outlines, hover */
-  --accent: #8aa4c8;        /* calm steel blue: active state, bars, focus */
-  --on-accent: #111111;     /* text on the accent */
-  --success: #8fa898;
-  --warning: #b3a58d;
-  --info: #8f9fb3;
+  --bg: #0e1013;            /* page */
+  --surface: #15181d;       /* raised areas: game header, profile header, panels */
+  --surface-2: #1d2229;     /* inputs, plates, covers before they load */
+  --text: #e2e6ec;          /* body text */
+  --text-heading: #f6f8fa;  /* titles */
+  --muted: #949eae;         /* secondary text, labels */
+  --faint: #636d7e;         /* quiet figures, disabled */
+  --border: #262c36;        /* dividers */
+  --border-strong: #384150; /* control outlines, hover */
+  --accent: #8fb0d8;        /* calm steel blue: active state, bars, focus */
+  --on-accent: #0e1013;     /* text on the accent */
+  --success: #82b596;
+  --warning: #c8ae7d;
+  --info: #85a9d6;
 }
 
 /* Library buttons: near-white primary, quiet outline secondary. */
