@@ -85,7 +85,7 @@ export default async function ProfileOverview(props: OverviewProps) {
         {recent.length === 0 ? (
           <ProfileEmpty isOwner={isOwner} name={name} lang={lang} />
         ) : (
-          <ProfileGameGrid games={recent} lang={lang} />
+          <ProfileGameGrid games={recent} lang={lang} isOwner={isOwner} />
         )}
       </section>
     </>

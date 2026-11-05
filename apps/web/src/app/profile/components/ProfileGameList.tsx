@@ -215,11 +215,11 @@ export default function ProfileGameList({
         </tr>
       </thead>
       {games.map((game) => {
-        const href = localizeHref(`/games/${game.slug}`, lang);
         const editHref =
           isOwner && game.latestLogId
             ? localizeHref(`/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
             : null;
+        const href = editHref ?? localizeHref(`/games/${game.slug}`, lang);
         const finished = showCompletedAt && game.completedAt ? shortDate(game.completedAt, lang) : "";
         const playtime = game.playtimeHours !== null ? String(game.playtimeHours) : null;
         const rating = game.rating !== null ? outOfTen(game.rating, lang) : null;

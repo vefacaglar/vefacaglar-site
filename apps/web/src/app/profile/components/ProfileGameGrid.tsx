@@ -11,6 +11,7 @@ import { scoreTier } from "../../games/scoreTier";
 type ProfileGameGridProps = {
   games: LibraryGame[];
   lang: string;
+  isOwner?: boolean;
   /** Add the completion date to each caption (when the shelf is ordered by it). */
   showCompletedAt?: boolean;
   /** Leave the status out when every card on the shelf shares it. */
@@ -32,16 +33,26 @@ function shortDate(key: string, lang: string): string {
  * A user's games as a cover wall, sharing the games shelf's cards. The plate on the
  * cover is the user's own rating; the caption carries their status and playtime.
  */
-export default function ProfileGameGrid({ games, lang, showCompletedAt = false, hideStatus = false }: ProfileGameGridProps) {
+export default function ProfileGameGrid({
+  games,
+  lang,
+  isOwner = true,
+  showCompletedAt = false,
+  hideStatus = false,
+}: ProfileGameGridProps) {
   const dict = getDictionary(lang);
 
   return (
     <ul className={shelf.grid}>
       {games.map((game) => {
         const completed = showCompletedAt && game.completedAt ? shortDate(game.completedAt, lang) : "";
+        const href =
+          isOwner && game.latestLogId
+            ? localizeHref(`/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
+            : localizeHref(`/games/${game.slug}`, lang);
         return (
           <li key={game.slug}>
-            <Link href={localizeHref(`/games/${game.slug}`, lang)} className={shelf.card}>
+            <Link href={href} className={shelf.card}>
               <div className={shelf.cover}>
                 {game.coverImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

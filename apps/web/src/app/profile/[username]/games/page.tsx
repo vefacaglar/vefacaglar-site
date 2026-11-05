@@ -169,6 +169,7 @@ export default async function ProfileGames(props: ProfileGamesProps) {
           <ProfileGameGrid
             games={shown}
             lang={lang}
+            isOwner={isOwner}
             showCompletedAt={sort === "completed"}
             hideStatus={tab !== "all"}
           />
