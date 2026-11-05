@@ -10,6 +10,7 @@ import Pagination from "../components/Pagination";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
 import GamesSearch from "./GamesSearch";
 import { scoreTier } from "./scoreTier";
+import { formatHltbHours, formatPopularity } from "./cardMetrics";
 
 type GameCard = {
   slug: string;
@@ -18,6 +19,10 @@ type GameCard = {
   releaseDate: string | null;
   // Optional: cached list responses from before the field existed lack it.
   criticScore?: number | null;
+  popularityScore?: number | null;
+  hltbMainHours?: string | null;
+  hltbMainExtraHours?: string | null;
+  hltbCompletionistHours?: string | null;
 };
 
 export async function generateMetadata() {
@@ -56,33 +61,58 @@ export default async function Games(props: GamesProps) {
       ) : (
         <>
           <ul className={styles.grid}>
-            {games.map((game) => (
-              <li key={game.slug}>
-                <Link href={localizeHref(`/games/${game.slug}`, lang)} className={styles.card}>
-                  <div className={styles.cover}>
-                    {game.coverImageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={game.coverImageUrl} alt="" loading="lazy" />
-                    ) : (
-                      <span className={styles.coverFallback}>{game.title}</span>
-                    )}
-                    {game.criticScore != null && (
-                      <span
-                        className={styles.score}
-                        data-tier={scoreTier(game.criticScore)}
-                        aria-label={`${dict.critic_score}: ${game.criticScore}/100`}
-                      >
-                        {game.criticScore}
-                      </span>
-                    )}
-                  </div>
-                  <span className={styles.caption}>
-                    <span className={styles.title}>{game.title}</span>
-                    {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
-                  </span>
-                </Link>
-              </li>
-            ))}
+            {games.map((game) => {
+              const popularity = formatPopularity(game.popularityScore, lang);
+              const durations = [
+                { label: "Main story", hours: formatHltbHours(game.hltbMainHours, lang) },
+                { label: "Main + extras", hours: formatHltbHours(game.hltbMainExtraHours, lang) },
+                { label: "Completionist", hours: formatHltbHours(game.hltbCompletionistHours, lang) },
+              ].filter((duration) => duration.hours !== null);
+
+              return (
+                <li key={game.slug}>
+                  <Link href={localizeHref(`/games/${game.slug}`, lang)} className={styles.card}>
+                    <div className={styles.cover}>
+                      {game.coverImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={game.coverImageUrl} alt="" loading="lazy" />
+                      ) : (
+                        <span className={styles.coverFallback}>{game.title}</span>
+                      )}
+                      {game.criticScore != null && (
+                        <span
+                          className={styles.score}
+                          data-tier={scoreTier(game.criticScore)}
+                          aria-label={`${dict.critic_score}: ${game.criticScore}/100`}
+                        >
+                          {game.criticScore}
+                        </span>
+                      )}
+                    </div>
+                    <span className={styles.caption}>
+                      <span className={styles.title}>{game.title}</span>
+                      {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
+                      {popularity !== null && (
+                        <span className={styles.popularity} aria-label={`Popularity index: ${popularity} out of 100`}>
+                          Popularity {popularity}/100
+                        </span>
+                      )}
+                      {durations.length > 0 && (
+                        <span className={styles.durations}>
+                          <span className={styles.durationsSource}>HowLongToBeat</span>
+                          {durations.map(({ label, hours }) => (
+                            <span className={styles.duration} key={label}>
+                              <span>{label}</span>
+                              <span>{hours}h</span>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           <Pagination
             currentPage={page}
