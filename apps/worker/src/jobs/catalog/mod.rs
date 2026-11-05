@@ -3,7 +3,7 @@
 
 use std::path::Path;
 use std::process::Stdio;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context as _, Result};
 use async_trait::async_trait;
@@ -22,6 +22,30 @@ pub const CONCURRENCY_KEY: &str = "search.index";
 const SCRIPT: &str = "/app/apps/api/dist/scripts/refresh-popularity.js";
 const PREFIX: &str = "[catalog:popularity] ";
 const MAX_LINE_BYTES: usize = 4096;
+
+pub mod movies;
+
+struct CliSpec {
+    prefix: &'static str,
+    label: &'static str,
+    phase: &'static str,
+    interrupted: &'static str,
+    deadline: Option<Duration>,
+}
+const POPULARITY: CliSpec = CliSpec {
+    prefix: PREFIX,
+    label: "Catalog popularity",
+    phase: "refreshing game popularity",
+    interrupted: "Catalog refresh stopped; its next attempt will safely rerun the full refresh",
+    deadline: None,
+};
+const MOVIES: CliSpec = CliSpec {
+    prefix: "[catalog:movies] ",
+    label: "Movie catalog",
+    phase: "synchronizing movie catalog",
+    interrupted: "Movie sync stopped; durable source progress will resume on its next run",
+    deadline: Some(Duration::from_secs(210)),
+};
 
 pub struct CatalogPopularityHandler;
 
@@ -97,16 +121,22 @@ fn validate_payload(payload: &Value) -> Result<()> {
 /// No shell or user-supplied command. The runner's heartbeat remains independent
 /// while this child works. All exits stop and reap it; kill_on_drop also covers
 /// a task aborted at the worker's shutdown deadline.
-async fn run_command(
+async fn run_command(io: &dyn JobIo, command: Command, secrets: &[String]) -> Result<JobOutcome> {
+    run_command_with_spec(io, command, secrets, &POPULARITY).await
+}
+
+async fn run_command_with_spec(
     io: &dyn JobIo,
     mut command: Command,
     secrets: &[String],
+    spec: &'static CliSpec,
 ) -> Result<JobOutcome> {
     if io.should_stop() {
         return Ok(JobOutcome::Interrupted);
     }
+    let started = Instant::now();
     io.progress(&Progress {
-        phase: Some("refreshing game popularity".into()),
+        phase: Some(spec.phase.into()),
         ..Default::default()
     })
     .await?;
@@ -129,27 +159,34 @@ async fn run_command(
             BufReader::new(stdout),
             sender.clone(),
             LogLevel::Info,
+            spec.prefix,
         )),
         tokio::spawn(read_output(
             BufReader::new(stderr),
             sender.clone(),
             LogLevel::Warn,
+            spec.prefix,
         )),
     ];
     drop(sender);
     let mut poll = tokio::time::interval(Duration::from_secs(1));
     let mut status = None;
     let mut output_closed = false;
+    let mut continuation = None;
+    let mut summary_seen = false;
     let result = loop {
         if status.is_some() && output_closed {
             break if status
                 .as_ref()
                 .is_some_and(std::process::ExitStatus::success)
             {
-                Ok(JobOutcome::Completed)
+                Ok(continuation.map_or(JobOutcome::Completed, |run_at| {
+                    JobOutcome::CompletedWithContinuation { run_at }
+                }))
             } else {
                 Err(anyhow::anyhow!(
-                    "Catalog popularity refresh failed; see the job log for its sanitized summary"
+                    "{} failed; see the job log for its sanitized summary",
+                    spec.label
                 ))
             };
         }
@@ -160,9 +197,20 @@ async fn run_command(
             line = lines.recv(), if !output_closed => {
                 match line {
                     Some((level, line)) => {
-                        if let Some(message) = safe_line(&line, secrets) {
-                            io.log(level, &format!("Catalog popularity: {message}")).await;
-                            if let Err(error) = io.progress(&Progress { phase: Some("refreshing game popularity".into()), message: Some(message), ..Default::default() }).await {
+                        if spec.prefix == MOVIES.prefix && level == LogLevel::Info {
+                            match movies::parse_result(&line) {
+                                Ok(Some(result)) => {
+                                    if summary_seen { break Err(anyhow::anyhow!("Movie CLI returned more than one completion summary")); }
+                                    summary_seen = true;
+                                    continuation = result;
+                                },
+                                Ok(None) => {},
+                                Err(error) => break Err(error),
+                            }
+                        }
+                        if let Some(message) = safe_line_with_prefix(&line, secrets, spec.prefix) {
+                            io.log(level, &format!("{}: {message}", spec.label)).await;
+                            if let Err(error) = io.progress(&Progress { phase: Some(spec.phase.into()), message: Some(message), ..Default::default() }).await {
                                 break Err(error);
                             }
                         }
@@ -172,6 +220,9 @@ async fn run_command(
             }
             _ = poll.tick() => {
                 if io.should_stop() { break Ok(JobOutcome::Interrupted); }
+                if spec.deadline.is_some_and(|limit| started.elapsed() >= limit) {
+                    break Err(anyhow::anyhow!("{} exceeded its bounded runtime", spec.label));
+                }
             }
         }
     };
@@ -186,17 +237,18 @@ async fn run_command(
         let _ = reader.await;
     }
     if matches!(result, Ok(JobOutcome::Interrupted)) {
-        io.log(
-            LogLevel::Info,
-            "Catalog refresh stopped; its next attempt will safely rerun the full refresh",
-        )
-        .await;
+        io.log(LogLevel::Info, spec.interrupted).await;
     }
     result
 }
 
+#[cfg(test)]
 fn safe_line(line: &str, secrets: &[String]) -> Option<String> {
-    let mut message = line.strip_prefix(PREFIX)?.to_owned();
+    safe_line_with_prefix(line, secrets, PREFIX)
+}
+
+fn safe_line_with_prefix(line: &str, secrets: &[String], prefix: &str) -> Option<String> {
+    let mut message = line.strip_prefix(prefix)?.to_owned();
     for secret in secrets {
         message = message.replace(secret, "[redacted]");
     }
@@ -207,9 +259,10 @@ async fn read_output<R: AsyncBufRead + Unpin>(
     mut reader: R,
     sender: mpsc::Sender<(LogLevel, String)>,
     level: LogLevel,
+    prefix: &'static str,
 ) {
     loop {
-        match bounded_line(&mut reader).await {
+        match bounded_line_with_prefix(&mut reader, prefix).await {
             Ok(Some(line)) => {
                 if sender.send((level, line)).await.is_err() {
                     break;
@@ -220,7 +273,7 @@ async fn read_output<R: AsyncBufRead + Unpin>(
                 let _ = sender
                     .send((
                         LogLevel::Warn,
-                        format!("{PREFIX}could not read subprocess output"),
+                        format!("{prefix}could not read subprocess output"),
                     ))
                     .await;
                 break;
@@ -231,7 +284,15 @@ async fn read_output<R: AsyncBufRead + Unpin>(
 
 /// Discard the rest of oversized lines without buffering them or leaking a
 /// partially truncated credential into the dashboard.
+#[cfg(test)]
 async fn bounded_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> std::io::Result<Option<String>> {
+    bounded_line_with_prefix(reader, PREFIX).await
+}
+
+async fn bounded_line_with_prefix<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+    prefix: &str,
+) -> std::io::Result<Option<String>> {
     let mut line = Vec::new();
     let mut oversized = false;
     loop {
@@ -256,7 +317,7 @@ async fn bounded_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> std::io::Resul
     }
     if oversized {
         return Ok(Some(format!(
-            "{PREFIX}subprocess log line exceeded its limit; details omitted"
+            "{prefix}subprocess log line exceeded its limit; details omitted"
         )));
     }
     if line.is_empty() {

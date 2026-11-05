@@ -36,6 +36,12 @@ export const JOB_TYPES = {
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),
+  "catalog.movies.sync": defineJobType({
+    description:
+      "Synchronize a bounded batch of Wikidata films, cast, filmmakers, and production companies. Durable catalog progress resumes across runs; no provider account is required.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.movies",
+  }),
   "catalog.popularity.refresh": defineJobType({
     description:
       "Refresh game popularity from IGDB and optional HowLongToBeat engagement, supplement missing completion hours, and synchronize game search documents. Runs daily and shares the search indexing lock.",

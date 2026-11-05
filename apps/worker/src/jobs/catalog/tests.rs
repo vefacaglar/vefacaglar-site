@@ -164,3 +164,33 @@ async fn a_stopped_job_does_not_spawn_a_child() {
         JobOutcome::Interrupted
     );
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn only_a_successful_movie_process_can_request_one_continuation() {
+    let io = FakeIo::default();
+    let summary = r#"printf '[catalog:movies] result {"hasMore":true,"progressMade":true,"nextRunAt":null}\n'"#;
+    let result = run_command_with_spec(&io, shell(summary), &[], &MOVIES)
+        .await
+        .unwrap();
+    assert!(matches!(
+        result,
+        JobOutcome::CompletedWithContinuation { .. }
+    ));
+    let result = run_command_with_spec(&io, shell(summary), &[], &POPULARITY)
+        .await
+        .unwrap();
+    assert_eq!(result, JobOutcome::Completed);
+    let failed = format!("{summary}; exit 7");
+    assert!(
+        run_command_with_spec(&io, shell(&failed), &[], &MOVIES)
+            .await
+            .is_err()
+    );
+    let duplicate = format!("{summary}; {summary}");
+    assert!(
+        run_command_with_spec(&io, shell(&duplicate), &[], &MOVIES)
+            .await
+            .is_err()
+    );
+}

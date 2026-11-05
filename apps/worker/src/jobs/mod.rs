@@ -18,5 +18,6 @@ pub fn registry(config: &Config) -> Registry {
     });
     registry.register(search::SearchSyncHandler { typesense });
     registry.register(catalog::CatalogPopularityHandler);
+    registry.register(catalog::movies::CatalogMoviesHandler);
     registry
 }

@@ -55,6 +55,7 @@ COPY --from=node-build --chown=node:node /app/packages/db/dist ./packages/db/dis
 COPY --from=builder /out/worker /usr/local/bin/worker
 # Executed natively for each buildx platform, including the runtime's Node ABI.
 RUN node --check apps/api/dist/scripts/refresh-popularity.js \
+ && node --check apps/api/dist/scripts/sync-movies.js \
  && node -e "require('./apps/api/dist/container.js')"
 ENV NODE_ENV=production \
     NODE_OPTIONS=--max-old-space-size=2048 \

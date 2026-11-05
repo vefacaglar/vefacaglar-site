@@ -229,6 +229,17 @@ impl Worker {
                     .await
                     .map(|_| ())
             }
+            Some(Ok(JobOutcome::CompletedWithContinuation { run_at })) => {
+                queue::mark_succeeded_with_continuation(
+                    pool,
+                    job_id,
+                    worker_id,
+                    &format!("bounded batch succeeded in {elapsed}s"),
+                    run_at,
+                )
+                .await
+                .map(|_| ())
+            }
             Some(Ok(JobOutcome::Interrupted)) if ctx.is_cancel_requested() => {
                 queue::mark_cancelled(
                     pool,

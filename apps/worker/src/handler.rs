@@ -11,6 +11,10 @@ use crate::context::JobContext;
 pub enum JobOutcome {
     /// All work is done; the job becomes `succeeded` and its checkpoint is cleared.
     Completed,
+    /// A bounded movie batch committed progress; finish and enqueue one later run atomically.
+    CompletedWithContinuation {
+        run_at: chrono::DateTime<chrono::Utc>,
+    },
     /// The handler stopped at a batch boundary because [`JobContext::should_stop`]
     /// returned true. The runner decides between `cancelled` (cancel requested)
     /// and re-queueing (shutdown); the last saved checkpoint is kept.

@@ -268,6 +268,90 @@ pub async fn mark_succeeded(
     .await
 }
 
+/// Movie bootstrap batches use normal new job IDs, without consuming retries or
+/// keeping a child alive indefinitely. The held row is terminal and its successor
+/// exists in the same commit; retrying finalization cannot enqueue a second one.
+#[derive(sqlx::FromRow)]
+struct ContinuationRow {
+    job_type: String,
+    payload: Value,
+    concurrency_key: Option<String>,
+    recurring_job_id: Option<String>,
+    max_attempts: i32,
+    created_by: Option<Uuid>,
+    cancel_requested: bool,
+}
+
+pub async fn mark_succeeded_with_continuation(
+    pool: &PgPool,
+    job_id: Uuid,
+    worker_id: &str,
+    log: &str,
+    run_at: chrono::DateTime<chrono::Utc>,
+) -> sqlx::Result<bool> {
+    let mut tx = pool.begin().await?;
+    // Read cancellation in the UPDATE itself, rather than relying on the worker's
+    // last heartbeat: a cancel request may race the subprocess exit.
+    let row: Option<ContinuationRow> = sqlx::query_as(&format!(
+        "UPDATE jobs SET status = CASE WHEN cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
+         finished_at = now(), checkpoint = NULL, error = NULL, updated_at = now() \
+         WHERE {HELD_BY_ME} AND type = 'catalog.movies.sync' AND concurrency_key = 'catalog.movies' \
+         RETURNING type AS job_type, payload, concurrency_key, recurring_job_id, max_attempts, created_by, cancel_requested"
+    ))
+    .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;
+    let Some(ContinuationRow {
+        job_type,
+        payload,
+        concurrency_key: key,
+        recurring_job_id: recurring_id,
+        max_attempts,
+        created_by,
+        cancel_requested: cancelled,
+    }) = row
+    else {
+        tx.rollback().await?;
+        return Ok(false);
+    };
+    insert_log_tx(
+        &mut tx,
+        job_id,
+        if cancelled {
+            LogLevel::Warn
+        } else {
+            LogLevel::Info
+        },
+        if cancelled {
+            "cancelled before the next movie batch was enqueued"
+        } else {
+            log
+        },
+    )
+    .await?;
+    notify_tx(&mut tx, JOB_EVENTS_CHANNEL, job_id).await?;
+    if !cancelled
+        && let Some(next_id) = enqueue_in_tx(
+            &mut tx,
+            &job_type,
+            &payload,
+            key.as_deref(),
+            recurring_id.as_deref(),
+        )
+        .await?
+    {
+        sqlx::query("UPDATE jobs SET run_at = GREATEST($2, now() + interval '30 seconds'), max_attempts = $3, created_by = $4 WHERE id = $1")
+                .bind(next_id).bind(run_at).bind(max_attempts).bind(created_by).execute(&mut *tx).await?;
+        insert_log_tx(
+            &mut tx,
+            job_id,
+            LogLevel::Info,
+            &format!("next bounded movie batch: {next_id}"),
+        )
+        .await?;
+    }
+    tx.commit().await?;
+    Ok(true)
+}
+
 pub async fn mark_cancelled(
     pool: &PgPool,
     job_id: Uuid,
