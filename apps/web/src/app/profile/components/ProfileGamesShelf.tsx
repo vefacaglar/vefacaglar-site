@@ -9,6 +9,7 @@ import { statusLabel } from "../../games/gameLogStatus";
 import ProfileGameGrid from "./ProfileGameGrid";
 import ProfileGameList from "./ProfileGameList";
 import ProfilePlatforms from "./ProfilePlatforms";
+import { ProfileShelfSkeleton } from "../../../components/library/LibrarySkeletons";
 import {
   SHELF_TABS,
   parseSort,
@@ -51,7 +52,7 @@ export default function ProfileGamesShelf(props: ProfileGamesShelfProps) {
     () => true,
     () => false,
   );
-  if (!mounted) return null;
+  if (!mounted) return <ProfileShelfSkeleton />;
   return <ProfileGamesShelfClient {...props} />;
 }
 

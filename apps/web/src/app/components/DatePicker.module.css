@@ -9,18 +9,17 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border: 0;
   border-radius: 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--surface-2, var(--border));
+  color: var(--text-heading);
   font-family: inherit;
   font-size: 14px;
-  /* Same line box as the global .input so the fields line up. */
   line-height: normal;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .trigger:disabled {
@@ -29,7 +28,7 @@
 }
 
 .trigger:hover:not(:disabled) {
-  border-color: var(--text);
+  background: var(--border);
 }
 
 .trigger:focus-visible {
@@ -59,10 +58,10 @@
   gap: 8px;
   width: min(300px, calc(100vw - 32px));
   min-width: min(280px, calc(100vw - 16px));
-  padding: 8px;
-  border: 1px solid var(--border);
+  padding: 12px;
+  border: 0;
   border-radius: 0;
-  background: var(--bg);
+  background: var(--surface-2, var(--bg));
   color: var(--text);
 }
 
@@ -92,19 +91,19 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--surface, transparent);
   color: var(--text);
   font-family: inherit;
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .navButton:hover {
-  border-color: var(--text);
+  background: var(--border);
   color: var(--text-heading);
 }
 
@@ -130,7 +129,7 @@
 .day {
   height: 32px;
   padding: 0;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--text);
@@ -138,11 +137,11 @@
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .day:hover {
-  border-color: var(--text);
+  background: var(--border);
 }
 
 .day:focus-visible {
@@ -155,13 +154,13 @@
 }
 
 .today {
-  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .selected {
-  background: var(--text-heading);
-  border-color: var(--text-heading);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .footer {
@@ -170,5 +169,4 @@
   justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid var(--border);
 }

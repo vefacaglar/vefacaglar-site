@@ -27,8 +27,10 @@ export function buildLibrary(
 
   const games: LibraryGame[] = [...byGame.values()].map((gameLogs) => {
     const latest = gameLogs[0];
-    const rated = gameLogs.find((l) => l.rating !== null);
-    const hours = gameLogs.filter((l) => l.playtimeHours !== null).map((l) => Number(l.playtimeHours));
+    const rated = gameLogs.find((l) => l.rating !== null && l.rating > 0);
+    const hours = gameLogs
+      .filter((l) => l.playtimeHours !== null && Number(l.playtimeHours) > 0)
+      .map((l) => Number(l.playtimeHours));
     // "YYYY-MM-DD" strings sort chronologically, so the max string is the latest date.
     const completedAt = gameLogs.reduce<string | null>(
       (acc, l) => (l.completedAt !== null && (acc === null || l.completedAt > acc) ? l.completedAt : acc),

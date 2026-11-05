@@ -1,14 +1,14 @@
 // Numeric fields are plain text inputs (no type="number"); these keep only the
 // characters a number can contain, so letters can't be typed or pasted in.
 
-/** Digits only, for whole numbers such as scores and sort orders. */
+/** Digits only, for whole numbers such as scores and sort orders. Never starts with zero. */
 export function toDigits(value: string): string {
-  return value.replace(/\D/g, "");
+  return value.replace(/\D/g, "").replace(/^0+/, "");
 }
 
-/** Digits and a single decimal point, for values such as hours. A comma counts as the point. */
+/** Digits and a single decimal point, for values such as hours. A comma counts as the point. Never starts with zero. */
 export function toDecimal(value: string): string {
-  const cleaned = value.replace(/,/g, ".").replace(/[^\d.]/g, "");
+  const cleaned = value.replace(/,/g, ".").replace(/[^\d.]/g, "").replace(/^0+/, "");
   const dot = cleaned.indexOf(".");
   return dot === -1 ? cleaned : cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, "");
 }
