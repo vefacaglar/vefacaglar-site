@@ -94,11 +94,19 @@
 .ownerTools {
   grid-area: tools;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.settingsLink {
+.settingsLink,
+.signOutButton {
   font-size: 13px;
+}
+
+.signOutForm {
+  display: flex;
+  margin: 0;
 }
 
 /* ---------- Tabs (sit on the band's bottom rule) ---------- */

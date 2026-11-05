@@ -41,45 +41,29 @@
 .wordmark {
   grid-area: mark;
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
   font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   text-decoration: none;
   color: var(--text-heading);
 }
 
 .owner {
-  padding: 4px 7px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 700;
   color: var(--text-heading);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .name {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: -0.025em;
-  color: var(--text-heading);
+  font-weight: 500;
+  color: var(--muted);
   transition: color 0.15s ease;
 }
 
 .wordmark:hover {
   color: var(--text-heading);
-}
-
-.wordmark:hover .owner {
-  border-color: var(--accent);
-  background: var(--surface-2);
 }
 
 .wordmark:hover .name {
@@ -124,7 +108,7 @@
 .utility {
   grid-area: utility;
   display: flex;
-  align-items: center;
+  align-items: stretch;
 }
 
 .account {
@@ -132,59 +116,39 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 6px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  margin-bottom: -1px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
   border-radius: 0;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.4;
-  color: var(--text-heading);
+  color: var(--muted);
   text-decoration: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease;
   font-weight: 500;
 }
 
 .account:hover {
   color: var(--text-heading);
-  border-color: var(--accent);
-  background: var(--surface-2);
+  border-bottom-color: var(--border-strong);
+  background: none;
 }
 
 .accountActive,
 .accountActive:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
-}
-
-.signOutForm {
-  display: flex;
-  margin-left: 16px;
-}
-
-.signOut {
-  padding: 6px 10px;
-  border: 1px solid transparent;
-  border-radius: 0;
-  background: none;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--muted);
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.signOut:hover {
   color: var(--text-heading);
-  border-color: var(--border);
-  background: var(--surface);
+  border-bottom-color: var(--accent);
+  background: none;
+  font-weight: 600;
 }
 
 .wordmark:focus-visible,
 .tab:focus-visible,
-.account:focus-visible,
-.signOut:focus-visible {
+.account:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 4px;
 }
@@ -250,16 +214,7 @@
 
   .account {
     max-width: 160px;
-    padding: 5px 10px;
-    font-size: 13px;
-  }
-
-  .signOutForm {
-    margin-left: 10px;
-  }
-
-  .signOut {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .tabs {

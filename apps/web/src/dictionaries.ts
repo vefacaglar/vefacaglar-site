@@ -266,7 +266,7 @@ const dictionaries = {
     movies_subtitle: "Filmlere göz at, izlediklerinin kaydını tut.",
     movies_empty_title: "Bu raf henüz boş",
     movies_empty_body: "Filmler yakında burada. Oyun rafı şimdiden açık.",
-    profile: "Profil",
+    profile: "Profilim",
     sign_in: "Giriş yap",
     sign_out: "Çıkış yap",
     profile_description: "{name} adlı kullanıcının oynadığı ve kaydettiği oyunlar.",

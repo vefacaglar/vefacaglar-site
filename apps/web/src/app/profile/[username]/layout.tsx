@@ -6,6 +6,7 @@ import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { libraryMetadata } from "../../../lib/librarySeo";
 import { decodeUsername, getProfileLibrary, profilePath } from "../../../lib/profileLibrary";
+import { librarySignOutAction } from "../../../components/library/actions";
 import ProfileTabs from "../components/ProfileTabs";
 
 interface ProfileLayoutProps {
@@ -80,6 +81,12 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
               <Link href={localizeHref("/profile/settings", lang)} className={`btnGhost ${styles.settingsLink}`}>
                 {dict.settings}
               </Link>
+              <form action={librarySignOutAction} className={styles.signOutForm}>
+                <input type="hidden" name="returnTo" value={localizeHref("/games", lang)} />
+                <button type="submit" className={`btnGhost ${styles.signOutButton}`}>
+                  {dict.sign_out}
+                </button>
+              </form>
             </div>
           )}
         </header>
