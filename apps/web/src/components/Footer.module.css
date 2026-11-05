@@ -1,0 +1,21 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.footerMark {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.footer button {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 500;
+}

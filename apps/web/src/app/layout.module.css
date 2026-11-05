@@ -1,7 +1,11 @@
 .main {
   width: min(var(--max), calc(100% - 48px));
   margin: 0 auto;
-  padding: 96px 0;
+  padding: 0;
+}
+
+.content {
+  padding-bottom: 96px;
 }
 
 /* Library pages (games, movies) bring their own header and a wider frame. */
@@ -9,4 +13,18 @@
   width: 100%;
   padding: 0;
   overflow-x: clip;
+}
+
+.main:has([data-library]) .content {
+  padding-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .main {
+    width: calc(100% - 32px);
+  }
+
+  .content {
+    padding-bottom: 72px;
+  }
 }

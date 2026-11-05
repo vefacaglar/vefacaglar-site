@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import LanguageSwitcher from "./LanguageSwitcher";
 import { useLocale } from "./LocaleProvider";
 import { localizeHref } from "../lib/localizeHref";
 import styles from "./Header.module.css";
@@ -83,9 +82,6 @@ export default function Header({ dict }: HeaderProps) {
             )}
           </span>
         ))}
-      </div>
-      <div className={styles.right}>
-        <LanguageSwitcher />
       </div>
     </header>
   );

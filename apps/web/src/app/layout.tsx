@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TopBar } from "../components/TopBar";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 import { LocaleProvider } from "../components/LocaleProvider";
 import WidthController from "../components/WidthController";
 import AuthWarmup from "../components/AuthWarmup";
@@ -49,7 +50,8 @@ export default async function RootLayout({
           <TopBar />
           <main className={styles.main}>
             <Header dict={dict} />
-            {children}
+            <div className={styles.content}>{children}</div>
+            <Footer dict={dict} />
           </main>
         </LocaleProvider>
       </body>
