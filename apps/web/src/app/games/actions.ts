@@ -14,7 +14,7 @@ export type GameLogInput = {
   notes: string | null;
 };
 
-type Result = { error?: string };
+type Result = { id?: string; error?: string };
 
 // Log changes only affect the signed-in user's own view of one game page, so
 // they revalidate that path instead of the site-wide public content tag.
@@ -23,6 +23,7 @@ async function send(method: "POST" | "PUT" | "DELETE", path: string, slug: strin
   if (!token) return { error: "Please sign in again." };
   const headers = { Authorization: `Bearer ${token}` };
 
+  let createdId: string | undefined;
   try {
     const res =
       method === "POST"
@@ -34,13 +35,17 @@ async function send(method: "POST" | "PUT" | "DELETE", path: string, slug: strin
       const data = await res.json().catch(() => ({}));
       return { error: data.message || "Request failed." };
     }
+    if (method === "POST") {
+      const data = await res.json().catch(() => null);
+      if (typeof data?.id === "string") createdId = data.id;
+    }
   } catch (error) {
     console.error(`Game log action failed (${method} ${path}):`, error);
     return { error: "Server connection error." };
   }
 
   revalidatePath(`/games/${slug}`, "layout");
-  return {};
+  return createdId ? { id: createdId } : {};
 }
 
 export async function createGameLog(slug: string, input: GameLogInput): Promise<Result> {

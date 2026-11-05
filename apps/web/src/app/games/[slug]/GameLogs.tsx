@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useLocale } from "../../../components/LocaleProvider";
 import { getDictionary } from "../../../dictionaries";
@@ -36,6 +37,7 @@ const QUICK_LOG: GameLogInput = {
 
 /** The signed-in user's logs for one game. Logging adds one instantly; each opens its own edit page. */
 export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[] }) {
+  const router = useRouter();
   const locale = useLocale();
   const dict = getDictionary(locale);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,14 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
     });
   };
 
-  const onLog = () => run(() => createGameLog(slug, QUICK_LOG));
+  const onLog = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await createGameLog(slug, QUICK_LOG);
+      if (result.error) setError(result.error);
+      else if (result.id) router.push(localizeHref(`/games/${slug}/logs/${encodeURIComponent(result.id)}`, locale));
+    });
+  };
 
   const onDelete = () => {
     if (!pendingDelete) return;
