@@ -8,7 +8,6 @@ import { getSessionUser } from "../../lib/session";
 import { LIBRARY_NAME, LIBRARY_SECTIONS, type LibrarySection } from "../../lib/librarySeo";
 import { profilePath } from "../../lib/profileLibrary";
 import AccountLink from "./AccountLink";
-import { libraryFontVariables } from "./fonts";
 import styles from "./LibraryShell.module.css";
 
 export type { LibrarySection };
@@ -31,12 +30,11 @@ export default async function LibraryShell({
   const user = await getSessionUser();
 
   return (
-    <div className={`${styles.shell} ${libraryFontVariables}`} data-library="">
+    <div className={styles.shell} data-library="">
       <header className={styles.header}>
-        {/* The library's home is /games; the name is a brand, so it is not translated. */}
+        {/* The library's home is /games; uses the main site's vefacaglar wordmark. */}
         <Link href={localizeHref("/games", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>
-          <span className={styles.owner}>Vefa</span>
-          <span className={styles.name}>Library</span>
+          {dict.back_to_home}
         </Link>
 
         <nav className={styles.tabs} aria-label={dict.library_nav}>
@@ -70,7 +68,7 @@ export default async function LibraryShell({
       <div className={styles.body}>{children}</div>
 
       <footer className={styles.footer}>
-        <span className={styles.footerMark}>{LIBRARY_NAME}</span>
+        <span className={styles.footerMark}>{dict.back_to_home}</span>
         <LanguageSwitcher />
       </footer>
     </div>

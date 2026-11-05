@@ -22,11 +22,7 @@
   grid-template-areas: "name bar percent count";
   align-items: center;
   gap: 8px 28px;
-  padding: 12px 0;
-}
-
-.item + .item {
-  border-top: 1px solid var(--border);
+  padding: 10px 0;
 }
 
 .name {
@@ -59,9 +55,8 @@
 
 .percent {
   grid-area: percent;
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--text-heading);
   text-align: right;
   white-space: nowrap;
@@ -69,8 +64,7 @@
 
 .count {
   grid-area: count;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   text-align: right;
   white-space: nowrap;

@@ -257,42 +257,45 @@ html {
    ========================================================================== */
 :root:has([data-library]),
 [data-library] {
-  --bg: #0e1013;            /* page */
-  --surface: #15181d;       /* raised areas: game header, profile header, panels */
-  --surface-2: #1d2229;     /* inputs, plates, covers before they load */
-  --text: #e2e6ec;          /* body text */
-  --text-heading: #f6f8fa;  /* titles */
-  --muted: #949eae;         /* secondary text, labels */
-  --faint: #636d7e;         /* quiet figures, disabled */
-  --border: #262c36;        /* dividers */
-  --border-strong: #384150; /* control outlines, hover */
-  --accent: #8fb0d8;        /* calm steel blue: active state, bars, focus */
-  --on-accent: #0e1013;     /* text on the accent */
-  --success: #82b596;
-  --warning: #c8ae7d;
-  --info: #85a9d6;
+  --bg: #000000;            /* vefacaglar.com pure black ground */
+  --surface: #0b0b0b;       /* subtle raised areas: game header, profile header, panels */
+  --surface-2: #161616;     /* controls, inputs, plates, covers before they load */
+  --text: #eaeaea;          /* crisp off-white body text */
+  --text-heading: #ffffff;  /* pure white titles */
+  --muted: #8e8e8e;         /* secondary text, labels */
+  --faint: #5a5a5a;         /* quiet figures, disabled */
+  --border: #222222;        /* subtle dividers */
+  --border-strong: #333333; /* hover surfaces */
+  --accent: #A89276;        /* vefacaglar.com warm amber-bronze accent */
+  --on-accent: #1a1a1a;     /* text on the accent */
+  --success: #728477;
+  --warning: #9F8E7D;
+  --info: #7087A3;
+  --font-sans: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-display: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-/* Library buttons: near-white primary, quiet outline secondary. */
+/* Library buttons: borderless flat surfaces in the main site's palette. */
 [data-library] .btnAccent {
   background: var(--text-heading);
-  border-color: var(--text-heading);
-  color: var(--on-accent) !important;
+  border: 1px solid transparent;
+  color: var(--bg) !important;
   font-family: inherit;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 8px 16px;
 }
 
 [data-library] .btnAccent:hover {
   opacity: 1;
-  background: var(--text);
-  border-color: var(--text);
+  background: var(--accent);
+  border-color: transparent;
   color: var(--on-accent) !important;
 }
 
 [data-library] .btnGhost {
-  border-color: var(--border-strong);
+  background: var(--surface-2);
+  border: 1px solid transparent;
   color: var(--text-heading);
   font-size: 14px;
   font-weight: 500;
@@ -300,8 +303,8 @@ html {
 }
 
 [data-library] .btnGhost:hover {
-  background-color: var(--surface-2);
-  border-color: var(--faint);
+  background-color: var(--border-strong);
+  border-color: transparent;
 }
 
 [data-library] .btnAccent:hover,
@@ -315,11 +318,11 @@ html {
   outline-offset: 2px;
 }
 
-/* Form fields inside the library sit on a raised surface. */
+/* Form fields inside the library sit on a borderless raised surface. */
 [data-library] .input,
 [data-library] .textarea {
   background: var(--surface-2);
-  border-color: var(--border-strong);
+  border: 1px solid transparent;
   color: var(--text-heading);
   font-size: 14px;
   padding: 9px 12px;

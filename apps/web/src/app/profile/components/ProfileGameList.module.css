@@ -35,7 +35,6 @@
 
 .table thead th {
   padding: 0 0 10px;
-  border-bottom: 1px solid var(--border-strong);
   font-size: 12px;
   font-weight: 500;
   color: var(--muted);
@@ -81,7 +80,6 @@
 .row > th,
 .row > td {
   padding: 12px 0;
-  border-bottom: 1px solid var(--border);
   vertical-align: top;
   transition: background-color 0.15s ease;
 }
@@ -120,16 +118,14 @@
 }
 
 .titleLink {
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: 15px;
-  line-height: 1.35;
-  letter-spacing: -0.015em;
+  font-size: 14.5px;
+  line-height: 1.4;
   color: var(--text-heading);
   text-decoration: none;
   text-underline-offset: 4px;
   text-decoration-thickness: 1px;
   overflow-wrap: anywhere;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .titleLink:hover {
@@ -143,16 +139,14 @@
 }
 
 .platform {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .finished {
   flex-basis: 100%;
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -163,9 +157,8 @@
 }
 
 .figure {
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--text-heading);
   text-align: right;
@@ -209,17 +202,17 @@
   margin-top: 1px;
   padding: 0;
   background: transparent;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 0;
   color: var(--muted);
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .iconButton:hover,
 .toggle:hover {
   color: var(--text-heading);
-  border-color: var(--border-strong);
+  background: var(--surface-2);
 }
 
 .iconButton:focus-visible,
@@ -253,7 +246,6 @@
 
 .toggle[aria-expanded="true"] {
   color: var(--accent);
-  border-color: var(--border-strong);
 }
 
 .toggle[aria-expanded="true"] .toggleGlyph::after {
@@ -268,29 +260,16 @@
   background: var(--surface);
 }
 
-.group[data-open] .row > th,
-.group[data-open] .row > td {
-  border-bottom-color: transparent;
-}
-
-/* Accent bar down the left edge of the open entry, row and panel together. */
-.group[data-open] .titleCell,
-.detailCell {
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
 .detailRow[hidden] {
   display: none;
 }
 
 .detailCell {
   padding: 0 4px 0 34px;
-  border-bottom: 1px solid var(--border);
 }
 
 .detail {
   padding: 16px 0 20px;
-  border-top: 1px solid var(--border);
   animation: unfold 0.22s ease-out;
 }
 
@@ -347,9 +326,9 @@
   align-items: center;
   gap: 8px;
   padding: 2px 10px 2px 8px;
-  border: 1px solid color-mix(in srgb, var(--tone) 55%, transparent);
+  border: 0;
   border-radius: 0;
-  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-heading);

@@ -53,16 +53,11 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
   const dict = getDictionary(lang);
   const { user, isOwner } = library;
   const name = user.displayName || user.username;
-  const initial = Array.from(name.trim())[0] ?? "?";
 
   return (
     <div>
       <div className={styles.band}>
         <header className={styles.profileHeader}>
-          <div className={styles.monogram} aria-hidden="true">
-            {initial}
-          </div>
-
           <div className={styles.identity}>
             <h1 className={styles.displayName}>{name}</h1>
             <p className={styles.handle}>

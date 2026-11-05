@@ -10,7 +10,7 @@ import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
 import { sortShelf } from "../libraryShelf";
 
-const RECENT_COUNT = 6;
+const RECENT_COUNT = 8;
 
 interface OverviewProps {
   params: Promise<{ username: string }>;
@@ -69,20 +69,6 @@ export default async function ProfileOverview(props: OverviewProps) {
               {stat.value}
               {stat.unit && <span className={styles.statUnit}>{stat.unit}</span>}
             </dd>
-            {stat.share !== undefined && (
-              <dd className={styles.statMeter} aria-hidden="true">
-                <svg className={styles.statBar} viewBox="0 0 100 2" preserveAspectRatio="none">
-                  <rect className={styles.statBarTrack} x="0" y="0" width="100" height="2" />
-                  <rect
-                    className={styles.statBarFill}
-                    x="0"
-                    y="0"
-                    width={Math.min(1, Math.max(0, stat.share)) * 100}
-                    height="2"
-                  />
-                </svg>
-              </dd>
-            )}
           </div>
         ))}
       </dl>

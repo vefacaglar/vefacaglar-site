@@ -10,11 +10,11 @@
 
 .emptyTitle {
   margin: 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-display), var(--font-sans), serif;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 

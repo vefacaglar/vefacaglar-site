@@ -5,63 +5,28 @@
 
 .band {
   position: relative;
-  isolation: isolate;
-  margin-top: calc(-1 * var(--shell-pad-top, 56px));
-  padding-top: 36px;
-}
-
-.band::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 100vw;
-  transform: translateX(-50%);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  padding-top: 8px;
 }
 
 .profileHeader {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "mono identity tools";
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 20px;
   padding-bottom: 24px;
 }
 
-/* Monogram plate: the name's first letter, like a stamp on a library card. */
-.monogram {
-  grid-area: mono;
-  width: 64px;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border-strong);
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--text-heading);
-  user-select: none;
-}
-
 .identity {
-  grid-area: identity;
   min-width: 0;
 }
 
 .displayName {
   margin: 0 0 4px 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: clamp(26px, 2.8vw, 34px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
@@ -72,9 +37,8 @@
   align-items: center;
   gap: 8px 16px;
   margin: 0;
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -83,16 +47,16 @@
   align-items: center;
   gap: 6px;
   padding: 2px 8px;
-  border: 1px solid var(--border-strong);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
+  background: var(--surface-2);
+  border: 0;
+  font-family: inherit;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--text);
   font-weight: 500;
 }
 
 .ownerTools {
-  grid-area: tools;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -109,15 +73,13 @@
   margin: 0;
 }
 
-/* ---------- Tabs (sit on the band's bottom rule) ---------- */
+/* ---------- Tabs ---------- */
 
-/* The strip overlaps the band's rule by 1px so the active underline replaces it. */
 .tabs {
   position: relative;
   z-index: 1;
   display: flex;
   gap: 28px;
-  margin-bottom: -1px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -126,13 +88,12 @@
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  padding: 12px 0;
-  border-bottom: 2px solid transparent;
+  padding: 8px 0;
   font-size: 14px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease;
   font-weight: 500;
 }
 
@@ -142,8 +103,8 @@
 
 .tabActive,
 .tabActive:hover {
-  color: var(--text-heading);
-  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .tab:focus-visible {
@@ -152,14 +113,13 @@
 }
 
 .tabCount {
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
 }
 
 .content {
-  padding-top: 36px;
+  padding-top: 32px;
 }
 
 /* ---------- Figures ---------- */
@@ -167,6 +127,7 @@
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
   margin: 0 0 48px 0;
 }
 
@@ -175,30 +136,23 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 24px;
-  border-left: 1px solid var(--border);
-}
-
-.stat:first-child {
-  padding-left: 0;
-  border-left: none;
+  padding: 0;
+  border: 0;
 }
 
 .statLabel {
   order: 2;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .statValue {
   order: 1;
   margin: 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
   color: var(--text-heading);
   font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;
@@ -206,7 +160,6 @@
 
 .statUnit {
   margin-left: 4px;
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   letter-spacing: 0;
@@ -236,8 +189,7 @@
 /* ---------- Sections ---------- */
 
 .section {
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
 }
 
 .section + .section {
@@ -254,17 +206,16 @@
 
 .sectionTitle {
   margin: 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-display), var(--font-sans), serif;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 
 .sectionLink {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
@@ -285,8 +236,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 2px 12px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -301,9 +251,8 @@
 
 /* Completion date, set like the year on the main shelf. */
 .cardDate {
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -317,8 +266,7 @@
   justify-content: space-between;
   gap: 14px 40px;
   margin-bottom: 28px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
 }
 
 .statusTabs {
@@ -340,15 +288,16 @@
   font-weight: 500;
 }
 
-/* Square marker: outlined on hover, filled when chosen. Always takes its space so labels don't shift. */
+/* Square marker: filled when chosen. Always takes its space so labels don't shift. */
 .statusTab::before {
   content: "";
   align-self: center;
   width: 6px;
   height: 6px;
   flex-shrink: 0;
-  border: 1px solid transparent;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  background: var(--surface-2);
+  border: 0;
+  transition: background-color 0.15s ease;
 }
 
 .statusTab:hover {
@@ -356,18 +305,17 @@
 }
 
 .statusTab:hover::before {
-  border-color: var(--border-strong);
+  background: var(--muted);
 }
 
 .statusTabActive,
 .statusTabActive:hover {
-  color: var(--text-heading);
+  color: var(--accent);
 }
 
 .statusTabActive::before,
 .statusTabActive:hover::before {
   background: var(--accent);
-  border-color: var(--accent);
 }
 
 .statusTab:focus-visible,
@@ -424,7 +372,8 @@
 .viewToggle {
   display: inline-flex;
   flex-shrink: 0;
-  border: 1px solid var(--border-strong);
+  gap: 2px;
+  border: 0;
 }
 
 .viewOption {
@@ -433,6 +382,8 @@
   align-items: center;
   gap: 8px;
   padding: 5px 12px;
+  background: var(--surface);
+  border: 0;
   border-radius: 0;
   font-size: 13px;
   line-height: 1.4;
@@ -442,13 +393,9 @@
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.viewOption + .viewOption {
-  border-left: 1px solid var(--border-strong);
-}
-
 .viewOption:hover {
   color: var(--text-heading);
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
 .viewOptionActive,
@@ -484,11 +431,11 @@
 
 .emptyTitle {
   margin: 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-display), var(--font-sans), serif;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
 }
 
@@ -526,27 +473,26 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  border: 0;
   color: var(--muted);
 }
 
 .privateHandle {
   margin: 0;
-  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .privateTitle {
   max-width: 16ch;
   margin: 0 0 4px 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-display), var(--font-sans), serif;
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.2;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
 }
 
@@ -560,11 +506,11 @@
 
 .notFoundCode {
   margin: 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-display), var(--font-sans), serif;
   font-size: 48px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
@@ -576,11 +522,10 @@
 
 .backLink {
   margin: 0 0 16px 0;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .backLink a {
-  font-family: var(--font-mono), ui-monospace, monospace;
   color: var(--muted);
   text-decoration: none;
 }
@@ -591,11 +536,11 @@
 
 .settingsTitle {
   margin: 0 0 28px 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-family: var(--font-display), var(--font-sans), serif;
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1.15;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
 }
 
@@ -607,9 +552,8 @@
 
 .choiceGroup {
   margin: 0;
-  padding: 20px 0 0 0;
+  padding: 8px 0 0 0;
   border: none;
-  border-top: 1px solid var(--border);
   min-width: 0;
 }
 
@@ -639,18 +583,17 @@
   display: block;
   padding: 16px 18px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: 0;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .choice:hover {
-  border-color: var(--border-strong);
+  background: var(--surface-2);
 }
 
 .choice:has(.choiceInput:checked) {
-  border-color: var(--accent);
   background: var(--surface-2);
 }
 
@@ -688,13 +631,13 @@
   width: 10px;
   height: 10px;
   flex-shrink: 0;
-  border: 1px solid var(--muted);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  background: var(--border-strong);
+  border: 0;
+  transition: background-color 0.15s ease;
 }
 
 .choiceInput:checked + .choiceBody .choiceTitle::before {
   background: var(--accent);
-  border-color: var(--accent);
 }
 
 .choiceHint {
@@ -716,8 +659,7 @@
 }
 
 .publicLink {
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  padding-top: 8px;
 }
 
 .publicLink .settingsLabel {
@@ -752,22 +694,8 @@
   }
 
   .profileHeader {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "mono identity"
-      "tools tools";
     gap: 14px 16px;
     padding-bottom: 18px;
-  }
-
-  /* Visitors see no owner tools, so no empty second row. */
-  .profileHeader:not(:has(.ownerTools)) {
-    grid-template-areas: "mono identity";
-  }
-
-  .monogram {
-    width: 52px;
-    font-size: 22px;
   }
 
   .displayName {
@@ -790,25 +718,11 @@
   .stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 32px;
-    border-top: 1px solid var(--border);
   }
 
   .stat,
   .stat:first-child {
-    padding: 14px 14px;
-  }
-
-  .stat:nth-child(odd) {
-    padding-left: 0;
-    border-left: none;
-  }
-
-  .stat:nth-child(even) {
-    border-left: 1px solid var(--border);
-  }
-
-  .stat:nth-child(n + 3) {
-    border-top: 1px solid var(--border);
+    padding: 8px 0;
   }
 
   /* An odd count of figures in two columns: the last one takes the full row. */

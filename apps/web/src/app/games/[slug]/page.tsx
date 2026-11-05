@@ -78,10 +78,6 @@ export default async function Game(props: GameProps) {
   const names = (items: Named[]) => items.map((i) => i.name).join(", ");
   const year = game.releaseDate?.slice(0, 4) ?? null;
   const developers = names(game.developers);
-  const heroTags = [
-    ...game.genres.slice(0, 3).map((g) => g.name),
-    ...game.platforms.slice(0, 2).map((p) => p.name),
-  ].slice(0, 4);
 
   type Fact = { label: string; text?: string; tags?: string[] };
   const facts: Fact[] = (
@@ -123,17 +119,8 @@ export default async function Game(props: GameProps) {
             </p>
             <h1 className={styles.title}>{game.title}</h1>
             {developers && <p className={styles.byline}>{developers}</p>}
-            {heroTags.length > 0 && (
-              <ul className={styles.heroTags}>
-                {heroTags.map((tag) => (
-                  <li key={tag} className={styles.heroTag}>
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            )}
 
-            {(year || game.criticScore !== null || game.hltbMainHours !== null) && (
+            {(year || game.criticScore !== null) && (
               <dl className={styles.figures}>
                 {year && (
                   <div className={styles.figure}>
@@ -155,15 +142,6 @@ export default async function Game(props: GameProps) {
                     ) : null}
                   </div>
                 )}
-                {game.hltbMainHours !== null && (
-                  <div className={styles.figure}>
-                    <dt>{dict.hltb_main}</dt>
-                    <dd className={styles.figureValue}>
-                      {game.hltbMainHours}
-                      <span className={styles.figureUnit}>{dict.hours_short}</span>
-                    </dd>
-                  </div>
-                )}
               </dl>
             )}
           </div>
@@ -182,10 +160,10 @@ export default async function Game(props: GameProps) {
                   <li key={label} className={styles.hltbRow}>
                     <span className={styles.hoursLabel}>{label}</span>
                     {/* Bar length is relative to the longest of the three times. */}
-                    <svg className={styles.bar} viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
-                      <rect className={styles.barTrack} x="0" y="0" width="100" height="6" />
+                    <svg className={styles.bar} viewBox="0 0 100 3" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className={styles.barTrack} x="0" y="0" width="100" height="3" />
                       {hours !== null && (
-                        <rect className={styles.barFill} x="0" y="0" width={(hours / longest) * 100} height="6" />
+                        <rect className={styles.barFill} x="0" y="0" width={(hours / longest) * 100} height="3" />
                       )}
                     </svg>
                     <span className={styles.hours}>
@@ -228,19 +206,7 @@ export default async function Game(props: GameProps) {
               {facts.map((fact) => (
                 <div key={fact.label} className={styles.credit}>
                   <dt>{fact.label}</dt>
-                  <dd>
-                    {fact.tags ? (
-                      <ul className={styles.tagList}>
-                        {fact.tags.map((tag) => (
-                          <li key={tag} className={styles.tag}>
-                            {tag}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      fact.text
-                    )}
-                  </dd>
+                  <dd>{fact.tags ? fact.tags.join(", ") : fact.text}</dd>
                 </div>
               ))}
             </dl>

@@ -7,34 +7,32 @@
     "subtitle tools";
   align-items: end;
   column-gap: 32px;
-  padding-bottom: 24px;
-  margin-bottom: 36px;
-  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 32px;
 }
 
 .title {
   grid-area: title;
-  margin: 0 0 8px 0;
-  font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: clamp(32px, 3.6vw, 42px);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  margin: 0 0 6px 0;
+  font-size: clamp(24px, 2.6vw, 30px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
   color: var(--text-heading);
 }
 
 .subtitle {
   grid-area: subtitle;
   margin: 0;
-  max-width: 56ch;
-  font-size: 15px;
+  max-width: 52ch;
+  font-size: 14.5px;
   line-height: 1.5;
   color: var(--muted);
 }
 
 .tools {
   grid-area: tools;
-  width: 340px;
+  width: 320px;
   align-self: end;
 }
 
