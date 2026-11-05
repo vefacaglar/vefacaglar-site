@@ -71,32 +71,72 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
         <p className={styles.muted}>{dict.no_logs}</p>
       ) : (
         <ul className={styles.logList}>
-          {logs.map((log) => (
-            <li key={log.id} className={styles.logRow}>
-              <Link href={localizeHref(`/games/${slug}/logs/${log.id}`, locale)} className={styles.logItem}>
-                <div className={styles.logSummary}>
-                  <span className={styles.status}>{statusLabel(dict, log.status)}</span>
-                  {log.platform && <span>{log.platform.name}</span>}
-                  {log.rating !== null && <span>{log.rating}/100</span>}
-                  {log.playtimeHours !== null && <span>{`${log.playtimeHours}${dict.hours_short}`}</span>}
-                  {log.startedAt && <span>{`${dict.log_started} ${formatDate(log.startedAt, locale)}`}</span>}
-                  {log.completedAt && <span>{`${dict.log_completed} ${formatDate(log.completedAt, locale)}`}</span>}
-                  <span className={styles.logEdit}>{dict.edit} →</span>
-                </div>
-                {log.notes && <p className={styles.notes}>{log.notes}</p>}
-              </Link>
-              <button
-                type="button"
-                className={`btnGhost ${styles.deleteButton}`}
-                disabled={pending}
-                onClick={() => setPendingDelete(log.id)}
-                aria-label={dict.delete}
-                title={dict.delete}
-              >
-                <TrashIcon />
-              </button>
-            </li>
-          ))}
+          {logs.map((log) => {
+            const hasMetrics =
+              log.rating !== null ||
+              log.playtimeHours !== null ||
+              Boolean(log.startedAt) ||
+              Boolean(log.completedAt);
+
+            return (
+              <li key={log.id} className={styles.logRow}>
+                <Link
+                  href={localizeHref(`/games/${slug}/logs/${log.id}`, locale)}
+                  className={styles.logItem}
+                  data-status={log.status}
+                >
+                  <div className={styles.logHeader}>
+                    <span className={styles.statusBadge} data-status={log.status}>
+                      {statusLabel(dict, log.status)}
+                    </span>
+                    {log.platform && <span className={styles.platformBadge}>{log.platform.name}</span>}
+                    <span className={styles.logEdit}>{dict.edit} →</span>
+                  </div>
+
+                  {hasMetrics && (
+                    <div className={styles.logMetrics}>
+                      {log.rating !== null && (
+                        <span className={styles.logMetric}>
+                          <span className={styles.logMetricLabel}>{dict.rating_label}</span>
+                          <span className={styles.logMetricValue}>{log.rating}/100</span>
+                        </span>
+                      )}
+                      {log.playtimeHours !== null && (
+                        <span className={styles.logMetric}>
+                          <span className={styles.logMetricLabel}>{dict.list_playtime}</span>
+                          <span className={styles.logMetricValue}>{`${log.playtimeHours}${dict.hours_short}`}</span>
+                        </span>
+                      )}
+                      {log.startedAt && (
+                        <span className={styles.logMetric}>
+                          <span className={styles.logMetricLabel}>{dict.log_started}</span>
+                          <span className={styles.logMetricValue}>{formatDate(log.startedAt, locale)}</span>
+                        </span>
+                      )}
+                      {log.completedAt && (
+                        <span className={styles.logMetric}>
+                          <span className={styles.logMetricLabel}>{dict.log_completed}</span>
+                          <span className={styles.logMetricValue}>{formatDate(log.completedAt, locale)}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {log.notes && <p className={styles.notes}>{log.notes}</p>}
+                </Link>
+                <button
+                  type="button"
+                  className={`btnGhost ${styles.deleteButton}`}
+                  disabled={pending}
+                  onClick={() => setPendingDelete(log.id)}
+                  aria-label={dict.delete}
+                  title={dict.delete}
+                >
+                  <TrashIcon />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 

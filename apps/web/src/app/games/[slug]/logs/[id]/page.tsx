@@ -61,7 +61,16 @@ export default async function GameLogPage(props: LogPageProps) {
       <p className={styles.backLink}>
         <Link href={gameHref}>← {game.title}</Link>
       </p>
-      <h1>{dict.log_edit_title}</h1>
+      <header className={styles.logPageHeader}>
+        {game.coverImageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className={styles.logPageCover} src={game.coverImageUrl} alt="" />
+        )}
+        <div className={styles.logPageHeading}>
+          <p className={styles.logPageGame}>{game.title}</p>
+          <h1>{dict.log_edit_title}</h1>
+        </div>
+      </header>
       <LogEditForm slug={game.slug} log={log} platforms={game.platforms} />
     </article>
   );
