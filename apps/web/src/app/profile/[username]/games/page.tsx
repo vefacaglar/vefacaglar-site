@@ -41,6 +41,7 @@ export default async function ProfileGames(props: ProfileGamesProps) {
     <ProfileGamesShelf
       games={games}
       summaryPlatforms={summary.platforms}
+      basePath={profilePath(user.username, "games")}
       lang={lang}
       isOwner={isOwner}
       ownerName={user.displayName || user.username}
