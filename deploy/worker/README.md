@@ -3,12 +3,23 @@
 The background jobs worker (`apps/worker`, Rust; spec in
 [`docs/jobs-worker.md`](../../docs/jobs-worker.md)) runs as a single Docker
 container on the same VPS as the API. GitHub Actions
-(`.github/workflows/worker-ci.yml`) checks formatting, clippy and tests, builds
-an amd64/arm64 image and publishes `ghcr.io/vefacaglar/vefacaglar-site-worker:<commit>`
-on `main`. Deployment pins the immutable digest. Pull requests never publish or deploy.
+(`.github/workflows/worker-ci.yml`) checks formatting, clippy and tests, then
+builds amd64 and arm64 images on separate native runners. The amd64 VPS deploy
+pins its architecture's immutable digest as soon as that build succeeds; it
+does not wait for ARM. After both builds succeed, CI publishes the combined
+`ghcr.io/vefacaglar/vefacaglar-site-worker:<commit>` tag. Architecture-specific
+tags have `-amd64` and `-arm64` suffixes. Pull requests never publish or deploy.
 The image also includes Node and the compiled API maintenance command used by
 `catalog.popularity.refresh`; its provider and scoring logic stays shared with
 the API. The Docker build context is the repository root.
+
+The image build disables release LTO and uses 16 code generation units for
+both cargo-chef dependency compilation and the final binary. This keeps normal
+release optimization and stack line information while avoiding costly link
+optimization for an I/O-bound worker; the repository's Cargo release profile
+is unchanged. Build caches have separate architecture scopes. Cache export is
+optional and bounded to three minutes, so a cache service failure cannot fail
+an otherwise successful image publication or deployment.
 
 There is no blue/green rollout and no public endpoint. A deploy pulls the new
 image and runs `docker compose up -d --wait`: Docker sends SIGTERM to the old

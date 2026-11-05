@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Build context: repository root (see .github/workflows/worker-ci.yml).
-# Multi-arch: buildx runs each stage natively per platform (QEMU in CI).
+# CI builds each architecture on its matching native runner.
 
 ARG RUST_VERSION=1.96
 
@@ -13,6 +13,11 @@ COPY apps/worker/ .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
+# The worker orchestrates database/network work. Avoid expensive cross-crate
+# link optimization in the image build; use the same profile for dependencies
+# and the final binary so cargo-chef's cache remains reusable.
+ENV CARGO_PROFILE_RELEASE_LTO=false \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
 COPY --from=planner /app/recipe.json recipe.json
 # Dependencies only: cached until Cargo.toml/Cargo.lock change.
 RUN cargo chef cook --release --locked --recipe-path recipe.json --bin worker
