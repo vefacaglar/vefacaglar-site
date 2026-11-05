@@ -131,6 +131,8 @@ export interface IGamesRepository {
    * Public listing, including announced games. Without `q`, owner taste first, then current interest;
    * with `q`, title matches ranked exact > prefix > substring, then the same order.
    */
+  /** Fresh public card fields for at most one search page; no relations or administrative data. */
+  findPublicCardsByIds(ids: string[]): Promise<GameCard[]>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
 
   /** Loads ids and slugs (and game titles) of the whole catalog in one round of queries. */

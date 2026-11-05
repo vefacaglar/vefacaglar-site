@@ -2,136 +2,56 @@ import "reflect-metadata";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ListGamesHandler } from "./list.handler";
 import type { ISearchReader } from "../../../../shared/search/queries/search-reader.interface";
-import { FastifyRequest } from "fastify";
-
-function makeReader(): Record<keyof ISearchReader, any> {
-  return {
-    searchGames: vi.fn(),
-    searchDevelopers: vi.fn(),
-    searchPublishers: vi.fn(),
-    searchGenres: vi.fn(),
-    searchPlatforms: vi.fn(),
-    searchThemes: vi.fn(),
-  };
+import type { IGamesRepository, GameWithRelations } from "../../games.repository.interface";
+function row(id: string, patch: Partial<GameWithRelations> = {}): GameWithRelations {
+  return { id, slug: id, title: id, originalTitle: null, description: null, coverImageUrl: null, releaseDate: null,
+    metacriticScore: null, openCriticScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null,
+    createdAt: new Date("2026-01-01T00:00:00Z"), updatedAt: null, developers: [], publishers: [], genres: [], platforms: [], themes: [], ...patch } as GameWithRelations;
 }
-
-describe("ListGamesHandler", () => {
-  let mockReader: Record<keyof ISearchReader, any>;
+describe("catalog ListGamesHandler", () => {
+  let reader: Record<keyof ISearchReader, any>;
+  let repo: Record<keyof IGamesRepository, any>;
   let handler: ListGamesHandler;
-
   beforeEach(() => {
-    mockReader = makeReader();
-    handler = new ListGamesHandler(mockReader as unknown as ISearchReader);
+    reader = { searchGames: vi.fn().mockResolvedValue({ items: [], total: 0 }) } as unknown as Record<keyof ISearchReader, any>;
+    repo = { findByIds: vi.fn().mockResolvedValue([]) } as unknown as Record<keyof IGamesRepository, any>;
+    handler = new ListGamesHandler(reader, repo);
   });
-
-  it("should call searchGames with provided query and map full relations", async () => {
-    mockReader.searchGames.mockResolvedValue({
-      items: [
-        {
-          id: "g-1",
-          slug: "witcher-3",
-          title: "The Witcher 3",
-          originalTitle: null,
-          description: "RPG",
-          coverImageUrl: null,
-          releaseDate: "2015-05-19",
-          metacriticScore: 93,
-          openCriticScore: 92,
-          hltbMainHours: "50",
-          hltbMainExtraHours: "100",
-          hltbCompletionistHours: "170",
-          createdAt: new Date("2026-01-01T00:00:00.000Z"),
-          updatedAt: new Date("2026-02-01T00:00:00.000Z"),
-          developers: [{ id: "d-1", name: "CDPR", slug: "cdpr" }],
-          publishers: [{ id: "p-1", name: "CDP", slug: "cdp" }],
-          genres: [{ id: "g-2", name: "RPG", slug: "rpg" }],
-          platforms: [{ id: "pl-1", name: "PC", slug: "pc" }],
-          themes: [{ id: "t-1", name: "Dark Fantasy", slug: "dark-fantasy" }],
-        },
-      ],
-      total: 1,
-    });
-
-    const mockRequest = {
-      query: { page: 2, limit: 5, q: "witcher" },
-    } as unknown as FastifyRequest<{ Querystring: any }>;
-
-    const result = await handler.handle(mockRequest);
-
-    expect(mockReader.searchGames).toHaveBeenCalledWith({
-      q: "witcher",
-      page: 2,
-      limit: 5,
-    });
-    expect(result.items[0].developers).toEqual([{ id: "d-1", name: "CDPR", slug: "cdpr" }]);
-    expect(result.items[0].publishers).toEqual([{ id: "p-1", name: "CDP", slug: "cdp" }]);
-    expect(result.items[0].genres).toEqual([{ id: "g-2", name: "RPG", slug: "rpg" }]);
-    expect(result.items[0].platforms).toEqual([{ id: "pl-1", name: "PC", slug: "pc" }]);
-    expect(result.items[0].themes).toEqual([{ id: "t-1", name: "Dark Fantasy", slug: "dark-fantasy" }]);
-    expect(result.totalPages).toBe(1);
+  it("defaults page/limit and skips DB hydration for empty hits", async () => {
+    expect(await handler.handle({ query: {} } as any)).toMatchObject({ items: [], page: 1, limit: 10, totalPages: 0 });
+    expect(reader.searchGames).toHaveBeenCalledWith({ q: undefined, page: 1, limit: 10 });
+    expect(repo.findByIds).not.toHaveBeenCalled();
   });
-
-  it("should default to page=1 and limit=10", async () => {
-    mockReader.searchGames.mockResolvedValue({ items: [], total: 0 });
-
-    const mockRequest = {
-      query: {},
-    } as unknown as FastifyRequest<{ Querystring: any }>;
-
-    await handler.handle(mockRequest);
-
-    expect(mockReader.searchGames).toHaveBeenCalledWith({
-      q: undefined,
-      page: 1,
-      limit: 10,
-    });
+  it("uses fresh SQL hours and preserves search rank, counts and complete relations", async () => {
+    reader.searchGames.mockResolvedValue({ items: [{ id: "b", hltbMainHours: "old" }, { id: "a", hltbMainHours: "wrong" }], total: 25 });
+    const relation = { id: "dev", name: "Studio", slug: "studio" };
+    repo.findByIds.mockResolvedValue([
+      row("a", { hltbMainHours: "80", developers: [relation], publishers: [relation], genres: [relation], platforms: [relation], themes: [relation] }),
+      row("b", { hltbMainHours: "50", updatedAt: new Date("2026-02-01T00:00:00Z") }),
+    ]);
+    const result = await handler.handle({ query: { q: "title", page: 2, limit: 5 } } as any);
+    expect(reader.searchGames).toHaveBeenCalledWith({ q: "title", page: 2, limit: 5 });
+    expect(repo.findByIds).toHaveBeenCalledWith(["b", "a"]);
+    expect(result.items.map((game) => [game.id, game.hltbMainHours])).toEqual([["b", "50"], ["a", "80"]]);
+    expect(result.items[0]).toMatchObject({ createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-02-01T00:00:00.000Z", developers: [] });
+    expect(result.items[1]).toMatchObject({ updatedAt: null, developers: [relation], publishers: [relation], genres: [relation], platforms: [relation], themes: [relation] });
+    expect(result).toMatchObject({ total: 25, page: 2, limit: 5, totalPages: 5 });
   });
-
-  it("should map empty relation arrays to empty arrays", async () => {
-    mockReader.searchGames.mockResolvedValue({
-      items: [
-        {
-          id: "g-2",
-          slug: "x",
-          title: "X",
-          originalTitle: null,
-          description: null,
-          coverImageUrl: null,
-          releaseDate: null,
-          metacriticScore: null,
-          openCriticScore: null,
-          hltbMainHours: null,
-          hltbMainExtraHours: null,
-          hltbCompletionistHours: null,
-          createdAt: new Date(),
-          updatedAt: null,
-          developers: [],
-          publishers: [],
-          genres: [],
-          platforms: [],
-          themes: [],
-        },
-      ],
-      total: 1,
-    });
-
-    const mockRequest = {
-      query: {},
-    } as unknown as FastifyRequest<{ Querystring: any }>;
-
-    const result = await handler.handle(mockRequest);
-    expect(result.items[0].developers).toEqual([]);
-    expect(result.items[0].updatedAt).toBeNull();
+  it("omits unknown/deleted indexed records instead of returning stale data", async () => {
+    reader.searchGames.mockResolvedValue({ items: [{ id: "missing", hltbMainHours: "old" }, { id: "current" }], total: 2 });
+    repo.findByIds.mockResolvedValue([row("current")]);
+    const result = await handler.handle({ query: {} } as any);
+    expect(result.items.map((game) => game.id)).toEqual(["current"]);
+    expect(result.items[0].hltbMainHours).toBeNull();
+    expect(result.total).toBe(2);
   });
-
-  it("should compute totalPages with Math.ceil", async () => {
-    mockReader.searchGames.mockResolvedValue({ items: [], total: 25 });
-
-    const mockRequest = {
-      query: { page: 1, limit: 10 },
-    } as unknown as FastifyRequest<{ Querystring: any }>;
-
-    const result = await handler.handle(mockRequest);
-    expect(result.totalPages).toBe(3);
+  it("keeps larger admin pages while bounding hydration batches to48", async () => {
+    const ids = Array.from({ length: 100 }, (_, index) => `game-${index}`);
+    reader.searchGames.mockResolvedValue({ items: ids.map((id) => ({ id })), total: 101 });
+    repo.findByIds.mockImplementation(async (batch: string[]) => batch.map((id) => row(id)).reverse());
+    const result = await handler.handle({ query: { limit: 100 } } as any);
+    expect(repo.findByIds.mock.calls.map((call: any[]) => call[0].length)).toEqual([48, 48, 4]);
+    expect(result.items.map((game) => game.id)).toEqual(ids);
+    expect(result.totalPages).toBe(2);
   });
 });

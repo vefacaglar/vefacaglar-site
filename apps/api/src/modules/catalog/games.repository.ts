@@ -377,6 +377,19 @@ export class DrizzleGamesRepository implements IGamesRepository {
     return { items: rows, total: Number(countResult[0]?.count || 0) };
   }
 
+  async findPublicCardsByIds(ids: string[]): Promise<GameCard[]> {
+    const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))].slice(0, 48);
+    if (!validIds.length) return [];
+    return this.dbProvider.client.select({
+      id: games.id, slug: games.slug, title: games.title, coverImageUrl: games.coverImageUrl,
+      releaseDate: games.releaseDate, metacriticScore: games.metacriticScore,
+      openCriticScore: games.openCriticScore, criticScore: games.criticScore,
+      criticScoreCount: games.criticScoreCount, popularityScore: games.popularityScore,
+      hltbMainHours: games.hltbMainHours, hltbMainExtraHours: games.hltbMainExtraHours,
+      hltbCompletionistHours: games.hltbCompletionistHours,
+    }).from(games).where(inArray(games.id, validIds));
+  }
+
   async loadCatalogIndex(): Promise<CatalogIndex> {
     const db = this.dbProvider.client;
     const [gameRows, devRows, pubRows, genRows, platRows, themeRows] = await Promise.all([
@@ -400,8 +413,9 @@ export class DrizzleGamesRepository implements IGamesRepository {
   }
 
   async findByIds(ids: string[]): Promise<GameWithRelations[]> {
-    if (ids.length === 0) return [];
-    const rows = await this.dbProvider.client.select().from(games).where(inArray(games.id, ids));
+    const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))];
+    if (validIds.length === 0) return [];
+    const rows = await this.dbProvider.client.select().from(games).where(inArray(games.id, validIds));
     return this.attachRelations(rows);
   }
 

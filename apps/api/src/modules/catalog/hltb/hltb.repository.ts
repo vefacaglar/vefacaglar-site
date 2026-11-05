@@ -73,7 +73,7 @@ export class DrizzleHltbLookupsRepository implements IHltbLookupsRepository {
   async withSearchSync<T>(gameId: string, work: () => Promise<T>): Promise<T> {
     return this.dbProvider.transaction(async () => {
       await this.dbProvider.client.execute(sql`set local lock_timeout = '5s'`);
-      // Hold across read/import/conditional-clear so another process cannot import an
+      // Hold across read/import/conditional-clear so another lookup-tool process cannot import an
       // older snapshot after the newer application has already cleared its pending flag.
       await this.dbProvider.client.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`hltb:search:${gameId}`}, 0))`);
       return work();
@@ -99,8 +99,12 @@ export class DrizzleHltbLookupsRepository implements IHltbLookupsRepository {
     return { acquired: false, retryAt: new Date(Math.max(Date.now() + 100, state.nextRequestAt.getTime(), state.cooldownUntil?.getTime() ?? 0, state.leaseUntil?.getTime() ?? 0)) };
   }
   async releaseProviderPermit(owner: string, cooldownUntil: Date | null): Promise<void> {
-    await this.dbProvider.client.update(hltbProviderState).set({ leaseOwner: null, leaseUntil: null,
+    await this.dbProvider.client.update(hltbProviderState).set({
+      // A late response may still extend provider cooldown, but must not release a
+      // replacement owner's lease after suspension or lease expiry.
+      leaseOwner: sql`case when ${hltbProviderState.leaseOwner} = ${owner}::uuid then null else ${hltbProviderState.leaseOwner} end`,
+      leaseUntil: sql`case when ${hltbProviderState.leaseOwner} = ${owner}::uuid then null else ${hltbProviderState.leaseUntil} end`,
       cooldownUntil: cooldownUntil ? sql`greatest(coalesce(${hltbProviderState.cooldownUntil}, ${cooldownUntil.toISOString()}::timestamptz), ${cooldownUntil.toISOString()}::timestamptz)` : sql`${hltbProviderState.cooldownUntil}`,
-    }).where(and(eq(hltbProviderState.id, "hltb"), eq(hltbProviderState.leaseOwner, owner)));
+    }).where(eq(hltbProviderState.id, "hltb"));
   }
 }

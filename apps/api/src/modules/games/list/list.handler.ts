@@ -23,9 +23,18 @@ export class ListGamesHandler {
 
     // Default browse reads authoritative indexed owner scores. Typed searches
     // retain their existing title relevance, without requiring a search schema rebuild.
-    const { items, total } = q
+    const result = q
       ? await this.searchReader.searchPublicGames({ page, limit, q })
       : await this.gamesRepo.listPublic({ page, limit });
+    let items = result.items;
+    if (q && items.length) {
+      // Search owns relevance and counts; Postgres owns current display fields.
+      // An overlapping index import must not restore old completion times on cards.
+      const current = await this.gamesRepo.findPublicCardsByIds(items.map((game) => game.id));
+      const byId = new Map(current.map((game) => [game.id, game]));
+      items = items.flatMap((hit) => { const game = byId.get(hit.id); return game ? [game] : []; });
+    }
+    const total = result.total;
     return {
       items: items.map((g) => ({
         slug: g.slug,

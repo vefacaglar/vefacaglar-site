@@ -11,7 +11,7 @@ describe("ListGamesHandler", () => {
 
   beforeEach(() => {
     reader = { searchPublicGames: vi.fn().mockResolvedValue({ items: [], total: 0 }) } as unknown as Record<keyof ISearchReader, any>;
-    gamesRepo = { listPublic: vi.fn().mockResolvedValue({ items: [], total: 0 }) } as unknown as Record<keyof IGamesRepository, any>;
+    gamesRepo = { findPublicCardsByIds: vi.fn().mockResolvedValue([]), listPublic: vi.fn().mockResolvedValue({ items: [], total: 0 }) } as unknown as Record<keyof IGamesRepository, any>;
     handler = new ListGamesHandler(reader, gamesRepo);
   });
 
@@ -41,6 +41,7 @@ describe("ListGamesHandler", () => {
       total: 49,
     });
 
+    gamesRepo.findPublicCardsByIds.mockResolvedValue([{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85, criticScoreCount: 12 }]);
     const result = await handler.handle({ query: { q: "  doom ", page: 2 } } as any);
 
     expect(reader.searchPublicGames).toHaveBeenCalledWith({ page: 2, limit: 24, q: "doom" });
@@ -57,6 +58,49 @@ describe("ListGamesHandler", () => {
     await handler.handle({ query: { q: "   " } } as any);
     expect(gamesRepo.listPublic).toHaveBeenLastCalledWith({ page: 1, limit: 24 });
     expect(reader.searchPublicGames).toHaveBeenCalledTimes(1);
+  });
+
+  it("hydrates fresh SQL hours and scores while preserving search relevance and pagination", async () => {
+    reader.searchPublicGames.mockResolvedValue({ items: [
+      { id: "b", slug: "old-b", title: "Old B", hltbMainHours: "10" },
+      { id: "a", slug: "old-a", title: "Old A", hltbMainHours: null },
+    ], total: 45 });
+    gamesRepo.findPublicCardsByIds.mockResolvedValue([
+      { id: "a", slug: "a", title: "A", hltbMainHours: "30", criticScore: 91, criticScoreCount: 10 },
+      { id: "b", slug: "b", title: "B", hltbMainHours: "25", metacriticScore: 88 },
+    ]);
+    const result = await handler.handle({ query: { q: "game", page: 2, limit: 21 } } as any);
+    expect(gamesRepo.findPublicCardsByIds).toHaveBeenCalledWith(["b", "a"]);
+    expect(result.items.map((game) => [game.slug, game.hltbMainHours])).toEqual([["b", "25"], ["a", "30"]]);
+    expect(result.items[0].metacriticScore).toBe(88);
+    expect(result.items[1].criticScore).toBe(91);
+    expect(result).toMatchObject({ total: 45, page: 2, limit: 21, totalPages: 3 });
+    expect(gamesRepo.listPublic).not.toHaveBeenCalled();
+  });
+
+  it("drops missing or obsolete search hits instead of displaying stale indexed fields", async () => {
+    reader.searchPublicGames.mockResolvedValue({ items: [{ id: "missing", slug: "stale", hltbMainHours: "99" }, { id: "exists" }], total: 2 });
+    gamesRepo.findPublicCardsByIds.mockResolvedValue([{ id: "exists", slug: "current", title: "Current", hltbMainHours: null }]);
+    const result = await handler.handle({ query: { q: "game" } } as any);
+    expect(result.items.map((game) => [game.slug, game.hltbMainHours])).toEqual([["current", null]]);
+    expect(result.total).toBe(2);
+  });
+
+  it("preserves the configured maximum public page of48 hits in one hydration query", async () => {
+    const ids = Array.from({ length: 48 }, (_, index) => `g-${index}`);
+    reader.searchPublicGames.mockResolvedValue({ items: ids.map((id) => ({ id })), total: 49 });
+    gamesRepo.findPublicCardsByIds.mockResolvedValue(ids.map((id) => ({ id, slug: id, title: id })).reverse());
+    const result = await handler.handle({ query: { q: "game", limit: 48 } } as any);
+    expect(result.items.map((game) => game.slug)).toEqual(ids);
+    expect(gamesRepo.findPublicCardsByIds).toHaveBeenCalledTimes(1);
+    expect(gamesRepo.findPublicCardsByIds.mock.calls[0][0]).toHaveLength(48);
+    expect(result).toMatchObject({ total: 49, limit: 48, totalPages: 2 });
+  });
+
+  it("does not query card hydration for empty searches or default SQL browse", async () => {
+    await handler.handle({ query: { q: "no hits" } } as any);
+    await handler.handle({ query: {} } as any);
+    expect(gamesRepo.findPublicCardsByIds).not.toHaveBeenCalled();
   });
 
   it("exposes stored provider scores independently and rejects invalid values", async () => {

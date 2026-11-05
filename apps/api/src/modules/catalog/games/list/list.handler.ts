@@ -3,10 +3,15 @@ import { ListGamesQuery, ListGamesResponse } from "./list.schema";
 import { inject, injectable } from "tsyringe";
 import { SEARCH_READER } from "../../../../shared/search/search.tokens";
 import type { ISearchReader } from "../../../../shared/search/queries/search-reader.interface";
+import { GAMES_REPOSITORY } from "../../catalog.tokens";
+import type { IGamesRepository } from "../../games.repository.interface";
 
 @injectable()
 export class ListGamesHandler {
-  constructor(@inject(SEARCH_READER) private readonly searchReader: ISearchReader) {}
+  constructor(
+    @inject(SEARCH_READER) private readonly searchReader: ISearchReader,
+    @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
+  ) {}
 
   async handle(request: FastifyRequest<{ Querystring: ListGamesQuery }>): Promise<ListGamesResponse> {
     const { page, limit, q } = request.query;
@@ -14,12 +19,20 @@ export class ListGamesHandler {
     const pageNum = page !== undefined ? Number(page) : 1;
     const limitNum = limit !== undefined ? Number(limit) : 10;
 
-    const { items: rows, total } = await this.searchReader.searchGames({
+    const { items: hits, total } = await this.searchReader.searchGames({
       q,
       page: pageNum,
       limit: limitNum,
     });
 
+    // Keep search relevance/counts, but never display stale indexed completion times.
+    // Administrative pages need relations; load at most one validated page in small batches.
+    const ids = hits.slice(0, Math.min(limitNum, 250)).map((hit) => hit.id);
+    const batches: string[][] = [];
+    for (let i = 0; i < ids.length; i += 48) batches.push(ids.slice(i, i + 48));
+    const current = (await Promise.all(batches.map((batch) => this.gamesRepo.findByIds(batch)))).flat();
+    const byId = new Map(current.map((game) => [game.id, game]));
+    const rows = ids.flatMap((id) => { const game = byId.get(id); return game ? [game] : []; });
     const totalPages = Math.ceil(total / limitNum);
 
     const items = rows.map((row) => ({
