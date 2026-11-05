@@ -15,21 +15,6 @@
   --font-display: var(--font-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000; /* Keep the background pure black in OS dark mode */
-    --text: #eaeaea;
-    --text-heading: #ffffff;
-    --muted: #8e8e8e;
-    --border: #2d2d2d;
-    --accent: #A89276;
-    --success: #728477;
-    --warning: #9F8E7D;
-    --info: #7087A3;
-    --on-accent: #1a1a1a;
-  }
-}
-
 /* Graphite mode follows the shell onto the root for backgrounds and modal dialogs. */
 :root:has([data-ui-theme="graphite"]),
 [data-ui-theme="graphite"] {

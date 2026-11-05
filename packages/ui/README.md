@@ -13,6 +13,8 @@ import "./globals.css";
 
 The package exports TypeScript/TSX source. Next.js consumers need `transpilePackages: ["@vefacaglar/ui"]`; other bundlers must support TSX and CSS Modules. React 19 is a peer dependency. There is no package build or publishing step.
 
+Next.js already declares `*.module.css` through `next-env.d.ts`. A non-Next TypeScript consumer that follows imports into this package's source needs an ambient declaration for CSS Modules. Opt in with `/// <reference types="@vefacaglar/ui/css-modules" />` in one of your `.d.ts` files, or add `"types": ["@vefacaglar/ui/css-modules"]` to `compilerOptions` (note that setting `types` restricts other automatic `@types` inclusion). The package never references it itself, to avoid duplicate declarations beside Next's.
+
 For non-React integration, the CSS exports (`styles.css`, or `theme.css` and `controls.css` separately) do not depend on React. Loading the files in another repository is a future integration step; other projects have not been migrated here.
 
 ## Components
@@ -29,7 +31,7 @@ import { ConfirmDialog } from "@vefacaglar/ui/confirm-dialog";
 
 `Button` renders a native button; set `type` explicitly where needed. `ButtonLink` renders a plain anchor. Use `buttonClassName(variant, className)` on a host router's link to retain client navigation. The website's existing `Button` is a thin Next.js adapter; its old import paths remain compatible.
 
-`ConfirmDialog` is a client entry using a native modal dialog. Supply `open`, `message`, `confirmLabel`, `cancelLabel`, `onConfirm`, and `onCancel`; `pending` disables its buttons. Labels, locale, and async state belong to the host.
+`ConfirmDialog` is a client entry using a native modal dialog. Supply `open`, `message`, `confirmLabel`, `cancelLabel`, `onConfirm`, and `onCancel`; `pending` disables its buttons. Labels, locale, and async state belong to the host. Like `Button`, it relies on the global `btnAccent`/`btnGhost` classes, so the host must load `@vefacaglar/ui/styles.css` (or `controls.css` plus the theme tokens).
 
 ## Themes and styling
 

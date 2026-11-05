@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import styles from "./ConfirmDialog.module.css";
+import { buttonClassName } from "./buttonClassName";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -59,10 +60,10 @@ export function ConfirmDialog({
           {message}
         </p>
         <div className={styles.actions}>
-          <button type="button" className="btnGhost" ref={cancelRef} disabled={pending} onClick={onCancel}>
+          <button type="button" className={buttonClassName("ghost")} ref={cancelRef} disabled={pending} onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button type="button" className="btnAccent" disabled={pending} onClick={onConfirm}>
+          <button type="button" className={buttonClassName("accent")} disabled={pending} onClick={onConfirm}>
             {confirmLabel}
           </button>
         </div>

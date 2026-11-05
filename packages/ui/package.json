@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./confirm-dialog": "./src/ConfirmDialog.tsx",
+    "./css-modules": {
+      "types": "./src/css.d.ts"
+    },
     "./styles.css": "./src/styles.css",
     "./theme.css": "./src/theme.css",
     "./controls.css": "./src/controls.css"
