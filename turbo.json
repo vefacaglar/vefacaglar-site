@@ -21,8 +21,7 @@
         "TYPESENSE_PORT",
         "TYPESENSE_PROTOCOL",
         "TYPESENSE_API_KEY",
-        "TYPESENSE_PUBLIC_URL",
-        "REDIS_URL"
+        "TYPESENSE_PUBLIC_URL"
       ],
       "outputs": [
         ".next/**",

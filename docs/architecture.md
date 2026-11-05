@@ -15,12 +15,12 @@ How the pieces of this monorepo fit together. Coding rules live in
                  ┌──────────────▼───────────────┐        ┌────────────┐
                  │ apps/api  (Fastify, VPS)     │───────▶│ Typesense  │
                  │ api2.vefacaglar.com          │◀── ─ ─ │ (search)   │
-                 └───┬──────────────┬───────────┘        └─────▲──────┘
-                     │ Drizzle      │ circuit state            │ bulk import,
-                     ▼              ▼                          │ alias swap
-                ┌──────────┐   ┌─────────┐       ┌─────────────┴──────────┐
-                │ Postgres │◀──│  Redis  │       │ apps/worker (Rust, VPS)│
-                │ data +   │   └─────────┘       │ background jobs        │
+                 └───┬──────────────────────────┘        └─────▲──────┘
+                     │ Drizzle                                 │ bulk import,
+                     ▼                                         │ alias swap
+                ┌──────────┐                     ┌─────────────┴──────────┐
+                │ Postgres │                     │ apps/worker (Rust, VPS)│
+                │ data +   │                     │ background jobs        │
                 │ job queue│◀────────────────────│ LISTEN / poll / claim  │
                 └──────────┘                     └────────────────────────┘
 ```
@@ -34,10 +34,9 @@ How the pieces of this monorepo fit together. Coding rules live in
 | `packages/shared` | TypeScript | — | Shared helpers |
 | Postgres | — | managed / VPS | Source of truth and the only job queue |
 | Typesense | — | VPS | Search (English-only collections behind aliases) |
-| Redis | ioredis | VPS | Search circuit-breaker state |
 
 **Boundary rule:** the web app talks only to the API. It never connects to
-Postgres, Typesense, Redis or the worker. The API and the worker share one VPS.
+Postgres, Typesense or the worker. The API and the worker share one VPS.
 Because the web app runs on Vercel's free tier, long-lived requests (streams,
 long polling) should not be held open inside Vercel functions.
 
@@ -113,8 +112,8 @@ release date.
 - **Read/write split**: `ISearchReader` for queries, `ISearchIndexWriter` for
   incremental per-document writes triggered by domain events
   (`shared/events`, in-process bus). Handlers never write to Typesense directly.
-- **Resilience**: every query falls back to Postgres on timeout or error; a
-  Redis-backed circuit breaker stops calling Typesense while it is unhealthy.
+- **Resilience**: queries fall back to Postgres when Typesense times out or is
+  unavailable. The API process waits 30 seconds before trying Typesense again.
 - **Collections**: English only — `games_en`, `developers_en`, `publishers_en`,
   `genres_en`, `platforms_en`, `themes_en`, `posts_en`. Each name is an alias
   that points at a timestamped physical collection (`games_en__20261104120000`).

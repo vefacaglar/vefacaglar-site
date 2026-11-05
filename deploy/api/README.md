@@ -39,7 +39,6 @@ quotes. Add optional integrations using their existing values:
 
 | Feature | Secrets |
 | --- | --- |
-| Redis cache/rate limiting | `REDIS_URL` |
 | Typesense search | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`; `TYPESENSE_PUBLIC_URL` can replace explicit host/port/protocol |
 | Image uploads | `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_PUBLIC_KEY`, optionally `IMAGEKIT_FOLDER` |
 | IGDB imports | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
@@ -63,6 +62,8 @@ its individual secret and `API_ENV`. Changing secrets alone does not trigger a
 deploy; select **Run workflow** afterwards. Files are private to the deployment
 user. Each release has its own private environment. A failed rollout leaves the active
 release running; a failed traffic check restores the previous Caddy route.
+
+Rate limit counters and the search circuit breaker are kept in each API process.
 
 ## GitHub variables and deployment
 

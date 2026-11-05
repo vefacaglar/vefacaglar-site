@@ -175,7 +175,6 @@ jobs:
           AUTH_MODE: ${{ secrets.AUTH_MODE }}
           OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
           OIDC_CLIENT_ID: ${{ secrets.OIDC_CLIENT_ID }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
           TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
           TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
           TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}

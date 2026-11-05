@@ -19,7 +19,6 @@ For how the pieces fit together, see [docs/architecture.md](docs/architecture.md
 - **Validation:** [TypeBox](https://github.com/sinclairzx81/typebox) (Runtime Validation & Schema Serialization)
 - **Testing:** [Vitest](https://vitest.dev/) (Handler-level unit tests in `apps/api`)
 - **Search & Indexing Engine:** [Typesense](https://typesense.org/) (for ultra-fast, typo-tolerant searches across games, developers, publishers, genres, platforms, and themes)
-- **State & Resiliency Cache:** [Redis](https://redis.io/) (used for circuit breaker health state persistence across serverless invocations)
 - **API Documentation:** OpenAPI/Swagger (`@fastify/swagger` & `@fastify/swagger-ui`)
 - **Dependency Injection:** [`tsyringe`](https://github.com/microsoft/tsyringe)
 - **Image Hosting:** [ImageKit](https://imagekit.io/)
@@ -70,7 +69,7 @@ Search across game-related entities (games, developers, publishers, genres, plat
 
 - **CQRS Search Pattern:** Search uses separate read and write contracts. Lookups and queries run via `ISearchReader` to fetch from Typesense, while index updates run via `ISearchIndexWriter`.
 - **Decoupled Event-Driven Indexing:** To avoid blocking API request pipelines, indexing is completely decoupled from core database write operations. Instead of writing to Typesense inside feature handlers, we utilize a domestic **Domain Event Bus** (`games.events.ts`). DB modifications trigger lightweight events that are subscribed to asynchronously to propagate updates to Typesense.
-- **Resilient Fallback & Redis Circuit Breaker:** In the event of Typesense downtime or timeouts, the API gracefully and instantly falls back to standard PostgreSQL database queries. To avoid cascading failures, a **Redis Circuit Breaker** (`RedisCircuitBreaker`) tracks health state with a fast-expiry TTL, immediately opening the circuit if Typesense exhibits connectivity errors.
+- **Search Fallback:** When Typesense is unavailable or times out, the API uses PostgreSQL for searches. The API keeps a 30-second cooldown in memory before trying Typesense again.
 - **English-Only Index:** Search indexes only the default (English) content into one collection per entity (`games_en`, `posts_en`, …). Every search reads these collections regardless of the request language; translations are not indexed.
 - **Aliases:** Each collection name is an alias pointing at a timestamped physical collection, so a full rebuild can switch over without downtime.
 - **Popularity Ranking:** Game browse results are sorted by a popularity score built from IGDB signals, then by release date.
@@ -125,7 +124,7 @@ Run them with `pnpm test` (all workspaces) or `pnpm --filter api test` (API only
 - **Node.js:** v20 or higher
 - **pnpm:** v11 or higher
 - **PostgreSQL Database** (e.g., Neon Postgres, Local Postgres)
-- **Typesense** and **Redis** (search; the API falls back to Postgres without them)
+- **Typesense** (optional search index; the API falls back to Postgres)
 - **Rust toolchain** (only for working on `apps/worker`)
 - **ImageKit Account** (for image uploads)
 

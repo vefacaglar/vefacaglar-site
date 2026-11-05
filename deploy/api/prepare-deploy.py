@@ -11,7 +11,7 @@ import sys
 
 INDIVIDUAL_SECRETS = (
     "DATABASE_URL", "PG_POOL_MAX", "API_URL", "WEB_URL", "AUTH_MODE",
-    "OIDC_ISSUER", "OIDC_CLIENT_ID", "REDIS_URL",
+    "OIDC_ISSUER", "OIDC_CLIENT_ID",
     "TYPESENSE_HOST", "TYPESENSE_PORT", "TYPESENSE_PROTOCOL", "TYPESENSE_API_KEY",
     "TYPESENSE_PUBLIC_URL",
     "IMAGEKIT_PRIVATE_KEY", "IMAGEKIT_PUBLIC_KEY", "IMAGEKIT_FOLDER",
@@ -32,6 +32,7 @@ def prepare(destination):
         if key in values:
             raise ValueError("API_ENV contains a duplicate setting")
         values[key] = value
+    values.pop("REDIS_URL", None)
     for key in INDIVIDUAL_SECRETS:
         value = os.environ.get(key, "")
         if value:

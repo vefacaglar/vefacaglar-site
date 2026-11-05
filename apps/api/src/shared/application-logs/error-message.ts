@@ -7,7 +7,6 @@ const secretVariables = [
   "OIDC_CLIENT_SECRET",
 ];
 
-const connectionVariables = ["DATABASE_URL", "REDIS_URL"];
 
 /** Extract a bounded diagnostic excerpt. Never use the exception's request, body or parameter fields. */
 export function logErrorMessage(message: string): string | undefined {
@@ -18,11 +17,9 @@ export function logErrorMessage(message: string): string | undefined {
     const value = process.env[name];
     if (value) excerpt = excerpt.replaceAll(value, "[redacted]");
   }
-  for (const name of connectionVariables) {
-    const value = process.env[name];
-    if (!value || !URL.canParse(value)) continue;
-    const { password } = new URL(value);
-    if (!password) continue;
+  const databaseUrl = process.env.DATABASE_URL;
+  const password = databaseUrl && URL.canParse(databaseUrl) ? new URL(databaseUrl).password : "";
+  if (password) {
     excerpt = excerpt.replaceAll(password, "[redacted]");
     try {
       excerpt = excerpt.replaceAll(decodeURIComponent(password), "[redacted]");

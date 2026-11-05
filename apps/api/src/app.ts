@@ -29,7 +29,6 @@ import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
 import { serializeRequestForLog } from "./shared/log-redaction";
 import { installApplicationLogs } from "./shared/application-logs/application-logs";
-import { createRedisClient, readRedisConfig } from "./shared/search/redis.client";
 import fastifyMultipart from "@fastify/multipart";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -70,19 +69,11 @@ app.register(fastifyMultipart, {
   },
 });
 
-// Register rate limit (global default; per-route overrides on sensitive endpoints).
-// Serverless instances don't share memory, so counters live in Redis when it is configured.
-// skipOnError keeps the API up if Redis is unreachable.
-const rateLimitRedis = readRedisConfig();
+// Fastify keeps counters in memory for the lifetime of the API process.
 app.register(fastifyRateLimit, {
   global: true,
   max: 100,
   timeWindow: "1 minute",
-  ...(rateLimitRedis && {
-    redis: createRedisClient(rateLimitRedis),
-    nameSpace: "rate-limit:",
-    skipOnError: true,
-  }),
 });
 
 // Swagger — disabled in production to avoid exposing the admin API surface

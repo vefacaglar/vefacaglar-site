@@ -23,12 +23,10 @@ import type { IPlatformsRepository } from "../../../modules/catalog/platforms.re
 import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
-import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, type TypesenseConfig } from "../search.tokens";
-import type { Redis as RedisClient } from "ioredis";
+import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";
 import type { ISearchReader } from "./search-reader.interface";
 import type { SearchQuery, SearchResult, PostSearchItem } from "../search.types";
 import { SEARCH_COLLECTIONS } from "../collections";
-import { RedisCircuitBreaker } from "../circuit-breaker";
 import { withTimeout } from "../with-timeout";
 import { gameCardFromDoc, gameWithRelationsFromDoc, RELEASE_UNKNOWN, type GameDoc } from "../mappers/game.mapper";
 import { postFromDoc, type PostDoc } from "../mappers/post.mapper";
@@ -46,16 +44,16 @@ import {
 } from "../mappers/lookup.mapper";
 
 const SEARCH_TIMEOUT_MS = 3000;
+const SEARCH_COOLDOWN_MS = 30_000;
 
 @injectable()
 export class TypesenseSearchReader implements ISearchReader {
   private readonly enabled: boolean;
-  private readonly breaker: RedisCircuitBreaker;
+  private typesenseRetryAt = 0;
 
   constructor(
     @inject(TYPESENSE_CLIENT) private readonly typesense: TypesenseClient,
     @inject(TYPESENSE_CONFIG) typesenseConfig: TypesenseConfig,
-    @inject(REDIS_CLIENT) redis: RedisClient,
     @inject(DEVELOPERS_REPOSITORY) private readonly developersRepo: IDevelopersRepository,
     @inject(PUBLISHERS_REPOSITORY) private readonly publishersRepo: IPublishersRepository,
     @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
@@ -65,7 +63,6 @@ export class TypesenseSearchReader implements ISearchReader {
     @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository
   ) {
     this.enabled = typesenseConfig.enabled;
-    this.breaker = new RedisCircuitBreaker(redis);
   }
 
   // --- Public search methods ---
@@ -139,21 +136,18 @@ export class TypesenseSearchReader implements ISearchReader {
     fallback: () => Promise<T>,
     entityLabel: string
   ): Promise<T> {
-    if (!this.enabled) {
-      return fallback();
-    }
-    const breakerOpen = await this.breaker.isOpen();
-    if (breakerOpen) {
+    if (!this.enabled || Date.now() < this.typesenseRetryAt) {
       return fallback();
     }
     try {
-      const result = await withTimeout(typesenseCall(), SEARCH_TIMEOUT_MS, `typesense.${entityLabel}.search`);
-      await this.breaker.recordSuccess();
-      return result;
+      return await withTimeout(typesenseCall(), SEARCH_TIMEOUT_MS, `typesense.${entityLabel}.search`);
     } catch (err) {
       if (this.isFallbackEligibleError(err)) {
-        await this.breaker.recordFailure();
-        reportRuntimeFailure("search_fallback", `Typesense ${entityLabel} search failed. Using Postgres`, err, "warning");
+        const now = Date.now();
+        if (now >= this.typesenseRetryAt) {
+          this.typesenseRetryAt = now + SEARCH_COOLDOWN_MS;
+          reportRuntimeFailure("search_fallback", `Typesense ${entityLabel} search failed. Using Postgres`, err, "warning");
+        }
         return fallback();
       }
       throw err;

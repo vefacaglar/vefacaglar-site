@@ -35,9 +35,8 @@ import { JOBS_REPOSITORY, JOB_EVENTS_LISTENER, JOB_STREAM_TOKEN_CONFIG, JOB_STRE
 import { DrizzleJobsRepository } from "./modules/jobs/jobs.repository";
 import { PgJobEventsListener } from "./modules/jobs/job-events.listener";
 import { JobStreamTokenService, readJobStreamTokenConfig } from "./modules/jobs/job-stream-token.service";
-import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, REDIS_CLIENT, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
+import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
 import { createTypesenseClient, createDisabledTypesenseClient, readTypesenseConfig } from "./shared/search/typesense.client";
-import { createRedisClient, createDisabledRedisClient, readRedisConfig } from "./shared/search/redis.client";
 import { TypesenseSearchReader } from "./shared/search/queries/typesense-search-reader";
 import { TypesenseSearchWriter } from "./shared/search/commands/typesense-search-writer";
 import { SearchEventSubscriber } from "./shared/search/commands/search-event-subscriber";
@@ -75,12 +74,6 @@ container.registerInstance(TYPESENSE_CONFIG, typesenseConfig);
 container.registerInstance(
   TYPESENSE_CLIENT,
   typesenseConfig.enabled ? createTypesenseClient(typesenseConfig) : createDisabledTypesenseClient()
-);
-
-const redisConfig = readRedisConfig();
-container.registerInstance(
-  REDIS_CLIENT,
-  redisConfig ? createRedisClient(redisConfig) : createDisabledRedisClient()
 );
 
 // CQRS segregation: read and write sides are separate implementations behind

@@ -54,7 +54,6 @@ const runtimeReasons: Record<string, string> = {
 const appRoot = resolve(__dirname, "../..");
 const frameRoots = [resolve(dirname(appRoot), "src"), appRoot];
 const maxStackFrames = 12;
-const redisCommands = new Set(["auth", "select", "info", "ping", "eval", "evalsha", "get", "set", "client"]);
 const typesenseReasons: Record<number, string> = {
   400: "Typesense rejected an invalid request",
   401: "Typesense rejected the API key",
@@ -111,15 +110,9 @@ export function describeLogError(error: unknown, reportedAt?: Error) {
       remainingFrames -= frames.length;
     }
 
-    let message = current instanceof DrizzleQueryError
+    const message = current instanceof DrizzleQueryError
       ? undefined
       : logErrorMessage(current instanceof HttpError ? current.logMessage : current.message);
-    if (message && current.name === "ReplyError") {
-      const command = (current as Error & { command?: { name?: string } }).command?.name;
-      if (typeof command === "string" && redisCommands.has(command.toLowerCase())) {
-        message += ` (Redis command: ${command.toUpperCase()})`;
-      }
-    }
     if (message && !messages.includes(message)) messages.push(message);
 
     if (current instanceof postgres.PostgresError && /^[A-Z0-9]{5}$/.test(current.code)) {
@@ -133,12 +126,7 @@ export function describeLogError(error: unknown, reportedAt?: Error) {
     }
 
     const code = (current as Error & { code?: unknown }).code;
-    if (current.name === "ReplyError") {
-      const reply = message;
-      const code = /^(ERR|WRONGPASS|NOAUTH|NOPERM|READONLY|LOADING|BUSY|OOM|MOVED|ASK|CLUSTERDOWN|TRYAGAIN|MISCONF|NOSCRIPT|WRONGTYPE|BUSYKEY|EXECABORT)\b/.exec(reply ?? "")?.[1];
-      error_code = code ? `redis_${code.toLowerCase()}` : "redis_reply_error";
-      reason = reply ?? "Redis rejected a command";
-    } else if (current instanceof TypesenseErrors.TypesenseError &&
+    if (current instanceof TypesenseErrors.TypesenseError &&
         typeof current.httpStatus === "number" && Number.isInteger(current.httpStatus)) {
       const status = current.httpStatus;
       error_code = `typesense_http_${status}`;

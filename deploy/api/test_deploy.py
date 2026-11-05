@@ -57,7 +57,7 @@ class DeployTest(unittest.TestCase):
         content = (self.bundle / "api.env").read_text()
         self.assertIn("DATABASE_URL=postgres://example/api?sslmode=require\n", content)
         self.assertEqual(content.count("DATABASE_URL="), 1)
-        self.assertIn("REDIS_URL=redis://cache:6379\n", content)
+        self.assertNotIn("REDIS_URL=", content)
 
     def test_password_mode_requires_no_oidc_secrets(self):
         self.environment.update(AUTH_MODE="password", OIDC_CLIENT_ID="", OIDC_ISSUER="")
