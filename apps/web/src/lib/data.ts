@@ -52,7 +52,7 @@ export const getPackageDoc = cache((slug: string, docSlug: string) =>
 );
 
 export const getPublicGames = cache((page: number, q?: string) => {
-  const params = new URLSearchParams({ page: String(page), limit: "20" });
+  const params = new URLSearchParams({ page: String(page), limit: "21" });
   if (q) params.set("q", q);
   return getJson(`/api/games?${params.toString()}`, { cached: !q });
 });
