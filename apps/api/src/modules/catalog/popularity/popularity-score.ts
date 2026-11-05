@@ -3,26 +3,25 @@
  * comparable within one type, so each is ranked on its own before blending.
  */
 export const POPULARITY_TYPE = {
-  WANT_TO_PLAY: 2,
-  PLAYED: 4,
-  STEAM_TOTAL_REVIEWS: 8,
+  VISITS: 1,
+  PLAYING: 3,
+  STEAM_24H_PEAK_PLAYERS: 5,
 } as const;
 
 /** The IGDB popularity types the refresh fetches and stores. */
 export const REFRESHED_POPULARITY_TYPES: number[] = [
-  POPULARITY_TYPE.WANT_TO_PLAY,
-  POPULARITY_TYPE.PLAYED,
-  POPULARITY_TYPE.STEAM_TOTAL_REVIEWS,
+  POPULARITY_TYPE.VISITS,
+  POPULARITY_TYPE.PLAYING,
+  POPULARITY_TYPE.STEAM_24H_PEAK_PLAYERS,
 ];
 
-export type PopularitySignalKey = "played" | "steamReviews" | "ratingCount" | "wantToPlay" | "hltbEngagement";
+export type PopularitySignalKey = "visits" | "playing" | "steam24hPeak";
 
+/** Our current-interest blend, not IGDB's undocumented homepage ranking formula. */
 export const POPULARITY_WEIGHTS: Record<PopularitySignalKey, number> = {
-  played: 0.28,
-  steamReviews: 0.20,
-  ratingCount: 0.20,
-  wantToPlay: 0.12,
-  hltbEngagement: 0.20,
+  visits: 0.70,
+  playing: 0.20,
+  steam24hPeak: 0.10,
 };
 
 const SIGNAL_KEYS = Object.keys(POPULARITY_WEIGHTS) as PopularitySignalKey[];
@@ -67,7 +66,8 @@ export function computePopularityScores(games: PopularityInput[]): Map<string, n
     const present = games.filter((g) => g.signals[key] != null && Number.isFinite(g.signals[key]) && g.signals[key]! >= 0);
     const ranks = percentileRanks(present.map((g) => Math.log1p(Math.max(0, g.signals[key]!))));
     present.forEach((g, i) => {
-      ranked.get(g.id)![key] = ranks[i];
+      // A measured absence of activity stays zero, including an all-zero cohort.
+      ranked.get(g.id)![key] = g.signals[key] === 0 ? 0 : ranks[i];
     });
   }
 

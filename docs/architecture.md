@@ -101,13 +101,18 @@ library, public profiles), `jobs`, `localizations`, `packages`, `pages`, `posts`
 
 ### Popularity
 
-General `/games` browse sorts by `popularityScore`, then release date. The score
-blends percentile-ranked IGDB Played (28%), Steam total reviews (20%), IGDB rating
-count (20%), Want to Play (12%) and optional HowLongToBeat engagement (20%).
-Weights are renormalized over known signals; missing data is never a zero.
+General `/games` browse sorts by current-interest `popularityScore`, then release
+date. Announced, unreleased and undated catalog games remain eligible; an
+upcoming game can trend before its release. The score blends percentile-ranked
+IGDB Visits (type 1, 70%), Playing (type 3, 20%) and Steam 24-hour peak players
+(type 5, 10%). These are our documented weights, not an implementation of IGDB's
+undocumented "Popular Right Now" homepage formula, so identical ordering is not
+promised. Lifetime Played, ratings, Steam review totals and HLTB engagement do
+not affect this trend score. Weights are renormalized over known current
+signals; missing data is unknown, while a measured zero remains zero.
 IGDB primitives live in `game_popularity_signals`. HLTB completed, backlog and
-playing counts are summed as engagement and stored with the verified HLTB id in
-`game_hltb_popularity`; snapshots older than seven days no longer affect scores.
+playing counts remain independent snapshots with verified ids and timestamps
+in `game_hltb_popularity`; they cannot boost or invent a game's current interest.
 Public cards expose the nullable 0–1 score and HLTB Main, Main + Extras and
 Completionist hours. No HLTB engagement counts or administrative source data
 are included in the public list response.
@@ -126,9 +131,14 @@ Refresh with `pnpm --filter api catalog:popularity` or the existing admin-only
 and resynchronizes all IGDB-linked catalog games in 500-document batches, so a
 rerun repairs search after a partial failure even when scores did not change.
 Indexing failures fail the CLI; ordinary API/import event behavior is unchanged.
-The existing catalog contains roughly 308,000 IGDB-linked games: a full refresh
-can make about 1,855 IGDB requests and 616 search batches. Expect several minutes,
-not a per-request operation; the CLI reports elapsed time and memory every 30 s.
+Popularity primitives are fetched globally in pages of 500, using their own
+ascending primitive ids as the cursor. Catalog matching happens afterwards, so
+a page containing no known games cannot end the provider scan early. Around
+245,000 current provider rows need about 491 requests, rather than querying
+roughly 308,000 catalog games in 1,855 id batches. Invalid/non-advancing pages,
+provider failures or an empty current-data feed abort before replacing scores.
+Strict search synchronization still uses roughly 616 batches. This is a batch
+job that can take minutes; the CLI reports elapsed time and memory every 30 s.
 
 Daily refresh runs through the existing Jobs system as
 `catalog.popularity.refresh` at 07:15 UTC, not a separate GitHub Actions schedule.

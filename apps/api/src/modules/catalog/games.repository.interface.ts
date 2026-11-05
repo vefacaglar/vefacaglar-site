@@ -125,7 +125,7 @@ export interface IGamesRepository {
   ): Promise<string[]>;
 
   /**
-   * Public listing. Without `q`, released games most popular first (then newest);
+   * Public listing, including announced games. Without `q`, current interest first;
    * with `q`, title matches ranked exact > prefix > substring, then by popularity.
    */
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;

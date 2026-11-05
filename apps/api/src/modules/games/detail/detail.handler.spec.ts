@@ -42,4 +42,13 @@ describe("GetGameHandler", () => {
     expect(result.developers).toEqual([{ name: "id Software", slug: "id-software" }]);
     expect(result.platforms).toEqual([{ id: "p-1", name: "PC", slug: "win" }]);
   });
+
+  it.each(["2099-01-01", null])("opens a catalog game with upcoming or unknown release date %j", async (releaseDate) => {
+    repo.findBySlug.mockResolvedValue({
+      slug: "announced", title: "Announced", description: null, coverImageUrl: null, releaseDate,
+      hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null,
+      developers: [], publishers: [], genres: [], themes: [], platforms: [],
+    });
+    await expect(handler.handle({ params: { slug: "announced" } } as any)).resolves.toMatchObject({ slug: "announced", releaseDate });
+  });
 });

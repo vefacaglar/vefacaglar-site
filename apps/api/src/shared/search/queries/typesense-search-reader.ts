@@ -28,7 +28,7 @@ import type { ISearchReader } from "./search-reader.interface";
 import type { SearchQuery, SearchResult, PostSearchItem } from "../search.types";
 import { SEARCH_COLLECTIONS } from "../collections";
 import { withTimeout } from "../with-timeout";
-import { gameCardFromDoc, gameWithRelationsFromDoc, RELEASE_UNKNOWN, type GameDoc } from "../mappers/game.mapper";
+import { gameCardFromDoc, gameWithRelationsFromDoc, type GameDoc } from "../mappers/game.mapper";
 import { postFromDoc, type PostDoc } from "../mappers/post.mapper";
 import {
   developerFromDoc,
@@ -172,16 +172,14 @@ export class TypesenseSearchReader implements ISearchReader {
 
   private async runPublicGamesSearch(query: SearchQuery): Promise<SearchResult<GameCard>> {
     const q = query.q?.trim();
-    const now = Math.floor(Date.now() / 1000);
     const res = await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().search({
       q: q || "*",
       query_by: "title,originalTitle",
-      // Browsing shows only released games; a search also finds unreleased ones.
+      // Interest in announced/undated games belongs in the same public catalog.
       // Unscored games carry POPULARITY_UNKNOWN (-1), so they sort after every scored one.
       ...(q
         ? { sort_by: "_text_match:desc,popularityScore:desc" }
         : {
-            filter_by: `releaseTimestamp:>${RELEASE_UNKNOWN} && releaseTimestamp:<=${now}`,
             sort_by: "popularityScore:desc,releaseTimestamp:desc",
           }),
       include_fields: "id,slug,title,coverImageUrl,releaseDate,criticScore,criticScoreCount,popularityScore,hltbMainHours,hltbMainExtraHours,hltbCompletionistHours",

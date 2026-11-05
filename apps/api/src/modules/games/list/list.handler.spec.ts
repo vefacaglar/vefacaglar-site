@@ -64,4 +64,16 @@ describe("ListGamesHandler", () => {
     expect(result.items[1]).toMatchObject({ popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[2]).toMatchObject({ popularityScore: null, hltbMainHours: null });
   });
+
+  it("keeps trending announced and undated games in the reader's public ordering", async () => {
+    reader.searchPublicGames.mockResolvedValue({ items: [
+      { slug: "announced", title: "Announced", releaseDate: "2099-01-01", popularityScore: 0.99 },
+      { slug: "undated", title: "Undated", releaseDate: null, popularityScore: 0.98 },
+      { slug: "released", title: "Released", releaseDate: "2000-01-01", popularityScore: 0.8 },
+    ], total: 3 });
+    const result = await handler.handle({ query: { limit: 21 } } as any);
+    expect(result.items.map((game) => [game.slug, game.releaseDate])).toEqual([
+      ["announced", "2099-01-01"], ["undated", null], ["released", "2000-01-01"],
+    ]);
+  });
 });
