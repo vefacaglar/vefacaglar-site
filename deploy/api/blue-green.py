@@ -17,6 +17,7 @@ SPEC = importlib.util.spec_from_file_location("proxy", Path(__file__).with_name(
 PROXY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PROXY)
 DOMAIN = PROXY.DOMAIN
+PREVIOUS_RELEASE_GRACE_SECONDS = 10 * 60
 
 
 def run(arguments, cwd=None):
@@ -161,38 +162,41 @@ def deploy(root, bundle, image):
                         verify(active)
                     pending.unlink()
                 raise
-        print(f"Traffic now serves the verified {color} release; previous release remains running.", flush=True)
+        print(f"Traffic now serves the verified {color} release.", flush=True)
     except Exception:
         if not committed and not pending.exists():
             compose(directory, "down", "--timeout", "30")
         raise
-    # Keep the immediate predecessor warm. Only retire a release that has
-    # already survived an entire further rollout; allow requests time to drain.
+    # Keep the immediate predecessor's files for recovery, but stop its process
+    # after a bounded overlap instead of retaining a second API indefinitely.
     keep = {candidate["id"]}
     if active:
         keep.add(active["id"])
     obsolete = [path for path in (root / "releases").iterdir()
                 if path.is_dir() and re.fullmatch(r"(?:blue|green)-[0-9]+", path.name)
                 and path.name not in keep and (path / "compose.yml").is_file()]
-    if obsolete or active:
-        print("Allowing old requests to drain before retiring the oldest release.", flush=True)
-        time.sleep(30)
-        try:
+    try:
+        legacy = run(["docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=vefacaglar-api",
+                      "--filter", "label=com.docker.compose.service=api"]).split()
+        if any(not re.fullmatch(r"[a-f0-9]{12,64}", item) for item in legacy):
+            raise RuntimeError("Invalid legacy container ID")
+        if active or legacy:
+            print("Keeping the previous API running for 10 minutes before retirement.", flush=True)
+            time.sleep(PREVIOUS_RELEASE_GRACE_SECONDS)
+            # Never discard the running fallback if the new release regressed.
+            verify(candidate)
+        if active:
+            compose(release_directory(root, active), "stop", "--timeout", "30", "api")
+        if legacy:
+            run(["docker", "stop", "--time", "30", *legacy])
+            run(["docker", "rm", *legacy])
+        if obsolete:
             for old in obsolete:
                 compose(old, "down", "--timeout", "30")
                 shutil.rmtree(old)
-            if active:
-                # Retire the original single-container deployment only after
-                # a further successful rollout, with a warm blue-green fallback.
-                legacy = run(["docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=vefacaglar-api",
-                              "--filter", "label=com.docker.compose.service=api"]).split()
-                if any(not re.fullmatch(r"[a-f0-9]{12,64}", item) for item in legacy):
-                    raise RuntimeError("Invalid legacy container ID")
-                if legacy:
-                    run(["docker", "stop", "--time", "30", *legacy])
-                    run(["docker", "rm", *legacy])
-        except (RuntimeError, OSError):
-            print("Old release cleanup failed; active traffic is healthy. Retry cleanup on the next deploy.", flush=True)
+    except (RuntimeError, OSError):
+        raise RuntimeError("Previous release retirement failed or was interrupted; inspect the rollout before retrying") from None
+    print("Previous API stopped; only the active release remains running.", flush=True)
 
 
 def main():

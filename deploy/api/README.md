@@ -125,13 +125,20 @@ request to the VPS loopback address verifies the TLS certificate, health respons
 and the candidate's `X-API-Deployment` response header. Only then is the active
 release recorded atomically in `.releases.json`.
 
-The immediate previous release remains running with its original environment.
-There are normally two running releases and temporarily three during a rollout;
-reserve memory and DB connections for that overlap. After a further successful
-rollout, CD waits 30 seconds before retiring older releases, followed by Docker's
-30-second stop timeout. The original single-container API is retired only after
-the second successful blue-green deployment. Long-lived connections that exceed
-this drain period are not guaranteed to survive retirement.
+The immediate previous release stays running for 10 minutes after the verified
+traffic switch. CD checks the new release again before stopping the previous
+API, with Docker's 30-second stop timeout. The previous release directory and
+environment remain available for recovery, but its process and health checks
+stop. Only the active API normally remains running; reserve memory and DB
+connections for the temporary rollout overlap. Older release directories and
+the original single-container API are retired after the same grace period.
+Connections lasting beyond this overlap and stop timeout may be disconnected.
+The deploy job stays open during this interval and has a 25-minute timeout.
+
+If the final health check fails, the running predecessor is retained and the
+workflow fails. The verified traffic switch remains committed; this later check
+does not automatically switch traffic back. Cancellation or cleanup failure also
+fails the workflow and can leave the predecessor running until another deploy.
 
 A failed candidate health check never changes traffic. A failed reload or HTTPS
 check reloads the original route before removing the candidate. If recovery is

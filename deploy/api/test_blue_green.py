@@ -37,11 +37,14 @@ class BlueGreenTest(unittest.TestCase):
         self.events = []
         self.counter = 0
         self.failure = None
+        self.legacy = ""
 
     def compose(self, directory, *args):
         self.events.append((directory.name, *args))
         if self.failure == "container" and args[0] == "up":
             raise RuntimeError("unhealthy candidate")
+        if self.failure == "stop" and args[0] == "stop":
+            raise RuntimeError("stop failed")
         if args[0] == "port":
             return "127.0.0.1:32001\n"
         return ""
@@ -54,12 +57,21 @@ class BlueGreenTest(unittest.TestCase):
             return json.dumps(adapted(upstream))
         if self.failure == "reload" and "reload" in args:
             raise RuntimeError("reload unavailable")
+        if args[:2] == ["docker", "ps"]:
+            return self.legacy
         return ""
 
     def verify(self, release, attempts=12):
         self.events.append(("verify", release["id"]))
         if self.failure == "https" and release["id"] == f"green-{self.counter}":
             raise RuntimeError("wrong HTTPS release")
+        if self.failure == "post-window" and self.events.count(("verify", release["id"])) > 1:
+            raise RuntimeError("candidate regressed")
+
+    def sleep(self, seconds):
+        self.events.append(("sleep", seconds))
+        if self.failure == "interrupted":
+            raise RuntimeError("deployment interrupted")
 
     def deploy(self):
         self.counter += 1
@@ -68,10 +80,10 @@ class BlueGreenTest(unittest.TestCase):
                 patch.object(BG, "run", side_effect=self.command), \
                 patch.object(BG, "verify", side_effect=self.verify), \
                 patch.object(BG.time, "time_ns", return_value=self.counter), \
-                patch.object(BG.time, "sleep"):
+                patch.object(BG.time, "sleep", side_effect=self.sleep):
             BG.deploy(self.root, self.bundle, IMAGE)
 
-    def test_first_deploy_keeps_legacy_until_verified_then_alternates(self):
+    def test_first_deploy_then_alternating_releases_stop_previous_after_ten_minutes(self):
         self.deploy()
         state = BG.read(self.root / ".releases.json")
         self.assertEqual(state["active"]["id"], "blue-1")
@@ -84,10 +96,47 @@ class BlueGreenTest(unittest.TestCase):
         state = BG.read(self.root / ".releases.json")
         self.assertEqual(state["active"]["id"], "green-2")
         self.assertEqual(state["previous"]["id"], "blue-1")
+        self.assertIn(("sleep", 600), self.events)
+        stopped = self.events.index(("blue-1", "stop", "--timeout", "30", "api"))
+        self.assertLess(self.events.index(("sleep", 600)), stopped)
+        verified = [index for index, event in enumerate(self.events) if event == ("verify", "green-2")]
+        self.assertEqual(len(verified), 2)
+        self.assertLess(self.events.index(("sleep", 600)), verified[-1])
+        self.assertLess(verified[-1], stopped)
         self.assertNotIn(("blue-1", "down", "--timeout", "30"), self.events)
         self.deploy()
         self.assertIn(("blue-1", "down", "--timeout", "30"), self.events)
         self.assertNotIn(("green-2", "down", "--timeout", "30"), self.events)
+
+    def test_original_single_container_is_retired_after_the_same_grace_period(self):
+        self.legacy = "a" * 12
+        self.deploy()
+        self.assertLess(self.events.index(("sleep", 600)), self.events.index(("docker", "stop", "--time", "30", self.legacy)))
+        self.assertIn(("docker", "rm", self.legacy), self.events)
+
+    def test_regression_at_end_of_window_keeps_previous_running(self):
+        self.deploy()
+        self.events.clear()
+        self.failure = "post-window"
+        with self.assertRaisesRegex(RuntimeError, "retirement failed"):
+            self.deploy()
+        self.assertNotIn(("blue-1", "stop", "--timeout", "30", "api"), self.events)
+        self.assertEqual(BG.read(self.root / ".releases.json")["active"]["id"], "green-2")
+
+    def test_interruption_during_grace_period_keeps_previous_running(self):
+        self.deploy()
+        self.events.clear()
+        self.failure = "interrupted"
+        with self.assertRaisesRegex(RuntimeError, "retirement failed"):
+            self.deploy()
+        self.assertNotIn(("blue-1", "stop", "--timeout", "30", "api"), self.events)
+
+    def test_stop_failure_is_reported_instead_of_silently_succeeding(self):
+        self.deploy()
+        self.failure = "stop"
+        with self.assertRaisesRegex(RuntimeError, "retirement failed"):
+            self.deploy()
+        self.assertTrue(BG.release_directory(self.root, {"id": "blue-1"}).exists())
 
     def test_unhealthy_candidate_never_changes_traffic(self):
         self.failure = "container"

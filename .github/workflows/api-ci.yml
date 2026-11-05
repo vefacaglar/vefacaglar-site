@@ -127,7 +127,7 @@ jobs:
     needs: image
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.API_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     permissions:
       contents: read
       packages: read
