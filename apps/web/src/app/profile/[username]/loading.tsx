@@ -1,5 +1,4 @@
 import styles from "../../../components/library/Skeleton.module.css";
-import { GamesGridSkeleton } from "../../../components/library/LibrarySkeletons";
 
 export default function ProfileOverviewLoading() {
   return (
@@ -16,7 +15,20 @@ export default function ProfileOverviewLoading() {
       <div className={styles.sectionHead}>
         <div className={`${styles.block} ${styles.sectionTitle}`} />
       </div>
-      <GamesGridSkeleton count={8} />
+      <div className={styles.activityList}>
+        {Array.from({ length: 6 }, (_, idx) => (
+          <div key={idx} className={styles.activityRow}>
+            <div className={styles.activityLeft}>
+              <div className={`${styles.block} ${styles.activityThumb}`} />
+              <div className={`${styles.block} ${styles.activityTitle}`} />
+            </div>
+            <div className={styles.activityRight}>
+              <div className={`${styles.block} ${styles.activityHours}`} />
+              <div className={`${styles.block} ${styles.activityStatus}`} />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

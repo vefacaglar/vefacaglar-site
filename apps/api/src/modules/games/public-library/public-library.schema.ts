@@ -17,5 +17,6 @@ export const PublicLibraryResponseSchema = Type.Object({
   isOwner: Type.Boolean(),
   summary: LibraryResponseSchema.properties.summary,
   games: LibraryResponseSchema.properties.games,
+  recentActivity: LibraryResponseSchema.properties.recentActivity,
 });
 export type PublicLibraryResponse = Static<typeof PublicLibraryResponseSchema>;

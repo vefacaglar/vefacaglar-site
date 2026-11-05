@@ -8,3 +8,7 @@ export const GAME_LOG_STATUSES: GameLogInput["status"][] = ["playing", "complete
 export function statusLabel(dict: Dictionary, status: GameLogInput["status"]): string {
   return dict[`status_${status}` as const];
 }
+
+export function activityStatusLabel(dict: Dictionary, status: GameLogInput["status"]): string {
+  return dict[`activity_status_${status}` as const];
+}

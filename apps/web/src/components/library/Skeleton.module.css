@@ -126,6 +126,56 @@
   height: 18px;
 }
 
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.activityRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--surface);
+}
+
+.activityLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+}
+
+.activityThumb {
+  width: 28px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.activityTitle {
+  width: 220px;
+  max-width: 55%;
+  height: 15px;
+}
+
+.activityRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.activityHours {
+  width: 36px;
+  height: 14px;
+}
+
+.activityStatus {
+  width: 72px;
+  height: 14px;
+}
+
 .shelfBar {
   display: flex;
   flex-wrap: wrap;

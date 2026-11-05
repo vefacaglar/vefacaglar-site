@@ -147,9 +147,8 @@ export default function LogEditForm({
     if (secondsToAdd <= 0) return;
     const current = Number(playtimeValue);
     const baseHours = Number.isFinite(current) && current > 0 ? current : 0;
-    const addedHours = Math.max(0.1, Math.round((secondsToAdd / 3600) * 10) / 10);
-    const nextHours = Math.min(100000, Math.round((baseHours + addedHours) * 10) / 10);
-    setPlaytimeValue(String(nextHours));
+    const nextHours = Math.min(100000, Math.round((baseHours + secondsToAdd / 3600) * 10) / 10);
+    setPlaytimeValue(nextHours > 0 ? String(nextHours) : "");
   };
 
   const addTimerToPlaytime = () => {

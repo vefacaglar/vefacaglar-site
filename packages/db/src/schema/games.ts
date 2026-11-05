@@ -151,6 +151,7 @@ export const userGamePlaytimeEntries = pgTable('user_game_playtime_entries', {
   gameId: uuid('game_id')
     .notNull()
     .references(() => games.id, { onDelete: 'cascade' }),
+  status: text('status', { enum: gameStatusEnum }).notNull().default('playing'),
   deltaHours: decimal('delta_hours', { precision: 7, scale: 1 }).notNull(),
   // Null when the entry comes from the log's first recorded playtime.
   previousHours: decimal('previous_hours', { precision: 7, scale: 1 }),

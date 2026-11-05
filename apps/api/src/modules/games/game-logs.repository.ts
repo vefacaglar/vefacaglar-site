@@ -1,5 +1,5 @@
 import { games, platforms, userGamePlaytimeEntries, userGames } from "@vefacaglar/db";
-import { and, desc, eq, max } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -54,15 +54,22 @@ export class DrizzleGameLogsRepository implements IGameLogsRepository {
   async listPlaytimeActivityForUser(userId: string): Promise<LogPlaytimeActivity[]> {
     const rows = await this.dbProvider.client
       .select({
+        id: userGamePlaytimeEntries.id,
         userGameId: userGamePlaytimeEntries.userGameId,
-        lastRecordedAt: max(userGamePlaytimeEntries.recordedAt),
+        status: userGamePlaytimeEntries.status,
+        deltaHours: userGamePlaytimeEntries.deltaHours,
+        lastRecordedAt: userGamePlaytimeEntries.recordedAt,
       })
       .from(userGamePlaytimeEntries)
       .where(eq(userGamePlaytimeEntries.userId, userId))
-      .groupBy(userGamePlaytimeEntries.userGameId);
-    return rows
-      .filter((r): r is LogPlaytimeActivity => r.lastRecordedAt !== null)
-      .map((r) => ({ userGameId: r.userGameId, lastRecordedAt: new Date(r.lastRecordedAt) }));
+      .orderBy(desc(userGamePlaytimeEntries.recordedAt));
+    return rows.map((r) => ({
+      id: r.id,
+      userGameId: r.userGameId,
+      status: r.status,
+      deltaHours: r.deltaHours,
+      lastRecordedAt: new Date(r.lastRecordedAt),
+    }));
   }
 
   async findById(id: string): Promise<GameLogWithPlatform | null> {
@@ -81,7 +88,22 @@ export class DrizzleGameLogsRepository implements IGameLogsRepository {
   async update(id: string, patch: Partial<NewGameLog>, playtime: PlaytimeIncrease | null): Promise<GameLogWithPlatform> {
     return this.dbProvider.transaction(async () => {
       const [updated] = await this.dbProvider.client.update(userGames).set(patch).where(eq(userGames.id, id)).returning();
-      await this.recordPlaytime(updated, playtime);
+      if (playtime) {
+        await this.recordPlaytime(updated, playtime);
+      } else if (updated && patch.status) {
+        const [latestEntry] = await this.dbProvider.client
+          .select({ id: userGamePlaytimeEntries.id })
+          .from(userGamePlaytimeEntries)
+          .where(eq(userGamePlaytimeEntries.userGameId, id))
+          .orderBy(desc(userGamePlaytimeEntries.recordedAt))
+          .limit(1);
+        if (latestEntry) {
+          await this.dbProvider.client
+            .update(userGamePlaytimeEntries)
+            .set({ status: updated.status })
+            .where(eq(userGamePlaytimeEntries.id, latestEntry.id));
+        }
+      }
       return (await this.findById(id))!;
     });
   }
@@ -96,6 +118,7 @@ export class DrizzleGameLogsRepository implements IGameLogsRepository {
       userGameId: log.id,
       userId: log.userId,
       gameId: log.gameId,
+      status: log.status,
       deltaHours: playtime.deltaHours,
       previousHours: playtime.previousHours,
       newHours: playtime.newHours,

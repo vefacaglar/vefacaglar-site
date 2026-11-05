@@ -169,6 +169,13 @@
       "when": 1793824056987,
       "tag": "0023_magical_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793902565451,
+      "tag": "0024_optimal_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

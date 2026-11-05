@@ -1,0 +1,2 @@
+ALTER TABLE "user_game_playtime_entries" ADD COLUMN "status" text DEFAULT 'playing' NOT NULL;--> statement-breakpoint
+UPDATE "user_game_playtime_entries" AS "e" SET "status" = "ug"."status" FROM "user_games" AS "ug" WHERE "e"."user_game_id" = "ug"."id";

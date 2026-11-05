@@ -36,6 +36,17 @@ export const LibraryPlatformCountSchema = Type.Object({
   count: Type.Number(),
 });
 
+export const LibraryActivityItemSchema = Type.Object({
+  slug: Type.String(),
+  title: Type.String(),
+  coverImageUrl: Type.Union([Type.String(), Type.Null()]),
+  status: GameLogStatusSchema,
+  playtimeHours: NullableNumber,
+  activityAt: Type.String({ format: "date-time" }),
+  /** Log id; null on public views not seen by the owner. */
+  logId: Type.Union([Type.String(), Type.Null()]),
+});
+
 export const LibraryResponseSchema = Type.Object({
   summary: Type.Object({
     gameCount: Type.Number(),
@@ -47,6 +58,8 @@ export const LibraryResponseSchema = Type.Object({
     platforms: Type.Array(LibraryPlatformCountSchema),
   }),
   games: Type.Array(LibraryGameSchema),
+  recentActivity: Type.Array(LibraryActivityItemSchema),
 });
 export type LibraryResponse = Static<typeof LibraryResponseSchema>;
 export type LibraryGame = Static<typeof LibraryGameSchema>;
+export type LibraryActivityItem = Static<typeof LibraryActivityItemSchema>;

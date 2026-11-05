@@ -15,8 +15,14 @@ export type GameLogWithGame = GameLogWithPlatform & {
     criticScoreCount: number | null;
   };
 };
-/** When playtime was last added to a log (latest `user_game_playtime_entries.recorded_at`). */
-export type LogPlaytimeActivity = { userGameId: string; lastRecordedAt: Date };
+/** Playtime activity entry on a log (`user_game_playtime_entries`). */
+export type LogPlaytimeActivity = {
+  id?: string;
+  userGameId: string;
+  status?: GameLogRow["status"];
+  deltaHours?: string | null;
+  lastRecordedAt: Date;
+};
 
 /** A user's play logs for a game (`user_games`); a user can log the same game many times. */
 export interface IGameLogsRepository {

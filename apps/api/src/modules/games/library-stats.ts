@@ -1,29 +1,75 @@
 import type { GameLogWithGame, LogPlaytimeActivity } from "./game-logs.repository.interface";
-import type { LibraryGame, LibraryResponse } from "./library/library.schema";
+import type { LibraryActivityItem, LibraryGame, LibraryResponse } from "./library/library.schema";
 import { publicCriticScore } from "./critic-score";
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
 /**
- * Aggregates a user's play logs (newest first) into per-game rows and overall stats.
- * `playtimeActivity` holds the latest playtime entry per log and only feeds `lastActivityAt`.
+ * Aggregates a user's play logs (newest first) into per-game rows, overall stats, and recent activity.
+ * `playtimeActivity` holds the playtime entries for the user's logs and feeds both `lastActivityAt` and `recentActivity`.
  * Only whitelisted, non-private fields are copied — notes, reviews and purchase data never leave here.
- * `includeLogIds` gates `latestLogId`: only the library's owner should see log ids.
+ * `includeLogIds` gates `latestLogId` and `logId`: only the library's owner should see log ids.
  */
 export function buildLibrary(
   logs: GameLogWithGame[],
   playtimeActivity: LogPlaytimeActivity[],
   options: { includeLogIds: boolean }
 ): LibraryResponse {
-  const lastEntryAt = new Map(playtimeActivity.map((a) => [a.userGameId, a.lastRecordedAt.getTime()]));
+  const lastEntryAt = new Map<string, number>();
+  for (const a of playtimeActivity) {
+    const t = a.lastRecordedAt.getTime();
+    const prev = lastEntryAt.get(a.userGameId) ?? 0;
+    if (t > prev) lastEntryAt.set(a.userGameId, t);
+  }
 
   // Newest first, so the first log seen for a game is its latest.
   const byGame = new Map<string, GameLogWithGame[]>();
+  const logById = new Map<string, GameLogWithGame>();
   for (const log of logs) {
+    logById.set(log.id, log);
     const list = byGame.get(log.gameId);
     if (list) list.push(log);
     else byGame.set(log.gameId, [log]);
   }
+
+  const activityItems: LibraryActivityItem[] = [];
+  const logsWithPlaytimeEntries = new Set<string>();
+  for (const a of playtimeActivity) {
+    if (a.deltaHours == null || Number(a.deltaHours) <= 0) continue;
+    const l = logById.get(a.userGameId);
+    if (!l) continue;
+    logsWithPlaytimeEntries.add(l.id);
+    activityItems.push({
+      slug: l.game.slug,
+      title: l.game.title,
+      coverImageUrl: l.game.coverImageUrl,
+      status: a.status ?? l.status,
+      playtimeHours: round1(Number(a.deltaHours)),
+      activityAt: a.lastRecordedAt.toISOString(),
+      logId: options.includeLogIds ? l.id : null,
+    });
+  }
+  for (const l of logs) {
+    if (logsWithPlaytimeEntries.has(l.id)) continue;
+    const activityTime = Math.max(
+      l.createdAt.getTime(),
+      l.updatedAt?.getTime() ?? 0,
+      lastEntryAt.get(l.id) ?? 0
+    );
+    activityItems.push({
+      slug: l.game.slug,
+      title: l.game.title,
+      coverImageUrl: l.game.coverImageUrl,
+      status: l.status,
+      playtimeHours:
+        l.playtimeHours !== null && Number(l.playtimeHours) > 0 ? round1(Number(l.playtimeHours)) : null,
+      activityAt: new Date(activityTime).toISOString(),
+      logId: options.includeLogIds ? l.id : null,
+    });
+  }
+  const recentActivity = activityItems
+    .sort((a, b) => b.activityAt.localeCompare(a.activityAt))
+    .slice(0, 20);
 
   const games: LibraryGame[] = [...byGame.values()].map((gameLogs) => {
     const latest = gameLogs[0];
@@ -81,5 +127,6 @@ export function buildLibrary(
       platforms,
     },
     games,
+    recentActivity,
   };
 }

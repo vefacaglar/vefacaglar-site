@@ -4,13 +4,27 @@ import styles from "../profile.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
-import { decodeUsername, getProfileLibrary, profilePath } from "../../../lib/profileLibrary";
-import ProfileGameGrid from "../components/ProfileGameGrid";
+import {
+  decodeUsername,
+  getProfileLibrary,
+  profilePath,
+  type LibraryActivityItem,
+} from "../../../lib/profileLibrary";
 import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
 import { sortShelf } from "../libraryShelf";
+import { activityStatusLabel } from "../../games/gameLogStatus";
 
-const RECENT_COUNT = 8;
+const RECENT_COUNT = 12;
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5V10.5L10.5 2.5Z" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M8.5 4.5 11.5 7.5" stroke="currentColor" strokeWidth="1.25" />
+    </svg>
+  );
+}
 
 interface OverviewProps {
   params: Promise<{ username: string }>;
@@ -37,10 +51,22 @@ export default async function ProfileOverview(props: OverviewProps) {
 
   const library = result.data;
   const dict = getDictionary(lang);
-  const { summary, games, user, isOwner } = library;
+  const { summary, games, recentActivity, user, isOwner } = library;
   const name = user.displayName || user.username;
 
-  const recent = sortShelf(games, "activity").slice(0, RECENT_COUNT);
+  const fallbackActivity: LibraryActivityItem[] = sortShelf(games, "activity").map((g) => ({
+    slug: g.slug,
+    title: g.title,
+    coverImageUrl: g.coverImageUrl,
+    status: g.status,
+    playtimeHours: g.playtimeHours,
+    activityAt: g.lastActivityAt || g.lastLoggedAt,
+    logId: g.latestLogId,
+  }));
+  const recent = (recentActivity && recentActivity.length > 0 ? recentActivity : fallbackActivity).slice(
+    0,
+    RECENT_COUNT
+  );
 
   const stats: Stat[] = [
     { label: dict.stat_games, value: String(summary.gameCount) },
@@ -76,7 +102,7 @@ export default async function ProfileOverview(props: OverviewProps) {
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h2 className={styles.sectionTitle}>{dict.recent_activity}</h2>
-          {games.length > recent.length && (
+          {summary.gameCount > 0 && (
             <Link href={localizeHref(profilePath(user.username, "games"), lang)} className={styles.sectionLink}>
               {dict.see_all_games.replace("{count}", String(summary.gameCount))}
             </Link>
@@ -85,7 +111,56 @@ export default async function ProfileOverview(props: OverviewProps) {
         {recent.length === 0 ? (
           <ProfileEmpty isOwner={isOwner} name={name} lang={lang} />
         ) : (
-          <ProfileGameGrid games={recent} lang={lang} isOwner={isOwner} />
+          <ul className={styles.activityList}>
+            {recent.map((item, idx) => {
+              const href = localizeHref(`/games/${item.slug}`, lang);
+              const editHref =
+                isOwner && item.logId
+                  ? localizeHref(`/games/${item.slug}/logs/${encodeURIComponent(item.logId)}`, lang)
+                  : null;
+              return (
+                <li
+                  key={`${item.slug}-${item.activityAt}-${idx}`}
+                  className={styles.activityItem}
+                  data-status={item.status}
+                >
+                  <div className={styles.activityMain}>
+                    <span className={styles.activityMarker} aria-hidden="true" />
+                    <Link href={href} className={styles.activityThumb} tabIndex={-1} aria-hidden="true">
+                      {item.coverImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.coverImageUrl} alt="" loading="lazy" />
+                      ) : (
+                        <span className={styles.activityThumbFallback}>{item.title.slice(0, 1)}</span>
+                      )}
+                    </Link>
+                    <Link href={href} className={styles.activityTitle}>
+                      {item.title}
+                    </Link>
+                  </div>
+                  <div className={styles.activityMeta}>
+                    {item.playtimeHours !== null && item.playtimeHours > 0 && (
+                      <span className={styles.activityHours}>
+                        {item.playtimeHours}
+                        <span className={styles.activityUnit}>{dict.hours_short}</span>
+                      </span>
+                    )}
+                    <span className={styles.activityStatus}>{activityStatusLabel(dict, item.status)}</span>
+                    {editHref && (
+                      <Link
+                        href={editHref}
+                        className={styles.activityEdit}
+                        aria-label={dict.list_edit_log_for.replace("{title}", item.title)}
+                        title={dict.log_edit_title}
+                      >
+                        <PencilIcon />
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
     </>

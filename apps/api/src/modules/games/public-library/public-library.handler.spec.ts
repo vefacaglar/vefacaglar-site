@@ -69,6 +69,10 @@ describe("GetPublicLibraryHandler", () => {
         completedAt: "2026-01-20", lastActivityAt: "2026-01-20T18:30:00.000Z",
         platformName: "PC", criticScore: 90, addedAt: "2026-01-01T00:00:00.000Z", latestLogId: null,
       }],
+      recentActivity: [{
+        slug: "doom", title: "Doom", coverImageUrl: null, status: "completed",
+        playtimeHours: 12, activityAt: "2026-01-20T18:30:00.000Z", logId: null,
+      }],
     });
   });
 

@@ -34,6 +34,16 @@ export type LibraryGame = {
 
 export type LibraryPlatformCount = { name: string; count: number };
 
+export type LibraryActivityItem = {
+  slug: string;
+  title: string;
+  coverImageUrl: string | null;
+  status: GameLogInput["status"];
+  playtimeHours: number | null;
+  activityAt: string;
+  logId: string | null;
+};
+
 export type LibrarySummary = {
   gameCount: number;
   logCount: number;
@@ -50,6 +60,7 @@ export type ProfileLibrary = {
   user: ProfileUser;
   summary: LibrarySummary;
   games: LibraryGame[];
+  recentActivity?: LibraryActivityItem[];
   /** The viewer is the profile's owner (decided by the API). */
   isOwner: boolean;
 };
@@ -97,7 +108,20 @@ function withDefaults(data: ProfileLibrary): ProfileLibrary {
     latestLogId: game.latestLogId ?? null,
   }));
   const platforms = Array.isArray(data.summary?.platforms) ? data.summary.platforms : [];
-  return { ...data, games, summary: { ...data.summary, platforms } };
+  const recentActivity = Array.isArray(data.recentActivity)
+    ? data.recentActivity.map((item) => ({
+        ...item,
+        coverImageUrl: item.coverImageUrl ?? null,
+        playtimeHours: typeof item.playtimeHours === "number" ? item.playtimeHours : null,
+        logId: item.logId ?? null,
+      }))
+    : undefined;
+  return {
+    ...data,
+    games,
+    ...(recentActivity !== undefined ? { recentActivity } : {}),
+    summary: { ...data.summary, platforms },
+  };
 }
 
 /** Path of a user's profile, e.g. `/profile/vefa`. */

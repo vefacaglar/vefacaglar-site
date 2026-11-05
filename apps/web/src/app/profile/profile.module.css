@@ -225,6 +225,159 @@
   color: var(--text-heading);
 }
 
+/* ---------- Recent activity list ---------- */
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 0;
+  border-radius: 0;
+  transition: background-color 0.15s ease;
+}
+
+.activityItem:hover {
+  background: var(--surface-2);
+}
+
+.activityItem[data-status="playing"] {
+  --tone: var(--info);
+}
+
+.activityItem[data-status="completed"] {
+  --tone: var(--success);
+}
+
+.activityItem[data-status="backlog"] {
+  --tone: var(--muted);
+}
+
+.activityItem[data-status="on_hold"] {
+  --tone: var(--warning);
+}
+
+.activityItem[data-status="abandoned"] {
+  --tone: var(--faint);
+}
+
+.activityMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.activityMarker {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: var(--tone, var(--muted));
+}
+
+.activityThumb {
+  width: 28px;
+  height: 38px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--surface-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.activityThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.activityThumbFallback {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.activityTitle {
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--text-heading);
+  text-decoration: none;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.activityTitle:hover {
+  text-decoration-line: underline;
+  text-decoration-color: var(--accent);
+}
+
+.activityTitle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.activityMeta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.activityHours {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+  font-weight: 500;
+}
+
+.activityUnit {
+  margin-left: 1px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.activityStatus {
+  color: var(--muted);
+}
+
+.activityEdit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.activityEdit:hover {
+  color: var(--text-heading);
+  background: var(--bg);
+}
+
+.activityEdit:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Game card caption (the card itself comes from the games shelf) */
 .cardItem {
   position: relative;

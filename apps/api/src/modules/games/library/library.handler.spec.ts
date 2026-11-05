@@ -32,7 +32,53 @@ describe("GetLibraryHandler", () => {
     expect(result).toEqual({
       summary: { gameCount: 0, logCount: 0, completedCount: 0, playtimeHours: 0, averageRating: null, platforms: [] },
       games: [],
+      recentActivity: [],
     });
+  });
+
+  it("lists each playtime session separately in recentActivity without merging hours", async () => {
+    logsRepo.listForUser.mockResolvedValue([
+      log({ id: "l-pb", gameId: "g-1", status: "playing", playtimeHours: "2", game: { slug: "phantom-blade", title: "Phantom Blade", coverImageUrl: null, criticScore: null, criticScoreCount: null } }),
+      log({ id: "l-bg3", gameId: "g-2", status: "completed", playtimeHours: "3", game: { slug: "baldurs-gate-3", title: "Baldurs Gate 3", coverImageUrl: null, criticScore: null, criticScoreCount: null } }),
+    ]);
+    logsRepo.listPlaytimeActivityForUser.mockResolvedValue([
+      { id: "e3", userGameId: "l-pb", status: "playing", deltaHours: "1.0", lastRecordedAt: new Date("2026-05-03T12:00:00.000Z") },
+      { id: "e2", userGameId: "l-pb", status: "playing", deltaHours: "1.0", lastRecordedAt: new Date("2026-05-02T12:00:00.000Z") },
+      { id: "e1", userGameId: "l-bg3", status: "completed", deltaHours: "3.0", lastRecordedAt: new Date("2026-05-01T12:00:00.000Z") },
+    ]);
+
+    const result = await handler.handle({ user: { id: "u-1" } } as any);
+
+    expect(result.games[0]).toMatchObject({ slug: "phantom-blade", playtimeHours: 2 });
+    expect(result.recentActivity).toEqual([
+      {
+        slug: "phantom-blade",
+        title: "Phantom Blade",
+        coverImageUrl: null,
+        status: "playing",
+        playtimeHours: 1,
+        activityAt: "2026-05-03T12:00:00.000Z",
+        logId: "l-pb",
+      },
+      {
+        slug: "phantom-blade",
+        title: "Phantom Blade",
+        coverImageUrl: null,
+        status: "playing",
+        playtimeHours: 1,
+        activityAt: "2026-05-02T12:00:00.000Z",
+        logId: "l-pb",
+      },
+      {
+        slug: "baldurs-gate-3",
+        title: "Baldurs Gate 3",
+        coverImageUrl: null,
+        status: "completed",
+        playtimeHours: 3,
+        activityAt: "2026-05-01T12:00:00.000Z",
+        logId: "l-bg3",
+      },
+    ]);
   });
 
   it("groups logs per game: latest status, latest rating, summed hours", async () => {
