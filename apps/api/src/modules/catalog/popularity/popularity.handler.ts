@@ -3,7 +3,7 @@ import { GAMES_REPOSITORY } from "../catalog.tokens";
 import type { HltbPopularityUpdate, IGamesRepository, PopularitySignal } from "../games.repository.interface";
 import { HLTB_CLIENT, IGDB_CLIENT } from "../import/import.tokens";
 import type { IHltbClient, IIgdbClient } from "../import/import.types";
-import { hltbEngagement, matchHltbGames } from "../import/hltb-data";
+import { matchHltbGames } from "../import/hltb-data";
 import { EVENT_BUS } from "../../../shared/events/events.tokens";
 import type { IEventBus } from "../../../shared/events/event-bus";
 import { gamesImported } from "../catalog.events";
@@ -18,8 +18,8 @@ import type { RefreshPopularityResponse } from "./popularity.schema";
 const SCORE_EPSILON = 1e-9;
 
 /**
- * Pulls IGDB popularity primitives for every IGDB-linked game, stores them,
- * adds optional HLTB engagement, recomputes each game's blended popularity score
+ * Pulls current IGDB interest signals, stores those belonging to the catalog,
+ * supplements HLTB data separately, and recomputes each game's trend score
  * and reindexes changed games. Strict CLI runs resynchronize all considered
  * games so retrying a failed search write also repairs unchanged scores.
  */
@@ -35,21 +35,27 @@ export class RefreshPopularityHandler {
   async handle(options: { requireSearchSync?: boolean } = {}): Promise<RefreshPopularityResponse> {
     const startedAt = Date.now();
     const sources = await this.gamesRepo.listPopularitySources();
+    if (sources.length === 0) {
+      return { gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0, hltbStatus: "updated", hltbFetchedCount: 0, hltbMatchedCount: 0, durationMs: Date.now() - startedAt };
+    }
     const gameIdByIgdbId = new Map(sources.map((s) => [s.igdbId, s.id]));
 
-    const primitives = await this.igdb.listPopularity([...gameIdByIgdbId.keys()], REFRESHED_POPULARITY_TYPES);
+    const primitives = await this.igdb.listPopularity(REFRESHED_POPULARITY_TYPES);
 
     // One row per game and type; if IGDB ever returns several, the latest calculation wins.
     const signalsByKey = new Map<string, PopularitySignal>();
     for (const p of primitives) {
       const gameId = gameIdByIgdbId.get(p.igdbId);
-      if (!gameId || !Number.isFinite(p.value)) continue;
+      if (!gameId || !REFRESHED_POPULARITY_TYPES.includes(p.popularityType) || !Number.isFinite(p.value) || p.value < 0) continue;
       const key = `${gameId}:${p.popularityType}`;
       const current = signalsByKey.get(key);
       if (current && (current.calculatedAt?.getTime() ?? 0) > (p.calculatedAt?.getTime() ?? 0)) continue;
       signalsByKey.set(key, { gameId, popularityType: p.popularityType, value: p.value, calculatedAt: p.calculatedAt });
     }
     const signals = [...signalsByKey.values()];
+    if (signals.length === 0) {
+      throw new Error("IGDB returned no current popularity data for this catalog; existing scores were kept");
+    }
 
     const hltbUpdates: HltbPopularityUpdate[] = [];
     let hltbStatus: RefreshPopularityResponse["hltbStatus"] = "updated";
@@ -77,17 +83,13 @@ export class RefreshPopularityHandler {
         hltbStatus = "unavailable";
       }
     }
-    const hltbById = new Map(hltbUpdates.map((update) => [update.gameId, update]));
-
     const valueOf = (gameId: string, type: number) => signalsByKey.get(`${gameId}:${type}`)?.value ?? null;
     const inputs: PopularityInput[] = sources.map((s) => ({
       id: s.id,
       signals: {
-        played: valueOf(s.id, POPULARITY_TYPE.PLAYED),
-        steamReviews: valueOf(s.id, POPULARITY_TYPE.STEAM_TOTAL_REVIEWS),
-        wantToPlay: valueOf(s.id, POPULARITY_TYPE.WANT_TO_PLAY),
-        ratingCount: s.igdbRatingCount,
-        hltbEngagement: hltbEngagement(hltbById.get(s.id) ?? s.hltb),
+        visits: valueOf(s.id, POPULARITY_TYPE.VISITS),
+        playing: valueOf(s.id, POPULARITY_TYPE.PLAYING),
+        steam24hPeak: valueOf(s.id, POPULARITY_TYPE.STEAM_24H_PEAK_PLAYERS),
       },
     }));
     const scoreById = computePopularityScores(inputs);

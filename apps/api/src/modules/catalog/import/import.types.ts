@@ -57,10 +57,10 @@ export interface IIgdbClient {
   /** Walks the whole IGDB catalog in id order, one page per call. */
   listGames(afterId: number, options?: { minRatings?: number }): Promise<ImportedGamePage>;
   /**
-   * Popularity primitives of the given types for the given IGDB game ids.
-   * Batches and throttles requests internally to respect IGDB's limits.
+   * All popularity primitives of the given types, globally keyset-paginated by
+   * primitive id. The caller matches them to its catalog. No partial result is returned.
    */
-  listPopularity(igdbIds: number[], popularityTypes: number[]): Promise<PopularityPrimitive[]>;
+  listPopularity(popularityTypes: number[]): Promise<PopularityPrimitive[]>;
 }
 
 export interface IHltbClient {

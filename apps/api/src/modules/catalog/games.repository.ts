@@ -13,7 +13,7 @@ import {
   gamePopularitySignals,
   gameHltbPopularity,
 } from "@vefacaglar/db";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -313,9 +313,8 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const q = filter.q?.trim();
     // Escape LIKE wildcards so a search for "100%" matches literally.
     const pattern = q?.replace(/[\\%_]/g, (c) => `\\${c}`);
-    const whereExpr = pattern
-      ? ilike(games.title, `%${pattern}%`)
-      : lte(games.releaseDate, sql`current_date`);
+    // Current interest can include announced games and games without a release date.
+    const whereExpr = pattern ? ilike(games.title, `%${pattern}%`) : undefined;
     // Matches games_popularity_score_idx, so browsing can read the top rows straight off the index.
     const popularOrder = [
       sql`${games.popularityScore} desc nulls last`,
