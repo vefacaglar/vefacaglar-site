@@ -131,7 +131,7 @@ async fn movie_continuation_is_atomic_unique_and_obeys_late_cancellation() {
     .await
     .unwrap();
     let payload = json!({"fixture": "preserve original payload"});
-    let original: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,status,payload,concurrency_key,recurring_job_id,max_attempts,locked_by) VALUES ('catalog.movies.sync','running',$1,'catalog.movies',$2,5,$3) RETURNING id")
+    let original: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,status,payload,concurrency_key,recurring_job_id,max_attempts,locked_by,heartbeat_at,locked_at,started_at,attempts) VALUES ('catalog.movies.sync','running',$1,'catalog.movies',$2,5,$3,now(),now(),now(),1) RETURNING id")
         .bind(&payload).bind(&registered_id).bind(&worker_id).fetch_one(&pool).await.unwrap();
     let at = chrono::Utc::now() + chrono::Duration::minutes(2);
     assert!(
@@ -175,7 +175,9 @@ async fn movie_continuation_is_atomic_unique_and_obeys_late_cancellation() {
     assert!((*run_at - at).num_milliseconds().abs() < 2);
     // Force a rollback after the terminal UPDATE by violating a successor check.
     // This uses a temporary test-only constraint, never a production migration.
-    sqlx::query("UPDATE jobs SET status='running',locked_by=$2 WHERE id=$1")
+    // Emulate a real claim: a null heartbeat correctly makes the parallel
+    // stale-worker integration test reap this otherwise healthy fixture.
+    sqlx::query("UPDATE jobs SET status='running',locked_by=$2,heartbeat_at=now(),locked_at=now(),started_at=now(),attempts=1 WHERE id=$1")
         .bind(successor)
         .bind(&worker_id)
         .execute(&pool)
