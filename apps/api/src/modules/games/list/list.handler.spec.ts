@@ -41,7 +41,8 @@ describe("ListGamesHandler", () => {
 
     expect(reader.searchPublicGames).toHaveBeenCalledWith({ page: 2, limit: 24, q: "doom" });
     expect(result).toEqual({
-      items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85 }],
+      items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", criticScore: 85,
+        popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null }],
       total: 49,
       page: 2,
       limit: 24,
@@ -50,5 +51,17 @@ describe("ListGamesHandler", () => {
 
     await handler.handle({ query: { q: "   " } } as any);
     expect(reader.searchPublicGames).toHaveBeenLastCalledWith({ page: 1, limit: 24, q: undefined });
+  });
+
+  it("exposes popularity and completion hours without inventing missing values", async () => {
+    reader.searchPublicGames.mockResolvedValue({ items: [
+      { slug: "known", title: "Known", popularityScore: 0.82, hltbMainHours: "20.5", hltbMainExtraHours: "35.0", hltbCompletionistHours: "60" },
+      { slug: "unknown", title: "Unknown", popularityScore: -1, hltbMainHours: "0", hltbMainExtraHours: "bad", hltbCompletionistHours: null },
+      { slug: "invalid", title: "Invalid", popularityScore: Number.NaN, hltbMainHours: "Infinity" },
+    ], total: 3 });
+    const result = await handler.handle({ query: {} } as any);
+    expect(result.items[0]).toMatchObject({ popularityScore: 0.82, hltbMainHours: "20.5", hltbMainExtraHours: "35.0", hltbCompletionistHours: "60" });
+    expect(result.items[1]).toMatchObject({ popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
+    expect(result.items[2]).toMatchObject({ popularityScore: null, hltbMainHours: null });
   });
 });

@@ -138,5 +138,9 @@ export function gameCardFromDoc(doc: GameDoc): GameCard {
     releaseDate: doc.releaseDate ?? null,
     criticScore: doc.criticScore ?? null,
     criticScoreCount: doc.criticScoreCount ?? null,
+    popularityScore: doc.popularityScore != null && Number.isFinite(doc.popularityScore) && doc.popularityScore >= 0 && doc.popularityScore <= 1 ? doc.popularityScore : null,
+    hltbMainHours: doc.hltbMainHours ?? null,
+    hltbMainExtraHours: doc.hltbMainExtraHours ?? null,
+    hltbCompletionistHours: doc.hltbCompletionistHours ?? null,
   };
 }

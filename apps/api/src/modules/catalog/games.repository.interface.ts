@@ -5,6 +5,7 @@ import type { Publisher } from "./publishers.repository.interface";
 import type { Genre } from "./genres.repository.interface";
 import type { Theme } from "./themes.repository.interface";
 import type { Platform } from "./platforms.repository.interface";
+import type { ImportedTimes } from "./import/import.types";
 
 export type Game = InferSelectModel<typeof games>;
 export type NewGame = InferInsertModel<typeof games>;
@@ -57,7 +58,21 @@ export type PopularitySource = {
   igdbId: number;
   igdbRatingCount: number | null;
   popularityScore: number | null;
+  title: string;
+  originalTitle: string | null;
+  releaseDate: string | null;
+  hltb: HltbPopularitySnapshot | null;
 };
+
+export type HltbPopularitySnapshot = {
+  hltbId: number;
+  completed: number | null;
+  backlog: number | null;
+  playing: number | null;
+  updatedAt: Date;
+};
+
+export type HltbPopularityUpdate = HltbPopularitySnapshot & { gameId: string; times: ImportedTimes };
 
 export type PopularitySignal = {
   gameId: string;
@@ -72,11 +87,16 @@ export type PopularityWrite = {
   popularityTypes: number[];
   signals: PopularitySignal[];
   scores: { id: string; score: number | null }[];
+  /** Only verified matches are upserted; an unavailable provider never deletes snapshots. */
+  hltbUpdates: HltbPopularityUpdate[];
   updatedAt: Date;
 };
 
 /** The fields a public game card needs. */
-export type GameCard = Pick<Game, "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "criticScore" | "criticScoreCount">;
+export type GameCard = Pick<Game,
+  "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "criticScore" | "criticScoreCount" |
+  "popularityScore" | "hltbMainHours" | "hltbMainExtraHours" | "hltbCompletionistHours"
+>;
 
 export interface IGamesRepository {
   create(

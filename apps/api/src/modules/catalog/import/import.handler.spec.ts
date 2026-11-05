@@ -78,6 +78,7 @@ describe("ImportGameHandler", () => {
     igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn(), listPopularity: vi.fn() };
     hltb = {
       findTimes: vi.fn().mockResolvedValue({ mainHours: 27, mainExtraHours: 41.6, completionistHours: 65.6 }),
+      listPopular: vi.fn(),
     };
     eventBus = { publish: vi.fn(), subscribe: vi.fn() };
     handler = new ImportGameHandler(gamesRepo, igdb, hltb, eventBus);

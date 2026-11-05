@@ -43,11 +43,13 @@ export interface GamesImportedEvent extends DomainEvent {
   readonly type: typeof GAMES_IMPORTED;
   readonly gameIds: string[];
   readonly createdLookups: Record<Exclude<GameEntityKind, "game">, string[]>;
+  readonly requireSearchSync?: boolean;
 }
 
 export function gamesImported(
   gameIds: string[],
-  createdLookups: Record<Exclude<GameEntityKind, "game">, string[]>
+  createdLookups: Record<Exclude<GameEntityKind, "game">, string[]>,
+  requireSearchSync?: boolean
 ): GamesImportedEvent {
-  return { type: GAMES_IMPORTED, gameIds, createdLookups };
+  return { type: GAMES_IMPORTED, gameIds, createdLookups, ...(requireSearchSync ? { requireSearchSync } : {}) };
 }

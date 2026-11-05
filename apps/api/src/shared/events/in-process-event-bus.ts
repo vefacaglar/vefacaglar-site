@@ -6,7 +6,8 @@ import type { DomainEvent, EventHandler, IEventBus } from "./event-bus";
  * Synchronous, in-process event bus. There is no message broker in this
  * project, so handlers run inline within the publishing request: `publish`
  * awaits every handler before resolving. Handler errors are caught and logged
- * so a failing subscriber (e.g. search indexing) never fails the command.
+ * so normal commands survive a failing subscriber. Explicit batch-maintenance
+ * synchronization propagates failures to its caller instead.
  */
 @injectable()
 export class InProcessEventBus implements IEventBus {
@@ -21,7 +22,7 @@ export class InProcessEventBus implements IEventBus {
     }
   }
 
-  async publish(event: DomainEvent): Promise<void> {
+  async publish(event: DomainEvent, options: { throwOnError?: boolean } = {}): Promise<void> {
     const handlers = this.handlers.get(event.type);
     if (!handlers || handlers.length === 0) return;
     for (const handler of handlers) {
@@ -29,6 +30,7 @@ export class InProcessEventBus implements IEventBus {
         await handler(event);
       } catch (err) {
         reportRuntimeFailure("domain_event_handler_failed", "A domain event handler failed", err);
+        if (options.throwOnError) throw err;
       }
     }
   }

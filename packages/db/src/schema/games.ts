@@ -265,3 +265,13 @@ export const gamePopularitySignals = pgTable('game_popularity_signals', {
 }, (table) => ({
   pk: primaryKey({ columns: [table.gameId, table.popularityType] }),
 }));
+
+// Optional HowLongToBeat engagement snapshots. Missing counts are unknown, not zero.
+export const gameHltbPopularity = pgTable('game_hltb_popularity', {
+  gameId: uuid('game_id').primaryKey().references(() => games.id, { onDelete: 'cascade' }),
+  hltbId: integer('hltb_id').notNull().unique(),
+  completed: integer('completed'),
+  backlog: integer('backlog'),
+  playing: integer('playing'),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
+});

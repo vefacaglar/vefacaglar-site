@@ -101,12 +101,46 @@ library, public profiles), `jobs`, `localizations`, `packages`, `pages`, `posts`
 
 ### Popularity
 
-Games carry a `popularityScore` built from IGDB popularity signals (Played,
-Want to Play, Steam total reviews) and the IGDB rating count. Raw signals are
-stored in `game_popularity_signals`; the score is a weighted mix of
-log-percentiles. It is refreshed by `pnpm --filter api catalog:popularity` or
-`POST /api/catalog/popularity/refresh` (admin). Browse sorts by popularity, then
-release date.
+General `/games` browse sorts by `popularityScore`, then release date. The score
+blends percentile-ranked IGDB Played (28%), Steam total reviews (20%), IGDB rating
+count (20%), Want to Play (12%) and optional HowLongToBeat engagement (20%).
+Weights are renormalized over known signals; missing data is never a zero.
+IGDB primitives live in `game_popularity_signals`. HLTB completed, backlog and
+playing counts are summed as engagement and stored with the verified HLTB id in
+`game_hltb_popularity`; snapshots older than seven days no longer affect scores.
+Public cards expose the nullable 0–1 score and HLTB Main, Main + Extras and
+Completionist hours. No HLTB engagement counts or administrative source data
+are included in the public list response.
+
+HLTB does not provide a supported public developer API. Its best-effort public
+website integration discovers the current search interface and reads at most
+five pages / 100 popular entries per refresh, without crawling each catalog
+game. Only stable ids or unambiguous exact normalized titles with compatible
+release years match. A provider failure retains last good snapshots and does
+not block IGDB. Existing completion hours are preserved; missing hours can be
+filled from matched entries. No HLTB credential is required. The interface may
+change; an unavailable provider is reported in the refresh summary.
+
+Refresh with `pnpm --filter api catalog:popularity` or the existing admin-only
+`POST /api/catalog/popularity/refresh`. The CLI requires Typesense write access
+and resynchronizes all IGDB-linked catalog games in 500-document batches, so a
+rerun repairs search after a partial failure even when scores did not change.
+Indexing failures fail the CLI; ordinary API/import event behavior is unchanged.
+The existing catalog contains roughly 308,000 IGDB-linked games: a full refresh
+can make about 1,855 IGDB requests and 616 search batches. Expect several minutes,
+not a per-request operation; the CLI reports elapsed time and memory every 30 s.
+
+Before enabling `.github/workflows/catalog-popularity.yml`, apply the generated
+database migrations with `pnpm --filter @vefacaglar/db db:migrate` against the
+intended database; API deployment and this workflow do not apply migrations.
+The workflow uses the existing `api-production` environment and needs a public
+`CATALOG_IMPORT_DATABASE_URL` (or `DATABASE_URL`), `IGDB_CLIENT_ID`,
+`IGDB_CLIENT_SECRET`, and a `TYPESENSE_API_KEY` with collection write access.
+`TYPESENSE_PUBLIC_URL` defaults to `https://typesense.vefacaglar.com`; an internal
+Docker hostname is not reachable from GitHub runners. Run a manual refresh after
+migration, then set repository variable `CATALOG_POPULARITY_ENABLED=true` for
+daily 07:15 UTC runs. The importer and refresh share one concurrency group;
+GitHub may replace an older pending run while the importer is running.
 
 ## Search
 

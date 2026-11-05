@@ -15,13 +15,14 @@ export const REFRESHED_POPULARITY_TYPES: number[] = [
   POPULARITY_TYPE.STEAM_TOTAL_REVIEWS,
 ];
 
-export type PopularitySignalKey = "played" | "steamReviews" | "ratingCount" | "wantToPlay";
+export type PopularitySignalKey = "played" | "steamReviews" | "ratingCount" | "wantToPlay" | "hltbEngagement";
 
 export const POPULARITY_WEIGHTS: Record<PopularitySignalKey, number> = {
-  played: 0.35,
-  steamReviews: 0.25,
-  ratingCount: 0.25,
-  wantToPlay: 0.15,
+  played: 0.28,
+  steamReviews: 0.20,
+  ratingCount: 0.20,
+  wantToPlay: 0.12,
+  hltbEngagement: 0.20,
 };
 
 const SIGNAL_KEYS = Object.keys(POPULARITY_WEIGHTS) as PopularitySignalKey[];
@@ -63,7 +64,7 @@ export function computePopularityScores(games: PopularityInput[]): Map<string, n
   for (const game of games) ranked.set(game.id, {});
 
   for (const key of SIGNAL_KEYS) {
-    const present = games.filter((g) => g.signals[key] != null);
+    const present = games.filter((g) => g.signals[key] != null && Number.isFinite(g.signals[key]) && g.signals[key]! >= 0);
     const ranks = percentileRanks(present.map((g) => Math.log1p(Math.max(0, g.signals[key]!))));
     present.forEach((g, i) => {
       ranked.get(g.id)![key] = ranks[i];

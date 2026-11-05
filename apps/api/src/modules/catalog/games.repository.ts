@@ -11,6 +11,7 @@ import {
   gamePlatforms,
   gameThemes,
   gamePopularitySignals,
+  gameHltbPopularity,
 } from "@vefacaglar/db";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
@@ -339,6 +340,10 @@ export class DrizzleGamesRepository implements IGamesRepository {
           releaseDate: games.releaseDate,
           criticScore: games.criticScore,
           criticScoreCount: games.criticScoreCount,
+          popularityScore: games.popularityScore,
+          hltbMainHours: games.hltbMainHours,
+          hltbMainExtraHours: games.hltbMainExtraHours,
+          hltbCompletionistHours: games.hltbCompletionistHours,
         })
         .from(games)
         .where(whereExpr)
@@ -391,8 +396,19 @@ export class DrizzleGamesRepository implements IGamesRepository {
         igdbId: games.igdbId,
         igdbRatingCount: games.igdbRatingCount,
         popularityScore: games.popularityScore,
+        title: games.title,
+        originalTitle: games.originalTitle,
+        releaseDate: games.releaseDate,
+        hltb: {
+          hltbId: gameHltbPopularity.hltbId,
+          completed: gameHltbPopularity.completed,
+          backlog: gameHltbPopularity.backlog,
+          playing: gameHltbPopularity.playing,
+          updatedAt: gameHltbPopularity.updatedAt,
+        },
       })
       .from(games)
+      .leftJoin(gameHltbPopularity, eq(gameHltbPopularity.gameId, games.id))
       .where(isNotNull(games.igdbId));
     return rows.map((r) => ({ ...r, igdbId: r.igdbId! }));
   }
@@ -406,6 +422,22 @@ export class DrizzleGamesRepository implements IGamesRepository {
       }
       for (const chunk of chunks(write.signals)) {
         await db.insert(gamePopularitySignals).values(chunk);
+      }
+
+      for (const update of write.hltbUpdates) {
+        const { times, ...snapshot } = update;
+        await db.insert(gameHltbPopularity).values(snapshot).onConflictDoUpdate({
+          target: gameHltbPopularity.gameId,
+          set: { hltbId: update.hltbId, completed: update.completed, backlog: update.backlog, playing: update.playing, updatedAt: update.updatedAt },
+        });
+        // Supplement existing games without replacing manually curated or previously fetched times.
+        if (Object.values(times).some((value) => value !== null)) {
+          await db.update(games).set({
+            hltbMainHours: sql`coalesce(${games.hltbMainHours}, ${times.mainHours?.toString() ?? null}::numeric)`,
+            hltbMainExtraHours: sql`coalesce(${games.hltbMainExtraHours}, ${times.mainExtraHours?.toString() ?? null}::numeric)`,
+            hltbCompletionistHours: sql`coalesce(${games.hltbCompletionistHours}, ${times.completionistHours?.toString() ?? null}::numeric)`,
+          }).where(eq(games.id, update.gameId));
+        }
       }
 
       // One UPDATE ... FROM (VALUES ...) per chunk instead of one statement per game.

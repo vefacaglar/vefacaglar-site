@@ -184,7 +184,7 @@ export class TypesenseSearchReader implements ISearchReader {
             filter_by: `releaseTimestamp:>${RELEASE_UNKNOWN} && releaseTimestamp:<=${now}`,
             sort_by: "popularityScore:desc,releaseTimestamp:desc",
           }),
-      include_fields: "id,slug,title,coverImageUrl,releaseDate,criticScore,criticScoreCount",
+      include_fields: "id,slug,title,coverImageUrl,releaseDate,criticScore,criticScoreCount,popularityScore,hltbMainHours,hltbMainExtraHours,hltbCompletionistHours",
       page: query.page ?? 1,
       per_page: query.limit ?? 24,
     });

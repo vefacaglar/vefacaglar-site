@@ -173,8 +173,9 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     }
   }
 
-  async indexGames(ids: string[]): Promise<void> {
-    await this.bulkIndex(SEARCH_COLLECTIONS.games, ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), toGameDoc);
+  async indexGames(ids: string[], options: { throwOnError?: boolean } = {}): Promise<void> {
+    if (options.throwOnError && !this.enabled) throw new Error("Typesense must be configured for popularity search synchronization");
+    await this.bulkIndex(SEARCH_COLLECTIONS.games, ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), toGameDoc, options.throwOnError);
   }
 
   async indexLookups(kind: LookupEntity, ids: string[]): Promise<void> {
@@ -188,16 +189,18 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     collection: string,
     ids: string[],
     load: (ids: string[]) => Promise<T[]>,
-    toDoc: (row: T) => object
+    toDoc: (row: T) => object,
+    throwOnError = false
   ): Promise<void> {
     if (!this.enabled || ids.length === 0) return;
     for (let i = 0; i < ids.length; i += BULK_INDEX_SIZE) {
       const sliceIds = ids.slice(i, i + BULK_INDEX_SIZE);
       try {
         const rows = await load(sliceIds);
-        await this.bulkImportDocs(collection, rows.map(toDoc));
+        await this.bulkImportDocs(collection, rows.map(toDoc), throwOnError);
       } catch (err) {
         reportRuntimeFailure("search_bulk_index_failed", `Could not bulk index ${collection}`, err);
+        if (throwOnError) throw err;
       }
     }
   }
@@ -330,7 +333,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
 
   // --- Private: bulk import helper ---
 
-  private async bulkImportDocs(collectionName: string, docs: object[]): Promise<void> {
+  private async bulkImportDocs(collectionName: string, docs: object[], throwOnError = false): Promise<void> {
     if (docs.length === 0) return;
     try {
       const results = await this.typesense
@@ -349,9 +352,11 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
           `Typesense rejected ${failures.length} of ${docs.length} documents for ${collectionName}`,
           new Error(firstError),
         );
+        if (throwOnError) throw new Error(`Typesense rejected ${failures.length} documents during popularity synchronization`);
       }
     } catch (err) {
       reportRuntimeFailure("search_bulk_import_failed", `Could not import documents into ${collectionName}`, err);
+      if (throwOnError) throw err;
     }
   }
 }

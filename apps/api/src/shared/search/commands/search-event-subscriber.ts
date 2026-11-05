@@ -56,7 +56,7 @@ export class SearchEventSubscriber {
     this.eventBus.subscribe<GamesImportedEvent>(GAMES_IMPORTED, async (event) => {
       // Each collection is independent, so all of them are indexed at once.
       await Promise.all([
-        this.indexer.indexGames(event.gameIds),
+        this.indexer.indexGames(event.gameIds, { throwOnError: event.requireSearchSync }),
         ...Object.entries(event.createdLookups).map(([kind, ids]) =>
           this.indexer.indexLookups(kind as keyof GamesImportedEvent["createdLookups"], ids)
         ),

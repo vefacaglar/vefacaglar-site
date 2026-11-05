@@ -24,6 +24,10 @@ export class ListGamesHandler {
         coverImageUrl: g.coverImageUrl,
         releaseDate: g.releaseDate,
         criticScore: publicCriticScore(g.criticScore, g.criticScoreCount),
+        popularityScore: Number.isFinite(g.popularityScore) && g.popularityScore! >= 0 && g.popularityScore! <= 1 ? g.popularityScore : null,
+        hltbMainHours: publicHours(g.hltbMainHours),
+        hltbMainExtraHours: publicHours(g.hltbMainExtraHours),
+        hltbCompletionistHours: publicHours(g.hltbCompletionistHours),
       })),
       total,
       page,
@@ -31,4 +35,9 @@ export class ListGamesHandler {
       totalPages: Math.ceil(total / limit),
     };
   }
+}
+
+function publicHours(value: string | null | undefined): string | null {
+  const hours = Number(value);
+  return value != null && Number.isFinite(hours) && hours > 0 && hours < 100_000 ? value : null;
 }

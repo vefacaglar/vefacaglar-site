@@ -13,6 +13,10 @@ export const GameCardSchema = Type.Object({
   coverImageUrl: Type.Union([Type.String(), Type.Null()]),
   releaseDate: Type.Union([Type.String(), Type.Null()]),
   criticScore: Type.Union([Type.Number(), Type.Null()]),
+  popularityScore: Type.Union([Type.Number({ minimum: 0, maximum: 1, description: "Relative catalog popularity, not a review rating" }), Type.Null()]),
+  hltbMainHours: Type.Union([Type.String(), Type.Null()]),
+  hltbMainExtraHours: Type.Union([Type.String(), Type.Null()]),
+  hltbCompletionistHours: Type.Union([Type.String(), Type.Null()]),
 });
 
 export const ListGamesResponseSchema = Type.Object({

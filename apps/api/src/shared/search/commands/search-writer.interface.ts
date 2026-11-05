@@ -16,7 +16,7 @@ export interface ISearchIndexWriter {
   indexTheme(id: string): Promise<void>;
 
   /** Batch variants for bulk imports: one Typesense import per collection. */
-  indexGames(ids: string[]): Promise<void>;
+  indexGames(ids: string[], options?: { throwOnError?: boolean }): Promise<void>;
   indexLookups(kind: "developer" | "publisher" | "genre" | "platform" | "theme", ids: string[]): Promise<void>;
 
   removeGame(id: string): Promise<void>;

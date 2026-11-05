@@ -9,6 +9,10 @@ export const RefreshPopularityResponseSchema = Type.Object({
   scoredCount: Type.Number(),
   /** Games whose score changed and were sent to the search index. */
   reindexedCount: Type.Number(),
+  /** HLTB is optional: retained snapshots remain usable when it is unavailable. */
+  hltbStatus: Type.Union([Type.Literal("updated"), Type.Literal("unavailable")]),
+  hltbFetchedCount: Type.Number(),
+  hltbMatchedCount: Type.Number(),
   durationMs: Type.Number(),
 });
 export type RefreshPopularityResponse = Static<typeof RefreshPopularityResponseSchema>;
