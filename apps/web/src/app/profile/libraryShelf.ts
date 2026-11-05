@@ -41,11 +41,12 @@ export function parseView(raw: string | string[] | undefined): ShelfView {
 }
 
 export const SHELF_VIEW_STORAGE_KEY = "library_shelf_view";
+export const SHELF_SORT_STORAGE_KEY = "library_shelf_sort";
 
-export type ViewStorage = Pick<Storage, "getItem" | "setItem">;
+export type ShelfStorage = Pick<Storage, "getItem" | "setItem">;
 
 /** Reads the saved shelf view from storage (`localStorage`), falling back to `"grid"`. */
-export function readStoredView(storage?: ViewStorage | null): ShelfView {
+export function readStoredView(storage?: ShelfStorage | null): ShelfView {
   try {
     return storage?.getItem(SHELF_VIEW_STORAGE_KEY) === "list" ? "list" : "grid";
   } catch {
@@ -54,9 +55,27 @@ export function readStoredView(storage?: ViewStorage | null): ShelfView {
 }
 
 /** Saves the chosen shelf view (`"grid"` or `"list"`) to storage (`localStorage`). */
-export function writeStoredView(view: ShelfView, storage?: ViewStorage | null): void {
+export function writeStoredView(view: ShelfView, storage?: ShelfStorage | null): void {
   try {
     storage?.setItem(SHELF_VIEW_STORAGE_KEY, view);
+  } catch {
+    // Ignore storage quota or privacy-mode errors.
+  }
+}
+
+/** Reads the saved shelf sort from storage (`localStorage`), validated against `tab`. */
+export function readStoredSort(tab: ShelfTab, storage?: ShelfStorage | null): ShelfSort {
+  try {
+    return parseSort(storage?.getItem(SHELF_SORT_STORAGE_KEY) ?? undefined, tab);
+  } catch {
+    return defaultSort(tab);
+  }
+}
+
+/** Saves the chosen shelf sort to storage (`localStorage`). */
+export function writeStoredSort(sort: ShelfSort, storage?: ShelfStorage | null): void {
+  try {
+    storage?.setItem(SHELF_SORT_STORAGE_KEY, sort);
   } catch {
     // Ignore storage quota or privacy-mode errors.
   }

@@ -7,12 +7,15 @@ import {
   parseTab,
   parseView,
   platformCounts,
+  readStoredSort,
   readStoredView,
+  SHELF_SORT_STORAGE_KEY,
   SHELF_TABS,
   SHELF_VIEW_STORAGE_KEY,
   shelfQuery,
   sortsFor,
   sortShelf,
+  writeStoredSort,
   writeStoredView,
 } from "./libraryShelf";
 
@@ -119,7 +122,7 @@ describe("parseView", () => {
   });
 });
 
-describe("readStoredView / writeStoredView", () => {
+describe("readStoredView / writeStoredView / readStoredSort / writeStoredSort", () => {
   function memoryStorage(initial?: Record<string, string>) {
     const map = new Map<string, string>(Object.entries(initial ?? {}));
     return {
@@ -146,6 +149,22 @@ describe("readStoredView / writeStoredView", () => {
     expect(readStoredView(store)).toBe("grid");
   });
 
+  it("reads and persists sort mode validated against the active tab", () => {
+    const store = memoryStorage();
+    expect(readStoredSort("all", store)).toBe("activity");
+    expect(readStoredSort("completed", store)).toBe("completed");
+
+    writeStoredSort("playtime", store);
+    expect(readStoredSort("all", store)).toBe("playtime");
+    expect(readStoredSort("playing", store)).toBe("playtime");
+
+    writeStoredSort("completed", store);
+    expect(readStoredSort("all", store)).toBe("completed");
+    expect(readStoredSort("playing", store)).toBe("activity");
+
+    expect(readStoredSort("all", memoryStorage({ [SHELF_SORT_STORAGE_KEY]: "invalid" }))).toBe("activity");
+  });
+
   it("swallows storage errors gracefully", () => {
     const broken = {
       getItem: () => {
@@ -156,7 +175,9 @@ describe("readStoredView / writeStoredView", () => {
       },
     };
     expect(readStoredView(broken)).toBe("grid");
+    expect(readStoredSort("all", broken)).toBe("activity");
     expect(() => writeStoredView("list", broken)).not.toThrow();
+    expect(() => writeStoredSort("playtime", broken)).not.toThrow();
   });
 });
 

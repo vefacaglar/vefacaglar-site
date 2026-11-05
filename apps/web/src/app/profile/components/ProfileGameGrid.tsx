@@ -29,6 +29,15 @@ function shortDate(key: string, lang: string): string {
   }).format(date);
 }
 
+function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5V10.5L10.5 2.5Z" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M8.5 4.5 11.5 7.5" stroke="currentColor" strokeWidth="1.25" />
+    </svg>
+  );
+}
+
 /**
  * A user's games as a cover wall, sharing the games shelf's cards. The plate on the
  * cover is the user's own rating; the caption carries their status and playtime.
@@ -46,12 +55,13 @@ export default function ProfileGameGrid({
     <ul className={shelf.grid}>
       {games.map((game) => {
         const completed = showCompletedAt && game.completedAt ? shortDate(game.completedAt, lang) : "";
-        const href =
+        const href = localizeHref(`/games/${game.slug}`, lang);
+        const editHref =
           isOwner && game.latestLogId
             ? localizeHref(`/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
-            : localizeHref(`/games/${game.slug}`, lang);
+            : null;
         return (
-          <li key={game.slug}>
+          <li key={game.slug} className={styles.cardItem}>
             <Link href={href} className={shelf.card}>
               <div className={shelf.cover}>
                 {game.coverImageUrl ? (
@@ -83,6 +93,16 @@ export default function ProfileGameGrid({
                 )}
               </span>
             </Link>
+            {editHref && (
+              <Link
+                href={editHref}
+                className={styles.cardEdit}
+                aria-label={dict.list_edit_log_for.replace("{title}", game.title)}
+                title={dict.log_edit_title}
+              >
+                <PencilIcon />
+              </Link>
+            )}
           </li>
         );
       })}

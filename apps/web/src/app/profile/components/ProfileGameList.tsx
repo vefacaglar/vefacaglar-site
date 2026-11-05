@@ -215,11 +215,11 @@ export default function ProfileGameList({
         </tr>
       </thead>
       {games.map((game) => {
+        const href = localizeHref(`/games/${game.slug}`, lang);
         const editHref =
           isOwner && game.latestLogId
             ? localizeHref(`/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
             : null;
-        const href = editHref ?? localizeHref(`/games/${game.slug}`, lang);
         const finished = showCompletedAt && game.completedAt ? shortDate(game.completedAt, lang) : "";
         const playtime = game.playtimeHours !== null ? String(game.playtimeHours) : null;
         const rating = game.rating !== null ? outOfTen(game.rating, lang) : null;
@@ -236,14 +236,14 @@ export default function ProfileGameList({
                 <th scope="row" className={styles.titleCell}>
                   <span className={styles.marker} aria-hidden="true" />
                   <span className={styles.titleRow}>
-                    <span className={styles.thumb} aria-hidden="true">
+                    <Link href={href} className={styles.thumb} tabIndex={-1} aria-hidden="true">
                       {game.coverImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={game.coverImageUrl} alt="" loading="lazy" />
                       ) : (
                         <span className={styles.thumbFallback}>{game.title.slice(0, 1)}</span>
                       )}
-                    </span>
+                    </Link>
                     <span className={styles.titleBlock}>
                       <Link href={href} className={styles.titleLink}>
                         {game.title}

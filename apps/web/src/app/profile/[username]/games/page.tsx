@@ -9,15 +9,13 @@ import ProfileEmpty from "../../components/ProfileEmpty";
 import PrivateProfile from "../../components/PrivateProfile";
 import {
   SHELF_TABS,
-  parseSort,
   parseTab,
   platformCounts,
-  sortShelf,
 } from "../../libraryShelf";
 
 interface ProfileGamesProps {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ status?: string | string[]; sort?: string | string[] }>;
+  searchParams: Promise<{ status?: string | string[] }>;
 }
 
 /** Every game on the user's shelf, split by status, in the order the reader picks. */
@@ -48,7 +46,6 @@ export default async function ProfileGames(props: ProfileGamesProps) {
 
   const searchParams = await props.searchParams;
   const tab = parseTab(searchParams.status);
-  const sort = parseSort(searchParams.sort, tab);
   const basePath = profilePath(user.username, "games");
 
   const countOf = (t: (typeof SHELF_TABS)[number]) =>
@@ -58,27 +55,26 @@ export default async function ProfileGames(props: ProfileGamesProps) {
     (t) => t.key === "all" || t.key === tab || t.count > 0,
   );
 
-  const shown = sortShelf(tab === "all" ? games : games.filter((game) => game.status === tab), sort);
+  const filtered = tab === "all" ? games : games.filter((game) => game.status === tab);
 
   // The whole shelf uses the API's counts; a status tab counts just its own games.
-  const platforms = tab === "all" && summary.platforms.length > 0 ? summary.platforms : platformCounts(shown);
+  const platforms = tab === "all" && summary.platforms.length > 0 ? summary.platforms : platformCounts(filtered);
   const emptyMessage = tab === "all" ? dict.no_library : dict[`profile_empty_${tab}` as const];
 
   return (
     <>
       <ProfileGamesShelf
-        shown={shown}
+        games={filtered}
         lang={lang}
         isOwner={isOwner}
         ownerName={user.displayName || user.username}
         basePath={basePath}
         tab={tab}
         tabs={tabs}
-        sort={sort}
         emptyMessage={emptyMessage}
       />
 
-      {shown.length > 0 && platforms.length > 0 && <ProfilePlatforms platforms={platforms} lang={lang} />}
+      {filtered.length > 0 && platforms.length > 0 && <ProfilePlatforms platforms={platforms} lang={lang} />}
     </>
   );
 }

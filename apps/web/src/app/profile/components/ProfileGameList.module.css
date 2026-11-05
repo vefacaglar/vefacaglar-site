@@ -458,13 +458,7 @@
   }
 
   .row > .figure {
-    padding-top: 17px;
     font-size: 13px;
-  }
-
-  /* The edit shortcut moves into the open panel. */
-  .editCell {
-    display: none;
   }
 
   .row > .toggleCell {

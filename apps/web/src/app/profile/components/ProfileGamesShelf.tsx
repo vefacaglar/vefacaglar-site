@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "../profile.module.css";
 import { getDictionary } from "../../../dictionaries";
@@ -11,9 +11,12 @@ import ProfileGameGrid from "./ProfileGameGrid";
 import ProfileGameList from "./ProfileGameList";
 import {
   defaultSort,
+  readStoredSort,
   readStoredView,
   shelfQuery,
   sortsFor,
+  sortShelf,
+  writeStoredSort,
   writeStoredView,
   type ShelfSort,
   type ShelfTab,
@@ -21,39 +24,46 @@ import {
 } from "../libraryShelf";
 
 type ProfileGamesShelfProps = {
-  shown: LibraryGame[];
+  games: LibraryGame[];
   lang: string;
   isOwner: boolean;
   ownerName: string;
   basePath: string;
   tab: ShelfTab;
   tabs: { key: ShelfTab; count: number }[];
-  sort: ShelfSort;
   emptyMessage: string;
 };
 
 export default function ProfileGamesShelf({
-  shown,
+  games,
   lang,
   isOwner,
   ownerName,
   basePath,
   tab,
   tabs,
-  sort,
   emptyMessage,
 }: ProfileGamesShelfProps) {
   const dict = getDictionary(lang);
   const [view, setView] = useState<ShelfView>("grid");
+  const [sort, setSort] = useState<ShelfSort>(() => defaultSort(tab));
 
   useEffect(() => {
     setView(readStoredView(window.localStorage));
-  }, []);
+    setSort(readStoredSort(tab, window.localStorage));
+  }, [tab]);
 
   const selectView = (nextView: ShelfView) => {
     setView(nextView);
     writeStoredView(nextView, window.localStorage);
   };
+
+  const selectSort = (nextSort: ShelfSort) => {
+    setSort(nextSort);
+    writeStoredSort(nextSort, window.localStorage);
+  };
+
+  const shown = useMemo(() => sortShelf(games, sort), [games, sort]);
 
   const viewLabels: Record<ShelfView, string> = {
     grid: dict.profile_view_grid,
@@ -91,25 +101,25 @@ export default function ProfileGamesShelf({
 
         <div className={styles.shelfTools}>
           {shown.length > 0 && (
-            <nav className={styles.sortBar} aria-label={dict.profile_sort_label}>
+            <div className={styles.sortBar} role="group" aria-label={dict.profile_sort_label}>
               <span className={styles.sortLabel} aria-hidden="true">
                 {dict.profile_sort_label}
               </span>
               {sortsFor(tab).map((s) => {
                 const active = s === sort;
                 return (
-                  <Link
+                  <button
                     key={s}
-                    href={localizeHref(`${basePath}${shelfQuery(tab, s)}`, lang)}
-                    scroll={false}
+                    type="button"
+                    onClick={() => selectSort(s)}
                     className={active ? `${styles.sortOption} ${styles.sortOptionActive}` : styles.sortOption}
-                    aria-current={active ? "true" : undefined}
+                    aria-pressed={active}
                   >
                     {sortLabels[s]}
-                  </Link>
+                  </button>
                 );
               })}
-            </nav>
+            </div>
           )}
 
           <div className={styles.viewToggle} role="group" aria-label={dict.profile_view_label}>
