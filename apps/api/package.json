@@ -11,7 +11,8 @@
     "catalog:import": "ts-node --transpile-only src/scripts/import-games.ts",
     "catalog:popularity": "ts-node --transpile-only src/scripts/refresh-popularity.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "catalog:hltb": "ts-node --transpile-only src/scripts/lookup-hltb.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",

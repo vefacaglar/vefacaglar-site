@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index, doublePrecision } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index, doublePrecision, jsonb } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 // Game Status Enum Values
@@ -288,5 +288,32 @@ export const gameHltbPopularity = pgTable('game_hltb_popularity', {
   completed: integer('completed'),
   backlog: integer('backlog'),
   playing: integer('playing'),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }),
+  mappingSource: text('mapping_source').notNull().default('imported'),
+  mappingVerifiedAt: timestamp('mapping_verified_at', { withTimezone: true, mode: 'date' }),
+});
+
+// One bounded, replaceable search receipt per game; never a second HLTB mapping.
+export const gameHltbLookups = pgTable('game_hltb_lookups', {
+  gameId: uuid('game_id').primaryKey().references(() => games.id, { onDelete: 'cascade' }),
+  receiptId: uuid('receipt_id').notNull().unique(),
+  query: varchar('query', { length: 250 }).notNull(),
+  expectedVersion: text('expected_version').notNull(),
+  candidates: jsonb('candidates').$type<unknown[]>().notNull(),
+  outcome: text('outcome').notNull(),
+  checkedAt: timestamp('checked_at', { withTimezone: true, mode: 'date' }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+  retryAfter: timestamp('retry_after', { withTimezone: true, mode: 'date' }),
+  failureCount: integer('failure_count').notNull().default(0),
+  pendingSearchSync: boolean('pending_search_sync').notNull().default(false),
+  syncVersion: uuid('sync_version'),
+});
+
+// Shared API/CLI/worker website request permit and provider cooldown.
+export const hltbProviderState = pgTable('hltb_provider_state', {
+  id: text('id').primaryKey(),
+  leaseOwner: uuid('lease_owner'),
+  leaseUntil: timestamp('lease_until', { withTimezone: true, mode: 'date' }),
+  nextRequestAt: timestamp('next_request_at', { withTimezone: true, mode: 'date' }).notNull(),
+  cooldownUntil: timestamp('cooldown_until', { withTimezone: true, mode: 'date' }),
 });

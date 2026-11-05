@@ -76,7 +76,7 @@ export function matchHltbGames(sources: PopularitySource[], entries: HltbPopular
   return matches;
 }
 
-export function hltbEngagement(snapshot: { completed: number | null; backlog: number | null; playing: number | null; updatedAt?: Date } | null, now = new Date()): number | null {
+export function hltbEngagement(snapshot: { completed: number | null; backlog: number | null; playing: number | null; updatedAt?: Date | null } | null, now = new Date()): number | null {
   if (!snapshot) return null;
   // Keep the stable match and last good data, but don't rank games on indefinitely stale counts.
   if (snapshot.updatedAt && now.getTime() - snapshot.updatedAt.getTime() > 7 * 24 * 60 * 60_000) return null;
@@ -88,7 +88,7 @@ function sameYear(source: PopularitySource, entry: HltbPopularityGame): boolean 
   return !source.releaseDate || !entry.releaseYear || Number(source.releaseDate.slice(0, 4)) === entry.releaseYear;
 }
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === "object" && !Array.isArray(value); }
-function positiveInteger(value: unknown): boolean { return typeof value === "number" && Number.isSafeInteger(value) && value > 0; }
+function positiveInteger(value: unknown): boolean { return typeof value === "number" && Number.isSafeInteger(value) && value > 0 && value <= 2_147_483_647; }
 function count(value: unknown): number | null { return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647 ? value : null; }
 function releaseYear(value: unknown): number | null {
   const year = Number(String(value ?? "").slice(0, 4));

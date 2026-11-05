@@ -276,3 +276,14 @@ export async function listRelationsOptionsAction() {
     platforms: { id: string; name: string; slug: string }[];
   }>("/api/catalog/relations-options");
 }
+
+// Explicit, administrator-reviewed HowLongToBeat lookup and application.
+export async function lookupHltbAction(id: string, body: { query?: string; refresh?: boolean }) {
+  return authedRequest<import("./hltb-types").HltbLookup>("POST", `/api/catalog/games/${id}/hltb/lookup`, { body, fallbackError: "Could not search HowLongToBeat." });
+}
+export async function applyHltbAction(id: string, body: import("./hltb-types").HltbApplyInput) {
+  return authedRequest<import("./hltb-types").HltbApplied>("POST", `/api/catalog/games/${id}/hltb/apply`, { body, revalidate: ["/games", ...REVALIDATE_GAMES], fallbackError: "Could not apply the HowLongToBeat entry." });
+}
+export async function retryHltbSyncAction(id: string) {
+  return authedRequest<import("./hltb-types").HltbApplied>("POST", `/api/catalog/games/${id}/hltb/retry-sync`, { revalidate: ["/games", ...REVALIDATE_GAMES], fallbackError: "Could not update search." });
+}

@@ -107,7 +107,7 @@ describe("RefreshPopularityHandler", () => {
       ]),
     };
     eventBus = { publish: vi.fn().mockResolvedValue(undefined), subscribe: vi.fn() };
-    hltb = { findTimes: vi.fn(), listPopular: vi.fn().mockResolvedValue([]) };
+    hltb = { searchCandidates: vi.fn(), findTimes: vi.fn(), listPopular: vi.fn().mockResolvedValue([]) };
     ownerRanking = { backfillGameModes: vi.fn().mockResolvedValue({ checkedCount: 0, status: "complete" }) };
     handler = new RefreshPopularityHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient,
       eventBus as unknown as IEventBus, hltb as unknown as IHltbClient, ownerRanking as unknown as OwnerRankingService);

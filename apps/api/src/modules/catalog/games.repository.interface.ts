@@ -70,7 +70,7 @@ export type HltbPopularitySnapshot = {
   completed: number | null;
   backlog: number | null;
   playing: number | null;
-  updatedAt: Date;
+  updatedAt: Date | null;
 };
 
 export type HltbPopularityUpdate = HltbPopularitySnapshot & { gameId: string; times: ImportedTimes };

@@ -1,3 +1,4 @@
+import { acceptBackgroundMapping } from "./hltb/hltb-policy";
 import {
   games,
   developers,
@@ -499,11 +500,21 @@ export class DrizzleGamesRepository implements IGamesRepository {
         await db.insert(gamePopularitySignals).values(chunk);
       }
 
+      // Acquire the entire external-ID lock set before any game row lock. A manual
+      // remap takes external ID then game; interleaving per-row locks here can deadlock.
+      for (const id of [...new Set(write.hltbUpdates.map((row) => row.hltbId))].sort((a, b) => a - b)) {
+        await db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`hltb:mapping:${id}`}, 0))`);
+      }
+      const hltbGameIds = [...new Set(write.hltbUpdates.map((row) => row.gameId))].sort();
+      if (hltbGameIds.length) await db.select({ id: games.id }).from(games).where(inArray(games.id, hltbGameIds)).orderBy(games.id).for("update");
       for (const update of write.hltbUpdates) {
         const { times, ...snapshot } = update;
+        const [existing] = await db.select().from(gameHltbPopularity).where(eq(gameHltbPopularity.gameId, update.gameId));
+        const [owner] = await db.select({ gameId: gameHltbPopularity.gameId }).from(gameHltbPopularity).where(eq(gameHltbPopularity.hltbId, update.hltbId));
+        if (!acceptBackgroundMapping(update.gameId, update.hltbId, existing?.hltbId ?? null, owner?.gameId ?? null)) continue;
         await db.insert(gameHltbPopularity).values(snapshot).onConflictDoUpdate({
           target: gameHltbPopularity.gameId,
-          set: { hltbId: update.hltbId, completed: update.completed, backlog: update.backlog, playing: update.playing, updatedAt: update.updatedAt },
+          set: { completed: update.completed, backlog: update.backlog, playing: update.playing, updatedAt: update.updatedAt },
         });
         // Supplement existing games without replacing manually curated or previously fetched times.
         if (Object.values(times).some((value) => value !== null)) {

@@ -68,6 +68,7 @@ export interface IIgdbClient {
 }
 
 export interface IHltbClient {
+  searchCandidates(title: string): Promise<HltbPopularityGame[]>;
   findTimes(title: string): Promise<ImportedTimes | null>;
   /** At most 100 popular games, fetched in a bounded number of public search pages. */
   listPopular(): Promise<HltbPopularityGame[]>;

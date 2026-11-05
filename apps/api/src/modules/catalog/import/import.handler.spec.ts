@@ -77,6 +77,7 @@ describe("ImportGameHandler", () => {
     } as unknown as Record<keyof IGamesRepository, any>;
     igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn(), listPopularity: vi.fn() };
     hltb = {
+      searchCandidates: vi.fn(),
       findTimes: vi.fn().mockResolvedValue({ mainHours: 27, mainExtraHours: 41.6, completionistHours: 65.6 }),
       listPopular: vi.fn(),
     };
