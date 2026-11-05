@@ -94,7 +94,7 @@
 
 .back {
   margin: 0 0 18px 0;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .back a {
@@ -105,6 +105,7 @@
   border-radius: 0;
   background: var(--bg);
   color: var(--muted);
+  font-family: var(--font-mono), ui-monospace, monospace;
   text-decoration: none;
   font-weight: 500;
   transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
@@ -118,10 +119,11 @@
 
 .title {
   margin: 0 0 8px 0;
-  font-size: clamp(28px, 3.2vw, 38px);
-  font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: clamp(32px, 3.8vw, 46px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
   color: var(--text-heading);
   text-wrap: balance;
   overflow-wrap: anywhere;
@@ -149,7 +151,8 @@
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--surface-2);
-  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--text);
@@ -186,6 +189,7 @@
 }
 
 .figure dt {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -198,12 +202,13 @@
 }
 
 .figureValue {
-  font-size: 24px;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 28px;
   line-height: 1.05;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.03em;
   color: var(--text-heading);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .figure[data-tier="high"] .figureValue {
@@ -212,6 +217,7 @@
 
 .figureUnit {
   margin-left: 4px;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   letter-spacing: 0;
@@ -220,6 +226,7 @@
 }
 
 .figureNote {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 11px;
   color: var(--muted);
@@ -265,10 +272,11 @@
 
 .sectionTitle {
   margin: 0 0 18px 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.005em;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
   color: var(--text-heading);
 }
 
@@ -285,11 +293,11 @@
   margin: 0 0 12px 0;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   color: var(--text-heading);
 }
 
@@ -313,6 +321,8 @@
 }
 
 .credit dt {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 500;
 }
@@ -336,7 +346,8 @@
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--surface-2);
-  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--text-heading);
@@ -395,7 +406,8 @@
 }
 
 .hours {
-  font-size: 15px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 14px;
   line-height: 1;
   text-align: right;
   color: var(--text-heading);
@@ -405,8 +417,9 @@
 
 .hoursUnit {
   margin-left: 3px;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   font-weight: 400;
 }
@@ -507,9 +520,10 @@
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg);
-  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-heading);
 }
@@ -544,14 +558,16 @@
   border: 1px solid var(--border);
   border-radius: 0;
   background: var(--surface-2);
-  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--muted);
 }
 
 .logEdit {
   margin-left: auto;
-  font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
   font-weight: 500;
   color: var(--muted);
   transition: color 0.15s ease;
@@ -573,14 +589,17 @@
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .logMetricLabel {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
   color: var(--muted);
 }
 
 .logMetricValue {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--text-heading);
@@ -614,7 +633,7 @@
 
 .backLink {
   margin: 0 0 18px 0;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .backLink a {
@@ -625,6 +644,7 @@
   border-radius: 0;
   background: var(--surface);
   color: var(--muted);
+  font-family: var(--font-mono), ui-monospace, monospace;
   text-decoration: none;
   font-weight: 500;
   transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
@@ -666,17 +686,19 @@
 
 .logPageGame {
   margin: 0;
-  font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
   font-weight: 500;
   color: var(--muted);
 }
 
 .narrow h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--text-heading);
 }
 
@@ -713,8 +735,9 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
   pointer-events: none;
 }

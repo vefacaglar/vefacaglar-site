@@ -15,10 +15,11 @@
 .title {
   grid-area: title;
   margin: 0 0 8px 0;
-  font-size: clamp(28px, 3.2vw, 36px);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: clamp(32px, 3.6vw, 42px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   color: var(--text-heading);
 }
 

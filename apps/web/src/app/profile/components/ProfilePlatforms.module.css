@@ -59,17 +59,18 @@
 
 .percent {
   grid-area: percent;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-heading);
   text-align: right;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
 
 .count {
   grid-area: count;
-  font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
   color: var(--muted);
   text-align: right;
   white-space: nowrap;

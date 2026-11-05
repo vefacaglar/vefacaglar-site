@@ -1,13 +1,28 @@
-import { Geist } from "next/font/google";
+import { Bricolage_Grotesque, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 /**
- * The library's only typeface. Geist is a plain, neutral grotesque built for
- * interfaces: even texture at small sizes, clear figures (set with tabular
- * numerals where they line up in columns) and no italic or display cuts to
- * tempt decoration. latin-ext covers Turkish.
+ * Editorial 3-font system for the library:
+ * - Bricolage Grotesque (--font-display): expressive architectural display font for titles, mastheads, and hero figures.
+ * - Plus Jakarta Sans (--font-sans): sculpted humanist grotesque for body copy, descriptions, and form controls.
+ * - JetBrains Mono (--font-mono): crisp technical monospace for tabular numerals, scores, years, and metadata tags.
+ * All three include latin-ext for Turkish support.
  */
-export const librarySans = Geist({
+export const librarySans = Plus_Jakarta_Sans({
   subsets: ["latin", "latin-ext"],
   display: "swap",
   variable: "--font-sans",
 });
+
+export const libraryDisplay = Bricolage_Grotesque({
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+  variable: "--font-display",
+});
+
+export const libraryMono = JetBrains_Mono({
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+  variable: "--font-mono",
+});
+
+export const libraryFontVariables = `${librarySans.variable} ${libraryDisplay.variable} ${libraryMono.variable}`;

@@ -43,9 +43,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 16px;
   line-height: 1;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--text-heading);
 }
@@ -54,6 +55,7 @@
   padding: 4px 7px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -63,10 +65,11 @@
 }
 
 .name {
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.015em;
-  color: var(--text);
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.025em;
+  color: var(--text-heading);
   transition: color 0.15s ease;
 }
 
@@ -133,7 +136,8 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 0;
-  font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
   line-height: 1.4;
   color: var(--text-heading);
   text-decoration: none;
@@ -205,15 +209,17 @@
 }
 
 .footerMark {
-  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--faint);
 }
 
 /* The shared language switch: show the language code in capitals. */
 .footer button {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   text-transform: uppercase;

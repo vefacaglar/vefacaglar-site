@@ -9,7 +9,7 @@ import { LIBRARY_NAME, LIBRARY_SECTIONS, type LibrarySection } from "../../lib/l
 import { profilePath } from "../../lib/profileLibrary";
 import AccountLink from "./AccountLink";
 import { librarySignOutAction } from "./actions";
-import { librarySans } from "./fonts";
+import { libraryFontVariables } from "./fonts";
 import styles from "./LibraryShell.module.css";
 
 export type { LibrarySection };
@@ -32,7 +32,7 @@ export default async function LibraryShell({
   const user = await getSessionUser();
 
   return (
-    <div className={`${styles.shell} ${librarySans.variable}`} data-library="">
+    <div className={`${styles.shell} ${libraryFontVariables}`} data-library="">
       <header className={styles.header}>
         {/* The library's home is /games; the name is a brand, so it is not translated. */}
         <Link href={localizeHref("/games", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>
