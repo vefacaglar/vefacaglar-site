@@ -102,6 +102,19 @@ describe("EnqueueJobHandler", () => {
     expect(mockRepo.enqueue).toHaveBeenCalledWith(expect.objectContaining({ recurringJobId: null }));
   });
 
+  it("enqueues game popularity with the search indexing key and registered daily definition", async () => {
+    const type = "catalog.popularity.refresh";
+    mockRepo.findRecurringByType.mockResolvedValue({ id: type, type });
+    mockRepo.enqueue.mockResolvedValue(jobRow({ type, recurringJobId: type }));
+    await handler.handle(request({ type, payload: {} }));
+    expect(mockRepo.enqueue).toHaveBeenCalledWith(expect.objectContaining({ type, payload: {}, concurrencyKey: "search.index", recurringJobId: type }));
+  });
+
+  it("rejects commands or provider overrides in a popularity job payload", async () => {
+    await expect(handler.handle(request({ type: "catalog.popularity.refresh", payload: { command: "other" } }))).rejects.toThrow("err_job_invalid_payload");
+    expect(mockRepo.enqueue).not.toHaveBeenCalled();
+  });
+
   it("defaults a missing payload to an empty object", async () => {
     mockRepo.findRecurringByType.mockResolvedValue(null);
     mockRepo.enqueue.mockResolvedValue(jobRow());

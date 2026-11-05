@@ -2,6 +2,7 @@
 //! [`crate::handler::JobHandler`] and add one `register` line below (plus the
 //! matching allowlist entry in `apps/api/src/modules/jobs/job-types.ts`).
 
+pub mod catalog;
 pub mod search;
 
 use std::sync::Arc;
@@ -16,5 +17,6 @@ pub fn registry(config: &Config) -> Registry {
         typesense: typesense.clone(),
     });
     registry.register(search::SearchSyncHandler { typesense });
+    registry.register(catalog::CatalogPopularityHandler);
     registry
 }

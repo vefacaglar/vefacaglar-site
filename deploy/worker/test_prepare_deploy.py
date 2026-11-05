@@ -35,8 +35,16 @@ class PrepareDeployTest(unittest.TestCase):
             self.assertTrue((bundle / name).is_file(), name)
 
     def test_individual_secrets_override_worker_env(self):
-        bundle = self.run_prepare({**BASE, "WORKER_ENV": "TYPESENSE_HOST=old\n"})
-        self.assertIn("TYPESENSE_HOST=typesense\n", (bundle / "worker.env").read_text())
+        bundle = self.run_prepare({
+            **BASE,
+            "WORKER_ENV": "TYPESENSE_HOST=old\nIGDB_CLIENT_SECRET=old-secret\n",
+            "IGDB_CLIENT_ID": "catalog-client",
+            "IGDB_CLIENT_SECRET": "new-secret$with spaces",
+        })
+        env = (bundle / "worker.env").read_text()
+        self.assertIn("TYPESENSE_HOST=typesense\n", env)
+        self.assertIn("IGDB_CLIENT_ID=catalog-client\n", env)
+        self.assertIn("IGDB_CLIENT_SECRET=new-secret$with spaces\n", env)
 
     def test_rejects_invalid_input(self):
         for override in (
@@ -44,6 +52,7 @@ class PrepareDeployTest(unittest.TestCase):
             {"TYPESENSE_API_KEY": ""},
             {"TYPESENSE_PROTOCOL": "ftp"},
             {"DATABASE_URL": "a\nb"},
+            {"IGDB_CLIENT_SECRET": "a\nb"},
             {"WORKER_IMAGE": "ghcr.io/x/y:latest"},
             {"WORKER_DOCKER_NETWORK": "bad network"},
             {"WORKER_ENV": "not a setting"},

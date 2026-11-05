@@ -18,7 +18,7 @@ function defineJobType<S extends TSchema>(definition: JobTypeDefinition<S>): Job
   return definition;
 }
 
-/** `search.reindex` and `search.sync` must never run at the same time. */
+/** Live popularity writes must not overlap full reindex alias swaps or search sync. */
 const SEARCH_INDEX_CONCURRENCY_KEY = "search.index";
 
 const EmptyPayloadSchema = Type.Object({}, { additionalProperties: false });
@@ -33,6 +33,12 @@ export const JOB_TYPES = {
   "search.sync": defineJobType({
     description:
       "Search sync: adds documents that exist in the database but are missing from the live search collections.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
+  }),
+  "catalog.popularity.refresh": defineJobType({
+    description:
+      "Refresh game popularity from IGDB and optional HowLongToBeat engagement, supplement missing completion hours, and synchronize game search documents. Runs daily and shares the search indexing lock.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),

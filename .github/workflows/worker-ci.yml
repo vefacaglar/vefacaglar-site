@@ -4,12 +4,22 @@ on:
   pull_request:
     paths:
       - "apps/worker/**"
+      - "apps/api/**"
+      - "packages/db/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - "deploy/worker/**"
       - ".github/workflows/worker-ci.yml"
   push:
     branches: [main]
     paths:
       - "apps/worker/**"
+      - "apps/api/**"
+      - "packages/db/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - "deploy/worker/**"
       - ".github/workflows/worker-ci.yml"
   workflow_dispatch:
@@ -97,7 +107,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: apps/worker
+          context: .
           file: apps/worker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
@@ -152,6 +162,8 @@ jobs:
         env:
           WORKER_ENV: ${{ secrets.WORKER_ENV }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
           TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
           TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
           TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}

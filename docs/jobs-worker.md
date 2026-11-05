@@ -10,9 +10,11 @@ dashboard (apps/web) ──HTTP──▶ api (apps/api) ──INSERT + pg_notify
                                      apps/worker (Rust) ── LISTEN / poll, claim, run, checkpoint
 ```
 
-Job types: `search.reindex` (full reindex, replaces `pnpm --filter api search:reindex`) and
-`search.sync` (fill in missing documents). Both are **registered jobs** without a cron
-(run on demand from the dashboard) and share one concurrency key, so they never overlap.
+Job types: `search.reindex` (full reindex), `search.sync` (fill in missing
+documents), and `catalog.popularity.refresh` (daily game popularity and optional
+HowLongToBeat enrichment). All are registered jobs and share the `search.index`
+concurrency key, so live popularity writes cannot race with search alias swaps.
+The search jobs remain manual-only; game popularity runs daily at 07:15 UTC.
 
 ## Database (owned by `packages/db`, Drizzle schema + generated migration)
 
@@ -48,6 +50,11 @@ Registered jobs (Hangfire's "recurring jobs", but the schedule is optional).
 `id text pk` (= the job type for built-ins, e.g. `search.reindex`), `type text not null`, `cron text null` (5-field, UTC; **null = manual-only registered job**), `payload jsonb not null default {}`, `enabled boolean not null default true`, `next_run_at timestamptz null` (null = worker recomputes; always null while `cron` is null), `last_enqueued_at timestamptz null`, `last_job_id uuid null`, `created_at`, `updated_at`.
 
 Seeded by the migration `packages/db/drizzle/0023_magical_storm.sql` (data step, idempotent upsert): `search.reindex` and `search.sync`, both `cron = null`, `payload = {}`, `enabled = true`. The same migration moves the history of the former `search.reindex.daily` row to `search.reindex` and deletes that row. The worker does **not** seed registered jobs.
+
+`0026_catalog_popularity_job.sql` registers `catalog.popularity.refresh` with
+`cron = '15 7 * * *'`, payload `{}`, initially disabled. Enable it after deploying
+the updated worker and its IGDB credentials; existing workers cannot execute the
+new type. A null `next_run_at` computes the next daily occurrence on enable.
 
 ### `workers`
 `id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`. Online = `last_seen_at` within 30 s.
@@ -85,6 +92,26 @@ Both: payload `{}` (no options; the old `drop` flag is removed), concurrency key
 - Progress: all collections are diffed first (phase `diffing:<alias>`), so `total` = total missing count before indexing (phase `indexing:<alias>`). Logs per collection: `N missing, M orphaned` and `N missing, M indexed`; orphans are only counted. Checkpoint `{ collectionIndex }` — resume skips finished collections.
 
 - Parity: shared golden fixtures (input rows → expected documents) are asserted by both a TS spec and a Rust test so mappers cannot drift.
+
+### Game popularity (`catalog.popularity.refresh`)
+
+Payload `{}` only; concurrency key `search.index`, shared with both search jobs.
+The Rust handler starts `/usr/local/bin/node` with the compiled existing
+`/app/apps/api/dist/scripts/refresh-popularity.js`, without a shell or command
+arguments from a job payload. Scoring stays in TypeScript. The image includes
+Node 24, API/DB production dependencies and the compiled CLI; runtime settings
+reuse `DATABASE_URL` and Typesense, plus `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`.
+Missing configuration fails permanently with a controlled message.
+
+The worker heartbeat continues while the child runs. Bounded, sanitized CLI
+output updates the job log/progress; raw credentials and provider payloads are
+not forwarded. There is no short task timeout: a roughly 308,000-game catalog
+can take tens of minutes and over 1 GiB RSS for its initial full refresh.
+HLTB reads remain capped at 100 popular entries. Strict indexing failures fail
+the job and retries replay the refresh, including indexing unchanged scores to
+repair a previously committed database update. No provider-scan checkpoint is
+saved. Cancel, shutdown or lost lease kills and reaps the child; abrupt task
+drop also requests child termination. A later attempt safely starts over.
 
 ## API (`apps/api`, module `jobs`, all `preHandler: app.requireAdmin`)
 

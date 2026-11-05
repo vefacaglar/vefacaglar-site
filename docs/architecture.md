@@ -130,17 +130,23 @@ The existing catalog contains roughly 308,000 IGDB-linked games: a full refresh
 can make about 1,855 IGDB requests and 616 search batches. Expect several minutes,
 not a per-request operation; the CLI reports elapsed time and memory every 30 s.
 
-Before enabling `.github/workflows/catalog-popularity.yml`, apply the generated
-database migrations with `pnpm --filter @vefacaglar/db db:migrate` against the
-intended database; API deployment and this workflow do not apply migrations.
-The workflow uses the existing `api-production` environment and needs a public
-`CATALOG_IMPORT_DATABASE_URL` (or `DATABASE_URL`), `IGDB_CLIENT_ID`,
-`IGDB_CLIENT_SECRET`, and a `TYPESENSE_API_KEY` with collection write access.
-`TYPESENSE_PUBLIC_URL` defaults to `https://typesense.vefacaglar.com`; an internal
-Docker hostname is not reachable from GitHub runners. Run a manual refresh after
-migration, then set repository variable `CATALOG_POPULARITY_ENABLED=true` for
-daily 07:15 UTC runs. The importer and refresh share one concurrency group;
-GitHub may replace an older pending run while the importer is running.
+Daily refresh runs through the existing Jobs system as
+`catalog.popularity.refresh` at 07:15 UTC, not a separate GitHub Actions schedule.
+The Rust worker starts the same compiled TypeScript CLI inside its image, with
+Node 24, keeping the scoring implementation in one place. It shares concurrency
+key `search.index` with search reindex/sync to prevent live alias races.
+The worker needs `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` in addition to its
+existing database and Typesense write credentials. No public API endpoint or
+internal HTTP authentication is involved.
+
+Apply generated migrations with `pnpm --filter @vefacaglar/db db:migrate` before
+deployment. Migration `0026_catalog_popularity_job.sql` seeds the recurring row
+disabled; enable it only after the updated worker image and credentials are
+verified. `next_run_at = null` lets the existing scheduler compute the next
+07:15 UTC occurrence. The Jobs dashboard supports manual runs, progress, logs,
+retries and cancellation. Cancellation or shutdown kills and reaps the Node
+child; a subsequent attempt safely reruns the full refresh rather than resuming
+an incomplete provider scan. API and worker deployments do not run migrations.
 
 ## Search
 

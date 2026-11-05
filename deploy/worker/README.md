@@ -6,13 +6,17 @@ container on the same VPS as the API. GitHub Actions
 (`.github/workflows/worker-ci.yml`) checks formatting, clippy and tests, builds
 an amd64/arm64 image and publishes `ghcr.io/vefacaglar/vefacaglar-site-worker:<commit>`
 on `main`. Deployment pins the immutable digest. Pull requests never publish or deploy.
+The image also includes Node and the compiled API maintenance command used by
+`catalog.popularity.refresh`; its provider and scoring logic stays shared with
+the API. The Docker build context is the repository root.
 
 There is no blue/green rollout and no public endpoint. A deploy pulls the new
 image and runs `docker compose up -d --wait`: Docker sends SIGTERM to the old
 container, the worker stops claiming, lets the running job reach its next batch
 boundary, saves its checkpoint, puts the job back in the queue and exits (well
-inside the 120 s `stop_grace_period`). The new container resumes the job from
-its checkpoint. If the new container does not become healthy within 180 s, the
+inside the 120 s `stop_grace_period`). Search jobs resume from their checkpoint.
+The catalog popularity job stops and reaps its Node child, then reruns the
+refresh on retry; it does not checkpoint inside the provider scan. If the new container does not become healthy within 180 s, the
 script restarts the previous image and the workflow fails.
 
 CD does not run migrations: the job tables come from the API's Drizzle
@@ -59,6 +63,7 @@ evaluated before the environment is entered).
 | `DATABASE_URL` | API database, reachable from the Docker network (required) |
 | `TYPESENSE_HOST`, `TYPESENSE_API_KEY` | Typesense host and admin key (required) |
 | `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL` | Optional; protocol `http`/`https` (default `https`, port 443/80) |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Required by `catalog.popularity.refresh`; not used by search-only jobs |
 | `WORKER_ENV` | Optional raw `NAME=value` env file; non-empty individual secrets override it |
 
 | Repository variable | Value |
@@ -75,6 +80,16 @@ Every deploy replaces `worker.env`. Changing secrets alone does not deploy; use
 For [application logs](../../docs/application-logs.md), set
 `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` (optionally `LOG_ENVIRONMENT`)
 as GitHub secrets or include them in `WORKER_ENV`.
+
+The daily popularity refresh is a registered job in the site's Jobs dashboard,
+not a GitHub schedule. Configure the two IGDB secrets before enabling its
+recurring schedule. Typesense is reached through the worker's existing
+`TYPESENSE_HOST` configuration; a separate public URL is not needed.
+The maintenance process has a 2 GiB JavaScript heap budget by default
+(`NODE_OPTIONS=--max-old-space-size=2048`). This is not a container RSS limit;
+allow room for Node's other allocations and the Rust worker. The Compose
+service has no memory limit. A larger catalog may require tuning this setting
+through `WORKER_ENV` and checking available VPS memory first.
 
 ## Local development
 
