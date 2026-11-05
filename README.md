@@ -15,7 +15,6 @@ For how the pieces fit together, see [docs/architecture.md](docs/architecture.md
 - **Background Worker:** [Rust](https://www.rust-lang.org/) with tokio, sqlx and reqwest (`apps/worker`)
 - **Database / ORM:** PostgreSQL, [Drizzle ORM](https://orm.drizzle.team/) & [Drizzle Kit](https://orm.drizzle.team/docs/kit-overview) (`packages/db`)
 - **Job Queue:** PostgreSQL tables + `LISTEN/NOTIFY` (no Redis queue); live progress over Server-Sent Events
-- **Shared Utilities:** TypeScript shared package (`packages/shared`)
 - **Validation:** [TypeBox](https://github.com/sinclairzx81/typebox) (Runtime Validation & Schema Serialization)
 - **Testing:** [Vitest](https://vitest.dev/) (Handler-level unit tests in `apps/api`)
 - **Search & Indexing Engine:** [Typesense](https://typesense.org/) (for ultra-fast, typo-tolerant searches across games, developers, publishers, genres, platforms, and themes)

@@ -31,7 +31,6 @@ How the pieces of this monorepo fit together. Coding rules live in
 | `apps/api` | Fastify 5, TypeBox, tsyringe, Drizzle | Docker on the VPS (`dist/server.js`); Vercel entry `dist/app.js` kept | REST API, auth, catalog, search reads + incremental writes, job enqueueing |
 | `apps/worker` | Rust (tokio, sqlx, reqwest) | Docker on the same VPS as the API, single replica | Long-running jobs: full search reindex, index sync |
 | `packages/db` | Drizzle ORM + Drizzle Kit | — | Schema, generated migrations, seeds |
-| `packages/shared` | TypeScript | — | Shared helpers |
 | Postgres | — | managed / VPS | Source of truth and the only job queue |
 | Typesense | — | VPS | Search (English-only collections behind aliases) |
 

@@ -28,7 +28,7 @@ Testing (Vitest, `apps/api`):
 
 ## Architecture
 
-Turborepo + pnpm workspace. Two apps, two packages.
+Turborepo + pnpm workspace. Three apps, two packages.
 
 **`apps/web`** — Next.js 14 App Router. Public routes under `src/app/` (`/`, `/about`, `/blog`, `/blog/[slug]`, `/projects`). Dashboard/content tools live under `src/app/dashboard/` and use server actions (`dashboard/actions.ts`) to talk to the API. Uses `next-mdx-remote` to render markdown post bodies. Styling is plain CSS / CSS modules — do not add Tailwind or heavy UI libraries.
 
@@ -47,8 +47,6 @@ The API follows a strict **Feature Folder / Handler pattern**:
 - Auth helpers (cookie/session, password hashing with scrypt) live in `modules/auth/auth.utils.ts`.
 
 **`packages/db`** (`@vefacaglar/db`) — Drizzle ORM schemas in `src/schema/` (`users`, `sessions`, `posts`, `pages`, `projects`), exported via `src/index.ts`. Migrations are committed under `drizzle/`. Consumed by `apps/api`.
-
-**`packages/shared`** (`@vefacaglar/shared`) — shared TS utilities, consumed by `apps/web`.
 
 ## Conventions
 

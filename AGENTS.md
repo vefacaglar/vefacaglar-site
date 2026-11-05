@@ -66,7 +66,6 @@ apps/
   api/
 
 packages/
-  shared/
   db/
   ui/
 ```
