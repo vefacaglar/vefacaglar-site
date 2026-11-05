@@ -33,10 +33,29 @@ class WebDeploymentTests(unittest.TestCase):
         initial = self.web.caddy_config(original, {}, 'web-blue:3000', 'blue-1')
         switched = self.web.caddy_config(initial, {}, 'web-green:3000', 'green-2', 'web-blue:3000')
         self.assertTrue(switched.startswith(original))
-        self.assertIn('vefacaglar.com, www.vefacaglar.com {', switched)
+        self.assertIn('vefacaglar.com {', switched)
+        self.assertIn('www.vefacaglar.com, http://www.vefacaglar.com {\n    redir https://vefacaglar.com{uri} 308\n}', switched)
         self.assertIn('reverse_proxy web-green:3000', switched)
         self.assertNotIn('reverse_proxy web-blue:3000', switched)
         self.assertEqual(switched.count(self.web.BEGIN), 1)
+
+    def test_https_verification_accepts_apex_health_and_www_redirect(self):
+        responses = [
+            'HTTP/2 200\r\nx-web-deployment: blue-1\r\n\r\n{"status":"ok"}',
+            'HTTP/2 308\r\nlocation: https://vefacaglar.com/health?probe=www\r\n\r\n',
+        ]
+        with patch.object(self.web, 'run', side_effect=responses) as curl:
+            self.web.verify_https({'id': 'blue-1'})
+        self.assertEqual(curl.call_count, 2)
+        self.assertEqual(curl.call_args_list[1].args[0][-1], 'https://www.vefacaglar.com/health?probe=www')
+
+    def test_https_verification_rejects_www_redirect_losing_query(self):
+        apex = 'HTTP/2 200\r\nx-web-deployment: blue-1\r\n\r\n{"status":"ok"}'
+        www = 'HTTP/2 308\r\nlocation: https://vefacaglar.com/health\r\n\r\n'
+        with patch.object(self.web, 'run', side_effect=[apex] + [www] * 30), \
+             patch.object(self.web.time, 'sleep'):
+            with self.assertRaisesRegex(RuntimeError, 'Direct VPS HTTPS check failed'):
+                self.web.verify_https({'id': 'blue-1'})
 
     def test_unmanaged_domain_in_import_or_multisite_is_rejected(self):
         adapted = {'routes': [{'match': [{'host': ['vefacaglar.com']}]}]}

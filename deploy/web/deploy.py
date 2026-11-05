@@ -78,13 +78,17 @@ def caddy_config(original, adapted, upstream, release, expected=None):
         original = before.rstrip() + after
     elif routed(adapted) or re.search(r"(?m)^[ \t]*(?:https?://)?(?:www\.)?vefacaglar\.com(?:[ \t,{]|$)", original):
         raise RuntimeError("An unmanaged apex/www route already exists")
-    return original.rstrip() + f"\n\n{BEGIN}\n" + """vefacaglar.com, www.vefacaglar.com {
+    return original.rstrip() + f"\n\n{BEGIN}\n" + """vefacaglar.com {
     encode zstd gzip
     header /health X-Web-Deployment RELEASE
     reverse_proxy UPSTREAM {
         flush_interval -1
         header_up -True-Client-IP
     }
+}
+
+www.vefacaglar.com, http://www.vefacaglar.com {
+    redir https://vefacaglar.com{uri} 308
 }
 """.replace("UPSTREAM", upstream).replace("RELEASE", release) + END + "\n"
 
@@ -102,12 +106,17 @@ def verify_https(release):
     for domain in DOMAINS:
         for attempt in range(30):
             try:
+                path = "/health" if domain == DOMAINS[0] else "/health?probe=www"
                 response = run(["curl", "--noproxy", "*", "--fail", "--silent", "--show-error", "--max-time", "10",
-                                "--resolve", f"{domain}:443:127.0.0.1", "--dump-header", "-", f"https://{domain}/health"])
+                                "--resolve", f"{domain}:443:127.0.0.1", "--dump-header", "-", f"https://{domain}{path}"])
                 headers, body = response.replace("\r\n", "\n").split("\n\n", 1)
-                if f"x-web-deployment: {release['id']}" in headers.lower().splitlines() and json.loads(body).get("status") == "ok":
+                lines = headers.lower().splitlines()
+                status = lines[0].split()[1]
+                if domain == DOMAINS[0] and status == "200" and f"x-web-deployment: {release['id']}" in lines and json.loads(body).get("status") == "ok":
                     break
-            except (RuntimeError, ValueError):
+                if domain == DOMAINS[1] and status == "308" and "location: https://vefacaglar.com/health?probe=www" in lines:
+                    break
+            except (RuntimeError, ValueError, IndexError):
                 pass
             if attempt == 29:
                 raise RuntimeError("Direct VPS HTTPS check failed or reached a different release")

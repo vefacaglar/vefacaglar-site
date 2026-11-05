@@ -3,7 +3,8 @@
 GitHub Actions builds the Next.js standalone image for the existing amd64 VPS,
 publishes it to GHCR and deploys an immutable digest. Pull requests verify and
 build only. The web uses a separate Compose release and loopback port on
-`vefacaglar-web`; Caddy serves `vefacaglar.com` and `www.vefacaglar.com`.
+`vefacaglar-web`; Caddy serves `vefacaglar.com` and permanently redirects
+`www.vefacaglar.com` to the same path and query on the apex domain.
 The private web network is created automatically and Caddy is attached to it;
 CD adds this external network to Caddy's conventional single Compose file while
 preserving its default network. It keeps a private backup and validates the edit

@@ -174,10 +174,11 @@ jobs:
       - name: Verify public HTTPS
         if: github.event_name == 'workflow_dispatch' && inputs.verify_https || github.event_name != 'workflow_dispatch' && vars.WEB_VERIFY_HTTPS != 'false'
         run: |
-          for domain in vefacaglar.com www.vefacaglar.com; do
-            curl --connect-to "$domain:443:$VPS_HOST:443" --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 "https://$domain/health" | jq -e '.status == "ok"' > /dev/null
-            curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 "https://$domain/health" | jq -e '.status == "ok"' > /dev/null
-          done
+          curl --connect-to "vefacaglar.com:443:$VPS_HOST:443" --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 https://vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 https://vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+          expected='308 https://vefacaglar.com/health?probe=www'
+          test "$(curl --connect-to "www.vefacaglar.com:443:$VPS_HOST:443" --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 --output /dev/null --write-out '%{http_code} %{redirect_url}' 'https://www.vefacaglar.com/health?probe=www')" = "$expected"
+          test "$(curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 15 --output /dev/null --write-out '%{http_code} %{redirect_url}' 'https://www.vefacaglar.com/health?probe=www')" = "$expected"
       - name: Remove temporary credentials
         if: always()
         run: |
