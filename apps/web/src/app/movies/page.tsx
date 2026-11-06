@@ -4,7 +4,7 @@ import { getActiveLanguage } from "../../lib/lang";
 import { localizeHref } from "../../lib/localizeHref";
 import { localizedAlternates } from "../../lib/seo";
 import { libraryMetadata } from "../../lib/librarySeo";
-import { getPublicMovies } from "../../lib/movies";
+import { getMovieRankingNotice, getPublicMovies } from "../../lib/movies";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
 import Pagination from "../components/Pagination";
 
@@ -24,6 +24,7 @@ export default async function Movies({ searchParams }: {
   const query = params.q?.trim() || "";
   const lang = await getActiveLanguage();
   const data = await getPublicMovies(page, query || undefined);
+  const rankingNotice = getMovieRankingNotice(data?.ranking);
   return (
     <div>
       <LibraryMasthead title="Movies" subtitle="Explore films, cast, and filmmakers.">
@@ -34,6 +35,9 @@ export default async function Movies({ searchParams }: {
           <button className="btnGhost" type="submit">Search</button>
         </form>
       </LibraryMasthead>
+      {rankingNotice && <p className={styles.rankingNotice}>
+        Wikipedia interest · {rankingNotice.date}. Films appearing among the most-viewed English Wikipedia articles. <a href={rankingNotice.sourceUrl}>Source</a>
+      </p>}
       {data?.items.length ? (
         <>
           <p className={styles.summary}>{data.total.toLocaleString("en-US")} {data.total === 1 ? "movie" : "movies"}</p>

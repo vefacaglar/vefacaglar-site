@@ -42,6 +42,12 @@ export const JOB_TYPES = {
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "catalog.movies",
   }),
+  "catalog.movies.popularity.refresh": defineJobType({
+    description:
+      "Refresh movie interest using films appearing among the most-viewed English Wikipedia articles. This is article interest, not film viewership or ratings.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.movies.popularity",
+  }),
   "catalog.popularity.refresh": defineJobType({
     description:
       "Refresh game popularity from IGDB and optional HowLongToBeat engagement, supplement missing completion hours, and synchronize game search documents. Runs daily and shares the search indexing lock.",

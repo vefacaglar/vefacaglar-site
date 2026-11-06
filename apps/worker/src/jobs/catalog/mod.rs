@@ -23,6 +23,7 @@ const SCRIPT: &str = "/app/apps/api/dist/scripts/refresh-popularity.js";
 const PREFIX: &str = "[catalog:popularity] ";
 const MAX_LINE_BYTES: usize = 4096;
 
+pub mod movie_popularity;
 pub mod movies;
 
 struct CliSpec {
@@ -45,6 +46,13 @@ const MOVIES: CliSpec = CliSpec {
     phase: "synchronizing movie catalog",
     interrupted: "Movie sync stopped; durable source progress will resume on its next run",
     deadline: Some(Duration::from_secs(210)),
+};
+const MOVIE_POPULARITY: CliSpec = CliSpec {
+    prefix: "[catalog:movie-interest] ",
+    label: "Movie Wikipedia interest",
+    phase: "refreshing movie Wikipedia interest",
+    interrupted: "Movie interest refresh stopped; the previous snapshot remains available",
+    deadline: Some(Duration::from_secs(150)),
 };
 
 pub struct CatalogPopularityHandler;

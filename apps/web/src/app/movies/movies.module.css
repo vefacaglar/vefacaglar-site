@@ -16,6 +16,8 @@
 }
 .searchInput:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .summary { margin: 0 0 20px; color: var(--muted); font-size: 12px; }
+.rankingNotice { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.rankingNotice a { color: var(--text); }
 .grid {
   list-style: none;
   padding: 0;

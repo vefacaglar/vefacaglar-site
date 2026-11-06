@@ -194,3 +194,14 @@ async fn only_a_successful_movie_process_can_request_one_continuation() {
             .is_err()
     );
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn movie_interest_output_cannot_create_a_catalog_continuation() {
+    let io = FakeIo::default();
+    let fixture = r#"printf '[catalog:movie-interest] result {"hasMore":true,"progressMade":true,"nextRunAt":null}\n'"#;
+    let result = run_command_with_spec(&io, shell(fixture), &[], &MOVIE_POPULARITY)
+        .await
+        .unwrap();
+    assert_eq!(result, JobOutcome::Completed);
+}

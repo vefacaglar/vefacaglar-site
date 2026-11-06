@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { httpClient } from "./httpClient";
+import { formatDate, parseDateKey } from "./formatDate";
 
 export interface MovieCard {
   slug: string;
@@ -15,6 +16,36 @@ export interface MovieList {
   page: number;
   limit: number;
   totalPages: number;
+  ranking: MovieRanking;
+}
+export interface MovieRanking {
+  mode: "wikipedia_interest" | "alphabetical";
+  sourceDate: string | null;
+  sourceUrl: string | null;
+  isFresh: boolean;
+}
+
+/** Only show an observation when the API identifies a fresh, valid source day. */
+export function getMovieRankingNotice(ranking: MovieRanking | null | undefined) {
+  if (!ranking || ranking.mode !== "wikipedia_interest" || !ranking.isFresh ||
+      !ranking.sourceDate || !/^\d{4}-\d{2}-\d{2}$/.test(ranking.sourceDate) ||
+      !parseDateKey(ranking.sourceDate)) return null;
+
+  const fallback = "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html";
+  let sourceUrl = fallback;
+  if (ranking.sourceUrl) {
+    try {
+      const source = new URL(ranking.sourceUrl);
+      if (source.protocol === "https:" && !source.username && !source.password && !source.port &&
+          ((source.hostname === "wikimedia.org" && source.pathname.startsWith("/api/rest_v1/metrics/pageviews/")) ||
+           (source.hostname === "doc.wikimedia.org" && source.pathname.startsWith("/generated-data-platform/aqs/")))) {
+        sourceUrl = source.href;
+      }
+    } catch {
+      // The link falls back to the source documentation if the URL is invalid.
+    }
+  }
+  return { date: formatDate(ranking.sourceDate, "en"), sourceUrl };
 }
 export interface MovieCredit {
   statementId: string;
