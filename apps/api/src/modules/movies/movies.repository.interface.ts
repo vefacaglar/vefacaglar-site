@@ -1,3 +1,4 @@
+import type { MovieRanking } from "./popularity/popularity.types";
 import type { MovieCard } from "./list/list.schema";
 import type { MovieDetail } from "./detail/detail.schema";
 import type { EntityLabels, NormalizedMovie } from "./import/movie-source.types";
@@ -17,6 +18,6 @@ export interface IMoviesRepository {
   labelRefreshCandidates(limit: number, before: Date): Promise<string[]>;
   writeLabels(labels: EntityLabels, now: Date): Promise<void>;
   hasPendingWork(now: Date): Promise<boolean>;
-  listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number }>;
+  listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number; ranking: MovieRanking }>;
   findPublicBySlug(slug: string): Promise<MovieDetail | null>;
 }

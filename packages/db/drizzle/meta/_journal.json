@@ -211,6 +211,13 @@
       "when": 1793921613728,
       "tag": "0029_blue_micromacro",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793924747456,
+      "tag": "0030_massive_chameleon",
+      "breakpoints": true
     }
   ]
 }

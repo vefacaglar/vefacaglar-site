@@ -53,9 +53,15 @@ import { WikidataEntityClient } from "./modules/movies/import/wikidata-entity.cl
 import { MOVIE_DISCOVERY_CLIENT } from "./modules/movies/import/wikidata-discovery.types";
 import { WikidataFilmDiscoveryClient } from "./modules/movies/import/wikidata-discovery.client";
 
+import { MOVIE_POPULARITY_REPOSITORY, WIKIPEDIA_INTEREST_CLIENT } from "./modules/movies/popularity/popularity.types";
+import { DrizzleMoviePopularityRepository } from "./modules/movies/popularity/popularity.repository";
+import { WikipediaInterestClient } from "./modules/movies/popularity/wikipedia-interest.client";
+
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
 container.registerSingleton(MOVIES_REPOSITORY, DrizzleMoviesRepository);
+container.registerSingleton(MOVIE_POPULARITY_REPOSITORY, DrizzleMoviePopularityRepository);
+container.registerSingleton(WIKIPEDIA_INTEREST_CLIENT, WikipediaInterestClient);
 container.registerSingleton(WIKIDATA_ENTITY_CLIENT, WikidataEntityClient);
 container.registerSingleton(MOVIE_DISCOVERY_CLIENT, WikidataFilmDiscoveryClient);
 container.registerSingleton(POSTS_REPOSITORY, DrizzlePostsRepository);

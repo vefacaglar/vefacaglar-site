@@ -50,6 +50,15 @@ export class MovieSyncService {
       // A duplicate/manual run during the same cooldown does not spawn a chain.
       return result;
     }
+    const allowRequest = async () => {
+      const latest = await this.repo.sourceState();
+      if (latest.cooldownUntil && latest.cooldownUntil > now()) {
+        providerStopped = true;
+        state = { ...state, cooldownUntil: latest.cooldownUntil };
+        return false;
+      }
+      return true;
+    };
     let successfulRequest = false;
     const labelsFor = async (qids: string[], requestLimit: number): Promise<EntityLabels> => {
       const cached = await this.repo.findLabels(qids);
@@ -57,6 +66,7 @@ export class MovieSyncService {
       const missing = qids.filter((qid) => !cached[qid] || cached[qid].checkedAt.getTime() < Date.now() - 7 * DAY);
       for (let offset = 0, calls = 0; offset < missing.length && calls < requestLimit && room(); offset += 50, calls++) {
         const batch = missing.slice(offset, offset + 50);
+        if (!await allowRequest()) break;
         result.requests++;
         let fetched: EntityLabels;
         try { fetched = await this.client.fetchLabels(batch, { signal }); successfulRequest = true; }
@@ -69,7 +79,7 @@ export class MovieSyncService {
       return labels;
     };
     const hydrate = async (candidates: MovieCandidate[], refresh: boolean) => {
-      if (!candidates.length || !room()) return;
+      if (!candidates.length || !room() || !await allowRequest()) return;
       result.requests++;
       let entities: Record<string, unknown>;
       try { entities = await this.client.fetchEntities(candidates.map((row) => row.wikidataId), { signal }); successfulRequest = true; }
@@ -102,7 +112,7 @@ export class MovieSyncService {
     // Existing notable seeds become usable before the much larger discovery projection.
     await hydrate(await this.repo.hydrationCandidates(5, now()), false);
     const discoveryDue = !state.discoveryComplete || !state.nextDiscoveryAt || state.nextDiscoveryAt <= now();
-    if (discoveryDue && room()) {
+    if (discoveryDue && room() && await allowRequest()) {
       result.requests++;
       let projection;
       try {

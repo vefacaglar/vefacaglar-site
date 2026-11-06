@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, uuid, text, varchar, integer, doublePrecision, boolean, timestamp, jsonb, primaryKey, index, bigint } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, integer, doublePrecision, boolean, timestamp, jsonb, primaryKey, index, bigint, date } from 'drizzle-orm/pg-core';
 
 export const movies = pgTable('movies', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -23,6 +23,9 @@ export const movies = pgTable('movies', {
   failureCount: integer('failure_count').notNull().default(0),
   errorCode: varchar('error_code', { length: 80 }),
   seedPriority: integer('seed_priority').notNull().default(0),
+  // Sparse English Wikipedia top-article observations; null means unobserved.
+  wikipediaViews: integer('wikipedia_views'),
+  wikipediaSourceDate: date('wikipedia_source_date'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => ({
@@ -88,4 +91,20 @@ export const movieSourceState = pgTable('movie_source_state', {
   failureCount: integer('failure_count').notNull().default(0),
   lastSuccessAt: timestamp('last_success_at', { withTimezone: true, mode: 'date' }),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
+/** The accepted complete projection and independent AQS retry diagnostics. */
+export const moviePopularityState = pgTable('movie_popularity_state', {
+  id: text('id').primaryKey(),
+  sourceDate: date('source_date'),
+  publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
+  cooldownUntil: timestamp('cooldown_until', { withTimezone: true, mode: 'date' }),
+  failureCount: integer('failure_count').notNull().default(0),
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true, mode: 'date' }),
+  errorCode: varchar('error_code', { length: 80 }),
+  articleCount: integer('article_count'),
+  mappedArticleCount: integer('mapped_article_count'),
+  missingArticleCount: integer('missing_article_count'),
+  duplicateQidCount: integer('duplicate_qid_count'),
+  observedMovieCount: integer('observed_movie_count'),
 });

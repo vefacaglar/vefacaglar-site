@@ -10,7 +10,7 @@ export class ListMoviesHandler {
     const page = request.query.page ?? 1;
     const limit = request.query.limit ?? 21;
     const q = request.query.q?.trim() || undefined;
-    const { items, total } = await this.repo.listPublic({ page, limit, q });
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const { items, total, ranking } = await this.repo.listPublic({ page, limit, q });
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit), ranking };
   }
 }

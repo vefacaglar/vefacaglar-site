@@ -1,7 +1,10 @@
 import { injectable } from "tsyringe";
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
-import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState } from "@vefacaglar/db";
+import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState } from "@vefacaglar/db";
 import { DbProvider } from "../../db.provider";
+import { MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
+import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
+import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
@@ -26,7 +29,14 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     return state;
   }
   async saveSourceState(patch: Partial<MovieSourceState>) {
-    await this.dbProvider.client.update(movieSourceState).set({ ...patch, updatedAt: new Date() }).where(eq(movieSourceState.id, MOVIE_SOURCE_ID));
+    const cooldown = patch.cooldownUntil;
+    await this.dbProvider.client.update(movieSourceState).set({ ...patch,
+      // An in-flight successful fact window cannot clear a newer cooldown from
+      // the concurrent title-mapping job. Only an expired cooldown can be cleared.
+      ...(cooldown === undefined ? {} : { cooldownUntil: cooldown === null
+        ? sql`case when ${movieSourceState.cooldownUntil} <= clock_timestamp() then null else ${movieSourceState.cooldownUntil} end`
+        : sql`greatest(coalesce(${movieSourceState.cooldownUntil}, ${cooldown.toISOString()}::timestamptz), ${cooldown.toISOString()}::timestamptz)` }),
+      updatedAt: new Date() }).where(eq(movieSourceState.id, MOVIE_SOURCE_ID));
   }
   async insertDiscovered(qids: string[]): Promise<number> {
     if (qids.some((qid) => !isQid(qid))) throw new Error("Invalid discovered movie identifier");
@@ -39,7 +49,12 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
   }
   hydrationCandidates(limit: number, now: Date) {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
-      .where(and(isNull(movies.hydratedAt), due(now))).orderBy(desc(movies.seedPriority), asc(movies.failureCount), asc(movies.createdAt), asc(movies.id)).limit(Math.min(50, limit));
+      .where(and(isNull(movies.hydratedAt), due(now))).orderBy(
+        sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
+          and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date
+          and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
+          then ${movies.wikipediaViews} else null end desc nulls last`,
+        desc(movies.seedPriority), asc(movies.failureCount), asc(movies.createdAt), asc(movies.id)).limit(Math.min(50, limit));
   }
   refreshCandidates(afterId: string | null, limit: number, before: Date, now: Date) {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
@@ -125,14 +140,35 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
   }
   async listPublic(filter: { page: number; limit: number; q?: string }) {
     const tokens = filter.q?.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu)?.slice(0, 8) ?? [];
-    if (filter.q && !tokens.length) return { items: [], total: 0 };
-    const where = and(publicMovie(), tokens.length ? sql`to_tsvector('simple',coalesce(${movies.title},'')) @@ to_tsquery('simple',${tokens.map((token) => token + ':*').join(' & ')})` : undefined);
-    const [rows, total] = await Promise.all([
-      this.dbProvider.client.select({ slug: movies.slug, title: movies.title, releaseDate: movies.releaseDate, releaseYear: movies.releaseYear, runtimeMinutes: movies.runtimeMinutes }).from(movies)
-        .where(where).orderBy(asc(movies.title), asc(movies.id)).limit(filter.limit).offset((filter.page - 1) * filter.limit),
-      this.dbProvider.client.select({ count: sql<number>`count(*)` }).from(movies).where(where),
-    ]);
-    return { items: rows.map((row) => ({ ...row, title: row.title!, posterImageUrl: null })), total: Number(total[0]?.count ?? 0) };
+    const where = and(publicMovie(), filter.q && !tokens.length ? sql`false` : tokens.length ? sql`to_tsvector('simple',coalesce(${movies.title},'')) @@ to_tsquery('simple',${tokens.map((token) => token + ':*').join(' & ')})` : undefined)!;
+    // One statement owns both the ranking descriptor and the page ordering. A
+    // concurrent publication cannot expose date A with ordered observations B.
+    const rows = await this.dbProvider.client.execute(sql`
+      with source as (
+        select (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID}) as source_date
+      ), ranking as (
+        select source_date, coalesce(source_date < (statement_timestamp() at time zone 'UTC')::date
+          and source_date >= ((statement_timestamp() at time zone 'UTC')::date - 7), false) as is_fresh from source
+      ), page as (
+        select ${movies.id} as id, ${movies.slug} as slug, ${movies.title} as title,
+          ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
+          case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
+            then ${movies.wikipediaViews} else null end as interest
+        from ${movies} where ${where}
+        order by interest desc nulls last, ${movies.title}, ${movies.id}
+        limit ${filter.limit} offset ${(filter.page - 1) * filter.limit}
+      )
+      select coalesce((select jsonb_agg(jsonb_build_object('slug',slug,'title',title,'releaseDate',release_date,
+          'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',null)
+          order by interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
+        (select count(*) from ${movies} where ${where}) as total,
+        (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
+        (select is_fresh from ranking) as is_fresh
+    `);
+    const row = rows[0] as unknown as { items: MovieCard[]; total: string | number; source_date: string | null; is_fresh: boolean };
+    const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "alphabetical", sourceDate: row.source_date,
+      sourceUrl: row.source_date ? sourceUrl(row.source_date) : null, isFresh: row.is_fresh };
+    return { items: row.items, total: Number(row.total), ranking };
   }
   async findPublicBySlug(slug: string) {
     const db = this.dbProvider.client;

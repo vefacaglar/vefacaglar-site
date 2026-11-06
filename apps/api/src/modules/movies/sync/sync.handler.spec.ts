@@ -11,7 +11,7 @@ let client: { fetchEntities: any; fetchLabels: any };
 let discovery: { discover: any };
 const run = (options = {}) => new SyncMoviesHandler(new MovieSyncService(repo, client, discovery)).handle(options);
 beforeEach(() => {
-  repo = { ensureSourceAndSeeds: vi.fn().mockResolvedValue({ inserted: 0, state: state() }), sourceState: vi.fn(), saveSourceState: vi.fn(), insertDiscovered: vi.fn().mockResolvedValue(0),
+  repo = { ensureSourceAndSeeds: vi.fn().mockResolvedValue({ inserted: 0, state: state() }), sourceState: vi.fn().mockResolvedValue(state()), saveSourceState: vi.fn(), insertDiscovered: vi.fn().mockResolvedValue(0),
     hydrationCandidates: vi.fn().mockResolvedValue([]), refreshCandidates: vi.fn().mockResolvedValue([]), persistMovie: vi.fn().mockResolvedValue("updated"), markEntityFailure: vi.fn(),
     findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicBySlug: vi.fn() };
   client = { fetchEntities: vi.fn().mockResolvedValue({ Q47703: entity() }), fetchLabels: vi.fn().mockResolvedValue({}) };
@@ -126,4 +126,15 @@ describe("bounded movie sync handler", () => {
     expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: null });
   });
 
+});
+
+describe("shared Wikidata cooldown during a fact window", () => {
+  it("stops before another request when a parallel title mapper reports a cooldown", async () => {
+    const cooldownUntil = new Date(Date.now() + 120000);
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703" }]);
+    repo.sourceState.mockResolvedValue({ ...state(), cooldownUntil });
+    expect(await run()).toMatchObject({ requests: 0, hydrated: 0, nextRunAt: cooldownUntil.toISOString() });
+    expect(client.fetchEntities).not.toHaveBeenCalled();
+    expect(repo.saveSourceState).not.toHaveBeenCalledWith(expect.objectContaining({ cooldownUntil: null }));
+  });
 });

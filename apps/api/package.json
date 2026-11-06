@@ -12,7 +12,8 @@
     "catalog:popularity": "ts-node --transpile-only src/scripts/refresh-popularity.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "catalog:hltb": "ts-node --transpile-only src/scripts/lookup-hltb.ts"
+    "catalog:hltb": "ts-node --transpile-only src/scripts/lookup-hltb.ts",
+    "catalog:movies:popularity": "ts-node --transpile-only src/scripts/refresh-movie-popularity.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
