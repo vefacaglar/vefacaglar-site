@@ -83,6 +83,16 @@ export async function setRegisteredJobEnabledAction(id: string, enabled: boolean
   );
 }
 
+export async function setRegisteredJobCronAction(id: string, cron: string | null) {
+  return done(
+    await jobsApi<Pick<RecurringJob, "cron" | "nextRunAt">>(
+      "PUT",
+      `/api/jobs/dashboard/recurring/${encodeURIComponent(id)}`,
+      { cron }
+    )
+  );
+}
+
 export async function runRegisteredJobAction(id: string) {
   return done(await jobsApi<JobSummary>("POST", `/api/jobs/dashboard/recurring/${encodeURIComponent(id)}/run`));
 }

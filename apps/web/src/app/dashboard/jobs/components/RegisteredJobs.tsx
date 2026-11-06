@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "../jobs.module.css";
 import ds from "../../../../lib/dashboard-strings";
 import { absoluteTime, jobDuration, relativeTime } from "../format";
-import { runRegisteredJobAction, setRegisteredJobEnabledAction } from "../actions";
+import { runRegisteredJobAction, setRegisteredJobCronAction, setRegisteredJobEnabledAction } from "../actions";
 import { useJobStream } from "../hooks/useJobStream";
 import { isActiveStatus, type JobSummary, type RecurringJob } from "../types";
 import JobProgress from "./JobProgress";
@@ -86,12 +86,55 @@ function RegisteredJobCard({
   onLive: (id: string, job: JobSummary) => void;
 }) {
   const { item, current, last } = view;
+  const router = useRouter();
+  const scheduleInputId = useId();
+  const editScheduleButton = useRef<HTMLButtonElement>(null);
+  const restoreScheduleFocus = useRef(false);
   const [enabled, setEnabled] = useState(item.enabled);
   const [error, setError] = useState<{ message: string; link?: string } | null>(null);
+  const [schedule, setSchedule] = useState({ cron: item.cron, nextRunAt: item.nextRunAt });
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [cronInput, setCronInput] = useState(item.cron ?? "");
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [toggling, startToggle] = useTransition();
   const [starting, startRun] = useTransition();
+  const [savingSchedule, startSaveSchedule] = useTransition();
 
   useEffect(() => setEnabled(item.enabled), [item.enabled]);
+  useEffect(() => setSchedule({ cron: item.cron, nextRunAt: item.nextRunAt }), [item.cron, item.nextRunAt]);
+  useEffect(() => {
+    if (!editingSchedule && restoreScheduleFocus.current) {
+      editScheduleButton.current?.focus();
+      restoreScheduleFocus.current = false;
+    }
+  }, [editingSchedule]);
+
+  const editSchedule = () => {
+    setCronInput(schedule.cron ?? "");
+    setScheduleError(null);
+    setEditingSchedule(true);
+  };
+
+  const closeScheduleEditor = () => {
+    restoreScheduleFocus.current = true;
+    setScheduleError(null);
+    setEditingSchedule(false);
+  };
+
+  const saveSchedule = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setScheduleError(null);
+    startSaveSchedule(async () => {
+      const res = await setRegisteredJobCronAction(item.id, cronInput.trim() || null);
+      if ("error" in res) {
+        setScheduleError(res.error);
+        return;
+      }
+      setSchedule({ cron: res.data.cron, nextRunAt: res.data.nextRunAt });
+      closeScheduleEditor();
+      router.refresh();
+    });
+  };
 
   const toggle = () => {
     const next = !enabled;
@@ -102,6 +145,8 @@ function RegisteredJobCard({
       if ("error" in res) {
         setEnabled(!next);
         setError({ message: res.error });
+      } else {
+        router.refresh();
       }
     });
   };
@@ -168,6 +213,56 @@ function RegisteredJobCard({
           {!error && blockedBy?.current && <Link href={jobHref(blockedBy.current.id)}>{t.watchLive}</Link>}
         </p>
       )}
+
+      <div className={styles.regSchedule}>
+        <div className={styles.regScheduleSummary}>
+          <span className={styles.regScheduleLabel}>Schedule (UTC)</span>
+          <code>{schedule.cron ?? "Manual only"}</code>
+          {!editingSchedule && (
+            <button ref={editScheduleButton} type="button" className="btnGhost" aria-label={`Edit schedule for ${item.id}`} onClick={editSchedule}>
+              Edit schedule
+            </button>
+          )}
+        </div>
+        {schedule.cron && (
+          <p className={styles.regHint}>
+            Next run: {enabled ? (schedule.nextRunAt ? absoluteTime(schedule.nextRunAt) : "Waiting for scheduler") : "Disabled"}
+          </p>
+        )}
+        {editingSchedule && (
+          <form className={styles.regScheduleForm} onSubmit={saveSchedule}>
+            <label htmlFor={scheduleInputId}>Cron expression</label>
+            <input
+              id={scheduleInputId}
+              className={`input ${styles.regScheduleInput}`}
+              type="text"
+              aria-label={`Cron expression for ${item.id}`}
+              value={cronInput}
+              onChange={(event) => {
+                setCronInput(event.target.value);
+                setScheduleError(null);
+              }}
+              placeholder="0 3 * * *"
+              aria-describedby={`${scheduleInputId}-help${scheduleError ? ` ${scheduleInputId}-error` : ""}`}
+              aria-invalid={scheduleError ? true : undefined}
+              disabled={savingSchedule}
+              autoFocus
+            />
+            <p className={styles.regHint} id={`${scheduleInputId}-help`}>
+              Five fields in UTC: minute, hour, day of month, month, day of week. Leave empty for manual only.
+            </p>
+            {scheduleError && <p className={styles.inlineError} id={`${scheduleInputId}-error`} role="alert">{scheduleError}</p>}
+            <div className={styles.regScheduleActions}>
+              <button type="submit" className="btnAccent" disabled={savingSchedule}>
+                {savingSchedule ? "Saving..." : "Save schedule"}
+              </button>
+              <button type="button" className="btnGhost" disabled={savingSchedule} onClick={closeScheduleEditor}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
       {current ? (
         <LiveRun key={current.id} job={current} onUpdate={(job) => onLive(item.id, job)} />

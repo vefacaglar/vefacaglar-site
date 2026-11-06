@@ -454,6 +454,47 @@
   color: var(--muted);
 }
 
+.regSchedule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  font-size: 13px;
+}
+
+.regScheduleSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.regScheduleSummary button {
+  margin-left: auto;
+}
+
+.regScheduleLabel {
+  color: var(--muted);
+}
+
+.regScheduleForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.regScheduleInput {
+  width: min(100%, 320px);
+}
+
+.regScheduleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .regState {
   display: flex;
   flex-direction: column;
