@@ -6,6 +6,7 @@ import { localizeHref } from "../../../lib/localizeHref";
 import { localizedAlternates } from "../../../lib/seo";
 import { libraryMetadata } from "../../../lib/librarySeo";
 import styles from "./movie.module.css";
+import PosterCredit from "../../../components/movies/PosterCredit";
 
 type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props) {
@@ -36,7 +37,15 @@ export default async function Movie({ params }: Props) {
     <article className={styles.movie}>
       <Link className={styles.back} href={localizeHref("/movies", lang)}>← Movies</Link>
       <header className={styles.header}>
-        <span className={styles.poster} aria-hidden="true">Film</span>
+        <div>
+          <span className={styles.poster} aria-hidden="true">
+            {movie.posterImageUrl && movie.posterAttribution ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={movie.posterImageUrl} alt="" />
+            ) : "Film"}
+          </span>
+          {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
+        </div>
         <div>
           <h1 className={styles.title}>{movie.title}</h1>
           <p className={styles.meta}>{[movie.releaseYear, movie.runtimeMinutes !== null ? `${movie.runtimeMinutes} min` : null].filter((value) => value !== null).join(" · ")}</p>

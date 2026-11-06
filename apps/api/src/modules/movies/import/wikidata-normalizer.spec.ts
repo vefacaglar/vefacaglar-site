@@ -67,4 +67,13 @@ describe("Wikidata movie normalization", () => {
     expect(normalizeMovie(movie({ P31: [statement("P31", { id: "Q11424" }), preferred] }), "Q47703").isFilm).toBe(false);
   });
 
+  it("only extracts explicit active poster claims and can enrich unchanged revisions", () => {
+    expect(normalizeMovie(movie({ P18: [statement("P18", "Still.jpg")] }), "Q47703").posterFileName).toBeNull();
+    expect(normalizeMovie(movie({ P3383: [statement("P3383", "Film_poster.jpg")] }), "Q47703").posterFileName).toBe("Film poster.jpg");
+    expect(normalizeMovie(movie({ P3383: [{ ...statement("P3383", "Old.jpg"), rank: "deprecated" }] }), "Q47703").posterFileName).toBeNull();
+    const poster = { ...statement("P3383", "Preferred.jpg", "preferred-poster"), rank: "preferred" };
+    expect(normalizeMovie(movie({ P3383: [statement("P3383", "Other.jpg"), poster] }), "Q47703").posterFileName).toBe("Preferred.jpg");
+    expect(movieSnapshotDisposition(123, 123, true, false)).toBe("unchanged");
+  });
+
 });

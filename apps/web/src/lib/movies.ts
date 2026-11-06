@@ -9,6 +9,7 @@ export interface MovieCard {
   releaseYear: number | null;
   runtimeMinutes: number | null;
   posterImageUrl: string | null;
+  posterAttribution: { sourceUrl: string; artist: string; license: string; licenseUrl: string } | null;
 }
 export interface MovieList {
   items: MovieCard[];

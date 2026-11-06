@@ -4,18 +4,21 @@ import type { IMoviesRepository, MovieCandidate } from "../movies.repository.int
 import type { EntityLabels, IWikidataEntityClient, NormalizedMovie } from "../import/movie-source.types";
 import { MOVIE_DISCOVERY_CLIENT, type IFilmDiscoveryClient } from "../import/wikidata-discovery.types";
 import { normalizeMovie, supportingQids } from "../import/wikidata-normalizer";
+import { COMMONS_POSTER_CLIENT, type ICommonsPosterClient } from "../artwork/commons-poster.client";
 
 const DAY = 86_400_000;
 export type MovieSyncOptions = { budgetMs?: number; maxRequests?: number; maxMovies?: number };
 export type MovieSyncResult = { discovered: number; hydrated: number; refreshed: number; failed: number; imdbConflicts: number;
-  labelsChecked: number; requests: number; discoveryComplete: boolean; durationMs: number; hasMore: boolean; progressMade: boolean; nextRunAt: string | null };
+  labelsChecked: number; postersChecked: number; postersUpdated: number; posterFailures: number;
+  requests: number; discoveryComplete: boolean; durationMs: number; hasMore: boolean; progressMade: boolean; nextRunAt: string | null };
 
 /** Coordinates bounded, replayable windows across Wikidata and the local catalog. */
 @injectable()
 export class MovieSyncService {
   constructor(@inject(MOVIES_REPOSITORY) private readonly repo: IMoviesRepository,
     @inject(WIKIDATA_ENTITY_CLIENT) private readonly client: IWikidataEntityClient,
-    @inject(MOVIE_DISCOVERY_CLIENT) private readonly discovery: IFilmDiscoveryClient) {}
+    @inject(MOVIE_DISCOVERY_CLIENT) private readonly discovery: IFilmDiscoveryClient,
+    @inject(COMMONS_POSTER_CLIENT) private readonly posters: ICommonsPosterClient) {}
 
   async synchronize(options: MovieSyncOptions = {}): Promise<MovieSyncResult> {
     const started = Date.now();
@@ -24,13 +27,15 @@ export class MovieSyncService {
     const maxMovies = Math.max(5, Math.min(1000, options.maxMovies ?? 500));
     const signal = AbortSignal.timeout(budget);
     const result: MovieSyncResult = { discovered: 0, hydrated: 0, refreshed: 0, failed: 0, imdbConflicts: 0,
-      labelsChecked: 0, requests: 0, discoveryComplete: false, durationMs: 0, hasMore: false, progressMade: false, nextRunAt: null };
+      labelsChecked: 0, postersChecked: 0, postersUpdated: 0, posterFailures: 0,
+      requests: 0, discoveryComplete: false, durationMs: 0, hasMore: false, progressMade: false, nextRunAt: null };
     const initialized = await this.repo.ensureSourceAndSeeds();
     let state = initialized.state;
     result.progressMade = initialized.inserted > 0;
     let providerStopped = false;
     const now = () => new Date();
     const room = () => !providerStopped && result.requests < maxRequests && Date.now() - started < budget - 1000;
+    const remainingMovies = () => maxMovies - result.hydrated - result.refreshed - result.failed;
     const save = async (patch: Parameters<IMoviesRepository["saveSourceState"]>[0]) => {
       await this.repo.saveSourceState(patch);
       state = { ...state, ...patch };
@@ -43,8 +48,41 @@ export class MovieSyncService {
       await save({ cooldownUntil: until, failureCount: state.failureCount + 1 });
       result.progressMade = true;
     };
+    const artworkRoom = () => result.requests < maxRequests && Date.now() - started < budget - 1000 &&
+      (!state.artworkCooldownUntil || state.artworkCooldownUntil <= now());
+    const refreshPosters = async () => {
+      while (artworkRoom() && result.postersChecked + result.posterFailures < 20) {
+        const candidates = await this.repo.posterCandidates(Math.min(5, 20 - result.postersChecked), now());
+        if (!candidates.length) break;
+        result.requests++;
+        let fetched;
+        try { fetched = await this.posters.fetchPosters(candidates.map((row) => row.fileName), signal); }
+        catch (error) {
+          const retry = (error as { retryAfter?: unknown })?.retryAfter;
+          const retryAfter = new Date(Math.max(Date.now() + 60_000, retry instanceof Date && Number.isFinite(retry.getTime()) ? retry.getTime() : 0));
+          // Commons failures preserve valid artwork and do not stop Wikidata discovery.
+          await this.repo.markPosterFailure(candidates, retryAfter);
+          await save({ artworkCooldownUntil: retryAfter });
+          result.posterFailures += candidates.length;
+          break;
+        }
+        for (const candidate of candidates) {
+          const poster = fetched[candidate.fileName];
+          await this.repo.persistPoster(candidate, poster, now());
+          result.postersChecked++;
+          if (poster) result.postersUpdated++;
+          result.progressMade = true;
+        }
+        await save({ artworkCooldownUntil: null });
+      }
+    };
     if (state.cooldownUntil && state.cooldownUntil > now()) {
+      await refreshPosters();
       result.nextRunAt = state.cooldownUntil.toISOString();
+      if (artworkRoom() && result.progressMade && (await this.repo.posterCandidates(1, now())).length) {
+        result.hasMore = true;
+        result.nextRunAt = null;
+      }
       result.discoveryComplete = state.discoveryComplete;
       result.durationMs = Date.now() - started;
       // A duplicate/manual run during the same cooldown does not spawn a chain.
@@ -79,6 +117,7 @@ export class MovieSyncService {
       return labels;
     };
     const hydrate = async (candidates: MovieCandidate[], refresh: boolean) => {
+      candidates = candidates.slice(0, remainingMovies());
       if (!candidates.length || !room() || !await allowRequest()) return;
       result.requests++;
       let entities: Record<string, unknown>;
@@ -137,19 +176,32 @@ export class MovieSyncService {
       }
     }
     // Reserve capacity for daily revision rotation even while bootstrap is unfinished.
-    if (room()) {
+    let refreshAvailable = false;
+    if (room() && remainingMovies() > 0) {
       const refresh = await this.repo.refreshCandidates(state.refreshCursor, 50, new Date(Date.now() - DAY), now());
-      if (refresh.length) await hydrate(refresh, true);
+      if (refresh.length) {
+        refreshAvailable = true;
+        await hydrate(refresh, true);
+      }
       else if (state.refreshCursor) {
         await save({ refreshCursor: null });
         result.progressMade = true;
       }
     }
-    while (room() && result.hydrated + result.failed < maxMovies) {
-      const candidates = await this.repo.hydrationCandidates(Math.min(50, maxMovies - result.hydrated - result.failed), now());
+    await refreshPosters();
+    while (room() && remainingMovies() > 0) {
+      const candidates = await this.repo.hydrationCandidates(Math.min(50, remainingMovies()), now());
       if (!candidates.length) break;
       await hydrate(candidates, false);
     }
+    // Once bootstrap has caught up, use the rest of the bounded window for
+    // rotating existing films instead of limiting every successor to 50 rows.
+    while (refreshAvailable && room() && remainingMovies() > 0) {
+      const candidates = await this.repo.refreshCandidates(state.refreshCursor, Math.min(50, remainingMovies()), new Date(Date.now() - DAY), now());
+      if (!candidates.length) break;
+      await hydrate(candidates, true);
+    }
+    await refreshPosters();
     // Rotate stale labels as well as unresolved references; no per-person request fanout.
     if (room()) {
       const unresolved = await this.repo.labelRefreshCandidates(50, new Date(Date.now() - 7 * DAY));
@@ -163,7 +215,9 @@ export class MovieSyncService {
       result.nextRunAt = state.cooldownUntil?.toISOString() ?? null;
     } else {
       const refreshRemaining = (await this.repo.refreshCandidates(state.refreshCursor, 1, new Date(Date.now() - DAY), now())).length > 0;
-      result.hasMore = !state.discoveryComplete || await this.repo.hasPendingWork(now()) || refreshRemaining;
+      const postersRemaining = (!state.artworkCooldownUntil || state.artworkCooldownUntil <= now()) &&
+        (await this.repo.posterCandidates(1, now())).length > 0;
+      result.hasMore = !state.discoveryComplete || await this.repo.hasPendingWork(now()) || refreshRemaining || postersRemaining;
     }
     result.hasMore &&= result.progressMade;
     result.durationMs = Date.now() - started;

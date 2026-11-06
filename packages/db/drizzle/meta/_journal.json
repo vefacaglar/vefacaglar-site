@@ -218,6 +218,13 @@
       "when": 1793924747456,
       "tag": "0030_massive_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793999112907,
+      "tag": "0031_right_tyrannus",
+      "breakpoints": true
     }
   ]
 }

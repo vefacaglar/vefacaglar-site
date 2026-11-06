@@ -39,7 +39,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
-.poster img { width: 100%; height: 100%; object-fit: cover; }
+.poster img { width: 100%; height: 100%; object-fit: contain; }
 .posterMark { color: var(--faint); font-family: var(--font-display), serif; font-size: 22px; }
 .caption { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; padding-top: 4px; }
 .title { color: var(--text-heading); font-size: 15px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }

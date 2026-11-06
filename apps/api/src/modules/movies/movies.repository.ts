@@ -5,7 +5,8 @@ import { DbProvider } from "../../db.provider";
 import { MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
 import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
-import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
+import type { IMoviesRepository, MovieSourceState, MoviePosterCandidate } from "./movies.repository.interface";
+import type { MoviePoster } from "./artwork/commons-poster";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
 
@@ -96,8 +97,11 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const db = this.dbProvider.client;
       const [existing] = await db.select().from(movies).where(eq(movies.wikidataId, movie.wikidataId)).for("update");
       if (!existing) throw new Error("Movie stub is missing");
+      const poster = { posterFileName: movie.posterFileName,
+        ...(existing.posterFileName !== movie.posterFileName ? { posterImageUrl: null, posterAttribution: null,
+          posterCheckedAt: null, posterRetryAfter: null, posterErrorCode: null } : {}) };
       if (movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict) === "unchanged") {
-        await db.update(movies).set({ checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
+        await db.update(movies).set({ ...poster, checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
         return "unchanged";
       }
       let imdbId = movie.imdbConflict ? existing.imdbId : movie.imdbId;
@@ -118,7 +122,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const companies = movie.companyQids.length ? await db.select().from(movieCompanies).where(inArray(movieCompanies.wikidataId, movie.companyQids)) : [];
       const genres = movie.genreQids.length ? await db.select().from(movieGenres).where(inArray(movieGenres.wikidataId, movie.genreQids)) : [];
       const peopleByQid = new Map(people.map((person) => [person.wikidataId, person.id]));
-      await db.update(movies).set({ title: movie.title, originalTitle: movie.originalTitle, description: movie.description,
+      await db.update(movies).set({ ...poster, title: movie.title, originalTitle: movie.originalTitle, description: movie.description,
         slug: existing.hydratedAt ? existing.slug : movieSlug(movie.title, movie.wikidataId), imdbId, imdbConflict,
         releaseDate: movie.releaseDate, releaseYear: movie.releaseYear, releasePrecision: movie.releasePrecision, runtimeMinutes: movie.runtimeMinutes,
         isFilm: movie.isFilm, sourceRevision: movie.sourceRevision ?? existing.sourceRevision, sourceModifiedAt: movie.sourceModifiedAt ?? existing.sourceModifiedAt,
@@ -132,6 +136,24 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       if (genres.length) await db.insert(movieGenreLinks).values(genres.map((genre) => ({ movieId: existing.id, genreId: genre.id })));
       return imdbConflict ? "imdb_conflict" : "updated";
     });
+  }
+  posterCandidates(limit: number, now: Date) {
+    return this.dbProvider.client.select({ id: movies.id, fileName: movies.posterFileName }).from(movies)
+      .where(and(publicMovie(), isNotNull(movies.posterFileName), or(isNull(movies.posterRetryAfter), lte(movies.posterRetryAfter, now)),
+        or(isNull(movies.posterCheckedAt), lt(movies.posterCheckedAt, new Date(now.getTime() - 7 * 86_400_000)))))
+      .orderBy(sql`${movies.posterCheckedAt} asc nulls first`, desc(movies.seedPriority), asc(movies.id)).limit(Math.min(5, limit))
+      .then((rows) => rows.map((row) => ({ id: row.id, fileName: row.fileName! })));
+  }
+  async persistPoster(candidate: MoviePosterCandidate, poster: MoviePoster | null, now: Date) {
+    await this.dbProvider.client.update(movies).set({ posterImageUrl: poster?.imageUrl ?? null, posterAttribution: poster?.attribution ?? null,
+      posterCheckedAt: now, posterRetryAfter: new Date(now.getTime() + (poster ? 7 : 30) * 86_400_000),
+      posterErrorCode: poster ? null : "commons_missing_or_unlicensed", updatedAt: now })
+      .where(and(eq(movies.id, candidate.id), eq(movies.posterFileName, candidate.fileName)));
+  }
+  async markPosterFailure(candidates: MoviePosterCandidate[], retryAfter: Date) {
+    for (const candidate of candidates) await this.dbProvider.client.update(movies)
+      .set({ posterRetryAfter: retryAfter, posterErrorCode: "commons_temporarily_unavailable" })
+      .where(and(eq(movies.id, candidate.id), eq(movies.posterFileName, candidate.fileName)));
   }
   async hasPendingWork(now: Date) {
     const pending = await this.dbProvider.client.select({ id: movies.id }).from(movies).where(and(isNull(movies.hydratedAt), due(now))).limit(1);
@@ -151,6 +173,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
           and source_date >= ((statement_timestamp() at time zone 'UTC')::date - 7), false) as is_fresh from source
       ), page as (
         select ${movies.id} as id, ${movies.slug} as slug, ${movies.title} as title,
+          ${movies.posterImageUrl} as poster_image_url, ${movies.posterAttribution} as poster_attribution,
           ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
           case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
             then ${movies.wikipediaViews} else null end as interest
@@ -159,7 +182,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         limit ${filter.limit} offset ${(filter.page - 1) * filter.limit}
       )
       select coalesce((select jsonb_agg(jsonb_build_object('slug',slug,'title',title,'releaseDate',release_date,
-          'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',null)
+          'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution)
           order by interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
         (select count(*) from ${movies} where ${where}) as total,
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
@@ -185,7 +208,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     ]);
     const characterLabels = await this.findLabels([...new Set(credits.flatMap((credit) => characterQidsFromQualifiers(credit.qualifiers)))]);
     return { slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate, releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes,
-      posterImageUrl: null, wikidataId: movie.wikidataId, imdbId: movie.imdbConflict ? null : movie.imdbId, description: movie.description, originalTitle: movie.originalTitle,
+      posterImageUrl: movie.posterImageUrl, posterAttribution: movie.posterAttribution, wikidataId: movie.wikidataId, imdbId: movie.imdbConflict ? null : movie.imdbId, description: movie.description, originalTitle: movie.originalTitle,
       sourceUpdatedAt: movie.sourceModifiedAt?.toISOString() ?? null, genres: genres.map((genre) => ({ ...genre, name: genre.name! })), companies,
       credits: credits.map((credit) => ({ statementId: credit.statementId, role: ({ P161: "cast", P57: "director", P162: "producer" } as const)[credit.roleProperty as "P161" | "P57" | "P162"],
         wikidataId: credit.wikidataId, name: credit.name, characterNames: [...new Set([...credit.characterNames,

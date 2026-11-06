@@ -7,6 +7,7 @@ import { libraryMetadata } from "../../lib/librarySeo";
 import { getMovieRankingNotice, getPublicMovies } from "../../lib/movies";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
 import Pagination from "../components/Pagination";
+import PosterCredit from "../../components/movies/PosterCredit";
 
 export async function generateMetadata() {
   const lang = await getActiveLanguage();
@@ -46,7 +47,7 @@ export default async function Movies({ searchParams }: {
               <li key={movie.slug}>
                 <Link href={localizeHref(`/movies/${movie.slug}`, lang)} className={styles.card}>
                   <span className={styles.poster} aria-hidden="true">
-                    {movie.posterImageUrl ? (
+                    {movie.posterImageUrl && movie.posterAttribution ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={movie.posterImageUrl} alt="" loading="lazy" />
                     ) : <span className={styles.posterMark}>Film</span>}
@@ -57,6 +58,7 @@ export default async function Movies({ searchParams }: {
                     {movie.runtimeMinutes !== null && <span className={styles.meta}>{movie.runtimeMinutes} min</span>}
                   </span>
                 </Link>
+                {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
               </li>
             ))}
           </ul>
@@ -64,7 +66,7 @@ export default async function Movies({ searchParams }: {
             labels={{ previous: "Previous", next: "Next", pageOf: "Page {current} of {total}" }} />
         </>
       ) : <p className={styles.empty}>{query ? "No movies match your search." : "The movie catalog is being prepared. Check back soon."}</p>}
-      <p className={styles.source}>Film data from <a href="https://www.wikidata.org/">Wikidata</a>. Coverage varies as the catalog grows.</p>
+      <p className={styles.source}>Film data from <a href="https://www.wikidata.org/">Wikidata</a>. Posters from Wikimedia Commons where reusable artwork is available. Coverage varies as the catalog grows.</p>
     </div>
   );
 }

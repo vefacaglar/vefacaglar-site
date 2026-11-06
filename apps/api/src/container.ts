@@ -52,6 +52,7 @@ import { DrizzleMoviesRepository } from "./modules/movies/movies.repository";
 import { WikidataEntityClient } from "./modules/movies/import/wikidata-entity.client";
 import { MOVIE_DISCOVERY_CLIENT } from "./modules/movies/import/wikidata-discovery.types";
 import { WikidataFilmDiscoveryClient } from "./modules/movies/import/wikidata-discovery.client";
+import { COMMONS_POSTER_CLIENT, CommonsPosterClient } from "./modules/movies/artwork/commons-poster.client";
 
 import { MOVIE_POPULARITY_REPOSITORY, WIKIPEDIA_INTEREST_CLIENT } from "./modules/movies/popularity/popularity.types";
 import { DrizzleMoviePopularityRepository } from "./modules/movies/popularity/popularity.repository";
@@ -64,6 +65,7 @@ container.registerSingleton(MOVIE_POPULARITY_REPOSITORY, DrizzleMoviePopularityR
 container.registerSingleton(WIKIPEDIA_INTEREST_CLIENT, WikipediaInterestClient);
 container.registerSingleton(WIKIDATA_ENTITY_CLIENT, WikidataEntityClient);
 container.registerSingleton(MOVIE_DISCOVERY_CLIENT, WikidataFilmDiscoveryClient);
+container.registerSingleton(COMMONS_POSTER_CLIENT, CommonsPosterClient);
 container.registerSingleton(POSTS_REPOSITORY, DrizzlePostsRepository);
 container.registerSingleton(PAGES_REPOSITORY, DrizzlePagesRepository);
 container.registerSingleton(PROJECTS_REPOSITORY, DrizzleProjectsRepository);

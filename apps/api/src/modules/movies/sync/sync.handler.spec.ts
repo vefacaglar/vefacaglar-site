@@ -3,19 +3,65 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IMoviesRepository, MovieSourceState } from "../movies.repository.interface";
 import { MovieSyncService } from "./movie-sync.service";
 import { SyncMoviesHandler } from "./sync.handler";
-const state = (): MovieSourceState => ({ discoveryComplete: true, discoveryCycle: 1, discoveryStrategy: "wikidata-direct-film-v1", nextDiscoveryAt: new Date("2099-01-01"), cooldownUntil: null, failureCount: 0, refreshCursor: null, lastSuccessAt: null });
+const state = (): MovieSourceState => ({ discoveryComplete: true, discoveryCycle: 1, discoveryStrategy: "wikidata-direct-film-v1", nextDiscoveryAt: new Date("2099-01-01"), cooldownUntil: null, artworkCooldownUntil: null, failureCount: 0, refreshCursor: null, lastSuccessAt: null });
 const entity = (qid = "Q47703") => ({ id: qid, type: "item", labels: { en: { value: "The Godfather" } }, lastrevid: 42, modified: "2026-11-05T00:00:00Z",
   claims: { P31: [{ id: `${qid}$class`, rank: "normal", mainsnak: { property: "P31", snaktype: "value", datavalue: { value: { id: "Q11424" } } } }] } });
 let repo: Record<keyof IMoviesRepository, any>;
 let client: { fetchEntities: any; fetchLabels: any };
 let discovery: { discover: any };
-const run = (options = {}) => new SyncMoviesHandler(new MovieSyncService(repo, client, discovery)).handle(options);
+let posters: { fetchPosters: any };
+const run = (options = {}) => new SyncMoviesHandler(new MovieSyncService(repo, client, discovery, posters)).handle(options);
 beforeEach(() => {
   repo = { ensureSourceAndSeeds: vi.fn().mockResolvedValue({ inserted: 0, state: state() }), sourceState: vi.fn().mockResolvedValue(state()), saveSourceState: vi.fn(), insertDiscovered: vi.fn().mockResolvedValue(0),
     hydrationCandidates: vi.fn().mockResolvedValue([]), refreshCandidates: vi.fn().mockResolvedValue([]), persistMovie: vi.fn().mockResolvedValue("updated"), markEntityFailure: vi.fn(),
-    findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicBySlug: vi.fn() };
+    findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicBySlug: vi.fn(),
+    posterCandidates: vi.fn().mockResolvedValue([]), persistPoster: vi.fn(), markPosterFailure: vi.fn() };
   client = { fetchEntities: vi.fn().mockResolvedValue({ Q47703: entity() }), fetchLabels: vi.fn().mockResolvedValue({}) };
   discovery = { discover: vi.fn() };
+  posters = { fetchPosters: vi.fn().mockResolvedValue({}) };
+});
+
+describe("movie artwork synchronization", () => {
+  const candidate = { id: "a", fileName: "Poster.jpg" };
+  const poster = { imageUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Poster.jpg/500px-Poster.jpg",
+    attribution: { sourceUrl: "https://commons.wikimedia.org/wiki/File:Poster.jpg", artist: "Studio", license: "Public domain", licenseUrl: "https://commons.wikimedia.org/wiki/Commons:Copyright_tags#Public_domain" } };
+  it("fills licensed posters independently of Wikidata revisions", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([candidate]);
+    posters.fetchPosters.mockResolvedValue({ "Poster.jpg": poster });
+    expect(await run()).toMatchObject({ postersChecked: 1, postersUpdated: 1, requests: 1, progressMade: true, hasMore: false });
+    expect(repo.persistPoster).toHaveBeenCalledWith(candidate, poster, expect.any(Date));
+    expect(client.fetchEntities).not.toHaveBeenCalled();
+  });
+  it("negative-caches authoritative missing or unlicensed posters", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([candidate]);
+    posters.fetchPosters.mockResolvedValue({ "Poster.jpg": null });
+    expect(await run()).toMatchObject({ postersChecked: 1, postersUpdated: 0 });
+    expect(repo.persistPoster).toHaveBeenCalledWith(candidate, null, expect.any(Date));
+  });
+  it("preserves stored artwork on provider outages and still hydrates movie content", async () => {
+    const retryAfter = new Date(Date.now() + 3600_000);
+    repo.posterCandidates.mockResolvedValue([candidate]);
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703" }]);
+    posters.fetchPosters.mockRejectedValue({ retryAfter });
+    expect(await run()).toMatchObject({ hydrated: 1, posterFailures: 1, postersChecked: 0, hasMore: false });
+    expect(repo.persistPoster).not.toHaveBeenCalled();
+    expect(repo.markPosterFailure).toHaveBeenCalledWith([candidate], retryAfter);
+    expect(repo.saveSourceState).toHaveBeenCalledWith({ artworkCooldownUntil: retryAfter });
+    expect(posters.fetchPosters).toHaveBeenCalledTimes(1);
+  });
+  it("can refresh artwork during a Wikidata cooldown", async () => {
+    repo.ensureSourceAndSeeds.mockResolvedValue({ inserted: 0, state: { ...state(), cooldownUntil: new Date(Date.now() + 3600_000) } });
+    repo.posterCandidates.mockResolvedValueOnce([candidate]);
+    posters.fetchPosters.mockResolvedValue({ "Poster.jpg": poster });
+    expect(await run()).toMatchObject({ postersUpdated: 1, hydrated: 0 });
+    expect(client.fetchEntities).not.toHaveBeenCalled();
+  });
+  it("honors shared request budgets and bounds poster-only continuations", async () => {
+    repo.posterCandidates.mockResolvedValue([candidate]);
+    posters.fetchPosters.mockResolvedValue({ "Poster.jpg": poster });
+    expect(await run({ maxRequests: 1 })).toMatchObject({ postersChecked: 1, requests: 1, hasMore: true });
+    expect(posters.fetchPosters).toHaveBeenCalledTimes(1);
+  });
 });
 describe("bounded movie sync handler", () => {
   it("persists validated seeds and stops at the request budget without network fanout", async () => {
@@ -124,6 +170,19 @@ describe("bounded movie sync handler", () => {
     repo.ensureSourceAndSeeds.mockResolvedValue({ inserted: 0, state: { ...state(), refreshCursor: "last" } });
     expect(await run()).toMatchObject({ hasMore: false, progressMade: true, requests: 0 });
     expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: null });
+  });
+
+  it("uses spare capacity for multiple refresh batches and counts them against the movie limit", async () => {
+    const candidates = (start: number, count: number) => Array.from({ length: count }, (_, i) => ({
+      id: String(start + i), wikidataId: `Q${start + i}`, sourceRevision: 41,
+    }));
+    repo.refreshCandidates.mockResolvedValueOnce(candidates(1, 50)).mockResolvedValueOnce(candidates(51, 50));
+    client.fetchEntities.mockImplementation(async (qids: string[]) => Object.fromEntries(qids.map((qid) => [qid, entity(qid)])));
+    const result = await run({ maxMovies: 75 });
+    expect(result).toMatchObject({ refreshed: 75, hydrated: 0, failed: 0, requests: 2 });
+    expect(repo.persistMovie).toHaveBeenCalledTimes(75);
+    expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: "75" });
+    expect(repo.refreshCandidates).toHaveBeenNthCalledWith(2, "50", 25, expect.any(Date), expect.any(Date));
   });
 
 });
