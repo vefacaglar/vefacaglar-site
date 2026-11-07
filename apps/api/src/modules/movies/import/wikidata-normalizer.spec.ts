@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { addCharacterLabels, characterQidsFromQualifiers, isImdbId, movieSlug, movieSnapshotDisposition, normalizeMovie } from "./wikidata-normalizer";
 const statement = (property: string, value: unknown, id = property) => ({ id: `Q47703$${id}`, rank: "normal", mainsnak: { property, snaktype: "value", datavalue: { value } } });
 const movie = (extra: Record<string, unknown> = {}) => ({ id: "Q47703", type: "item", labels: { en: { value: "The Godfather" } },
-  lastrevid: 123, modified: "2026-11-05T00:00:00Z", claims: { P31: [statement("P31", { id: "Q11424" })], ...extra } });
+  lastrevid: 123, modified: "2026-11-05T00:00:00Z", sitelinks: {}, claims: { P31: [statement("P31", { id: "Q11424" })], ...extra } });
 describe("Wikidata movie normalization", () => {
   it("requires a complete matching item and verified classification", () => {
     expect(() => normalizeMovie({ id: "Q47703", type: "item", labels: {} }, "Q47703")).toThrow();
@@ -74,6 +74,13 @@ describe("Wikidata movie normalization", () => {
     const poster = { ...statement("P3383", "Preferred.jpg", "preferred-poster"), rank: "preferred" };
     expect(normalizeMovie(movie({ P3383: [statement("P3383", "Other.jpg"), poster] }), "Q47703").posterFileName).toBe("Preferred.jpg");
     expect(movieSnapshotDisposition(123, 123, true, false)).toBe("unchanged");
+  });
+  it("requires complete sitelinks and retains only the exact enwiki article title", () => {
+    expect(normalizeMovie({ ...movie(), sitelinks: { enwiki: { site: "enwiki", title: "The Godfather" } } }, "Q47703").enwikiArticle).toBe("The Godfather");
+    expect(normalizeMovie(movie(), "Q47703").enwikiArticle).toBeNull();
+    const raw = movie() as Record<string, unknown>; delete raw.sitelinks;
+    expect(() => normalizeMovie(raw, "Q47703")).toThrow("incomplete_entity_sitelinks");
+    expect(() => normalizeMovie({ ...movie(), sitelinks: { enwiki: { site: "enwiki", title: "File:Poster.jpg" } } }, "Q47703")).toThrow("invalid_entity_sitelink");
   });
 
 });

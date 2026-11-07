@@ -7,6 +7,7 @@ import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState, MoviePosterCandidate } from "./movies.repository.interface";
 import type { MoviePoster } from "./artwork/commons-poster";
+import { posterInputsPatch } from "./artwork/poster-source";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
 
@@ -62,6 +63,15 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       .where(and(isNotNull(movies.hydratedAt), lt(movies.checkedAt, before), due(now), afterId ? gt(movies.id, afterId) : undefined))
       .orderBy(asc(movies.id)).limit(Math.min(50, limit));
   }
+  posterInputsCandidates(limit: number, now: Date) {
+    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
+      .where(and(publicMovie(), isNull(movies.posterInputsCheckedAt), due(now)))
+      .orderBy(desc(movies.seedPriority),
+        sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
+          and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
+          then ${movies.wikipediaViews} else null end desc nulls last`, asc(movies.title), asc(movies.id))
+      .limit(Math.min(50, limit));
+  }
   async findLabels(qids: string[]) {
     const out: Record<string, { name: string | null; checkedAt: Date }> = {};
     for (const batch of chunks([...new Set(qids)])) {
@@ -97,9 +107,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const db = this.dbProvider.client;
       const [existing] = await db.select().from(movies).where(eq(movies.wikidataId, movie.wikidataId)).for("update");
       if (!existing) throw new Error("Movie stub is missing");
-      const poster = { posterFileName: movie.posterFileName,
-        ...(existing.posterFileName !== movie.posterFileName ? { posterImageUrl: null, posterAttribution: null,
-          posterCheckedAt: null, posterRetryAfter: null, posterErrorCode: null } : {}) };
+      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle }, now);
       if (movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict) === "unchanged") {
         await db.update(movies).set({ ...poster, checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
         return "unchanged";
@@ -137,23 +145,32 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       return imdbConflict ? "imdb_conflict" : "updated";
     });
   }
-  posterCandidates(limit: number, now: Date) {
-    return this.dbProvider.client.select({ id: movies.id, fileName: movies.posterFileName }).from(movies)
-      .where(and(publicMovie(), isNotNull(movies.posterFileName), or(isNull(movies.posterRetryAfter), lte(movies.posterRetryAfter, now)),
+  posterCandidates(limit: number, now: Date, available = { commons: true, wikipedia: true }) {
+    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, fileName: movies.posterFileName,
+      enwikiArticle: movies.enwikiArticle, version: movies.posterCandidateVersion, hasImage: sql<boolean>`${movies.posterImageUrl} is not null`, resolvedFrom: movies.posterResolvedFrom }).from(movies)
+      .where(and(publicMovie(), isNotNull(movies.posterInputsCheckedAt),
+        or(available.commons ? isNotNull(movies.posterFileName) : sql`false`,
+          available.wikipedia ? and(isNotNull(movies.enwikiArticle), or(isNull(movies.posterImageUrl),
+            sql`coalesce(${movies.posterResolvedFrom},'commons') <> 'commons'`, isNull(movies.posterFileName))) : sql`false`),
+        or(isNull(movies.posterRetryAfter), lte(movies.posterRetryAfter, now)),
         or(isNull(movies.posterCheckedAt), lt(movies.posterCheckedAt, new Date(now.getTime() - 7 * 86_400_000)))))
-      .orderBy(sql`${movies.posterCheckedAt} asc nulls first`, desc(movies.seedPriority), asc(movies.id)).limit(Math.min(5, limit))
-      .then((rows) => rows.map((row) => ({ id: row.id, fileName: row.fileName! })));
+      .orderBy(desc(movies.seedPriority),
+        sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
+          and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
+          then ${movies.wikipediaViews} else null end desc nulls last`, asc(movies.title), asc(movies.id)).limit(Math.min(5, limit));
   }
   async persistPoster(candidate: MoviePosterCandidate, poster: MoviePoster | null, now: Date) {
-    await this.dbProvider.client.update(movies).set({ posterImageUrl: poster?.imageUrl ?? null, posterAttribution: poster?.attribution ?? null,
+    const updated = await this.dbProvider.client.update(movies).set({ posterImageUrl: poster?.imageUrl ?? null, posterAttribution: poster?.attribution ?? null,
+      posterResolvedFileName: poster ? poster.fileName ?? candidate.fileName : null, posterResolvedFrom: poster ? poster.origin ?? "commons" : null,
       posterCheckedAt: now, posterRetryAfter: new Date(now.getTime() + (poster ? 7 : 30) * 86_400_000),
-      posterErrorCode: poster ? null : "commons_missing_or_unlicensed", updatedAt: now })
-      .where(and(eq(movies.id, candidate.id), eq(movies.posterFileName, candidate.fileName)));
+      posterErrorCode: poster ? null : "poster_missing_or_unverified", updatedAt: now })
+      .where(and(eq(movies.id, candidate.id), eq(movies.posterCandidateVersion, candidate.version))).returning({ id: movies.id });
+    return updated.length > 0;
   }
   async markPosterFailure(candidates: MoviePosterCandidate[], retryAfter: Date) {
     for (const candidate of candidates) await this.dbProvider.client.update(movies)
-      .set({ posterRetryAfter: retryAfter, posterErrorCode: "commons_temporarily_unavailable" })
-      .where(and(eq(movies.id, candidate.id), eq(movies.posterFileName, candidate.fileName)));
+      .set({ posterCheckedAt: null, posterRetryAfter: retryAfter, posterErrorCode: "artwork_temporarily_unavailable" })
+      .where(and(eq(movies.id, candidate.id), eq(movies.posterCandidateVersion, candidate.version)));
   }
   async hasPendingWork(now: Date) {
     const pending = await this.dbProvider.client.select({ id: movies.id }).from(movies).where(and(isNull(movies.hydratedAt), due(now))).limit(1);

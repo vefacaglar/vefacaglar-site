@@ -225,6 +225,13 @@
       "when": 1793999112907,
       "tag": "0031_right_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794059461156,
+      "tag": "0032_tired_serpent_society",
+      "breakpoints": true
     }
   ]
 }

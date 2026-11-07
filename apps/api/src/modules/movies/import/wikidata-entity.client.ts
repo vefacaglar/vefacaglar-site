@@ -22,6 +22,7 @@ export class WikidataEntityClient implements IWikidataEntityClient {
     // A film may only have a source-language label. Full movie snapshots keep
     // those names; normalizeMovie still prefers English when it is available.
     if (props === "labels") parameters.set("languages", "en");
+    if (props.includes("sitelinks")) parameters.set("sitefilter", "enwiki");
     url.search = parameters.toString();
     const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000);
     let response: Response;
@@ -66,7 +67,7 @@ export class WikidataEntityClient implements IWikidataEntityClient {
     return data.entities;
   }
   fetchEntities(qids: string[], options: { signal?: AbortSignal } = {}): Promise<Record<string, unknown>> {
-    return this.request(qids, "info|claims|labels|descriptions", options.signal);
+    return this.request(qids, "info|claims|labels|descriptions|sitelinks", options.signal);
   }
   async fetchLabels(qids: string[], options: { signal?: AbortSignal } = {}): Promise<EntityLabels> {
     const entities = await this.request(qids, "labels", options.signal);

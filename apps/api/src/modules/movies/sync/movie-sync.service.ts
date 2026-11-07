@@ -5,6 +5,8 @@ import type { EntityLabels, IWikidataEntityClient, NormalizedMovie } from "../im
 import { MOVIE_DISCOVERY_CLIENT, type IFilmDiscoveryClient } from "../import/wikidata-discovery.types";
 import { normalizeMovie, supportingQids } from "../import/wikidata-normalizer";
 import { COMMONS_POSTER_CLIENT, type ICommonsPosterClient } from "../artwork/commons-poster.client";
+import { WIKIPEDIA_POSTER_CLIENT, type IWikipediaPosterClient } from "../artwork/wikipedia-poster.client";
+import type { MoviePoster } from "../artwork/commons-poster";
 
 const DAY = 86_400_000;
 export type MovieSyncOptions = { budgetMs?: number; maxRequests?: number; maxMovies?: number };
@@ -18,7 +20,8 @@ export class MovieSyncService {
   constructor(@inject(MOVIES_REPOSITORY) private readonly repo: IMoviesRepository,
     @inject(WIKIDATA_ENTITY_CLIENT) private readonly client: IWikidataEntityClient,
     @inject(MOVIE_DISCOVERY_CLIENT) private readonly discovery: IFilmDiscoveryClient,
-    @inject(COMMONS_POSTER_CLIENT) private readonly posters: ICommonsPosterClient) {}
+    @inject(COMMONS_POSTER_CLIENT) private readonly posters: ICommonsPosterClient,
+    @inject(WIKIPEDIA_POSTER_CLIENT) private readonly wikipedia: IWikipediaPosterClient) {}
 
   async synchronize(options: MovieSyncOptions = {}): Promise<MovieSyncResult> {
     const started = Date.now();
@@ -48,38 +51,92 @@ export class MovieSyncService {
       await save({ cooldownUntil: until, failureCount: state.failureCount + 1 });
       result.progressMade = true;
     };
-    const artworkRoom = () => result.requests < maxRequests && Date.now() - started < budget - 1000 &&
-      (!state.artworkCooldownUntil || state.artworkCooldownUntil <= now());
+    const artworkRoom = () => result.requests < maxRequests && Date.now() - started < budget - 1000;
+    const artworkProviders = () => ({ commons: !state.artworkCooldownUntil || state.artworkCooldownUntil <= now(),
+      wikipedia: !state.wikipediaArtworkCooldownUntil || state.wikipediaArtworkCooldownUntil <= now() });
+    const attemptedArtwork = new Set<string>();
+    const artworkCooldown = async (provider: "commons" | "wikipedia", error: unknown, affected: number) => {
+      const retry = (error as { retryAfter?: unknown })?.retryAfter;
+      const until = new Date(Math.max(Date.now() + 60_000, retry instanceof Date && Number.isFinite(retry.getTime()) ? retry.getTime() : 0));
+      await save(provider === "commons" ? { artworkCooldownUntil: until } : { wikipediaArtworkCooldownUntil: until });
+      result.posterFailures += affected;
+    };
     const refreshPosters = async () => {
-      while (artworkRoom() && result.postersChecked + result.posterFailures < 20) {
-        const candidates = await this.repo.posterCandidates(Math.min(5, 20 - result.postersChecked), now());
+      type Status = "absent" | "negative" | "pending" | "transient" | "deferred";
+      while (artworkRoom() && attemptedArtwork.size < 20) {
+        const available = artworkProviders();
+        const candidates = (await this.repo.posterCandidates(Math.min(5, 20 - attemptedArtwork.size), now(), available)).filter((row) => !attemptedArtwork.has(row.id));
         if (!candidates.length) break;
-        result.requests++;
-        let fetched;
-        try { fetched = await this.posters.fetchPosters(candidates.map((row) => row.fileName), signal); }
-        catch (error) {
-          const retry = (error as { retryAfter?: unknown })?.retryAfter;
-          const retryAfter = new Date(Math.max(Date.now() + 60_000, retry instanceof Date && Number.isFinite(retry.getTime()) ? retry.getTime() : 0));
-          // Commons failures preserve valid artwork and do not stop Wikidata discovery.
-          await this.repo.markPosterFailure(candidates, retryAfter);
-          await save({ artworkCooldownUntil: retryAfter });
-          result.posterFailures += candidates.length;
-          break;
+        for (const candidate of candidates) attemptedArtwork.add(candidate.id);
+        const outcomes = new Map(candidates.map((row) => [row.id, {
+          commons: (row.fileName ? available.commons ? "pending" : "transient" : "absent") as Status,
+          wikipedia: (row.enwikiArticle ? available.wikipedia ? "pending" : "transient" : "absent") as Status,
+          poster: null as MoviePoster | null,
+        }]));
+        const commons = candidates.filter((row) => row.fileName && available.commons);
+        if (commons.length && artworkRoom()) {
+          result.requests++;
+          try {
+            const fetched = await this.posters.fetchPosters(commons.map((row) => row.fileName!), signal);
+            for (const candidate of commons) {
+              const outcome = outcomes.get(candidate.id)!;
+              outcome.commons = "negative";
+              outcome.poster = fetched[candidate.fileName!] ?? null;
+            }
+            await save({ artworkCooldownUntil: null });
+          } catch (error) {
+            for (const candidate of commons) outcomes.get(candidate.id)!.commons = "transient";
+            await artworkCooldown("commons", error, commons.length);
+          }
         }
+        const fallback = candidates.filter((row) => !outcomes.get(row.id)!.poster && row.enwikiArticle &&
+          !(row.hasImage && (row.resolvedFrom ?? "commons") === "commons" && outcomes.get(row.id)!.commons === "transient"));
+        if (fallback.length && available.wikipedia && artworkRoom() && maxRequests - result.requests >= 2) {
+          result.requests++;
+          try {
+            const references = await this.wikipedia.resolveArticles(fallback.map((row) => ({ wikidataId: row.wikidataId, article: row.enwikiArticle! })), signal);
+            for (const candidate of fallback) if (!references[candidate.wikidataId]) outcomes.get(candidate.id)!.wikipedia = "negative";
+            const resolved = fallback.flatMap((row) => references[row.wikidataId] ? [references[row.wikidataId]!] : []);
+            if (resolved.length && artworkRoom()) {
+              result.requests++;
+              const fetched = await this.wikipedia.fetchPosters(resolved, signal);
+              for (const candidate of fallback) if (references[candidate.wikidataId]) {
+                const outcome = outcomes.get(candidate.id)!;
+                outcome.wikipedia = "negative";
+                outcome.poster = fetched[candidate.wikidataId] ?? null;
+              }
+            }
+            await save({ wikipediaArtworkCooldownUntil: null });
+          } catch (error) {
+            for (const candidate of fallback) if (outcomes.get(candidate.id)!.wikipedia === "pending") outcomes.get(candidate.id)!.wikipedia = "transient";
+            await artworkCooldown("wikipedia", error, fallback.length);
+          }
+        }
+        // Incomplete phases are retried; they are never negative-cached as absent artwork.
         for (const candidate of candidates) {
-          const poster = fetched[candidate.fileName];
-          await this.repo.persistPoster(candidate, poster, now());
-          result.postersChecked++;
-          if (poster) result.postersUpdated++;
-          result.progressMade = true;
+          const outcome = outcomes.get(candidate.id)!;
+          for (const provider of ["commons", "wikipedia"] as const) if (outcome[provider] === "pending") outcome[provider] = "deferred";
+          const complete = [outcome.commons, outcome.wikipedia].every((status) => status === "absent" || status === "negative");
+          const previousInvalidated = candidate.hasImage && outcome[(candidate.resolvedFrom ?? "commons") as "commons" | "wikipedia"] === "negative";
+          if (outcome.poster || complete || previousInvalidated) {
+            if (await this.repo.persistPoster(candidate, outcome.poster, now())) {
+              result.postersChecked++;
+              if (outcome.poster) result.postersUpdated++;
+              result.progressMade = true;
+            }
+          }
+          if (!outcome.poster && !complete && ([outcome.commons, outcome.wikipedia].includes("transient") || previousInvalidated)) {
+            const retries = [outcome.commons === "transient" ? state.artworkCooldownUntil : null,
+              outcome.wikipedia === "transient" ? state.wikipediaArtworkCooldownUntil : null].filter((date): date is Date => !!date);
+            await this.repo.markPosterFailure([candidate], retries.sort((a, b) => a.getTime() - b.getTime())[0] ?? new Date(Date.now() + 60_000));
+          }
         }
-        await save({ artworkCooldownUntil: null });
       }
     };
     if (state.cooldownUntil && state.cooldownUntil > now()) {
       await refreshPosters();
       result.nextRunAt = state.cooldownUntil.toISOString();
-      if (artworkRoom() && result.progressMade && (await this.repo.posterCandidates(1, now())).length) {
+      if (artworkRoom() && result.progressMade && (await this.repo.posterCandidates(1, now(), artworkProviders())).length) {
         result.hasMore = true;
         result.nextRunAt = null;
       }
@@ -116,7 +173,7 @@ export class MovieSyncService {
       }
       return labels;
     };
-    const hydrate = async (candidates: MovieCandidate[], refresh: boolean) => {
+    const hydrate = async (candidates: MovieCandidate[], refresh: boolean, advanceCursor = refresh) => {
       candidates = candidates.slice(0, remainingMovies());
       if (!candidates.length || !room() || !await allowRequest()) return;
       result.requests++;
@@ -145,11 +202,15 @@ export class MovieSyncService {
         if (refresh) result.refreshed++; else result.hydrated++;
         result.progressMade = true;
       }
-      if (refresh) await save({ refreshCursor: candidates[candidates.length - 1].id });
+      if (refresh && advanceCursor) await save({ refreshCursor: candidates[candidates.length - 1].id });
     };
 
     // Existing notable seeds become usable before the much larger discovery projection.
     await hydrate(await this.repo.hydrationCandidates(5, now()), false);
+    // Bootstrap exact sitelinks for visible/popular films and seeds even when
+    // their source revision was checked recently. No public ordering changes.
+    if (room() && remainingMovies() > 0) await hydrate(await this.repo.posterInputsCandidates(Math.min(50, remainingMovies()), now()), true, false);
+    await refreshPosters();
     const discoveryDue = !state.discoveryComplete || !state.nextDiscoveryAt || state.nextDiscoveryAt <= now();
     if (discoveryDue && room() && await allowRequest()) {
       result.requests++;
@@ -215,9 +276,9 @@ export class MovieSyncService {
       result.nextRunAt = state.cooldownUntil?.toISOString() ?? null;
     } else {
       const refreshRemaining = (await this.repo.refreshCandidates(state.refreshCursor, 1, new Date(Date.now() - DAY), now())).length > 0;
-      const postersRemaining = (!state.artworkCooldownUntil || state.artworkCooldownUntil <= now()) &&
-        (await this.repo.posterCandidates(1, now())).length > 0;
-      result.hasMore = !state.discoveryComplete || await this.repo.hasPendingWork(now()) || refreshRemaining || postersRemaining;
+      const postersRemaining = (await this.repo.posterCandidates(1, now(), artworkProviders())).length > 0;
+      const posterInputsRemaining = (await this.repo.posterInputsCandidates(1, now())).length > 0;
+      result.hasMore = !state.discoveryComplete || await this.repo.hasPendingWork(now()) || refreshRemaining || postersRemaining || posterInputsRemaining;
     }
     result.hasMore &&= result.progressMade;
     result.durationMs = Date.now() - started;

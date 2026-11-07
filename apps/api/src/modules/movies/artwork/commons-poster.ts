@@ -1,5 +1,6 @@
-export type PosterAttribution = { sourceUrl: string; artist: string; license: string; licenseUrl: string };
-export type MoviePoster = { imageUrl: string; attribution: PosterAttribution };
+export type PosterAttribution = { provider?: "commons" | "wikipedia"; rightsKind?: "reusable" | "non-free";
+  sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null };
+export type MoviePoster = { imageUrl: string; attribution: PosterAttribution; fileName?: string; origin?: "commons" | "wikipedia" };
 
 export function commonsFileName(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -22,7 +23,7 @@ export function attributionText(value: unknown): string | null {
   return text.length > 0 && text.length <= 2000 ? text : null;
 }
 
-function safeUrl(value: unknown, host: string, prefix: string): string | null {
+export function safeWikimediaUrl(value: unknown, host: string, prefix: string): string | null {
   if (typeof value !== "string" || value.length > 2000) return null;
   try {
     const url = new URL(value);
@@ -31,30 +32,35 @@ function safeUrl(value: unknown, host: string, prefix: string): string | null {
   } catch { return null; }
 }
 
-/** Only explicit reusable licenses and complete credit metadata can publish an image. */
-export function normalizeCommonsPoster(info: unknown): MoviePoster | null {
-  if (!info || typeof info !== "object") return null;
-  const row = info as Record<string, any>;
-  const metadata = row.extmetadata;
-  if (!metadata || typeof metadata !== "object" || !["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/tiff"].includes(row.mime)) return null;
-  const imageUrl = safeUrl(row.thumburl, "thumb.wikimedia.org", "/wikipedia/commons/thumb/") ??
-    safeUrl(row.thumburl, "upload.wikimedia.org", "/wikipedia/commons/");
-  const sourceUrl = safeUrl(row.descriptionurl, "commons.wikimedia.org", "/wiki/File:");
+export function reusablePosterCredit(metadata: any): Pick<PosterAttribution, "artist" | "license" | "licenseUrl"> | null {
+  if (!metadata || typeof metadata !== "object") return null;
   const artist = attributionText(metadata.Artist?.value);
   const license = attributionText(metadata.LicenseShortName?.value);
-  if (!imageUrl || !sourceUrl || !artist || !license || attributionText(metadata.Restrictions?.value)) return null;
+  if (!artist || !license || attributionText(metadata.Restrictions?.value)) return null;
   let licenseUrl: string | null = null;
   const rawLicenseUrl = typeof metadata.LicenseUrl?.value === "string" ? metadata.LicenseUrl.value.replace(/^http:/, "https:") : null;
   if (/^CC BY(?:-SA)? (?:1\.0|2\.0|2\.5|3\.0|4\.0)$/.test(license)) {
     const match = /^(CC BY(?:-SA)?) (\d\.\d)$/.exec(license)!;
     const expected = `/licenses/${match[1] === "CC BY-SA" ? "by-sa" : "by"}/${match[2]}/`;
-    licenseUrl = safeUrl(rawLicenseUrl, "creativecommons.org", expected);
+    licenseUrl = safeWikimediaUrl(rawLicenseUrl, "creativecommons.org", expected);
   } else if (license === "CC0") {
-    licenseUrl = safeUrl(rawLicenseUrl, "creativecommons.org", "/publicdomain/zero/1.0/");
+    licenseUrl = safeWikimediaUrl(rawLicenseUrl, "creativecommons.org", "/publicdomain/zero/1.0/");
   } else if (license === "Public domain" && metadata.Copyrighted?.value === "False") {
     licenseUrl = "https://commons.wikimedia.org/wiki/Commons:Copyright_tags#Public_domain";
   }
-  return licenseUrl ? { imageUrl, attribution: { sourceUrl, artist, license, licenseUrl } } : null;
+  return licenseUrl ? { artist, license, licenseUrl } : null;
+}
+
+/** Only explicit reusable licenses and complete credit metadata can publish a Commons image. */
+export function normalizeCommonsPoster(info: unknown): MoviePoster | null {
+  if (!info || typeof info !== "object") return null;
+  const row = info as Record<string, any>;
+  if (!["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/tiff"].includes(row.mime)) return null;
+  const imageUrl = safeWikimediaUrl(row.thumburl, "thumb.wikimedia.org", "/wikipedia/commons/thumb/") ??
+    safeWikimediaUrl(row.thumburl, "upload.wikimedia.org", "/wikipedia/commons/");
+  const sourceUrl = safeWikimediaUrl(row.descriptionurl, "commons.wikimedia.org", "/wiki/File:");
+  const credit = reusablePosterCredit(row.extmetadata);
+  return imageUrl && sourceUrl && credit ? { imageUrl, attribution: { sourceUrl, ...credit } } : null;
 }
 
 /** Missing files are authoritative; malformed/truncated responses must preserve stored artwork. */

@@ -11,8 +11,13 @@ export const movies = pgTable('movies', {
   originalTitle: text('original_title'),
   description: text('description'),
   posterFileName: text('poster_file_name'),
+  enwikiArticle: text('enwiki_article'),
+  posterInputsCheckedAt: timestamp('poster_inputs_checked_at', { withTimezone: true, mode: 'date' }),
+  posterCandidateVersion: integer('poster_candidate_version').notNull().default(0),
+  posterResolvedFileName: text('poster_resolved_file_name'),
+  posterResolvedFrom: varchar('poster_resolved_from', { length: 16 }),
   posterImageUrl: text('poster_image_url'),
-  posterAttribution: jsonb('poster_attribution').$type<{ sourceUrl: string; artist: string; license: string; licenseUrl: string }>(),
+  posterAttribution: jsonb('poster_attribution').$type<{ provider?: 'commons' | 'wikipedia'; rightsKind?: 'reusable' | 'non-free'; sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null }>(),
   posterCheckedAt: timestamp('poster_checked_at', { withTimezone: true, mode: 'date' }),
   posterRetryAfter: timestamp('poster_retry_after', { withTimezone: true, mode: 'date' }),
   posterErrorCode: varchar('poster_error_code', { length: 80 }),
@@ -42,6 +47,10 @@ export const movies = pgTable('movies', {
   refreshIdx: index('movies_refresh_idx').on(table.checkedAt, table.id),
   posterRefreshIdx: index('movies_poster_refresh_idx').on(table.posterRetryAfter, table.posterCheckedAt, table.id)
     .where(sql`${table.posterFileName} is not null and ${table.isFilm} = true`),
+  wikipediaPosterRefreshIdx: index('movies_wikipedia_poster_refresh_idx').on(table.posterRetryAfter, table.posterCheckedAt, table.id)
+    .where(sql`${table.enwikiArticle} is not null and ${table.isFilm} = true`),
+  posterInputsIdx: index('movies_poster_inputs_idx').on(table.posterInputsCheckedAt, table.id)
+    .where(sql`${table.isFilm} = true and ${table.hydratedAt} is not null`),
 }));
 
 export const moviePeople = pgTable('movie_people', {
@@ -97,6 +106,7 @@ export const movieSourceState = pgTable('movie_source_state', {
   refreshCursor: uuid('refresh_cursor'),
   cooldownUntil: timestamp('cooldown_until', { withTimezone: true, mode: 'date' }),
   artworkCooldownUntil: timestamp('artwork_cooldown_until', { withTimezone: true, mode: 'date' }),
+  wikipediaArtworkCooldownUntil: timestamp('wikipedia_artwork_cooldown_until', { withTimezone: true, mode: 'date' }),
   failureCount: integer('failure_count').notNull().default(0),
   lastSuccessAt: timestamp('last_success_at', { withTimezone: true, mode: 'date' }),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),

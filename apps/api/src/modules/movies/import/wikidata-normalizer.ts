@@ -1,5 +1,6 @@
 import type { EntityLabels, NormalizedMovie, SourceCredit, StatementRank } from "./movie-source.types";
 import { commonsFileName } from "../artwork/commons-poster";
+import { wikipediaArticleTitle } from "../artwork/wikipedia-poster";
 
 export const isQid = (value: unknown): value is string => typeof value === "string" && /^Q[1-9]\d{0,20}$/.test(value);
 export const isImdbId = (value: unknown): value is string => typeof value === "string" && /^tt\d{7,10}$/.test(value);
@@ -44,6 +45,9 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   // a complete snapshot that may replace facts or remove a classification.
   if (!Number.isSafeInteger(raw.lastrevid) || raw.lastrevid <= 0 ||
       typeof raw.modified !== "string" || !Number.isFinite(Date.parse(raw.modified))) throw new Error("incomplete_entity_info");
+  if (!object(raw.sitelinks)) throw new Error("incomplete_entity_sitelinks");
+  const enwikiArticle = raw.sitelinks.enwiki === undefined ? null : wikipediaArticleTitle(raw.sitelinks.enwiki?.title);
+  if (raw.sitelinks.enwiki !== undefined && (raw.sitelinks.enwiki?.site !== "enwiki" || !enwikiArticle)) throw new Error("invalid_entity_sitelink");
   const claims = raw.claims;
   const checked = new Map(["P31", "P1476", "P345", "P577", "P2047", "P161", "P57", "P162", "P272", "P136", "P3383"].map((property) => [property, statements(claims, property, expectedQid)]));
   const all = [...checked.values()].flat();
@@ -92,6 +96,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   return { wikidataId: expectedQid, title, originalTitle, description: text(raw.descriptions?.en?.value),
     imdbId: imdbIds.length === 1 ? imdbIds[0] : null, imdbConflict: imdbIds.length > 1,
     posterFileName: posters.sort()[0] ?? null,
+    enwikiArticle,
     releaseDate: dates[0]?.date ?? null, releaseYear: dates[0]?.year ?? null, releasePrecision: dates[0]?.precision ?? null,
     runtimeMinutes: runtimes.length === 1 ? runtimes[0] : null,
     isFilm: qids(best(checked.get("P31")!)).includes("Q11424"),
