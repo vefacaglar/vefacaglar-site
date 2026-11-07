@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 describe("movie artwork synchronization", () => {
-  const candidate = { id: "a", wikidataId: "Q47703", fileName: "Poster.jpg", enwikiArticle: null, version: 1, hasImage: false, resolvedFrom: null };
+  const candidate = { id: "a", wikidataId: "Q47703", title: "The Godfather", fileName: "Poster.jpg", enwikiArticle: null, version: 1, hasImage: false, resolvedFrom: null };
   const poster = { imageUrl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Poster.jpg/500px-Poster.jpg",
     attribution: { sourceUrl: "https://commons.wikimedia.org/wiki/File:Poster.jpg", artist: "Studio", license: "Public domain", licenseUrl: "https://commons.wikimedia.org/wiki/Commons:Copyright_tags#Public_domain" } };
   it("fills licensed posters independently of Wikidata revisions", async () => {
@@ -86,8 +86,8 @@ describe("movie artwork synchronization", () => {
 });
 
 describe("Wikipedia fallback orchestration", () => {
-  const candidate = { id: "a", wikidataId: "Q47703", fileName: null, enwikiArticle: "The Godfather", version: 1, hasImage: false, resolvedFrom: null };
-  const reference = { wikidataId: "Q47703", article: "The Godfather", fileName: "Godfather ver1.jpg" };
+  const candidate = { id: "a", wikidataId: "Q47703", title: "The Godfather", fileName: null, enwikiArticle: "The Godfather", version: 1, hasImage: false, resolvedFrom: null };
+  const reference = { wikidataId: "Q47703", title: "The Godfather", article: "The Godfather", fileName: "Godfather ver1.jpg" };
   const poster = { imageUrl: "https://upload.wikimedia.org/wikipedia/en/1/1c/Godfather_ver1.jpg", origin: "wikipedia", fileName: reference.fileName,
     attribution: { provider: "wikipedia", rightsKind: "non-free", artist: null, license: "Fair use", licenseUrl: null, sourceUrl: "https://en.wikipedia.org/wiki/File:Godfather_ver1.jpg" } };
   it("counts article and file requests separately and publishes accurate non-free metadata", async () => {

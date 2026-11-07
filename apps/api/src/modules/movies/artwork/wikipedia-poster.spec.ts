@@ -6,7 +6,7 @@ const info = () => ({ mime: "image/jpeg", thumburl: "https://upload.wikimedia.or
   descriptionurl: "https://en.wikipedia.org/wiki/File:Godfather_ver1.jpg",
   extmetadata: { Categories: { value: "All non-free media|1970s American film posters" }, NonFree: { value: "true" },
     Copyrighted: { value: "True" }, LicenseShortName: { value: "Fair use" } } });
-const candidate = { wikidataId: "Q47703", article: "The Godfather" };
+const candidate = { wikidataId: "Q47703", article: "The Godfather", title: "The Godfather" };
 
 describe("Wikipedia poster source validation", () => {
   it("accepts genuine poster metadata with explicit non-free rights and no invented creator", () => {
@@ -47,5 +47,11 @@ describe("Wikipedia poster source validation", () => {
       pages: [{ ns: 6, title: "File:Godfather ver1.jpg", imageinfo: [info()] }] } };
     expect(wikipediaPostersResponse(body, [reference]).Q47703).toMatchObject({ origin: "wikipedia", fileName: "Godfather_ver1.jpg" });
     expect(() => wikipediaPostersResponse({ query: { pages: [] } }, [reference])).toThrow("wikipedia_missing_file_response");
+  });
+  it("withholds explicit sequel conflicts after validating the QID and canonical redirect title", () => {
+    const body = { query: { redirects: [{ from: "Jailer sequel", to: "Jailer 2" }],
+      pages: [{ ns: 0, title: "Jailer 2", pageimage: "Jailer_2_poster.jpg", pageprops: { wikibase_item: "Q133255153" } }] } };
+    expect(wikipediaPosterReferences(body, [{ wikidataId: "Q133255153", article: "Jailer sequel", title: "Jailer 3" }])).toEqual({ Q133255153: null });
+    expect(wikipediaPosterReferences(body, [{ wikidataId: "Q133255153", article: "Jailer sequel", title: "Jailer 2" }]).Q133255153).not.toBeNull();
   });
 });

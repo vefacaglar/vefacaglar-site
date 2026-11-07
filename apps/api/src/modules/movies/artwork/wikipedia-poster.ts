@@ -1,6 +1,7 @@
 import { attributionText, commonsFileName, normalizeCommonsPoster, reusablePosterCredit, safeWikimediaUrl, type MoviePoster } from "./commons-poster";
+import { hasConflictingSequelNumber } from "./poster-title";
 
-export type WikipediaArticleCandidate = { wikidataId: string; article: string };
+export type WikipediaArticleCandidate = { wikidataId: string; article: string; title: string };
 export type WikipediaPosterReference = WikipediaArticleCandidate & { fileName: string };
 
 export function wikipediaArticleTitle(value: unknown): string | null {
@@ -39,7 +40,8 @@ export function wikipediaPosterReferences(data: unknown, requested: WikipediaArt
     const page = pages.find((row) => row.title === canonical(candidate.article));
     if (!page) throw new Error("wikipedia_missing_article_response");
     const fileName = commonsFileName(page.pageimage);
-    result[candidate.wikidataId] = !page.missing && page.ns === 0 && page.pageprops?.wikibase_item === candidate.wikidataId && fileName
+    result[candidate.wikidataId] = !page.missing && page.ns === 0 && page.pageprops?.wikibase_item === candidate.wikidataId && fileName &&
+      !hasConflictingSequelNumber(candidate.title, page.title)
       ? { ...candidate, article: page.title, fileName } : null;
   }
   return result;
@@ -81,7 +83,7 @@ export function wikipediaPostersResponse(data: unknown, requested: WikipediaPost
     if (page.missing) { result[candidate.wikidataId] = null; continue; }
     if (page.ns !== 6 || !Array.isArray(page.imageinfo) || page.imageinfo.length !== 1) throw new Error("wikipedia_incomplete_file_response");
     const poster = normalizeWikipediaPoster(page.imageinfo[0]);
-    result[candidate.wikidataId] = poster ? { ...poster, fileName: candidate.fileName, origin: "wikipedia" } : null;
+    result[candidate.wikidataId] = poster ? { ...poster, attribution: { ...poster.attribution, articleTitle: candidate.article }, fileName: candidate.fileName, origin: "wikipedia" } : null;
   }
   return result;
 }

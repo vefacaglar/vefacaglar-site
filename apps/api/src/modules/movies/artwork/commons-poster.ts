@@ -1,5 +1,5 @@
 export type PosterAttribution = { provider?: "commons" | "wikipedia"; rightsKind?: "reusable" | "non-free";
-  sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null };
+  sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null; articleTitle?: string };
 export type MoviePoster = { imageUrl: string; attribution: PosterAttribution; fileName?: string; origin?: "commons" | "wikipedia" };
 
 export function commonsFileName(value: unknown): string | null {

@@ -46,7 +46,7 @@ export class WikipediaPosterClient implements IWikipediaPosterClient {
     finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
   }
   async resolveArticles(candidates: WikipediaArticleCandidate[], signal?: AbortSignal) {
-    if (!candidates.length || candidates.length > 5 || candidates.some((row) => wikipediaArticleTitle(row.article) !== row.article || !/^Q[1-9]\d{0,20}$/.test(row.wikidataId))) throw new WikipediaPosterError("wikipedia_artwork_invalid_batch");
+    if (!candidates.length || candidates.length > 5 || candidates.some((row) => typeof row.title !== "string" || !row.title.trim() || wikipediaArticleTitle(row.article) !== row.article || !/^Q[1-9]\d{0,20}$/.test(row.wikidataId))) throw new WikipediaPosterError("wikipedia_artwork_invalid_batch");
     const data = await this.request({ titles: [...new Set(candidates.map((row) => row.article))].join("|"), prop: "pageimages|pageprops",
       piprop: "name|thumbnail", pithumbsize: "300", pilicense: "any", ppprop: "wikibase_item" }, signal);
     return wikipediaPosterReferences(data, candidates);

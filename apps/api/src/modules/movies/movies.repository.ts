@@ -7,7 +7,7 @@ import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState, MoviePosterCandidate } from "./movies.repository.interface";
 import type { MoviePoster } from "./artwork/commons-poster";
-import { posterInputsPatch } from "./artwork/poster-source";
+import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
 
@@ -107,8 +107,10 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const db = this.dbProvider.client;
       const [existing] = await db.select().from(movies).where(eq(movies.wikidataId, movie.wikidataId)).for("update");
       if (!existing) throw new Error("Movie stub is missing");
-      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle }, now);
-      if (movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict) === "unchanged") {
+      const disposition = movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict);
+      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle, title: movie.title }, now,
+        { preserveStoredTitle: disposition === "unchanged" });
+      if (disposition === "unchanged") {
         await db.update(movies).set({ ...poster, checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
         return "unchanged";
       }
@@ -146,7 +148,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     });
   }
   posterCandidates(limit: number, now: Date, available = { commons: true, wikipedia: true }) {
-    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, fileName: movies.posterFileName,
+    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, title: sql<string>`${movies.title}`, fileName: movies.posterFileName,
       enwikiArticle: movies.enwikiArticle, version: movies.posterCandidateVersion, hasImage: sql<boolean>`${movies.posterImageUrl} is not null`, resolvedFrom: movies.posterResolvedFrom }).from(movies)
       .where(and(publicMovie(), isNotNull(movies.posterInputsCheckedAt),
         or(available.commons ? isNotNull(movies.posterFileName) : sql`false`,
@@ -191,6 +193,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       ), page as (
         select ${movies.id} as id, ${movies.slug} as slug, ${movies.title} as title,
           ${movies.posterImageUrl} as poster_image_url, ${movies.posterAttribution} as poster_attribution,
+          ${movies.enwikiArticle} as poster_article, ${movies.posterResolvedFrom} as poster_origin,
           ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
           case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
             then ${movies.wikipediaViews} else null end as interest
@@ -199,16 +202,19 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         limit ${filter.limit} offset ${(filter.page - 1) * filter.limit}
       )
       select coalesce((select jsonb_agg(jsonb_build_object('slug',slug,'title',title,'releaseDate',release_date,
-          'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution)
+          'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution,
+          'posterArticle',poster_article,'posterOrigin',poster_origin)
           order by interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
         (select count(*) from ${movies} where ${where}) as total,
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
         (select is_fresh from ranking) as is_fresh
     `);
-    const row = rows[0] as unknown as { items: MovieCard[]; total: string | number; source_date: string | null; is_fresh: boolean };
+    const row = rows[0] as unknown as { items: (MovieCard & { posterArticle: string | null; posterOrigin: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
     const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "alphabetical", sourceDate: row.source_date,
       sourceUrl: row.source_date ? sourceUrl(row.source_date) : null, isFresh: row.is_fresh };
-    return { items: row.items, total: Number(row.total), ranking };
+    const items = row.items.map(({ posterArticle, posterOrigin, ...card }) => ({ ...card,
+      ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin }) }));
+    return { items, total: Number(row.total), ranking };
   }
   async findPublicBySlug(slug: string) {
     const db = this.dbProvider.client;
@@ -225,7 +231,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     ]);
     const characterLabels = await this.findLabels([...new Set(credits.flatMap((credit) => characterQidsFromQualifiers(credit.qualifiers)))]);
     return { slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate, releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes,
-      posterImageUrl: movie.posterImageUrl, posterAttribution: movie.posterAttribution, wikidataId: movie.wikidataId, imdbId: movie.imdbConflict ? null : movie.imdbId, description: movie.description, originalTitle: movie.originalTitle,
+      ...publicMoviePoster(movie), wikidataId: movie.wikidataId, imdbId: movie.imdbConflict ? null : movie.imdbId, description: movie.description, originalTitle: movie.originalTitle,
       sourceUpdatedAt: movie.sourceModifiedAt?.toISOString() ?? null, genres: genres.map((genre) => ({ ...genre, name: genre.name! })), companies,
       credits: credits.map((credit) => ({ statementId: credit.statementId, role: ({ P161: "cast", P57: "director", P162: "producer" } as const)[credit.roleProperty as "P161" | "P57" | "P162"],
         wikidataId: credit.wikidataId, name: credit.name, characterNames: [...new Set([...credit.characterNames,

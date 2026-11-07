@@ -17,7 +17,7 @@ export const movies = pgTable('movies', {
   posterResolvedFileName: text('poster_resolved_file_name'),
   posterResolvedFrom: varchar('poster_resolved_from', { length: 16 }),
   posterImageUrl: text('poster_image_url'),
-  posterAttribution: jsonb('poster_attribution').$type<{ provider?: 'commons' | 'wikipedia'; rightsKind?: 'reusable' | 'non-free'; sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null }>(),
+  posterAttribution: jsonb('poster_attribution').$type<{ provider?: 'commons' | 'wikipedia'; rightsKind?: 'reusable' | 'non-free'; sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null; articleTitle?: string }>(),
   posterCheckedAt: timestamp('poster_checked_at', { withTimezone: true, mode: 'date' }),
   posterRetryAfter: timestamp('poster_retry_after', { withTimezone: true, mode: 'date' }),
   posterErrorCode: varchar('poster_error_code', { length: 80 }),

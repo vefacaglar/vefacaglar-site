@@ -94,7 +94,7 @@ export class MovieSyncService {
         if (fallback.length && available.wikipedia && artworkRoom() && maxRequests - result.requests >= 2) {
           result.requests++;
           try {
-            const references = await this.wikipedia.resolveArticles(fallback.map((row) => ({ wikidataId: row.wikidataId, article: row.enwikiArticle! })), signal);
+            const references = await this.wikipedia.resolveArticles(fallback.map((row) => ({ wikidataId: row.wikidataId, title: row.title, article: row.enwikiArticle! })), signal);
             for (const candidate of fallback) if (!references[candidate.wikidataId]) outcomes.get(candidate.id)!.wikipedia = "negative";
             const resolved = fallback.flatMap((row) => references[row.wikidataId] ? [references[row.wikidataId]!] : []);
             if (resolved.length && artworkRoom()) {
