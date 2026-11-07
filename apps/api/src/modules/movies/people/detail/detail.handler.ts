@@ -1,13 +1,13 @@
 import { inject, injectable } from "tsyringe";
 import type { FastifyRequest } from "fastify";
 import { NotFoundError } from "../../../../shared/http-errors";
-import { MOVIES_REPOSITORY } from "../../movies.tokens";
-import type { IMoviesRepository } from "../../movies.repository.interface";
+
+import { MOVIE_CATALOG_SERVICE, type IMovieCatalogService } from "../../search/movie-catalog.service";
 import type { GetMoviePersonParams, GetMoviePersonQuery, MoviePersonPage } from "./detail.schema";
 
 @injectable()
 export class GetMoviePersonHandler {
-  constructor(@inject(MOVIES_REPOSITORY) private readonly repo: IMoviesRepository) {}
+  constructor(@inject(MOVIE_CATALOG_SERVICE) private readonly repo: IMovieCatalogService) {}
 
   async handle(request: FastifyRequest<{ Params: GetMoviePersonParams; Querystring: GetMoviePersonQuery }>): Promise<MoviePersonPage> {
     const page = request.query.page ?? 1;

@@ -1,0 +1,12 @@
+{
+  "name": "movies_en",
+  "fields": [
+    { "name": "title", "type": "string" },
+    { "name": "originalTitle", "type": "string", "optional": true },
+    { "name": "personQids", "type": "string[]", "facet": true },
+    { "name": "interestScore", "type": "int32" },
+    { "name": "titleSort", "type": "string", "sort": true },
+    { "name": "tieBreakId", "type": "string", "sort": true }
+  ],
+  "default_sorting_field": "interestScore"
+}

@@ -127,3 +127,31 @@ export const moviePopularityState = pgTable('movie_popularity_state', {
   duplicateQidCount: integer('duplicate_qid_count'),
   observedMovieCount: integer('observed_movie_count'),
 });
+
+/** Dedicated movie search ownership and durable bootstrap/ranking publication. */
+export const movieSearchState = pgTable('movie_search_state', {
+  id: text('id').primaryKey(),
+  schemaVersion: integer('schema_version').notNull().default(1),
+  activeCollection: text('active_collection'),
+  buildingCollection: text('building_collection'),
+  bootstrapPhase: text('bootstrap_phase').notNull().default('scan'),
+  bootstrapCursor: uuid('bootstrap_cursor'),
+  rankingGeneration: bigint('ranking_generation', { mode: 'number' }).notNull().default(0),
+  rankingReady: boolean('ranking_ready').notNull().default(false),
+  publishedSourceDate: date('published_source_date'),
+  repairCursor: uuid('repair_cursor'),
+  repairCompletedAt: timestamp('repair_completed_at', { withTimezone: true, mode: 'date' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
+/** No FK: acknowledged tombstones survive hard deletion for bounded reconciliation. */
+export const movieSearchSync = pgTable('movie_search_sync', {
+  movieId: uuid('movie_id').primaryKey(),
+  requestedRevision: bigint('requested_revision', { mode: 'number' }).notNull().default(1),
+  appliedRevision: bigint('applied_revision', { mode: 'number' }).notNull().default(0),
+  indexedCollection: text('indexed_collection'),
+  dirtyAt: timestamp('dirty_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+}, (table) => ({
+  pendingIdx: index('movie_search_sync_pending_idx').on(table.movieId)
+    .where(sql`${table.requestedRevision} > ${table.appliedRevision}`),
+}));

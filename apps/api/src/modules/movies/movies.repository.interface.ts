@@ -33,6 +33,8 @@ export interface IMoviesRepository {
   writeLabels(labels: EntityLabels, now: Date): Promise<void>;
   hasPendingWork(now: Date): Promise<boolean>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number; ranking: MovieRanking }>;
+  findPublicPersonHeader(wikidataId: string): Promise<{ id: string; wikidataId: string; name: string | null } | null>;
+  hydratePublicIds(ids: string[], personId?: string): Promise<(MovieCard | MoviePersonFilm)[]>;
   findPublicBySlug(slug: string): Promise<MovieDetail | null>;
   findPublicPerson(wikidataId: string, filter: { page: number; limit: number }): Promise<MoviePersonResult | null>;
 }

@@ -1,3 +1,4 @@
+import { dirtyMovieSearch } from "./search/movie-search-state.repository";
 import { injectable } from "tsyringe";
 import { and, asc, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState } from "@vefacaglar/db";
@@ -113,6 +114,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         { preserveStoredTitle: disposition === "unchanged" });
       if (disposition === "unchanged") {
         await db.update(movies).set({ ...poster, checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
+        if (poster.posterCandidateVersion !== undefined || poster.posterImageUrl !== undefined) await dirtyMovieSearch(db, existing.id);
         return "unchanged";
       }
       let imdbId = movie.imdbConflict ? existing.imdbId : movie.imdbId;
@@ -145,6 +147,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         statementId: credit.statementId, roleProperty: credit.roleProperty, rank: credit.rank, qualifiers: credit.qualifiers, characterNames: credit.characterNames })));
       if (companies.length) await db.insert(movieCompanyLinks).values(companies.map((company) => ({ movieId: existing.id, companyId: company.id })));
       if (genres.length) await db.insert(movieGenreLinks).values(genres.map((genre) => ({ movieId: existing.id, genreId: genre.id })));
+      await dirtyMovieSearch(db, existing.id);
       return imdbConflict ? "imdb_conflict" : "updated";
     });
   }
@@ -163,12 +166,15 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
           then ${movies.wikipediaViews} else null end desc nulls last`, asc(movies.title), asc(movies.id)).limit(Math.min(5, limit));
   }
   async persistPoster(candidate: MoviePosterCandidate, poster: MoviePoster | null, now: Date) {
-    const updated = await this.dbProvider.client.update(movies).set({ posterImageUrl: poster?.imageUrl ?? null, posterAttribution: poster?.attribution ?? null,
-      posterResolvedFileName: poster ? poster.fileName ?? candidate.fileName : null, posterResolvedFrom: poster ? poster.origin ?? "commons" : null,
-      posterCheckedAt: now, posterRetryAfter: new Date(now.getTime() + (poster ? 7 : 30) * 86_400_000),
-      posterErrorCode: poster ? null : "poster_missing_or_unverified", updatedAt: now })
-      .where(and(eq(movies.id, candidate.id), eq(movies.posterCandidateVersion, candidate.version))).returning({ id: movies.id });
-    return updated.length > 0;
+    return this.dbProvider.transaction(async () => {
+      const updated = await this.dbProvider.client.update(movies).set({ posterImageUrl: poster?.imageUrl ?? null, posterAttribution: poster?.attribution ?? null,
+        posterResolvedFileName: poster ? poster.fileName ?? candidate.fileName : null, posterResolvedFrom: poster ? poster.origin ?? "commons" : null,
+        posterCheckedAt: now, posterRetryAfter: new Date(now.getTime() + (poster ? 7 : 30) * 86_400_000),
+        posterErrorCode: poster ? null : "poster_missing_or_unverified", updatedAt: now })
+        .where(and(eq(movies.id, candidate.id), eq(movies.posterCandidateVersion, candidate.version))).returning({ id: movies.id });
+      if (updated.length) await dirtyMovieSearch(this.dbProvider.client, candidate.id);
+      return updated.length > 0;
+    });
   }
   async markPosterFailure(candidates: MoviePosterCandidate[], retryAfter: Date) {
     for (const candidate of candidates) await this.dbProvider.client.update(movies)
@@ -230,9 +236,31 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       eq(movieCredits.movieId, movies.id), eq(movieCredits.personId, person.id), ne(movieCredits.rank, "deprecated"),
     )));
     const { items, movieIds, total, ranking } = await this.listPublicMatching(filter, linkedCredit);
-    // Read roles only for this page; repeated statements cannot duplicate a film.
+    return { person: { wikidataId: person.wikidataId, name: person.name }, total, ranking,
+      items: await this.personFilms(person.id, movieIds, items) };
+  }
+  async findPublicPersonHeader(wikidataId: string) {
+    const [person] = await this.dbProvider.client.select({ id: moviePeople.id, wikidataId: moviePeople.wikidataId, name: moviePeople.name })
+      .from(moviePeople).where(eq(moviePeople.wikidataId, wikidataId));
+    return person ?? null;
+  }
+  async hydratePublicIds(ids: string[], personId?: string) {
+    if (!ids.length) return [];
+    const db = this.dbProvider.client;
+    const linkedCredit = personId ? exists(db.select({ value: sql`1` }).from(movieCredits).where(and(
+      eq(movieCredits.movieId, movies.id), eq(movieCredits.personId, personId), ne(movieCredits.rank, "deprecated")))) : undefined;
+    const rows = await db.select().from(movies).where(and(publicMovie(), inArray(movies.id, ids), linkedCredit));
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // Fail closed: the service falls back if a selected film is no longer public/linked.
+    const selected = ids.flatMap((id) => { const row = byId.get(id); return row ? [row] : []; });
+    const cards = selected.map((movie) => ({ slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate,
+      releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes, ...publicMoviePoster(movie) }));
+    return personId ? this.personFilms(personId, selected.map((row) => row.id), cards) : cards;
+  }
+  private async personFilms(personId: string, movieIds: string[], items: MovieCard[]) {
+    const db = this.dbProvider.client;
     const credits = movieIds.length ? await db.select({ movieId: movieCredits.movieId, roleProperty: movieCredits.roleProperty })
-      .from(movieCredits).where(and(eq(movieCredits.personId, person.id), inArray(movieCredits.movieId, movieIds), ne(movieCredits.rank, "deprecated")))
+      .from(movieCredits).where(and(eq(movieCredits.personId, personId), inArray(movieCredits.movieId, movieIds), ne(movieCredits.rank, "deprecated")))
       .groupBy(movieCredits.movieId, movieCredits.roleProperty) : [];
     const properties = { P161: "cast", P57: "director", P162: "producer" } as const;
     const roleOrder: MoviePersonRole[] = ["cast", "director", "producer"];
@@ -244,8 +272,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       filmRoles.add(role);
       roles.set(credit.movieId, filmRoles);
     }
-    return { person: { wikidataId: person.wikidataId, name: person.name }, total, ranking,
-      items: items.map((item, index) => ({ ...item, roles: roleOrder.filter((role) => roles.get(movieIds[index])?.has(role)) })) };
+    return items.map((item, index) => ({ ...item, roles: roleOrder.filter((role) => roles.get(movieIds[index])?.has(role)) }));
   }
   async findPublicBySlug(slug: string) {
     const db = this.dbProvider.client;

@@ -3,6 +3,7 @@
 //! matching allowlist entry in `apps/api/src/modules/jobs/job-types.ts`).
 
 pub mod catalog;
+pub mod movie_search;
 pub mod search;
 
 use std::sync::Arc;
@@ -16,7 +17,10 @@ pub fn registry(config: &Config) -> Registry {
     registry.register(search::SearchReindexHandler {
         typesense: typesense.clone(),
     });
-    registry.register(search::SearchSyncHandler { typesense });
+    registry.register(search::SearchSyncHandler {
+        typesense: typesense.clone(),
+    });
+    registry.register(movie_search::MovieSearchHandler { typesense });
     registry.register(catalog::CatalogPopularityHandler);
     registry.register(catalog::movies::CatalogMoviesHandler);
     registry.register(catalog::movie_popularity::MoviePopularityHandler);

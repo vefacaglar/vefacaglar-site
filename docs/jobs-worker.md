@@ -76,12 +76,14 @@ new type. A null `next_run_at` computes the next daily occurrence on enable.
 - **Extensibility**: a `JobHandler` trait + registry; adding a job type = one module implementing the trait + one registration line. Handlers get a context with `progress()`, `log()`, `checkpoint()`, `should_stop()` (shutdown or cancel).
 
 ### Search jobs (`search.reindex`, `search.sync`)
+
+These generic jobs own only the seven collections below. Movies are owned exclusively by `search.movies.sync`, documented in [movie search](movie-search.md).
 Both: payload `{}` (no options; the old `drop` flag is removed), concurrency key **`search.index`** (shared → never run at the same time; the API answers `409` while one is queued/running). Both reproduce the API's Typesense collection schemas and document mappers exactly (see `apps/api/src/shared/search/`), English-only collections (`games_en`, `developers_en`, `publishers_en`, `genres_en`, `platforms_en`, `themes_en`, `posts_en`), read source rows with keyset pagination (by primary key) in batches of 500 and import via `POST /collections/{name}/documents/import?action=upsert` (JSONL); per-document import errors are logged and fail the job.
 
 **`search.reindex` — full reindex, zero downtime:**
-1. For **every** collection create a new physical collection `{alias}__{yyyymmddhhmmss}` (one shared timestamp per run).
+1. For **each of the seven generic** collections create a new physical collection `{alias}__{yyyymmddhhmmss}` (one shared timestamp per run).
 2. Index **all** documents into the new physical collections.
-3. Only after **every** collection is fully loaded, point **all** aliases `{alias}` at their new physical collections (live search switches atomically per alias, never to a half-filled collection).
+3. Only after **every generic** collection is fully loaded, point **all** aliases `{alias}` at their new physical collections (live search switches atomically per alias, never to a half-filled collection).
 4. Delete the previous physical collections. If a legacy *real* collection named `{alias}` exists, it must be deleted right before that alias is created (one-time brief gap, logged as `warn`).
 - Checkpoint: `{ suffix: "yyyymmddhhmmss", collectionIndex, lastId }` — resuming reuses the same physical collections; nothing is swapped until the import phase is complete. A fresh run (no checkpoint) first deletes stale `{alias}__*` collections that no alias points to (and legacy `*_tr` collections).
 - Cancel deletes this run's half-built collections and clears the checkpoint (a retry starts over); a failure keeps both so the retry resumes. Progress phases: `preparing`, `counting`, `indexing:<alias>`, `swapping aliases`, `cleanup`; `total` = sum of source row counts, known before indexing starts.

@@ -26,6 +26,14 @@ pub trait SearchBackend: Send + Sync {
     /// Whether a real collection called `name` exists (aliases do not count).
     async fn collection_exists(&self, name: &str) -> Result<bool>;
     async fn list_collections(&self) -> Result<Vec<String>>;
+    /// Full physical schema for compatibility checks by dedicated index owners.
+    async fn collection_schema(&self, _name: &str) -> Result<Option<Value>> {
+        bail!("collection schema retrieval is unsupported")
+    }
+    /// Idempotent single-document deletion; an absent document is success.
+    async fn delete_document(&self, _collection: &str, _id: &str) -> Result<()> {
+        bail!("document deletion is unsupported")
+    }
     /// Creates a collection; an existing one with the same name is accepted.
     async fn create_collection(&self, schema: &Value) -> Result<()>;
     /// Deletes a collection; returns false when it did not exist.
@@ -91,9 +99,13 @@ struct IdLine {
 
 impl TypesenseClient {
     pub fn new(config: &TypesenseConfig) -> Result<Self> {
+        Self::with_timeout(config, Duration::from_secs(300))
+    }
+
+    pub fn with_timeout(config: &TypesenseConfig, timeout: Duration) -> Result<Self> {
         let http = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(10))
-            .timeout(Duration::from_secs(300))
+            .timeout(timeout)
             .user_agent(concat!("vefacaglar-worker/", env!("CARGO_PKG_VERSION")))
             .build()
             .context("build HTTP client")?;
@@ -250,6 +262,38 @@ impl SearchBackend for TypesenseClient {
         let response = Self::expect_ok(response, "list collections").await?;
         let collections: Vec<CollectionBody> = response.json().await?;
         Ok(collections.into_iter().map(|c| c.name).collect())
+    }
+
+    async fn collection_schema(&self, name: &str) -> Result<Option<Value>> {
+        let response = self
+            .send(Method::GET, &format!("/collections/{}", encode(name)), None)
+            .await?;
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        let response = Self::expect_ok(response, &format!("get schema {name}")).await?;
+        let schema: Value = response.json().await?;
+        // GET may resolve aliases. Never accept an alias as a physical target.
+        Ok((schema.get("name").and_then(Value::as_str) == Some(name)).then_some(schema))
+    }
+
+    async fn delete_document(&self, collection: &str, id: &str) -> Result<()> {
+        let response = self
+            .send(
+                Method::DELETE,
+                &format!(
+                    "/collections/{}/documents/{}",
+                    encode(collection),
+                    encode(id)
+                ),
+                None,
+            )
+            .await?;
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok(());
+        }
+        Self::expect_ok(response, &format!("delete document from {collection}")).await?;
+        Ok(())
     }
 
     async fn create_collection(&self, schema: &Value) -> Result<()> {

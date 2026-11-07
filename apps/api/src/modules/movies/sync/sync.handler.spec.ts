@@ -15,7 +15,7 @@ const run = (options = {}) => new SyncMoviesHandler(new MovieSyncService(repo, c
 beforeEach(() => {
   repo = { ensureSourceAndSeeds: vi.fn().mockResolvedValue({ inserted: 0, state: state() }), sourceState: vi.fn().mockResolvedValue(state()), saveSourceState: vi.fn(), insertDiscovered: vi.fn().mockResolvedValue(0),
     hydrationCandidates: vi.fn().mockResolvedValue([]), refreshCandidates: vi.fn().mockResolvedValue([]), persistMovie: vi.fn().mockResolvedValue("updated"), markEntityFailure: vi.fn(),
-    findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicBySlug: vi.fn(),
+    findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), hydratePublicIds: vi.fn(), findPublicPerson: vi.fn(), findPublicBySlug: vi.fn(),
     posterInputsCandidates: vi.fn().mockResolvedValue([]), posterCandidates: vi.fn().mockResolvedValue([]), persistPoster: vi.fn().mockResolvedValue(true), markPosterFailure: vi.fn() };
   client = { fetchEntities: vi.fn().mockResolvedValue({ Q47703: entity() }), fetchLabels: vi.fn().mockResolvedValue({}) };
   discovery = { discover: vi.fn() };

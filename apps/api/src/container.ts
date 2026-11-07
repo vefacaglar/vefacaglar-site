@@ -47,6 +47,10 @@ import { SearchEventSubscriber } from "./shared/search/commands/search-event-sub
 import { EVENT_BUS } from "./shared/events/events.tokens";
 import { InProcessEventBus } from "./shared/events/in-process-event-bus";
 
+import { MOVIE_CATALOG_SERVICE, MovieCatalogService } from "./modules/movies/search/movie-catalog.service";
+import { MOVIE_SEARCH_READER, TypesenseMovieSearchReader } from "./modules/movies/search/movie-search-reader";
+import { MOVIE_SEARCH_STATE_REPOSITORY } from "./modules/movies/search/movie-search.types";
+import { DrizzleMovieSearchStateRepository } from "./modules/movies/search/movie-search-state.repository";
 import { MOVIES_REPOSITORY, WIKIDATA_ENTITY_CLIENT } from "./modules/movies/movies.tokens";
 import { DrizzleMoviesRepository } from "./modules/movies/movies.repository";
 import { WikidataEntityClient } from "./modules/movies/import/wikidata-entity.client";
@@ -62,6 +66,9 @@ import { WikipediaInterestClient } from "./modules/movies/popularity/wikipedia-i
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
 container.registerSingleton(MOVIES_REPOSITORY, DrizzleMoviesRepository);
+container.registerSingleton(MOVIE_CATALOG_SERVICE, MovieCatalogService);
+container.registerSingleton(MOVIE_SEARCH_READER, TypesenseMovieSearchReader);
+container.registerSingleton(MOVIE_SEARCH_STATE_REPOSITORY, DrizzleMovieSearchStateRepository);
 container.registerSingleton(MOVIE_POPULARITY_REPOSITORY, DrizzleMoviePopularityRepository);
 container.registerSingleton(WIKIPEDIA_INTEREST_CLIENT, WikipediaInterestClient);
 container.registerSingleton(WIKIDATA_ENTITY_CLIENT, WikidataEntityClient);

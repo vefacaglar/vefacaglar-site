@@ -1,11 +1,11 @@
 import { inject, injectable } from "tsyringe";
 import type { FastifyRequest } from "fastify";
-import { MOVIES_REPOSITORY } from "../movies.tokens";
-import type { IMoviesRepository } from "../movies.repository.interface";
+
+import { MOVIE_CATALOG_SERVICE, type IMovieCatalogService } from "../search/movie-catalog.service";
 import type { ListMoviesQuery, ListMoviesResponse } from "./list.schema";
 @injectable()
 export class ListMoviesHandler {
-  constructor(@inject(MOVIES_REPOSITORY) private readonly repo: IMoviesRepository) {}
+  constructor(@inject(MOVIE_CATALOG_SERVICE) private readonly repo: IMovieCatalogService) {}
   async handle(request: FastifyRequest<{ Querystring: ListMoviesQuery }>): Promise<ListMoviesResponse> {
     const page = request.query.page ?? 1;
     const limit = request.query.limit ?? 21;

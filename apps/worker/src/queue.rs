@@ -295,7 +295,7 @@ pub async fn mark_succeeded_with_continuation(
     let row: Option<ContinuationRow> = sqlx::query_as(&format!(
         "UPDATE jobs SET status = CASE WHEN cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
          finished_at = now(), checkpoint = NULL, error = NULL, updated_at = now() \
-         WHERE {HELD_BY_ME} AND type = 'catalog.movies.sync' AND concurrency_key = 'catalog.movies' \
+         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.sync' AND concurrency_key = 'catalog.movies') OR (type = 'search.movies.sync' AND concurrency_key = 'search.index')) \
          RETURNING type AS job_type, payload, concurrency_key, recurring_job_id, max_attempts, created_by, cancel_requested"
     ))
     .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;
@@ -321,7 +321,7 @@ pub async fn mark_succeeded_with_continuation(
             LogLevel::Info
         },
         if cancelled {
-            "cancelled before the next movie batch was enqueued"
+            "cancelled before the next bounded batch was enqueued"
         } else {
             log
         },
@@ -344,7 +344,7 @@ pub async fn mark_succeeded_with_continuation(
             &mut tx,
             job_id,
             LogLevel::Info,
-            &format!("next bounded movie batch: {next_id}"),
+            &format!("next bounded batch: {next_id}"),
         )
         .await?;
     }

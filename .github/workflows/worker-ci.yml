@@ -78,6 +78,10 @@ jobs:
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE TABLE users (id uuid PRIMARY KEY)'
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0022_giant_sprite.sql
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0023_magical_storm.sql
+          # Exercise the dedicated movie source SQL against its generated schema.
+          for migration in 0027_movies_catalog 0030_massive_chameleon 0031_right_tyrannus 0032_tired_serpent_society 0033_chunky_baron_strucker; do
+            psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "../../packages/db/drizzle/$migration.sql"
+          done
 
       - name: Test
         run: cargo test --locked

@@ -9,7 +9,7 @@ function mockRepository(): Record<keyof IMoviesRepository, any> {
     hydrationCandidates: vi.fn(), refreshCandidates: vi.fn(), posterInputsCandidates: vi.fn(), persistMovie: vi.fn(),
     posterCandidates: vi.fn(), persistPoster: vi.fn(), markPosterFailure: vi.fn(), markEntityFailure: vi.fn(),
     findLabels: vi.fn(), labelRefreshCandidates: vi.fn(), writeLabels: vi.fn(), hasPendingWork: vi.fn(),
-    listPublic: vi.fn(), findPublicBySlug: vi.fn(), findPublicPerson: vi.fn(),
+    listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), hydratePublicIds: vi.fn(), findPublicBySlug: vi.fn(), findPublicPerson: vi.fn(),
   };
 }
 

@@ -26,13 +26,18 @@ const EmptyPayloadSchema = Type.Object({}, { additionalProperties: false });
 export const JOB_TYPES = {
   "search.reindex": defineJobType({
     description:
-      "Full search reindex: builds new timestamped collections for every index, loads all documents, then swaps all aliases at once and deletes the old collections.",
+      "Full search reindex: builds new timestamped collections for games, catalog facets, and posts (movies have a dedicated sync), loads all documents, then swaps all aliases at once and deletes the old collections.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),
   "search.sync": defineJobType({
     description:
-      "Search sync: adds documents that exist in the database but are missing from the live search collections.",
+      "Search sync: adds documents that exist in the database but are missing from the live game, catalog facet, and post search collections. Movies have a dedicated sync.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
+  }),
+  "search.movies.sync": defineJobType({
+    description: "Synchronize the public movie index with durable bootstrap, changed-film upserts, deletions, and complete interest ranking publication.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),
