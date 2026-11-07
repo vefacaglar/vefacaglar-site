@@ -1,0 +1,12 @@
+.activity { margin-top: 36px; }
+.section { border-top: 1px solid var(--border); padding-top: 22px; margin-top: 28px; }
+.section h2 { margin: 0 0 18px; color: var(--text-heading); font-size: 19px; font-weight: 500; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px; }
+.input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 0; padding: 9px 10px; font: inherit; }
+.input:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+.watches { list-style: none; margin: 20px 0; padding: 0; }
+.watch { display: flex; justify-content: space-between; align-items: center; gap: 14px; border-bottom: 1px solid var(--border); padding: 14px 0; font-size: 14px; }
+.muted { color: var(--muted); font-size: 14px; }
+.error { color: var(--warning); font-size: 14px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (max-width: 560px) { .watch { align-items: flex-start; flex-direction: column; } }

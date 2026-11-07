@@ -8,7 +8,9 @@ import { GetMovieParamsSchema, MovieDetailSchema, type GetMovieParams } from "./
 import { GetMoviePersonHandler } from "./people/detail/detail.handler";
 import { GetMoviePersonParamsSchema, GetMoviePersonQuerySchema, MoviePersonPageSchema,
   type GetMoviePersonParams, type GetMoviePersonQuery } from "./people/detail/detail.schema";
+import { movieActivityRoutes } from "./activity/activity.routes";
 export async function moviesRoutes(app: FastifyInstance) {
+  await movieActivityRoutes(app);
   const list = container.resolve(ListMoviesHandler);
   const detail = container.resolve(GetMovieHandler);
   const person = container.resolve(GetMoviePersonHandler);

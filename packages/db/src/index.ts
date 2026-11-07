@@ -10,6 +10,7 @@ import * as gamesSchema from './schema/games';
 import * as packagesSchema from './schema/packages';
 import * as jobsSchema from './schema/jobs';
 import * as moviesSchema from './schema/movies';
+import * as movieActivitySchema from './schema/movie-activity';
 
 // Export all schemas
 export * from './schema/posts';
@@ -22,6 +23,7 @@ export * from './schema/games';
 export * from './schema/packages';
 export * from './schema/jobs';
 export * from './schema/movies';
+export * from './schema/movie-activity';
 
 export const schema = {
   ...postsSchema,
@@ -34,6 +36,7 @@ export const schema = {
   ...packagesSchema,
   ...jobsSchema,
   ...moviesSchema,
+  ...movieActivitySchema,
 };
 
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/vefa_site';

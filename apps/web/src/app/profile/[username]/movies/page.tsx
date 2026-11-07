@@ -1,34 +1,42 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import styles from "../../profile.module.css";
 import { getActiveLanguage } from "../../../../lib/lang";
-import { getDictionary } from "../../../../dictionaries";
-import { decodeUsername, getProfileLibrary, profilePath } from "../../../../lib/profileLibrary";
+import { localizeHref } from "../../../../lib/localizeHref";
+import { formatDate } from "../../../../lib/formatDate";
+import { decodeUsername, profilePath } from "../../../../lib/profileLibrary";
+import { getMovieLibrary } from "../../../../lib/movieActivity";
 import PrivateProfile from "../../components/PrivateProfile";
-
-interface ProfileMoviesProps {
-  params: Promise<{ username: string }>;
-}
-
-/** Placeholder until movie logs exist. */
-export default async function ProfileMovies(props: ProfileMoviesProps) {
-  const { username } = await props.params;
-  const handle = decodeUsername(username);
-  // Same per-request fetch as the layout: decides between private, missing and visible.
-  const result = await getProfileLibrary(handle);
+import PosterCredit from "../../../../components/movies/PosterCredit";
+import styles from "./movies.module.css";
+export default async function ProfileMovies({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params, handle = decodeUsername(username);
+  const result = await getMovieLibrary(handle);
   if (result.kind === "not_found") notFound();
-
   const lang = await getActiveLanguage();
-  if (result.kind === "private") {
-    return (
-      <PrivateProfile username={handle} path={profilePath(handle, "movies")} signedIn={result.signedIn} lang={lang} />
-    );
-  }
-
-  const dict = getDictionary(lang);
-  return (
-    <section className={styles.empty}>
-      <h2 className={styles.emptyTitle}>{dict.movies_empty_title}</h2>
-      <p className={styles.muted}>{dict.profile_movies_empty}</p>
-    </section>
-  );
+  if (result.kind === "private") return <PrivateProfile username={handle} path={profilePath(handle, "movies")} signedIn={result.signedIn} lang={lang} />;
+  const { summary, movies, isOwner } = result.data;
+  return <section>
+    <dl className={styles.summary}>
+      <div><dt>Films watched</dt><dd>{summary.watchedFilmCount}</dd></div>
+      <div><dt>Watches</dt><dd>{summary.watchCount}</dd></div>
+      <div><dt>Films rated</dt><dd>{summary.ratedFilmCount}</dd></div>
+      <div><dt>Average rating</dt><dd>{summary.averageRating === null ? "—" : `${summary.averageRating}/10`}</dd></div>
+    </dl>
+    {movies.length === 0 ? <div className={styles.empty}><h2>No movies yet</h2><p>Watches and ratings will appear here.</p>{isOwner && <Link className="btnGhost" href={localizeHref("/movies", lang)}>Browse movies</Link>}</div> :
+      <ul className={styles.movies}>{movies.map((movie) => <li key={movie.slug} className={styles.movie}>
+        <div className={styles.posterColumn}>
+          <Link href={localizeHref(`/movies/${movie.slug}`, lang)} className={styles.poster} aria-label={movie.title}>
+            {movie.posterImageUrl && movie.posterAttribution ? <img src={movie.posterImageUrl} alt="" loading="lazy" /> : <span>Film</span>}
+          </Link>
+          {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
+        </div>
+        <div className={styles.details}>
+          <h2><Link href={localizeHref(`/movies/${movie.slug}`, lang)}>{movie.title}</Link></h2>
+          {movie.releaseYear !== null && <p className={styles.muted}>{movie.releaseYear}</p>}
+          <p>{movie.rating === null ? "Not rated" : `${movie.rating}/10`} · {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}</p>
+          {movie.watches.length > 0 && <details className={styles.history}><summary>Watch dates</summary><ul>{movie.watches.map((watch, index) => <li key={watch.id ?? `${watch.watchedOn}-${index}`}><time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time></li>)}</ul></details>}
+          {isOwner && <Link className={`btnGhost ${styles.manage}`} href={localizeHref(`/movies/${movie.slug}#watch-history`, lang)}>Manage watches and rating</Link>}
+        </div>
+      </li>)}</ul>}
+  </section>;
 }

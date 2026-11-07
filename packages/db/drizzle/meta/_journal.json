@@ -239,6 +239,13 @@
       "when": 1794071569046,
       "tag": "0033_chunky_baron_strucker",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794073304500,
+      "tag": "0034_chilly_rage",
+      "breakpoints": true
     }
   ]
 }
