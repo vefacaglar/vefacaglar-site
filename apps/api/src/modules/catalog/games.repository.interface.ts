@@ -101,6 +101,16 @@ export type GameCard = Pick<Game,
   "popularityScore" | "hltbMainHours" | "hltbMainExtraHours" | "hltbCompletionistHours"
 >;
 
+export type GameCompanyRole = "developer" | "publisher";
+export type PublicGameCompany = Pick<Developer, "id" | "name" | "slug" | "countryCode"> & {
+  role: GameCompanyRole;
+};
+export type PublicGameCompanyPage = {
+  company: PublicGameCompany;
+  items: GameCard[];
+  total: number;
+};
+
 export interface IGamesRepository {
   create(
     values: NewGame,
@@ -134,6 +144,11 @@ export interface IGamesRepository {
   /** Fresh public card fields for at most one search page; no relations or administrative data. */
   findPublicCardsByIds(ids: string[]): Promise<GameCard[]>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
+  findPublicCompanyPage(
+    role: GameCompanyRole,
+    slug: string,
+    filter: { page: number; limit: number },
+  ): Promise<PublicGameCompanyPage | null>;
 
   /** Loads ids and slugs (and game titles) of the whole catalog in one round of queries. */
   loadCatalogIndex(): Promise<CatalogIndex>;

@@ -19,6 +19,10 @@ import { UpdateGameLogHandler } from "./logs/update/update.handler";
 import { GameLogIdParams, GameLogIdParamsSchema } from "./logs/update/update.schema";
 import { DeleteGameLogHandler } from "./logs/delete/delete.handler";
 import { DeleteGameLogResponseSchema } from "./logs/delete/delete.schema";
+import { GetDeveloperGamesHandler } from "./developers/detail/detail.handler";
+import { DeveloperParams, DeveloperParamsSchema, DeveloperQuery, DeveloperQuerySchema, DeveloperResponseSchema } from "./developers/detail/detail.schema";
+import { GetPublisherGamesHandler } from "./publishers/detail/detail.handler";
+import { PublisherParams, PublisherParamsSchema, PublisherQuery, PublisherQuerySchema, PublisherResponseSchema } from "./publishers/detail/detail.schema";
 
 /** Public games pages: catalog browsing plus the signed-in user's own play logs. */
 export async function publicGamesRoutes(app: FastifyInstance) {
@@ -31,6 +35,8 @@ export async function publicGamesRoutes(app: FastifyInstance) {
   const getLogHandler = container.resolve(GetGameLogHandler);
   const updateLogHandler = container.resolve(UpdateGameLogHandler);
   const deleteLogHandler = container.resolve(DeleteGameLogHandler);
+  const developerHandler = container.resolve(GetDeveloperGamesHandler);
+  const publisherHandler = container.resolve(GetPublisherGamesHandler);
 
   app.get<{ Querystring: ListGamesQuery }>("/", {
     schema: {
@@ -40,6 +46,26 @@ export async function publicGamesRoutes(app: FastifyInstance) {
       response: { 200: ListGamesResponseSchema },
     },
   }, (request) => listHandler.handle(request));
+
+  app.get<{ Params: DeveloperParams; Querystring: DeveloperQuery }>("/developers/:slug", {
+    schema: {
+      description: "A developer and its games in this catalog",
+      tags: ["Games"],
+      params: DeveloperParamsSchema,
+      querystring: DeveloperQuerySchema,
+      response: { 200: DeveloperResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => developerHandler.handle(request));
+
+  app.get<{ Params: PublisherParams; Querystring: PublisherQuery }>("/publishers/:slug", {
+    schema: {
+      description: "A publisher and its games in this catalog",
+      tags: ["Games"],
+      params: PublisherParamsSchema,
+      querystring: PublisherQuerySchema,
+      response: { 200: PublisherResponseSchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => publisherHandler.handle(request));
 
   app.get("/me/library", {
     preHandler: app.requireAuth,

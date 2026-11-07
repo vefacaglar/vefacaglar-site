@@ -20,6 +20,7 @@ export const GameCardSchema = Type.Object({
   hltbMainExtraHours: Type.Union([Type.String(), Type.Null()]),
   hltbCompletionistHours: Type.Union([Type.String(), Type.Null()]),
 });
+export type PublicGameCard = Static<typeof GameCardSchema>;
 
 export const ListGamesResponseSchema = Type.Object({
   items: Type.Array(GameCardSchema),

@@ -24,6 +24,8 @@ import type {
   CatalogLookupKind,
   CatalogLookupRow,
   GameCard,
+  GameCompanyRole,
+  PublicGameCompanyPage,
   IGamesRepository,
   Game,
   NewGame,
@@ -72,6 +74,22 @@ const OWNER_METADATA = {
     select 1 from ${gameThemes} inner join ${themes} on ${gameThemes.themeId} = ${themes.id}
     where ${gameThemes.gameId} = ${games.id} and ${themes.slug} = 'open-world'
   )`,
+};
+
+const PUBLIC_CARD_FIELDS = {
+  id: games.id,
+  slug: games.slug,
+  title: games.title,
+  coverImageUrl: games.coverImageUrl,
+  releaseDate: games.releaseDate,
+  metacriticScore: games.metacriticScore,
+  openCriticScore: games.openCriticScore,
+  criticScore: games.criticScore,
+  criticScoreCount: games.criticScoreCount,
+  popularityScore: games.popularityScore,
+  hltbMainHours: games.hltbMainHours,
+  hltbMainExtraHours: games.hltbMainExtraHours,
+  hltbCompletionistHours: games.hltbCompletionistHours,
 };
 
 function chunks<T>(items: T[], size = INSERT_CHUNK): T[][] {
@@ -330,12 +348,42 @@ export class DrizzleGamesRepository implements IGamesRepository {
   }
 
   async listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }> {
+    return this.listPublicCards(filter);
+  }
+
+  async findPublicCompanyPage(
+    role: GameCompanyRole,
+    slug: string,
+    filter: { page: number; limit: number },
+  ): Promise<PublicGameCompanyPage | null> {
+    const db = this.dbProvider.client;
+    const rows = role === "developer"
+      ? await db.select({ id: developers.id, name: developers.name, slug: developers.slug, countryCode: developers.countryCode })
+        .from(developers).where(eq(developers.slug, slug)).limit(1)
+      : await db.select({ id: publishers.id, name: publishers.name, slug: publishers.slug, countryCode: publishers.countryCode })
+        .from(publishers).where(eq(publishers.slug, slug)).limit(1);
+    const company = rows[0];
+    if (!company) return null;
+
+    const result = await this.listPublicCards(filter, { role, id: company.id });
+    return { company: { ...company, role }, ...result };
+  }
+
+  private async listPublicCards(
+    filter: { page: number; limit: number; q?: string },
+    company?: { role: GameCompanyRole; id: string },
+  ): Promise<{ items: GameCard[]; total: number }> {
     const db = this.dbProvider.client;
     const q = filter.q?.trim();
     // Escape LIKE wildcards so a search for "100%" matches literally.
     const pattern = q?.replace(/[\\%_]/g, (c) => `\\${c}`);
     // Current interest can include announced games and games without a release date.
-    const whereExpr = pattern ? ilike(games.title, `%${pattern}%`) : undefined;
+    const companyMatch = company?.role === "developer"
+      ? sql`exists (select 1 from ${gameDevelopers} where ${gameDevelopers.gameId} = ${games.id} and ${gameDevelopers.developerId} = ${company.id})`
+      : company?.role === "publisher"
+        ? sql`exists (select 1 from ${gamePublishers} where ${gamePublishers.gameId} = ${games.id} and ${gamePublishers.publisherId} = ${company.id})`
+        : undefined;
+    const whereExpr = and(pattern ? ilike(games.title, `%${pattern}%`) : undefined, companyMatch);
     // Matches games_recommendation_score_idx. Before the first refresh, null recommendations retain interest order.
     const popularOrder = [
       sql`${games.recommendationScore} desc nulls last`,
@@ -353,21 +401,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const [countResult, rows] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(games).where(whereExpr),
       db
-        .select({
-          id: games.id,
-          slug: games.slug,
-          title: games.title,
-          coverImageUrl: games.coverImageUrl,
-          releaseDate: games.releaseDate,
-          metacriticScore: games.metacriticScore,
-          openCriticScore: games.openCriticScore,
-          criticScore: games.criticScore,
-          criticScoreCount: games.criticScoreCount,
-          popularityScore: games.popularityScore,
-          hltbMainHours: games.hltbMainHours,
-          hltbMainExtraHours: games.hltbMainExtraHours,
-          hltbCompletionistHours: games.hltbCompletionistHours,
-        })
+        .select(PUBLIC_CARD_FIELDS)
         .from(games)
         .where(whereExpr)
         .orderBy(...order)
@@ -380,14 +414,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
   async findPublicCardsByIds(ids: string[]): Promise<GameCard[]> {
     const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))].slice(0, 48);
     if (!validIds.length) return [];
-    return this.dbProvider.client.select({
-      id: games.id, slug: games.slug, title: games.title, coverImageUrl: games.coverImageUrl,
-      releaseDate: games.releaseDate, metacriticScore: games.metacriticScore,
-      openCriticScore: games.openCriticScore, criticScore: games.criticScore,
-      criticScoreCount: games.criticScoreCount, popularityScore: games.popularityScore,
-      hltbMainHours: games.hltbMainHours, hltbMainExtraHours: games.hltbMainExtraHours,
-      hltbCompletionistHours: games.hltbCompletionistHours,
-    }).from(games).where(inArray(games.id, validIds));
+    return this.dbProvider.client.select(PUBLIC_CARD_FIELDS).from(games).where(inArray(games.id, validIds));
   }
 
   async loadCatalogIndex(): Promise<CatalogIndex> {
