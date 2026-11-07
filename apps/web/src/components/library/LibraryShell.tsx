@@ -6,7 +6,6 @@ import { getDictionary } from "../../dictionaries";
 import { localizeHref } from "../../lib/localizeHref";
 import { getAuthMode, getLoginHref } from "../../lib/oidc";
 import { getSessionUser } from "../../lib/session";
-import { LIBRARY_NAME } from "../../lib/librarySeo";
 import { profilePath } from "../../lib/profileLibrary";
 import AccountLink from "./AccountLink";
 import ExploreNavigation from "./ExploreNavigation";
@@ -28,8 +27,8 @@ export default async function LibraryShell({
   return (
     <div className={styles.shell} data-library="" data-ui-theme="graphite">
       <header className={styles.header}>
-        <Link href={localizeHref("/explore", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>
-          {dict.back_to_home}
+        <Link href={localizeHref("/explore", lang)} className={styles.wordmark}>
+          {dict.back_to_home} | Explorer
         </Link>
 
         <ExploreNavigation lang={lang} labels={{ games: dict.games, movies: dict.movies }} />

@@ -10,14 +10,11 @@ export default function ExploreNavigation({ lang, labels }: {
   labels: { games: string; movies: string };
 }) {
   const pathname = usePathname() || "/explore";
-  const tabs = [
-    { href: "/explore", label: "Explore", active: pathname === "/explore" },
-    ...(["games", "movies"] as const).map((section) => ({
-      href: `/explore/${section}`,
-      label: labels[section],
-      active: pathname === `/explore/${section}` || pathname.startsWith(`/explore/${section}/`),
-    })),
-  ];
+  const tabs = (["games", "movies"] as const).map((section) => ({
+    href: `/explore/${section}`,
+    label: labels[section],
+    active: pathname === `/explore/${section}` || pathname.startsWith(`/explore/${section}/`),
+  }));
 
   return <nav className={styles.tabs} aria-label="Explore sections">
     {tabs.map((tab) => <Link key={tab.href} href={localizeHref(tab.href, lang)}
