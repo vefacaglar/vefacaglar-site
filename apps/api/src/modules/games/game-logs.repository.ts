@@ -1,5 +1,5 @@
 import { games, platforms, userGamePlaytimeEntries, userGames } from "@vefacaglar/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -77,17 +77,17 @@ export class DrizzleGameLogsRepository implements IGameLogsRepository {
     return row ? { ...row.log, platformName: row.platformName } : null;
   }
 
-  async create(values: NewGameLog, playtime: PlaytimeIncrease | null): Promise<GameLogWithPlatform> {
+  async create(values: NewGameLog, playtime: PlaytimeIncrease | null, isPublic = false): Promise<GameLogWithPlatform> {
     return this.dbProvider.transaction(async () => {
-      const [created] = await this.dbProvider.client.insert(userGames).values(values).returning();
+      const [created] = await this.dbProvider.client.insert(userGames).values({ ...values, sharedAt: isPublic ? sql`now()` : null }).returning();
       await this.recordPlaytime(created, playtime);
       return (await this.findById(created.id))!;
     });
   }
 
-  async update(id: string, patch: Partial<NewGameLog>, playtime: PlaytimeIncrease | null): Promise<GameLogWithPlatform> {
+  async update(id: string, patch: Partial<NewGameLog>, playtime: PlaytimeIncrease | null, isPublic?: boolean): Promise<GameLogWithPlatform> {
     return this.dbProvider.transaction(async () => {
-      const [updated] = await this.dbProvider.client.update(userGames).set(patch).where(eq(userGames.id, id)).returning();
+      const [updated] = await this.dbProvider.client.update(userGames).set({ ...patch, ...(isPublic === undefined ? {} : { sharedAt: isPublic ? sql`coalesce(${userGames.sharedAt}, now())` : null }) }).where(eq(userGames.id, id)).returning();
       if (playtime) {
         await this.recordPlaytime(updated, playtime);
       } else if (updated && patch.status) {

@@ -33,8 +33,8 @@ export interface IGameLogsRepository {
   listPlaytimeActivityForUser(userId: string): Promise<LogPlaytimeActivity[]>;
   findById(id: string): Promise<GameLogWithPlatform | null>;
   /** Inserts the log and, when given, its playtime audit entry in one transaction. */
-  create(values: NewGameLog, playtime: PlaytimeIncrease | null): Promise<GameLogWithPlatform>;
+  create(values: NewGameLog, playtime: PlaytimeIncrease | null, isPublic?: boolean): Promise<GameLogWithPlatform>;
   /** Updates the log and, when given, records its playtime audit entry in one transaction. */
-  update(id: string, patch: Partial<NewGameLog>, playtime: PlaytimeIncrease | null): Promise<GameLogWithPlatform>;
+  update(id: string, patch: Partial<NewGameLog>, playtime: PlaytimeIncrease | null, isPublic?: boolean): Promise<GameLogWithPlatform>;
   delete(id: string): Promise<void>;
 }

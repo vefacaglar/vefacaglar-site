@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index, doublePrecision, jsonb } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { users } from './users';
 
 // Game Status Enum Values
@@ -127,6 +128,7 @@ export const userGames = pgTable('user_games', {
   // 0-100
   rating: integer('rating'),
   reviewText: text('review_text'),
+  sharedAt: timestamp('shared_at', { withTimezone: true, mode: 'date' }),
   notes: text('notes'),
   isFavorite: boolean('is_favorite').notNull().default(false),
   platformId: uuid('platform_id')
@@ -151,6 +153,8 @@ export const userGames = pgTable('user_games', {
   userIdIdx: index('user_games_user_id_idx').on(table.userId),
   gameIdIdx: index('user_games_game_id_idx').on(table.gameId),
   userIdStatusIdx: index('user_games_user_id_status_idx').on(table.userId, table.status),
+  sharedGameIdx: index('user_games_shared_game_idx').on(table.gameId, table.sharedAt, table.id).where(sql`${table.sharedAt} is not null`),
+  latestRatingIdx: index('user_games_latest_rating_idx').on(table.gameId, table.userId, table.createdAt, table.id).where(sql`${table.rating} > 0 and ${table.rating} <= 100`),
 }));
 
 // 8. UserGamePlaytimeEntries (append-only audit of playtime increases on a play log)

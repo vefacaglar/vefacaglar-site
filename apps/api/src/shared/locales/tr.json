@@ -34,5 +34,6 @@
   "err_movie_watch_date": "Choose a valid calendar date.",
   "err_movie_watch_conflict": "This watch request conflicts with an existing entry. Please refresh and try again.",
   "err_movie_watch_not_found": "Watch entry not found.",
-  "err_movie_rating": "Choose a whole number from 1 to 10."
+  "err_movie_rating": "Choose a whole number from 1 to 10.",
+  "err_game_review_length": "Reviews must be 2,000 characters or fewer."
 }

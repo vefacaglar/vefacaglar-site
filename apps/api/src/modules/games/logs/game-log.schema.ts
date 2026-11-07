@@ -16,11 +16,13 @@ export const GameLogSchema = Type.Object({
   completedAt: NullableString,
   playtimeHours: Type.Union([Type.Null(), Type.Number()]),
   notes: NullableString,
+  reviewText: NullableString,
+  isPublic: Type.Boolean(),
   createdAt: Type.String(),
 });
 export type GameLog = Static<typeof GameLogSchema>;
 
-/** Body shared by create and update; update applies it as a full replacement. */
+/** Existing fields use replacement semantics; omitted review/sharing additions are preserved on update. */
 export const GameLogBodySchema = Type.Object({
   status: GameLogStatusSchema,
   platformId: Type.Optional(Type.Union([Type.Null(), Type.String({ format: "uuid" })])),
@@ -30,6 +32,8 @@ export const GameLogBodySchema = Type.Object({
   completedAt: Type.Optional(NullableDate),
   playtimeHours: Type.Optional(Type.Union([Type.Null(), Type.Number({ minimum: 0, maximum: 100000 })])),
   notes: Type.Optional(Type.Union([Type.Null(), Type.String({ maxLength: 2000 })])),
+  reviewText: Type.Optional(Type.Union([Type.Null(), Type.String({ maxLength: 2000 })])),
+  isPublic: Type.Optional(Type.Boolean()),
 });
 export type GameLogBody = Static<typeof GameLogBodySchema>;
 
@@ -44,6 +48,8 @@ export function toGameLog(row: GameLogWithPlatform): GameLog {
     completedAt: row.completedAt,
     playtimeHours: playtime && playtime > 0 ? playtime : null,
     notes: row.notes,
+    reviewText: row.reviewText ?? null,
+    isPublic: row.sharedAt != null,
     createdAt: row.createdAt.toISOString(),
   };
 }

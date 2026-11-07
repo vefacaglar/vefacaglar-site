@@ -17,9 +17,37 @@ describe("CreateGameLogHandler", () => {
 
   beforeEach(() => {
     gamesRepo = {
+      create: vi.fn(),
+      findById: vi.fn(),
       findBySlug: vi.fn().mockResolvedValue({ id: "g-1", platforms: [{ id: "p-1" }] }),
-    } as unknown as Record<keyof IGamesRepository, any>;
-    logsRepo = { create: vi.fn().mockResolvedValue(createdRow) } as unknown as Record<keyof IGameLogsRepository, any>;
+      list: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      findGameIdsByRelation: vi.fn(),
+      findPublicCardsByIds: vi.fn(),
+      listPublic: vi.fn(),
+      findPublicCompanyPage: vi.fn(),
+      loadCatalogIndex: vi.fn(),
+      findByIds: vi.fn(),
+      findLookupsByIds: vi.fn(),
+      listPopularitySources: vi.fn(),
+      findOwnerRankingSource: vi.fn(),
+      listGameModeCandidates: vi.fn(),
+      writeGameModes: vi.fn(),
+      writePopularity: vi.fn(),
+      writeImportPage: vi.fn(),
+      linkDeveloper: vi.fn(),
+      unlinkDeveloper: vi.fn(),
+      linkPublisher: vi.fn(),
+      unlinkPublisher: vi.fn(),
+      linkGenre: vi.fn(),
+      unlinkGenre: vi.fn(),
+      linkPlatform: vi.fn(),
+      unlinkPlatform: vi.fn(),
+      linkTheme: vi.fn(),
+      unlinkTheme: vi.fn(),
+    };
+    logsRepo = { listForUserGame: vi.fn(), listForUser: vi.fn(), listPlaytimeActivityForUser: vi.fn(), findById: vi.fn(), create: vi.fn().mockResolvedValue(createdRow), update: vi.fn(), delete: vi.fn() };
     handler = new CreateGameLogHandler(gamesRepo, logsRepo);
   });
 
@@ -38,15 +66,15 @@ describe("CreateGameLogHandler", () => {
       notes: "great",
       userId: "u-1",
       gameId: "g-1",
-    }, { deltaHours: "12.0", previousHours: null, newHours: "12.0" });
+    }, { deltaHours: "12.0", previousHours: null, newHours: "12.0" }, false);
   });
 
   it("records no playtime entry when the log has no playtime", async () => {
     await handler.handle(request({ status: "playing" }));
-    expect(logsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ playtimeHours: null }), null);
+    expect(logsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ playtimeHours: null }), null, false);
 
     await handler.handle(request({ status: "playing", playtimeHours: 0 }));
-    expect(logsRepo.create).toHaveBeenLastCalledWith(expect.objectContaining({ playtimeHours: "0" }), null);
+    expect(logsRepo.create).toHaveBeenLastCalledWith(expect.objectContaining({ playtimeHours: "0" }), null, false);
   });
 
   it("rejects a platform the game is not on", async () => {
@@ -64,4 +92,13 @@ describe("CreateGameLogHandler", () => {
     gamesRepo.findBySlug.mockResolvedValue(null);
     await expect(handler.handle(request({ status: "playing" }))).rejects.toThrow("Game not found.");
   });
+  it("keeps quick logs private and reviews separate from private notes", async () => {
+    await handler.handle(request({ status: "completed", notes: "Private", reviewText: "  Public review draft  ", isPublic: true }));
+    expect(logsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ notes: "Private", reviewText: "Public review draft" }), null, true);
+  });
+  it("rejects oversized reviews before persistence", async () => {
+    await expect(handler.handle(request({ status: "completed", reviewText: "x".repeat(2001) }))).rejects.toThrow("err_game_review_length");
+    expect(logsRepo.create).not.toHaveBeenCalled();
+  });
+
 });

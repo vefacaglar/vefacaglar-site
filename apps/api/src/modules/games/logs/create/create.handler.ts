@@ -24,7 +24,8 @@ export class CreateGameLogHandler {
     const values = toGameLogValues(request.body, game);
     const created = await this.logsRepo.create(
       { ...values, status: request.body.status, userId: request.user!.id, gameId: game.id },
-      playtimeIncrease(null, values.playtimeHours)
+      playtimeIncrease(null, values.playtimeHours),
+      request.body.isPublic ?? false
     );
     return toGameLog(created);
   }

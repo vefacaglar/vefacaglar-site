@@ -13,7 +13,7 @@ export class CreateMovieWatchHandler {
     const comment = normalizeWatchComment(request.body.comment);
     const movieId = await this.repo.findPublicMovieId(request.params.slug);
     if (!movieId) throw new NotFoundError("err_movie_not_found");
-    const watch = await this.repo.createWatch(request.user!.id, movieId, request.body.id, watchedOn, comment);
+    const watch = await this.repo.createWatch(request.user!.id, movieId, request.body.id, watchedOn, comment, request.body.isPublic ?? false);
     if (!watch) throw new ConflictError("err_movie_watch_conflict");
     return toMovieWatch(watch);
   }

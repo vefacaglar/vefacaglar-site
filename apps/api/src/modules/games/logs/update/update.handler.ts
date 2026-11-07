@@ -30,7 +30,8 @@ export class UpdateGameLogHandler {
     const updated = await this.logsRepo.update(
       log.id,
       { ...values, updatedAt: new Date() },
-      playtimeIncrease(log.playtimeHours, values.playtimeHours)
+      playtimeIncrease(log.playtimeHours, values.playtimeHours),
+      request.body.isPublic
     );
     return toGameLog(updated);
   }

@@ -23,6 +23,8 @@ import { GetDeveloperGamesHandler } from "./developers/detail/detail.handler";
 import { DeveloperParams, DeveloperParamsSchema, DeveloperQuery, DeveloperQuerySchema, DeveloperResponseSchema } from "./developers/detail/detail.schema";
 import { GetPublisherGamesHandler } from "./publishers/detail/detail.handler";
 import { PublisherParams, PublisherParamsSchema, PublisherQuery, PublisherQuerySchema, PublisherResponseSchema } from "./publishers/detail/detail.schema";
+import { GetGameCommunityHandler } from "./community/community.handler";
+import { GameCommunityParamsSchema, GameCommunityQuerySchema, GameCommunitySchema, type GameCommunityParams, type GameCommunityQuery } from "./community/community.schema";
 
 /** Public games pages: catalog browsing plus the signed-in user's own play logs. */
 export async function publicGamesRoutes(app: FastifyInstance) {
@@ -37,6 +39,7 @@ export async function publicGamesRoutes(app: FastifyInstance) {
   const deleteLogHandler = container.resolve(DeleteGameLogHandler);
   const developerHandler = container.resolve(GetDeveloperGamesHandler);
   const publisherHandler = container.resolve(GetPublisherGamesHandler);
+  const communityHandler = container.resolve(GetGameCommunityHandler);
 
   app.get<{ Querystring: ListGamesQuery }>("/", {
     schema: {
@@ -95,6 +98,14 @@ export async function publicGamesRoutes(app: FastifyInstance) {
       },
     },
   }, (request) => publicLibraryHandler.handle(request));
+
+  app.get<{ Params: GameCommunityParams; Querystring: GameCommunityQuery }>("/:slug/community", {
+    schema: {
+      description: "Site ratings and explicitly shared logs from active public profiles",
+      tags: ["Games"], params: GameCommunityParamsSchema, querystring: GameCommunityQuerySchema,
+      response: { 200: GameCommunitySchema, 404: ErrorResponseSchema },
+    },
+  }, (request) => communityHandler.handle(request));
 
   app.get<{ Params: GetGameParams }>("/:slug", {
     schema: {

@@ -5,6 +5,9 @@ import type { GameLogBody } from "./game-log.schema";
 
 /** Validates a log body against its game and converts it to column values. */
 export function toGameLogValues(body: GameLogBody, game: GameWithRelations): Partial<NewGameLog> {
+  if (body.reviewText != null && Array.from(body.reviewText).length > 2000) {
+    throw new BadRequestError("err_game_review_length");
+  }
   const platformId = body.platformId ?? null;
   if (platformId && !game.platforms.some((p) => p.id === platformId)) {
     throw new BadRequestError("This game is not available on the selected platform.");
@@ -23,5 +26,6 @@ export function toGameLogValues(body: GameLogBody, game: GameWithRelations): Par
     completedAt,
     playtimeHours: body.playtimeHours == null ? null : String(body.playtimeHours),
     notes: body.notes?.trim() || null,
+    ...(body.reviewText === undefined ? {} : { reviewText: body.reviewText?.trim() || null }),
   };
 }

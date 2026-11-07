@@ -13,7 +13,7 @@ describe("UpdateMovieWatchHandler", () => {
   it("scopes date edits by user, movie and watch without touching ratings", async () => {
     const repo = mockActivityRepo(); repo.updateWatch.mockResolvedValue(watch);
     await new UpdateMovieWatchHandler(repo).handle(request({ watchedOn: "2026-11-07" }));
-    expect(repo.updateWatch).toHaveBeenCalledWith("owner", "movie", "watch", "2026-11-07", undefined);
+    expect(repo.updateWatch).toHaveBeenCalledWith("owner", "movie", "watch", "2026-11-07", undefined, undefined);
     expect(repo.setRating).not.toHaveBeenCalled();
   });
   it("treats a missing or non-owned watch as not found", async () => {
@@ -29,14 +29,21 @@ describe("UpdateMovieWatchHandler", () => {
     const repo = mockActivityRepo(); repo.updateWatch.mockResolvedValue(watch);
     const handler = new UpdateMovieWatchHandler(repo);
     await handler.handle(request({ watchedOn: "2026-11-07", comment: "  Rewatched with friends.  " }));
-    expect(repo.updateWatch).toHaveBeenLastCalledWith("owner", "movie", "watch", "2026-11-07", "Rewatched with friends.");
+    expect(repo.updateWatch).toHaveBeenLastCalledWith("owner", "movie", "watch", "2026-11-07", "Rewatched with friends.", undefined);
     await handler.handle(request({ watchedOn: "2026-11-07", comment: "  " }));
-    expect(repo.updateWatch).toHaveBeenLastCalledWith("owner", "movie", "watch", "2026-11-07", null);
+    expect(repo.updateWatch).toHaveBeenLastCalledWith("owner", "movie", "watch", "2026-11-07", null, undefined);
   });
   it("rejects an oversized comment before any update", async () => {
     const repo = mockActivityRepo();
     await expect(new UpdateMovieWatchHandler(repo).handle(request({ watchedOn: "2026-11-07", comment: "x".repeat(2001) }))).rejects.toThrow(BadRequestError);
     expect(repo.updateWatch).not.toHaveBeenCalled();
+  });
+
+  it("passes an explicit unshare independently of an omitted comment", async () => {
+    const repo = mockActivityRepo(); repo.updateWatch.mockResolvedValue({ ...watch, sharedAt: null });
+    const result = await new UpdateMovieWatchHandler(repo).handle(request({ watchedOn: "2026-11-07", isPublic: false }));
+    expect(repo.updateWatch).toHaveBeenCalledWith("owner", "movie", "watch", "2026-11-07", undefined, false);
+    expect(result.isPublic).toBe(false);
   });
 
 });

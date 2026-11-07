@@ -16,5 +16,5 @@ export function normalizeWatchComment(value: string | null | undefined): string 
   return value.trim() || null;
 }
 export function toMovieWatch(row: MovieWatchRow): MovieWatch {
-  return { id: row.id, watchedOn: row.watchedOn, comment: row.comment, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+  return { id: row.id, watchedOn: row.watchedOn, comment: row.comment, isPublic: row.sharedAt != null, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
 }
