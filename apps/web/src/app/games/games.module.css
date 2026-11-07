@@ -54,7 +54,7 @@
   color: var(--accent);
 }
 
-.searchClear {
+.searchForm .searchClear {
   position: absolute;
   right: 6px;
   top: 50%;
@@ -75,12 +75,17 @@
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.searchClear:hover {
+.searchForm .searchClear:hover {
   color: var(--text-heading);
   background: var(--surface-2);
+  transform: translateY(-50%);
 }
 
-.searchClear:focus-visible {
+.searchForm .searchClear:active {
+  transform: translateY(-50%);
+}
+
+.searchForm .searchClear:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 1px;
 }

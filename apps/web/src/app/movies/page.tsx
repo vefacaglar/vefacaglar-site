@@ -33,7 +33,6 @@ export default async function Movies({ searchParams }: {
           {lang !== "en" && <input type="hidden" name="lang" value={lang} />}
           <input className={styles.searchInput} type="search" name="q" defaultValue={query}
             placeholder="Search movies" aria-label="Search movies" maxLength={140} />
-          <button className="btnGhost" type="submit">Search</button>
         </form>
       </LibraryMasthead>
       {rankingNotice && <p className={styles.rankingNotice}>

@@ -7,33 +7,36 @@ import { getDictionary } from "../../dictionaries";
 import { localizeHref } from "../../lib/localizeHref";
 import styles from "./games.module.css";
 
-const DEBOUNCE_MS = 300;
-
-/** Search box that updates the results as you type, keeping the query in the URL. */
+/** Search box that applies its query on form submission. */
 export default function GamesSearch({ initialQuery = "" }: { initialQuery?: string }) {
   const router = useRouter();
   const locale = useLocale();
   const dict = getDictionary(locale);
   const [value, setValue] = useState(initialQuery);
   const [isPending, startTransition] = useTransition();
-  const lastSent = useRef(initialQuery);
+  const lastSubmitted = useRef<string | null>(null);
 
   useEffect(() => {
-    const q = value.trim();
-    if (q === lastSent.current) return;
-    const timer = setTimeout(() => {
-      lastSent.current = q;
-      const target = q ? `/games?q=${encodeURIComponent(q)}` : "/games";
-      startTransition(() => router.replace(localizeHref(target, locale), { scroll: false }));
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [value, locale, router]);
+    const submitted = lastSubmitted.current;
+    setValue((current) =>
+      submitted === initialQuery && current.trim() !== submitted ? current : initialQuery,
+    );
+    lastSubmitted.current = null;
+  }, [initialQuery]);
 
   return (
     <form
       className={styles.searchForm}
       data-pending={isPending ? "" : undefined}
-      onSubmit={(e) => e.preventDefault()}
+      aria-busy={isPending}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const query = value.trim();
+        const target = query ? `/games?q=${encodeURIComponent(query)}` : "/games";
+        lastSubmitted.current = query;
+        setValue(query);
+        startTransition(() => router.push(localizeHref(target, locale), { scroll: false }));
+      }}
       role="search"
     >
       <svg
@@ -63,7 +66,7 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
       {value.length > 0 && (
         <button
           type="button"
-          className={styles.searchClear}
+          className={`btnGhost ${styles.searchClear}`}
           onClick={() => setValue("")}
           aria-label={dict.library_date_clear}
         >
