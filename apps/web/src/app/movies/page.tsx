@@ -65,7 +65,7 @@ export default async function Movies({ searchParams }: {
             labels={{ previous: "Previous", next: "Next", pageOf: "Page {current} of {total}" }} />
         </>
       ) : <p className={styles.empty}>{query ? "No movies match your search." : "The movie catalog is being prepared. Check back soon."}</p>}
-      <p className={styles.source}>Film data from <a href="https://www.wikidata.org/">Wikidata</a>. Posters from Wikimedia Commons where reusable artwork is available. Coverage varies as the catalog grows.</p>
+      <p className={styles.source}>Film data from <a href="https://www.wikidata.org/">Wikidata</a>. Posters from Wikipedia and Wikimedia Commons when available. Coverage varies as the catalog grows.</p>
     </div>
   );
 }
