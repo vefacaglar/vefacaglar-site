@@ -20,6 +20,12 @@ export interface MovieList {
   totalPages: number;
   ranking: MovieRanking;
 }
+export type MoviePersonRole = "cast" | "director" | "producer";
+export interface MoviePersonFilm extends MovieCard { roles: MoviePersonRole[] }
+export interface MoviePersonPage extends MovieList {
+  person: { wikidataId: string; name: string };
+  items: MoviePersonFilm[];
+}
 export interface MovieRanking {
   mode: "wikipedia_interest" | "alphabetical";
   sourceDate: string | null;
@@ -51,7 +57,7 @@ export function getMovieRankingNotice(ranking: MovieRanking | null | undefined) 
 }
 export interface MovieCredit {
   statementId: string;
-  role: "cast" | "director" | "producer";
+  role: MoviePersonRole;
   wikidataId: string;
   name: string | null;
   characterNames: string[];
@@ -84,3 +90,18 @@ export const getPublicMovies = cache((page: number, query?: string) => {
 export const getMovie = cache((slug: string) =>
   movieJson<MovieDetail>(`/api/movies/${encodeURIComponent(slug)}`)
 );
+
+export function moviePersonHref(wikidataId: string) {
+  return `/movies/people/${encodeURIComponent(wikidataId)}`;
+}
+
+export function moviePageNumber(value?: string) {
+  const page = Number(value);
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1;
+}
+
+export const getMoviePerson = cache((wikidataId: string, page: number) => {
+  if (!/^Q[1-9][0-9]{0,20}$/.test(wikidataId)) return Promise.resolve(null);
+  const params = new URLSearchParams({ page: String(page), limit: "21" });
+  return movieJson<MoviePersonPage>(`/api/movies/people/${encodeURIComponent(wikidataId)}?${params}`);
+});

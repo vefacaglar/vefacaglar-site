@@ -1,0 +1,9 @@
+.back { display: inline-block; margin-bottom: 28px; color: var(--muted); font-size: 14px; text-decoration: none; }
+.back:hover { color: var(--accent); }
+.summary { margin: 0 0 20px; color: var(--muted); font-size: 12px; }
+.rankingNotice { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.rankingNotice a, .source a { color: var(--text); }
+.empty { padding: 24px 0; margin: 0; color: var(--muted); line-height: 1.6; }
+.empty p { margin: 0 0 16px; }
+.pagination { margin-top: 40px; }
+.source { margin: 36px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }

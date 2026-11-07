@@ -18,41 +18,11 @@
 .summary { margin: 0 0 20px; color: var(--muted); font-size: 12px; }
 .rankingNotice { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .rankingNotice a { color: var(--text); }
-.grid {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px 24px;
-}
-.card { display: flex; align-items: flex-start; gap: 16px; text-decoration: none; color: var(--text); }
-.card:focus-visible { outline: 1px solid var(--accent); outline-offset: 6px; }
-.poster {
-  flex: 0 0 110px;
-  width: 110px;
-  aspect-ratio: 2 / 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-.poster img { width: 100%; height: 100%; object-fit: contain; }
-.posterMark { color: var(--faint); font-family: var(--font-display), serif; font-size: 22px; }
-.caption { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; padding-top: 4px; }
-.title { color: var(--text-heading); font-size: 15px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
-.card:hover .title { color: var(--accent); }
-.meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .empty { padding: 24px 0; margin: 0; color: var(--muted); }
 .pagination { margin-top: 40px; }
 .source { margin: 36px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .source a { color: var(--text); }
-@media (max-width: 1024px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  .grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .poster { flex-basis: 96px; width: 96px; }
   .search { flex-wrap: wrap; }
   .searchInput { flex: 1 1 160px; }
 }

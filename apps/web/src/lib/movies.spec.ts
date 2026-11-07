@@ -4,7 +4,7 @@ vi.mock("react", () => ({ cache: (fn: unknown) => fn }));
 vi.mock("./httpClient", () => ({ httpClient: { get: vi.fn() } }));
 
 import { httpClient } from "./httpClient";
-import { getMovie, getMovieRankingNotice, getPublicMovies } from "./movies";
+import { getMovie, getMoviePerson, getMovieRankingNotice, getPublicMovies, moviePageNumber, moviePersonHref } from "./movies";
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -26,6 +26,37 @@ describe("movie data requests", () => {
     vi.mocked(httpClient.get).mockResolvedValue(new Response(null, { status: 404 }));
     await getMovie("a/b?c");
     expect(httpClient.get).toHaveBeenCalledWith("/api/movies/a%2Fb%3Fc");
+  });
+  it("loads a stable person identity and keeps the requested filmography page", async () => {
+    vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify({ person: { wikidataId: "Q25191", name: "Christopher Nolan" }, items: [] }), { status: 200 }));
+    expect(await getMoviePerson("Q25191", 2)).toMatchObject({ person: { wikidataId: "Q25191" }, items: [] });
+    expect(httpClient.get).toHaveBeenCalledWith("/api/movies/people/Q25191?page=2&limit=21");
+  });
+  it("keeps missing people separate from upstream failures", async () => {
+    vi.mocked(httpClient.get).mockResolvedValueOnce(new Response(null, { status: 404 }));
+    expect(await getMoviePerson("Q999", 1)).toBeNull();
+    vi.mocked(httpClient.get).mockResolvedValueOnce(new Response(null, { status: 502 }));
+    await expect(getMoviePerson("Q25191", 1)).rejects.toThrow("502");
+  });
+  it("rejects malformed person identities without a network request", async () => {
+    for (const id of ["Q0", "q123", "person-name", "Q123/other", "Q123?admin=true"]) {
+      expect(await getMoviePerson(id, 1)).toBeNull();
+    }
+    expect(httpClient.get).not.toHaveBeenCalled();
+  });
+});
+
+describe("movie person navigation", () => {
+  it("uses the stable ID and safely encodes it as a single route segment", () => {
+    expect(moviePersonHref("Q25191")).toBe("/movies/people/Q25191");
+    expect(moviePersonHref("a/b?c")).toBe("/movies/people/a%2Fb%3Fc");
+  });
+
+  it("accepts positive page numbers and safely resets malformed page input", () => {
+    expect(moviePageNumber("2")).toBe(2);
+    for (const input of [undefined, "0", "-1", "1.5", "Infinity", "NaN", "9007199254740992"]) {
+      expect(moviePageNumber(input)).toBe(1);
+    }
   });
 });
 

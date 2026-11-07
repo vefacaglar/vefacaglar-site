@@ -1,4 +1,3 @@
-import Link from "next/link";
 import styles from "./movies.module.css";
 import { getActiveLanguage } from "../../lib/lang";
 import { localizeHref } from "../../lib/localizeHref";
@@ -7,7 +6,7 @@ import { libraryMetadata } from "../../lib/librarySeo";
 import { getMovieRankingNotice, getPublicMovies } from "../../lib/movies";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
 import Pagination from "../components/Pagination";
-import PosterCredit from "../../components/movies/PosterCredit";
+import MovieCards from "../../components/movies/MovieCards";
 
 export async function generateMetadata() {
   const lang = await getActiveLanguage();
@@ -41,26 +40,7 @@ export default async function Movies({ searchParams }: {
       {data?.items.length ? (
         <>
           <p className={styles.summary}>{data.total.toLocaleString("en-US")} {data.total === 1 ? "movie" : "movies"}</p>
-          <ul className={styles.grid}>
-            {data.items.map((movie) => (
-              <li key={movie.slug}>
-                <Link href={localizeHref(`/movies/${movie.slug}`, lang)} className={styles.card}>
-                  <span className={styles.poster} aria-hidden="true">
-                    {movie.posterImageUrl && movie.posterAttribution ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={movie.posterImageUrl} alt="" loading="lazy" />
-                    ) : <span className={styles.posterMark}>Film</span>}
-                  </span>
-                  <span className={styles.caption}>
-                    <span className={styles.title}>{movie.title}</span>
-                    {movie.releaseYear !== null && <span className={styles.meta}>{movie.releaseYear}</span>}
-                    {movie.runtimeMinutes !== null && <span className={styles.meta}>{movie.runtimeMinutes} min</span>}
-                  </span>
-                </Link>
-                {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
-              </li>
-            ))}
-          </ul>
+          <MovieCards movies={data.items} lang={lang} />
           <Pagination currentPage={page} totalPages={data.totalPages} className={styles.pagination}
             labels={{ previous: "Previous", next: "Next", pageOf: "Page {current} of {total}" }} />
         </>

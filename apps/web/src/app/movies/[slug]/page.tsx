@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMovie, type MovieCredit } from "../../../lib/movies";
+import { getMovie, moviePersonHref, type MovieCredit } from "../../../lib/movies";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizeHref } from "../../../lib/localizeHref";
 import { localizedAlternates } from "../../../lib/seo";
@@ -61,7 +61,7 @@ export default async function Movie({ params }: Props) {
           <ul className={styles.credits}>
             {section.items.map((person) => (
               <li key={person.statementId}>
-                <a href={`https://www.wikidata.org/wiki/${person.wikidataId}`}>{person.name}</a>
+                <Link href={localizeHref(moviePersonHref(person.wikidataId), lang)}>{person.name}</Link>
                 {person.characterNames.length > 0 && <span className={styles.character}>{person.characterNames.join(", ")}</span>}
               </li>
             ))}
