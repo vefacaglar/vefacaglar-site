@@ -6,7 +6,7 @@ import { libraryMetadata } from "../../lib/librarySeo";
 import { getPublicGames } from "../../lib/data";
 import Pagination from "../components/Pagination";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
-import GamesSearch from "./GamesSearch";
+import CatalogSearch from "../../components/library/CatalogSearch";
 import GameGrid, { type GameCardItem } from "./GameGrid";
 
 export async function generateMetadata() {
@@ -37,7 +37,7 @@ export default async function Games(props: GamesProps) {
   return (
     <div>
       <LibraryMasthead title={dict.games} subtitle={dict.games_subtitle}>
-        <GamesSearch initialQuery={query} />
+        <CatalogSearch basePath="/games" initialQuery={query} placeholder={dict.games_search_placeholder} />
       </LibraryMasthead>
 
       {games.length === 0 ? (

@@ -2,13 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useLocale } from "../../components/LocaleProvider";
+import { useLocale } from "../LocaleProvider";
 import { getDictionary } from "../../dictionaries";
 import { localizeHref } from "../../lib/localizeHref";
-import styles from "./games.module.css";
+import styles from "./CatalogSearch.module.css";
 
-/** Search box that applies its query on form submission. */
-export default function GamesSearch({ initialQuery = "" }: { initialQuery?: string }) {
+export default function CatalogSearch({
+  basePath,
+  initialQuery = "",
+  placeholder,
+  maxLength,
+}: {
+  basePath: string;
+  initialQuery?: string;
+  placeholder: string;
+  maxLength?: number;
+}) {
   const router = useRouter();
   const locale = useLocale();
   const dict = getDictionary(locale);
@@ -32,7 +41,7 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
       onSubmit={(event) => {
         event.preventDefault();
         const query = value.trim();
-        const target = query ? `/games?q=${encodeURIComponent(query)}` : "/games";
+        const target = query ? `${basePath}?q=${encodeURIComponent(query)}` : basePath;
         lastSubmitted.current = query;
         setValue(query);
         startTransition(() => router.push(localizeHref(target, locale), { scroll: false }));
@@ -59,8 +68,9 @@ export default function GamesSearch({ initialQuery = "" }: { initialQuery?: stri
         name="q"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={dict.games_search_placeholder}
-        aria-label={dict.games_search_placeholder}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        maxLength={maxLength}
         autoComplete="off"
       />
       {value.length > 0 && (

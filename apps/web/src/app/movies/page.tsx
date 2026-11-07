@@ -1,10 +1,10 @@
 import styles from "./movies.module.css";
 import { getActiveLanguage } from "../../lib/lang";
-import { localizeHref } from "../../lib/localizeHref";
 import { localizedAlternates } from "../../lib/seo";
 import { libraryMetadata } from "../../lib/librarySeo";
 import { getMovieRankingNotice, getPublicMovies } from "../../lib/movies";
 import LibraryMasthead from "../../components/library/LibraryMasthead";
+import CatalogSearch from "../../components/library/CatalogSearch";
 import Pagination from "../components/Pagination";
 import MovieCards from "../../components/movies/MovieCards";
 
@@ -28,18 +28,13 @@ export default async function Movies({ searchParams }: {
   return (
     <div>
       <LibraryMasthead title="Movies" subtitle="Explore films, cast, and filmmakers.">
-        <form className={styles.search} action={localizeHref("/movies", lang)} role="search">
-          {lang !== "en" && <input type="hidden" name="lang" value={lang} />}
-          <input className={styles.searchInput} type="search" name="q" defaultValue={query}
-            placeholder="Search movies" aria-label="Search movies" maxLength={140} />
-        </form>
+        <CatalogSearch basePath="/movies" initialQuery={query} placeholder="Search movies" maxLength={140} />
       </LibraryMasthead>
       {rankingNotice && <p className={styles.rankingNotice}>
         Wikipedia interest · {rankingNotice.date}. Films appearing among the most-viewed English Wikipedia articles. Other films follow alphabetically. <a href={rankingNotice.sourceUrl}>Source</a>
       </p>}
       {data?.items.length ? (
         <>
-          <p className={styles.summary}>{data.total.toLocaleString("en-US")} {data.total === 1 ? "movie" : "movies"}</p>
           <MovieCards movies={data.items} lang={lang} />
           <Pagination currentPage={page} totalPages={data.totalPages} className={styles.pagination}
             labels={{ previous: "Previous", next: "Next", pageOf: "Page {current} of {total}" }} />
