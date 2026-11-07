@@ -72,6 +72,14 @@ describe("bounded movie sync handler", () => {
     expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ title: "The Godfather", isFilm: true }), expect.any(Date));
     expect(client.fetchLabels).not.toHaveBeenCalled();
   });
+  it("hydrates films using an available source-language title when English and original-title claims are absent", async () => {
+    const raw = { ...entity(), labels: { bn: { value: "একটি চলচ্চিত্র" } } };
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703" }]);
+    client.fetchEntities.mockResolvedValue({ Q47703: raw });
+    expect(await run({ maxRequests: 1 })).toMatchObject({ hydrated: 1, failed: 0, requests: 1 });
+    expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ title: "একটি চলচ্চিত্র" }), expect.any(Date));
+    expect(repo.markEntityFailure).not.toHaveBeenCalled();
+  });
   it("does not replace data for missing/partial entities", async () => {
     repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703" }]);
     client.fetchEntities.mockResolvedValue({ Q47703: { id: "Q47703", missing: "" } });

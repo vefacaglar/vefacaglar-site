@@ -18,7 +18,11 @@ export class WikidataEntityClient implements IWikidataEntityClient {
     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
     this.lastRequestAt = Date.now();
     const url = new URL(API);
-    url.search = new URLSearchParams({ action: "wbgetentities", ids: [...new Set(qids)].join("|"), props, languages: "en", languagefallback: "1", format: "json", maxlag: "5" }).toString();
+    const parameters = new URLSearchParams({ action: "wbgetentities", ids: [...new Set(qids)].join("|"), props, languagefallback: "1", format: "json", maxlag: "5" });
+    // A film may only have a source-language label. Full movie snapshots keep
+    // those names; normalizeMovie still prefers English when it is available.
+    if (props === "labels") parameters.set("languages", "en");
+    url.search = parameters.toString();
     const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000);
     let response: Response;
     try { response = await fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, signal: requestSignal, redirect: "error" }); }
