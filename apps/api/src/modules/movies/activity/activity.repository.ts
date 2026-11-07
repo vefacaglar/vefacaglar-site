@@ -1,5 +1,5 @@
 import { injectable } from "tsyringe";
-import { and, count, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { movies, userMovieWatches, userMovieRatings } from "@vefacaglar/db";
 import { DbProvider } from "../../../db.provider";
 import { publicMoviePoster } from "../artwork/poster-source";
@@ -21,17 +21,17 @@ export class DrizzleMovieActivityRepository implements IMovieActivityRepository 
     ]);
     return { rating: ratings[0]?.rating ?? null, watches, total: Number(totals[0]?.total ?? 0) };
   }
-  async createWatch(userId: string, movieId: string, id: string, watchedOn: string): Promise<MovieWatchRow | null> {
+  async createWatch(userId: string, movieId: string, id: string, watchedOn: string, comment: string | null): Promise<MovieWatchRow | null> {
     return this.dbProvider.transaction(async () => {
-      const [inserted] = await this.dbProvider.client.insert(userMovieWatches).values({ id, userId, movieId, watchedOn }).onConflictDoNothing({ target: userMovieWatches.id }).returning();
+      const [inserted] = await this.dbProvider.client.insert(userMovieWatches).values({ id, userId, movieId, watchedOn, comment }).onConflictDoNothing({ target: userMovieWatches.id }).returning();
       if (inserted) return inserted;
       // A retried request can only replay the exact same owned watch. A collision never becomes an update.
-      const [existing] = await this.dbProvider.client.select().from(userMovieWatches).where(and(eq(userMovieWatches.id, id), eq(userMovieWatches.userId, userId), eq(userMovieWatches.movieId, movieId), eq(userMovieWatches.watchedOn, watchedOn))).limit(1);
+      const [existing] = await this.dbProvider.client.select().from(userMovieWatches).where(and(eq(userMovieWatches.id, id), eq(userMovieWatches.userId, userId), eq(userMovieWatches.movieId, movieId), eq(userMovieWatches.watchedOn, watchedOn), comment === null ? isNull(userMovieWatches.comment) : eq(userMovieWatches.comment, comment))).limit(1);
       return existing ?? null;
     });
   }
-  async updateWatch(userId: string, movieId: string, id: string, watchedOn: string): Promise<MovieWatchRow | null> {
-    const [row] = await this.dbProvider.client.update(userMovieWatches).set({ watchedOn, updatedAt: new Date() }).where(and(eq(userMovieWatches.id, id), eq(userMovieWatches.userId, userId), eq(userMovieWatches.movieId, movieId))).returning();
+  async updateWatch(userId: string, movieId: string, id: string, watchedOn: string, comment?: string | null): Promise<MovieWatchRow | null> {
+    const [row] = await this.dbProvider.client.update(userMovieWatches).set({ watchedOn, ...(comment === undefined ? {} : { comment }), updatedAt: new Date() }).where(and(eq(userMovieWatches.id, id), eq(userMovieWatches.userId, userId), eq(userMovieWatches.movieId, movieId))).returning();
     return row ?? null;
   }
   async deleteWatch(userId: string, movieId: string, id: string): Promise<boolean> {

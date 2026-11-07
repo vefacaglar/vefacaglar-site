@@ -4,7 +4,7 @@ import { GetMovieLibraryHandler } from "./library.handler";
 import type { IMovieActivityRepository } from "../activity/activity.repository.interface";
 import type { IUsersRepository } from "../../auth/users.repository.interface";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../../../shared/http-errors";
-const watch = { id: "private-watch-id", watchedOn: "2026-11-07", createdAt: new Date(), updatedAt: new Date() };
+const watch = { id: "private-watch-id", watchedOn: "2026-11-07", comment: "This comment must remain private", createdAt: new Date(), updatedAt: new Date() };
 const movie = { slug: "film", title: "Film", releaseDate: null, releaseYear: 2026, runtimeMinutes: 100, posterImageUrl: null, posterAttribution: null };
 const request = (viewer?: string) => ({ params: { username: "vefa" }, user: viewer ? { id: viewer } : undefined }) as any;
 describe("GetMovieLibraryHandler", () => {
@@ -22,11 +22,13 @@ describe("GetMovieLibraryHandler", () => {
     expect(result.summary).toEqual({ filmCount: 2, watchedFilmCount: 1, watchCount: 2, ratedFilmCount: 2, averageRating: 9 });
     expect(result.movies[0].watches).toEqual([{ watchedOn: "2026-11-07" }, { watchedOn: "2026-11-07" }]);
     expect(result.user).toEqual({ username: "vefa", displayName: "Vefa", isProfilePublic: true });
+    expect(JSON.stringify(result)).not.toContain("This comment must remain private");
     expect(JSON.stringify(result)).not.toContain("private-watch-id"); expect(JSON.stringify(result)).not.toContain("private@example.com");
   });
   it("exposes edit IDs only to the owner even on a private profile", async () => {
     user.isProfilePublic = false; repo.listLibrary.mockResolvedValue([{ movie, rating: null, watches: [watch] }]);
     const result = await new GetMovieLibraryHandler(users, repo).handle(request("owner"));
+    expect(JSON.stringify(result)).not.toContain("This comment must remain private");
     expect(result.isOwner).toBe(true); expect(result.movies[0].watches[0].id).toBe(watch.id);
   });
   it.each([[undefined, UnauthorizedError], ["other", ForbiddenError]])("withholds a private profile from %s", async (viewer, error) => {

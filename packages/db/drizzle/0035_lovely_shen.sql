@@ -1,0 +1,2 @@
+ALTER TABLE "user_movie_watches" ADD COLUMN "comment" text;--> statement-breakpoint
+ALTER TABLE "user_movie_watches" ADD CONSTRAINT "user_movie_watches_comment_length" CHECK (char_length("user_movie_watches"."comment") <= 2000);

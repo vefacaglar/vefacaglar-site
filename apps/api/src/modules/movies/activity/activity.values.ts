@@ -10,6 +10,11 @@ export function validateWatchDate(value: string): string {
   if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw new BadRequestError("err_movie_watch_date");
   return value;
 }
+export function normalizeWatchComment(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  if (Array.from(value).length > 2000) throw new BadRequestError("err_movie_watch_comment");
+  return value.trim() || null;
+}
 export function toMovieWatch(row: MovieWatchRow): MovieWatch {
-  return { id: row.id, watchedOn: row.watchedOn, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+  return { id: row.id, watchedOn: row.watchedOn, comment: row.comment, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
 }

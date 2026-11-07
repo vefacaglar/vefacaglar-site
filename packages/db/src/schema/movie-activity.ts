@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, date, integer, timestamp, primaryKey, index, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, date, integer, text, timestamp, primaryKey, index, check } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { movies } from "./movies";
 export const userMovieWatches = pgTable("user_movie_watches", {
@@ -7,9 +7,11 @@ export const userMovieWatches = pgTable("user_movie_watches", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   movieId: uuid("movie_id").notNull().references(() => movies.id, { onDelete: "cascade" }),
   watchedOn: date("watched_on").notNull(),
+  comment: text("comment"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 }, (table) => ({
+  commentLength: check("user_movie_watches_comment_length", sql`char_length(${table.comment}) <= 2000`),
   movieHistoryIdx: index("user_movie_watches_movie_history_idx").on(table.userId, table.movieId, table.watchedOn, table.id),
   userHistoryIdx: index("user_movie_watches_user_history_idx").on(table.userId, table.watchedOn, table.id),
 }));

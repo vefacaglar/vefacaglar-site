@@ -30,6 +30,7 @@
   "err_hltb_mismatch_required": "Confirm the title or release-year mismatch before applying.",
   "err_hltb_provider_unavailable": "HowLongToBeat is temporarily unavailable. Try again later.",
   "err_hltb_busy": "The catalog is being updated. Try applying again shortly.",
+  "err_movie_watch_comment": "Keep your comment within 2,000 characters.",
   "err_movie_watch_date": "Choose a valid calendar date.",
   "err_movie_watch_conflict": "This watch request conflicts with an existing entry. Please refresh and try again.",
   "err_movie_watch_not_found": "Watch entry not found.",
