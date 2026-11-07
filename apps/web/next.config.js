@@ -81,6 +81,8 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      { source: "/games/:path*", destination: "/explore/games/:path*", permanent: true },
+      { source: "/movies/:path*", destination: "/explore/movies/:path*", permanent: true },
       {
         source: "/home",
         destination: "/",

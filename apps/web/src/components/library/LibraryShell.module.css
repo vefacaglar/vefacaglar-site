@@ -136,12 +136,29 @@
 
 .footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
   padding: 20px 0 32px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.sources {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sources a {
+  color: var(--text);
 }
 
 .footerMark {

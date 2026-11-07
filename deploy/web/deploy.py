@@ -98,7 +98,7 @@ def verify_origin(port):
     if json.loads(body).get("status") != "ok":
         raise RuntimeError("Web liveness response is invalid")
     # Check actual server rendering and API-backed page data paths, not only liveness.
-    for path in ("/", "/blog", "/games", "/dashboard/login", "/robots.txt"):
+    for path in ("/", "/blog", "/explore", "/explore/games", "/explore/movies", "/dashboard/login", "/robots.txt"):
         run(["curl", "--noproxy", "*", "--fail", "--silent", "--show-error", "--max-time", "30", f"http://{port}{path}"])
 
 

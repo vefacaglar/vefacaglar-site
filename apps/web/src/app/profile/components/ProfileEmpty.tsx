@@ -13,7 +13,7 @@ export default function ProfileEmpty({ isOwner, name, lang }: { isOwner: boolean
         {isOwner ? dict.no_library : dict.profile_no_games_visitor.replace("{name}", name)}
       </p>
       {isOwner && (
-        <Link href={localizeHref("/games", lang)} className="btnAccent">
+        <Link href={localizeHref("/explore/games", lang)} className="btnAccent">
           {dict.browse_games}
         </Link>
       )}

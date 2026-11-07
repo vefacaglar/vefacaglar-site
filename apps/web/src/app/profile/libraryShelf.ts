@@ -1,5 +1,5 @@
 import type { LibraryGame, LibraryPlatformCount } from "../../lib/profileLibrary";
-import { GAME_LOG_STATUSES } from "../games/gameLogStatus";
+import { GAME_LOG_STATUSES } from "../explore/games/gameLogStatus";
 
 // Status tabs and sort order for a profile's games shelf, read from the URL
 // (`?status=completed&sort=playtime`) so the page stays fully server-rendered.

@@ -5,8 +5,8 @@ export const LIBRARY_NAME = "Vefa Library";
 
 /**
  * Library sections, in tab order. To add one (e.g. books): add its key here, a
- * dictionary label with the same key, and `app/<key>/layout.tsx` rendering
- * `<LibraryShell section="<key>">` plus an `opengraph-image.tsx`.
+ * dictionary label with the same key, and `app/explore/<key>/layout.tsx`
+ * plus an `opengraph-image.tsx`.
  */
 export const LIBRARY_SECTIONS = ["games", "movies"] as const;
 
@@ -17,9 +17,9 @@ export function libraryTitle(title?: string): string {
   return title ? `${title} · ${LIBRARY_NAME}` : LIBRARY_NAME;
 }
 
-/** The section's generated preview card (see `app/<section>/opengraph-image.tsx`). */
-export function libraryPreviewImage(section: LibrarySection) {
-  return { url: `/${section}/opengraph-image`, width: 1200, height: 630, alt: LIBRARY_NAME };
+/** The Explore or section preview card. */
+export function libraryPreviewImage(section?: LibrarySection) {
+  return { url: `/explore${section ? `/${section}` : ""}/opengraph-image`, width: 1200, height: 630, alt: LIBRARY_NAME };
 }
 
 /**
@@ -36,7 +36,7 @@ export function libraryMetadata({
   alternates,
   robots,
 }: {
-  section: LibrarySection;
+  section?: LibrarySection;
   title?: string;
   description: string;
   image?: string | null;

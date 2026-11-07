@@ -1,5 +1,5 @@
 import { cache } from "react";
-import type { GameCardItem } from "../app/games/GameGrid";
+import type { GameCardItem } from "../app/explore/games/GameGrid";
 import { httpClient } from "./httpClient";
 
 export type GameCompanyRole = "developer" | "publisher";
@@ -20,7 +20,7 @@ export interface GameCompanyPageData {
 
 export function gameCompanyHref(role: GameCompanyRole, slug: string): string {
   const segment = role === "developer" ? "developers" : "publishers";
-  return `/games/${segment}/${encodeURIComponent(slug)}`;
+  return `/explore/games/${segment}/${encodeURIComponent(slug)}`;
 }
 
 export function gameCompanyPageNumber(value: unknown): number {
@@ -36,7 +36,8 @@ export const getGameCompany = cache(async (
   page: number,
 ): Promise<GameCompanyPageData | null> => {
   const query = new URLSearchParams({ page: String(page), limit: "21" });
-  const response = await httpClient.get(`/api${gameCompanyHref(role, slug)}?${query}`);
+  const segment = role === "developer" ? "developers" : "publishers";
+  const response = await httpClient.get(`/api/games/${segment}/${encodeURIComponent(slug)}?${query}`);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Game company data fetch failed: ${response.status}`);
   return response.json() as Promise<GameCompanyPageData>;

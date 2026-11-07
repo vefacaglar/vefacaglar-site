@@ -77,7 +77,7 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
                 {dict.settings}
               </Link>
               <form action={librarySignOutAction} className={styles.signOutForm}>
-                <input type="hidden" name="returnTo" value={localizeHref("/games", lang)} />
+                <input type="hidden" name="returnTo" value={localizeHref("/explore", lang)} />
                 <button type="submit" className={`btnGhost ${styles.signOutButton}`}>
                   {dict.sign_out}
                 </button>

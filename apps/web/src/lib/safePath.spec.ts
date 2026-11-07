@@ -5,7 +5,7 @@ describe("safeInternalPath", () => {
   it("returns same-site paths unchanged", () => {
     expect(safeInternalPath("/")).toBe("/");
     expect(safeInternalPath("/blog?x=1")).toBe("/blog?x=1");
-    expect(safeInternalPath("/games/elden-ring?lang=tr#logs")).toBe("/games/elden-ring?lang=tr#logs");
+    expect(safeInternalPath("/explore/games/elden-ring?lang=tr#logs")).toBe("/explore/games/elden-ring?lang=tr#logs");
     expect(safeInternalPath("/a/b\\c")).toBe("/a/b\\c");
   });
 

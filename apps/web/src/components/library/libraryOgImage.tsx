@@ -32,11 +32,11 @@ async function loadGoogleFont(family: string, text: string): Promise<ArrayBuffer
   }
 }
 
-export async function renderLibraryOgImage(section: LibrarySection) {
+export async function renderLibraryOgImage(section?: LibrarySection) {
   // Preview cards are shared in English; labels come from the dictionary in sentence case.
   const dict = getDictionary("en");
   const labels = LIBRARY_SECTIONS.map((key) => dict[key]);
-  const glyphs = `Vefa Library${labels.join("")}`;
+  const glyphs = `Vefa LibraryExplore${labels.join("")}`;
   const [regular, semibold] = await Promise.all([
     loadGoogleFont("Geist:wght@500", glyphs),
     loadGoogleFont("Geist:wght@600", glyphs),
@@ -84,7 +84,7 @@ export async function renderLibraryOgImage(section: LibrarySection) {
           }}
         >
           <div style={{ display: "flex", fontSize: 128, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1 }}>
-            {dict[section]}
+            {section ? dict[section] : "Explore"}
           </div>
           <div style={{ display: "flex", gap: 44, marginTop: 48 }}>
             {LIBRARY_SECTIONS.map((key) => (

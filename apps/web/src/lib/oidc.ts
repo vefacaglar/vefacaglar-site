@@ -80,7 +80,7 @@ export interface OidcFlowState {
 }
 
 /**
- * Accepts only same-site public paths ("/games/foo?lang=tr"), never absolute
+ * Accepts only same-site public paths ("/explore/games/foo?lang=tr"), never absolute
  * or protocol-relative URLs (open redirect) and never the dashboard, which is
  * admin-only and keeps its own post-login landing.
  */

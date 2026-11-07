@@ -13,7 +13,7 @@ import {
 import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
 import { sortShelf } from "../libraryShelf";
-import { activityStatusLabel } from "../../games/gameLogStatus";
+import { activityStatusLabel } from "../../explore/games/gameLogStatus";
 
 const RECENT_COUNT = 12;
 
@@ -113,10 +113,10 @@ export default async function ProfileOverview(props: OverviewProps) {
         ) : (
           <ul className={styles.activityList}>
             {recent.map((item, idx) => {
-              const href = localizeHref(`/games/${item.slug}`, lang);
+              const href = localizeHref(`/explore/games/${item.slug}`, lang);
               const editHref =
                 isOwner && item.logId
-                  ? localizeHref(`/games/${item.slug}/logs/${encodeURIComponent(item.logId)}`, lang)
+                  ? localizeHref(`/explore/games/${item.slug}/logs/${encodeURIComponent(item.logId)}`, lang)
                   : null;
               return (
                 <li

@@ -1,12 +1,12 @@
 import Link from "next/link";
-import shelf from "../../games/games.module.css";
+import shelf from "../../explore/games/games.module.css";
 import styles from "../profile.module.css";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { parseDateKey } from "../../../lib/formatDate";
 import type { LibraryGame } from "../../../lib/profileLibrary";
-import { statusLabel } from "../../games/gameLogStatus";
-import { scoreTier } from "../../games/scoreTier";
+import { statusLabel } from "../../explore/games/gameLogStatus";
+import { scoreTier } from "../../explore/games/scoreTier";
 
 type ProfileGameGridProps = {
   games: LibraryGame[];
@@ -55,10 +55,10 @@ export default function ProfileGameGrid({
     <ul className={shelf.grid}>
       {games.map((game) => {
         const completed = showCompletedAt && game.completedAt ? shortDate(game.completedAt, lang) : "";
-        const href = localizeHref(`/games/${game.slug}`, lang);
+        const href = localizeHref(`/explore/games/${game.slug}`, lang);
         const editHref =
           isOwner && game.latestLogId
-            ? localizeHref(`/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
+            ? localizeHref(`/explore/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
             : null;
         return (
           <li key={game.slug} className={styles.cardItem}>

@@ -282,8 +282,8 @@ export async function lookupHltbAction(id: string, body: { query?: string; refre
   return authedRequest<import("./hltb-types").HltbLookup>("POST", `/api/catalog/games/${id}/hltb/lookup`, { body, fallbackError: "Could not search HowLongToBeat." });
 }
 export async function applyHltbAction(id: string, body: import("./hltb-types").HltbApplyInput) {
-  return authedRequest<import("./hltb-types").HltbApplied>("POST", `/api/catalog/games/${id}/hltb/apply`, { body, revalidate: ["/games", ...REVALIDATE_GAMES], fallbackError: "Could not apply the HowLongToBeat entry." });
+  return authedRequest<import("./hltb-types").HltbApplied>("POST", `/api/catalog/games/${id}/hltb/apply`, { body, revalidate: ["/explore/games", ...REVALIDATE_GAMES], fallbackError: "Could not apply the HowLongToBeat entry." });
 }
 export async function retryHltbSyncAction(id: string) {
-  return authedRequest<import("./hltb-types").HltbApplied>("POST", `/api/catalog/games/${id}/hltb/retry-sync`, { revalidate: ["/games", ...REVALIDATE_GAMES], fallbackError: "Could not update search." });
+  return authedRequest<import("./hltb-types").HltbApplied>("POST", `/api/catalog/games/${id}/hltb/retry-sync`, { revalidate: ["/explore/games", ...REVALIDATE_GAMES], fallbackError: "Could not update search." });
 }

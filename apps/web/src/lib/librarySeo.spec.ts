@@ -20,14 +20,18 @@ describe("libraryTitle", () => {
 });
 
 describe("libraryPreviewImage", () => {
+  it("provides a preview for the mixed Explore landing", () => {
+    expect(libraryPreviewImage()).toEqual({ url: "/explore/opengraph-image", width: 1200, height: 630, alt: "Vefa Library" });
+  });
+
   it("points at the section's generated preview card", () => {
-    expect(libraryPreviewImage("movies")).toEqual({ url: "/movies/opengraph-image", width: 1200, height: 630, alt: "Vefa Library" });
+    expect(libraryPreviewImage("movies")).toEqual({ url: "/explore/movies/opengraph-image", width: 1200, height: 630, alt: "Vefa Library" });
   });
 });
 
 describe("libraryMetadata", () => {
   it("builds full Open Graph and Twitter metadata with the section card by default", () => {
-    const images = [{ url: "/games/opengraph-image", width: 1200, height: 630, alt: "Vefa Library" }];
+    const images = [{ url: "/explore/games/opengraph-image", width: 1200, height: 630, alt: "Vefa Library" }];
 
     expect(libraryMetadata({ section: "games", description: "Games I play." })).toEqual({
       title: "Vefa Library",
@@ -55,7 +59,7 @@ describe("libraryMetadata", () => {
     expect(without).not.toHaveProperty("alternates");
     expect(without).not.toHaveProperty("robots");
 
-    const alternates = { canonical: "https://vefacaglar.com/games" };
+    const alternates = { canonical: "https://vefacaglar.com/explore/games" };
     const robots = { index: false };
     const meta = libraryMetadata({ section: "games", description: "d", alternates, robots });
     expect(meta.alternates).toBe(alternates);

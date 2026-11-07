@@ -4,7 +4,7 @@ import { getDictionary, type Dictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import { formatDate, formatRelative, parseDateKey } from "../../../lib/formatDate";
 import type { LibraryGame } from "../../../lib/profileLibrary";
-import { statusLabel } from "../../games/gameLogStatus";
+import { statusLabel } from "../../explore/games/gameLogStatus";
 import ProfileGameListRow from "./ProfileGameListRow";
 
 type ProfileGameListProps = {
@@ -215,10 +215,10 @@ export default function ProfileGameList({
         </tr>
       </thead>
       {games.map((game) => {
-        const href = localizeHref(`/games/${game.slug}`, lang);
+        const href = localizeHref(`/explore/games/${game.slug}`, lang);
         const editHref =
           isOwner && game.latestLogId
-            ? localizeHref(`/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
+            ? localizeHref(`/explore/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
             : null;
         const finished = showCompletedAt && game.completedAt ? shortDate(game.completedAt, lang) : "";
         const playtime = game.playtimeHours !== null ? String(game.playtimeHours) : null;

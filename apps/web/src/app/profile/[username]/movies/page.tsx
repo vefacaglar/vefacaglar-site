@@ -22,20 +22,20 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
       <div><dt>Films rated</dt><dd>{summary.ratedFilmCount}</dd></div>
       <div><dt>Average rating</dt><dd>{summary.averageRating === null ? "—" : `${summary.averageRating}/10`}</dd></div>
     </dl>
-    {movies.length === 0 ? <div className={styles.empty}><h2>No movies yet</h2><p>Watches and ratings will appear here.</p>{isOwner && <Link className="btnGhost" href={localizeHref("/movies", lang)}>Browse movies</Link>}</div> :
+    {movies.length === 0 ? <div className={styles.empty}><h2>No movies yet</h2><p>Watches and ratings will appear here.</p>{isOwner && <Link className="btnGhost" href={localizeHref("/explore/movies", lang)}>Browse movies</Link>}</div> :
       <ul className={styles.movies}>{movies.map((movie) => <li key={movie.slug} className={styles.movie}>
         <div className={styles.posterColumn}>
-          <Link href={localizeHref(`/movies/${movie.slug}`, lang)} className={styles.poster} aria-label={movie.title}>
+          <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.poster} aria-label={movie.title}>
             {movie.posterImageUrl && movie.posterAttribution ? <img src={movie.posterImageUrl} alt="" loading="lazy" /> : <span>Film</span>}
           </Link>
           {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
         </div>
         <div className={styles.details}>
-          <h2><Link href={localizeHref(`/movies/${movie.slug}`, lang)}>{movie.title}</Link></h2>
+          <h2><Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)}>{movie.title}</Link></h2>
           {movie.releaseYear !== null && <p className={styles.muted}>{movie.releaseYear}</p>}
           <p>{movie.rating === null ? "Not rated" : `${movie.rating}/10`} · {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}</p>
           {movie.watches.length > 0 && <details className={styles.history}><summary>Watch dates</summary><ul>{movie.watches.map((watch, index) => <li key={watch.id ?? `${watch.watchedOn}-${index}`}><time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time></li>)}</ul></details>}
-          {isOwner && <Link className={`btnGhost ${styles.manage}`} href={localizeHref(`/movies/${movie.slug}#watch-history`, lang)}>Manage watches and rating</Link>}
+          {isOwner && <Link className={`btnGhost ${styles.manage}`} href={localizeHref(`/explore/movies/${movie.slug}#watch-history`, lang)}>Manage watches and rating</Link>}
         </div>
       </li>)}</ul>}
   </section>;

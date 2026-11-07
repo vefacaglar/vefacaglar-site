@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import LanguageSwitcher from "./LanguageSwitcher";
 import styles from "./Footer.module.css";
 
-const LIBRARY_PREFIXES = ["/games", "/movies", "/profile"];
+const LIBRARY_PREFIXES = ["/explore", "/profile"];
 
 interface FooterProps {
   dict: {

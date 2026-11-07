@@ -6,7 +6,7 @@ import { useLocale } from "./LocaleProvider";
 import { localizeHref } from "../lib/localizeHref";
 import styles from "./Header.module.css";
 
-const LIBRARY_PREFIXES = ["/games", "/movies", "/profile"];
+const LIBRARY_PREFIXES = ["/explore", "/profile"];
 
 interface HeaderProps {
   dict: {
@@ -83,6 +83,9 @@ export default function Header({ dict }: HeaderProps) {
           </span>
         ))}
       </div>
+      <nav className={styles.right} aria-label="Explore">
+        <Link href={href("/explore")} className={styles.link}>Explore</Link>
+      </nav>
     </header>
   );
 }

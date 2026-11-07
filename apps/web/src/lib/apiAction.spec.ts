@@ -60,9 +60,9 @@ describe("authedRequest", () => {
     signedIn();
     mocks.http.post.mockResolvedValue(new Response(""));
 
-    await authedRequest("POST", "/p", { revalidate: ["/dashboard/games", "/games"] });
+    await authedRequest("POST", "/p", { revalidate: ["/dashboard/games", "/explore/games"] });
 
-    expect(mocks.revalidatePath.mock.calls).toEqual([["/dashboard/games"], ["/games"]]);
+    expect(mocks.revalidatePath.mock.calls).toEqual([["/dashboard/games"], ["/explore/games"]]);
     expect(mocks.revalidatePublicContent).toHaveBeenCalledTimes(1);
   });
 

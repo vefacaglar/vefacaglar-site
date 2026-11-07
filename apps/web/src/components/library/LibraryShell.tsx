@@ -1,28 +1,24 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import LanguageSwitcher from "../LanguageSwitcher";
 import { getActiveLanguage } from "../../lib/lang";
 import { getDictionary } from "../../dictionaries";
 import { localizeHref } from "../../lib/localizeHref";
-import { getLoginHref } from "../../lib/oidc";
+import { getAuthMode, getLoginHref } from "../../lib/oidc";
 import { getSessionUser } from "../../lib/session";
-import { LIBRARY_NAME, LIBRARY_SECTIONS, type LibrarySection } from "../../lib/librarySeo";
+import { LIBRARY_NAME } from "../../lib/librarySeo";
 import { profilePath } from "../../lib/profileLibrary";
 import AccountLink from "./AccountLink";
+import ExploreNavigation from "./ExploreNavigation";
+import ExploreSignInLink from "./ExploreSignInLink";
 import styles from "./LibraryShell.module.css";
 
-export type { LibrarySection };
-
 /**
- * Frame shared by the library pages (games, movies, profile): its own wordmark and
- * section tabs in place of the site breadcrumb. The library stands on its own, so it
- * does not link back to the main site.
+ * Frame shared by Explore and profiles, with persistent client-aware navigation.
  */
 export default async function LibraryShell({
-  section,
   children,
 }: {
-  /** Active tab; omitted on pages outside the sections, such as the profile. */
-  section?: LibrarySection;
   children: React.ReactNode;
 }) {
   const lang = await getActiveLanguage();
@@ -32,23 +28,11 @@ export default async function LibraryShell({
   return (
     <div className={styles.shell} data-library="" data-ui-theme="graphite">
       <header className={styles.header}>
-        {/* The library's home is /games; uses the main site's vefacaglar wordmark. */}
-        <Link href={localizeHref("/games", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>
+        <Link href={localizeHref("/explore", lang)} className={styles.wordmark} aria-label={LIBRARY_NAME}>
           {dict.back_to_home}
         </Link>
 
-        <nav className={styles.tabs} aria-label={dict.library_nav}>
-          {LIBRARY_SECTIONS.map((key) => (
-            <Link
-              key={key}
-              href={localizeHref(`/${key}`, lang)}
-              className={key === section ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              aria-current={key === section ? "true" : undefined}
-            >
-              {dict[key]}
-            </Link>
-          ))}
-        </nav>
+        <ExploreNavigation lang={lang} labels={{ games: dict.games, movies: dict.movies }} />
 
         <div className={styles.utility}>
           {user ? (
@@ -58,9 +42,9 @@ export default async function LibraryShell({
               label={dict.profile}
             />
           ) : (
-            <Link href={getLoginHref(localizeHref(`/${section ?? "games"}`, lang))} className={styles.account}>
-              {dict.sign_in}
-            </Link>
+            <Suspense fallback={<Link href={getLoginHref(localizeHref("/explore", lang))} className={styles.account}>{dict.sign_in}</Link>}>
+              <ExploreSignInLink label={dict.sign_in} oidc={getAuthMode() === "oidc"} />
+            </Suspense>
           )}
         </div>
       </header>
@@ -68,8 +52,17 @@ export default async function LibraryShell({
       <div className={styles.body}>{children}</div>
 
       <footer className={styles.footer}>
-        <span className={styles.footerMark}>{dict.back_to_home}</span>
-        <LanguageSwitcher />
+        <div className={styles.footerRow}>
+          <span className={styles.footerMark}>{dict.back_to_home}</span>
+          <LanguageSwitcher />
+        </div>
+        <p className={styles.sources}>
+          Game data: <a href="https://www.igdb.com/">IGDB</a>.{" "}
+          Film data: <a href="https://www.wikidata.org/">Wikidata</a>.{" "}
+          Page-view data: <a href="https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html">Wikimedia Analytics (CC0)</a>.{" "}
+          Posters: <a href="https://en.wikipedia.org/">Wikipedia</a> and <a href="https://commons.wikimedia.org/">Wikimedia Commons</a>.{" "}
+          Individual poster credits and licenses are shown with each image.
+        </p>
       </footer>
     </div>
   );

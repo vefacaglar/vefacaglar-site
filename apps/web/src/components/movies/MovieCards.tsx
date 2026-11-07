@@ -12,7 +12,7 @@ export default function MovieCards({ movies, lang }: {
 }) {
   return <ul className={styles.grid}>
     {movies.map((movie) => <li key={movie.slug}>
-      <Link href={localizeHref(`/movies/${movie.slug}`, lang)} className={styles.card}>
+      <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.card}>
         <span className={styles.poster} aria-hidden="true">
           {movie.posterImageUrl && movie.posterAttribution ? (
             // eslint-disable-next-line @next/next/no-img-element

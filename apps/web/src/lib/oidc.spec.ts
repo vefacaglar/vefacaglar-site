@@ -50,12 +50,12 @@ describe("getAuthMode", () => {
 describe("getLoginHref", () => {
   it("goes through the OIDC route with an encoded returnTo in oidc mode", () => {
     vi.stubEnv("AUTH_MODE", "oidc");
-    expect(getLoginHref("/games/elden-ring?lang=tr")).toBe("/dashboard/login/oidc?returnTo=%2Fgames%2Felden-ring%3Flang%3Dtr");
+    expect(getLoginHref("/explore/games/elden-ring?lang=tr")).toBe("/dashboard/login/oidc?returnTo=%2Fexplore%2Fgames%2Felden-ring%3Flang%3Dtr");
   });
 
   it("goes to the password login (ignoring returnTo) otherwise", () => {
     vi.stubEnv("AUTH_MODE", undefined);
-    expect(getLoginHref("/games/elden-ring")).toBe("/dashboard/login");
+    expect(getLoginHref("/explore/games/elden-ring")).toBe("/dashboard/login");
   });
 });
 
@@ -146,7 +146,7 @@ describe("createPkceFlow", () => {
 
 describe("sanitizeReturnTo", () => {
   it("accepts same-site public paths", () => {
-    expect(sanitizeReturnTo("/games/foo?lang=tr")).toBe("/games/foo?lang=tr");
+    expect(sanitizeReturnTo("/explore/games/foo?lang=tr")).toBe("/explore/games/foo?lang=tr");
     expect(sanitizeReturnTo("/")).toBe("/");
     expect(sanitizeReturnTo("/dashboards")).toBe("/dashboards");
     expect(sanitizeReturnTo("/dashboard-old")).toBe("/dashboard-old");

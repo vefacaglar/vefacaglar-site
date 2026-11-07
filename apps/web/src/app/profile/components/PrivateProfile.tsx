@@ -34,7 +34,7 @@ export default function PrivateProfile({
       <p className={styles.privateHandle}>@{username}</p>
       <h1 className={styles.privateTitle}>{dict.profile_private_message}</h1>
       {signedIn ? (
-        <Link href={localizeHref("/games", lang)} className="btnGhost">
+        <Link href={localizeHref("/explore/games", lang)} className="btnGhost">
           {dict.browse_games}
         </Link>
       ) : (

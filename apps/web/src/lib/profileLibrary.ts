@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { httpClient } from "./httpClient";
-import type { GameLogInput } from "../app/games/actions";
+import type { GameLogInput } from "../app/explore/games/actions";
 
 /** PUT `{ isProfilePublic }` here to make the signed-in user's profile public or private. */
 export const PROFILE_VISIBILITY_PATH = "/api/auth/profile/visibility";

@@ -5,7 +5,7 @@ import styles from "../profile.module.css";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
 import type { LibraryGame, LibraryPlatformCount } from "../../../lib/profileLibrary";
-import { statusLabel } from "../../games/gameLogStatus";
+import { statusLabel } from "../../explore/games/gameLogStatus";
 import ProfileGameGrid from "./ProfileGameGrid";
 import ProfileGameList from "./ProfileGameList";
 import ProfilePlatforms from "./ProfilePlatforms";

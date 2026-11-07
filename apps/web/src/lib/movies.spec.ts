@@ -48,8 +48,8 @@ describe("movie data requests", () => {
 
 describe("movie person navigation", () => {
   it("uses the stable ID and safely encodes it as a single route segment", () => {
-    expect(moviePersonHref("Q25191")).toBe("/movies/people/Q25191");
-    expect(moviePersonHref("a/b?c")).toBe("/movies/people/a%2Fb%3Fc");
+    expect(moviePersonHref("Q25191")).toBe("/explore/movies/people/Q25191");
+    expect(moviePersonHref("a/b?c")).toBe("/explore/movies/people/a%2Fb%3Fc");
   });
 
   it("accepts positive page numbers and safely resets malformed page input", () => {

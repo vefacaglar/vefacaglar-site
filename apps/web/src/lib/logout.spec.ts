@@ -46,7 +46,7 @@ describe("POST_LOGOUT_COOKIE", () => {
 describe("safeReturnPath", () => {
   it("returns same-origin paths", () => {
     expect(safeReturnPath("/", "/fallback")).toBe("/");
-    expect(safeReturnPath("/games?lang=tr", "/fallback")).toBe("/games?lang=tr");
+    expect(safeReturnPath("/explore/games?lang=tr", "/fallback")).toBe("/explore/games?lang=tr");
   });
 
   it("falls back for missing values", () => {
@@ -75,7 +75,7 @@ describe("postLogoutRedirectUrl", () => {
   });
 
   it("preserves a legitimate return path, query and locale", () => {
-    expect(postLogoutRedirectUrl("/games?lang=tr#library").href).toBe("https://vefacaglar.com/games?lang=tr#library");
+    expect(postLogoutRedirectUrl("/explore/games?lang=tr#library").href).toBe("https://vefacaglar.com/explore/games?lang=tr#library");
     expect(postLogoutRedirectUrl("/").href).toBe("https://vefacaglar.com/");
   });
 

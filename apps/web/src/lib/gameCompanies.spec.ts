@@ -11,10 +11,10 @@ beforeEach(() => vi.resetAllMocks());
 
 describe("game company navigation", () => {
   it("keeps roles separate and encodes the slug as one path component", () => {
-    expect(gameCompanyHref("developer", "same-studio")).toBe("/games/developers/same-studio");
-    expect(gameCompanyHref("publisher", "same-studio")).toBe("/games/publishers/same-studio");
-    expect(gameCompanyHref("developer", "a/b?c")).toBe("/games/developers/a%2Fb%3Fc");
-    expect(localizeHref(gameCompanyHref("publisher", "studio"), "tr")).toBe("/games/publishers/studio?lang=tr");
+    expect(gameCompanyHref("developer", "same-studio")).toBe("/explore/games/developers/same-studio");
+    expect(gameCompanyHref("publisher", "same-studio")).toBe("/explore/games/publishers/same-studio");
+    expect(gameCompanyHref("developer", "a/b?c")).toBe("/explore/games/developers/a%2Fb%3Fc");
+    expect(localizeHref(gameCompanyHref("publisher", "studio"), "tr")).toBe("/explore/games/publishers/studio?lang=tr");
   });
 
   it("accepts positive safe page numbers and defaults invalid URL values", () => {
@@ -27,10 +27,11 @@ describe("game company navigation", () => {
 });
 
 describe("game company requests", () => {
-  it("requests the selected role and page with 21 cards", async () => {
+  it("keeps API requests outside the Explore browser namespace", async () => {
     const payload = { company: { name: "Studio" }, items: [], total: 0 };
     vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
     expect(await getGameCompany("publisher", "a/b", 3)).toEqual(payload);
+    expect(gameCompanyHref("publisher", "a/b")).toBe("/explore/games/publishers/a%2Fb");
     expect(httpClient.get).toHaveBeenCalledWith("/api/games/publishers/a%2Fb?page=3&limit=21");
   });
 

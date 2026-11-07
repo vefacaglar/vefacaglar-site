@@ -84,6 +84,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...bilingual("/blog", { lastModified: newestPostDate, changeFrequency: "daily", priority: 0.9 }),
     ...bilingual("/projects", { changeFrequency: "weekly", priority: 0.8 }),
     ...englishOnly("/packages", { changeFrequency: "weekly", priority: 0.8 }),
+    ...bilingual("/explore", { changeFrequency: "daily", priority: 0.8 }),
+    ...bilingual("/explore/games", { changeFrequency: "daily", priority: 0.7 }),
+    ...bilingual("/explore/movies", { changeFrequency: "daily", priority: 0.7 }),
   ];
 
   const dynamicRoutes: Entry[] = [];
@@ -117,7 +120,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  const excludedSlugs = ["about", "home"];
+  const excludedSlugs = ["about", "home", "games", "movies", "explore"];
   for (const page of pages ?? []) {
     if (excludedSlugs.includes(page.slug) || page.status !== "published") continue;
     dynamicRoutes.push(

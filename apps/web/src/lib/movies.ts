@@ -92,7 +92,7 @@ export const getMovie = cache((slug: string) =>
 );
 
 export function moviePersonHref(wikidataId: string) {
-  return `/movies/people/${encodeURIComponent(wikidataId)}`;
+  return `/explore/movies/people/${encodeURIComponent(wikidataId)}`;
 }
 
 export function moviePageNumber(value?: string) {

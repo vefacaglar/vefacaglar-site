@@ -6,7 +6,7 @@ import { endSession, POST_LOGOUT_COOKIE, safeReturnPath } from "../../lib/logout
 
 /** Signs out from the library and lands back on it rather than the dashboard login. */
 export async function librarySignOutAction(formData: FormData) {
-  const returnTo = safeReturnPath(formData.get("returnTo")?.toString(), "/games");
+  const returnTo = safeReturnPath(formData.get("returnTo")?.toString(), "/explore");
   const providerLogoutUrl = await endSession();
 
   if (providerLogoutUrl) {
