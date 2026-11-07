@@ -30,7 +30,7 @@ export default async function Movies({ searchParams }: {
       <LibraryMasthead title="Movies" subtitle="Explore films, cast, and filmmakers.">
         <CatalogSearch basePath="/movies" initialQuery={query} placeholder="Search movies" maxLength={140} />
       </LibraryMasthead>
-      {rankingNotice && <p className={styles.rankingNotice}>
+      {!query && rankingNotice && <p className={styles.rankingNotice}>
         Wikipedia interest · {rankingNotice.date}. Films appearing among the most-viewed English Wikipedia articles. Other films follow alphabetically. <a href={rankingNotice.sourceUrl}>Source</a>
       </p>}
       {data?.items.length ? (
