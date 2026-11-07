@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { Fragment } from "react";
 import styles from "./game.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary } from "../../../dictionaries";
@@ -13,6 +14,7 @@ import { getLoginHref } from "../../../lib/oidc";
 import { formatDate } from "../../../lib/formatDate";
 import GameLogs, { type GameLog } from "./GameLogs";
 import { scoreTier } from "../scoreTier";
+import { gameCompanyHref, type GameCompanyRole } from "../../../lib/gameCompanies";
 
 type Named = { name: string; slug: string };
 type GameDetail = {
@@ -75,21 +77,27 @@ export default async function Game(props: GameProps) {
   const logs = await getMyLogs(game.slug);
   const loginHref = getLoginHref(localizeHref(`/games/${game.slug}`, lang));
 
-  const names = (items: Named[]) => items.map((i) => i.name).join(", ");
+  const companyLinks = (items: Named[], role: GameCompanyRole) => items.map((company, index) => (
+    <Fragment key={company.slug}>
+      {index > 0 && ", "}
+      <Link href={localizeHref(gameCompanyHref(role, company.slug), lang)} className={styles.companyLink}>
+        {company.name}
+      </Link>
+    </Fragment>
+  ));
   const year = game.releaseDate?.slice(0, 4) ?? null;
-  const developers = names(game.developers);
 
-  type Fact = { label: string; text?: string; tags?: string[] };
+  type Fact = { label: string; text?: string; tags?: string[]; companies?: Named[]; companyRole?: GameCompanyRole };
   const facts: Fact[] = (
     [
       { label: dict.released, text: game.releaseDate ? formatDate(game.releaseDate, lang) : "" },
-      { label: dict.developers, text: developers },
-      { label: dict.publishers, text: names(game.publishers) },
+      { label: dict.developers, companies: game.developers, companyRole: "developer" },
+      { label: dict.publishers, companies: game.publishers, companyRole: "publisher" },
       { label: dict.genres, tags: game.genres.map((g) => g.name) },
       { label: dict.themes, tags: game.themes.map((t) => t.name) },
       { label: dict.platforms, tags: game.platforms.map((p) => p.name) },
     ] as Fact[]
-  ).filter((fact) => fact.text || fact.tags?.length);
+  ).filter((fact) => fact.text || fact.tags?.length || fact.companies?.length);
 
   const hltb: [string, number | null][] = [
     [dict.hltb_main, game.hltbMainHours],
@@ -118,7 +126,7 @@ export default async function Game(props: GameProps) {
               <Link href={localizeHref("/games", lang)}>← {dict.back_to_games}</Link>
             </p>
             <h1 className={styles.title}>{game.title}</h1>
-            {developers && <p className={styles.byline}>{developers}</p>}
+            {game.developers.length > 0 && <p className={styles.byline}>{companyLinks(game.developers, "developer")}</p>}
 
             {(year || game.criticScore !== null) && (
               <dl className={styles.figures}>
@@ -206,7 +214,9 @@ export default async function Game(props: GameProps) {
               {facts.map((fact) => (
                 <div key={fact.label} className={styles.credit}>
                   <dt>{fact.label}</dt>
-                  <dd>{fact.tags ? fact.tags.join(", ") : fact.text}</dd>
+                  <dd>{fact.companies && fact.companyRole
+                    ? companyLinks(fact.companies, fact.companyRole)
+                    : fact.tags ? fact.tags.join(", ") : fact.text}</dd>
                 </div>
               ))}
             </dl>

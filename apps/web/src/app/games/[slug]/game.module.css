@@ -111,6 +111,22 @@
   color: var(--muted);
 }
 
+.companyLink {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.companyLink:hover {
+  color: var(--accent);
+}
+
+.companyLink:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* Key figures: release year and critic score. */
 .figures {
   display: flex;
