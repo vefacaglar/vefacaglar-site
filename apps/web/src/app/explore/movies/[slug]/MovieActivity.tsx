@@ -13,9 +13,9 @@ import ConfirmDialog from "../../../components/ConfirmDialog";
 import DatePicker from "../../../components/DatePicker";
 import styles from "./MovieActivity.module.css";
 
-type WatchEditor = { id: string | null; watchedOn: string; comment: string };
+type WatchEditor = { id: string | null; watchedOn: string; comment: string; isPublic: boolean };
 
-export default function MovieActivity({ slug, activity }: { slug: string; activity: Activity }) {
+export default function MovieActivity({ slug, activity, isProfilePublic, communityPage }: { slug: string; activity: Activity; isProfilePublic: boolean; communityPage?: string }) {
   const router = useRouter(), locale = useLocale();
   const ratingId = useId(), dialogTitleId = useId(), dateId = useId(), commentId = useId();
   const [rating, setRating] = useState(activity.rating === null ? "" : String(activity.rating));
@@ -60,8 +60,8 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
   const openEditor = (watch?: MovieWatch) => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setEditorError(null);
-    setEditor(watch ? { id: watch.id, watchedOn: watch.watchedOn, comment: watch.comment ?? "" }
-      : { id: null, watchedOn: addition.current?.watchedOn ?? localToday(), comment: addition.current?.comment ?? "" });
+    setEditor(watch ? { id: watch.id, watchedOn: watch.watchedOn, comment: watch.comment ?? "", isPublic: watch.isPublic ?? false }
+      : { id: null, watchedOn: addition.current?.watchedOn ?? localToday(), comment: addition.current?.comment ?? "", isPublic: addition.current?.isPublic ?? false });
   };
   const closeEditor = () => {
     if (busy.current) return;
@@ -105,8 +105,8 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
     startTransition(async () => {
       try {
         const result = editingId
-          ? await updateMovieWatch(slug, editingId, editor.watchedOn, editor.comment.trim() || null)
-          : await createMovieWatch(slug, submission!.id, submission!.watchedOn, submission!.comment);
+          ? await updateMovieWatch(slug, editingId, editor.watchedOn, editor.comment.trim() || null, editor.isPublic)
+          : await createMovieWatch(slug, submission!.id, submission!.watchedOn, submission!.comment, submission!.isPublic);
         if (result.error) {
           setEditorError(result.error);
           if (!editingId) {
@@ -125,7 +125,12 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
       } finally { busy.current = false; }
     });
   };
-  const pageHref = (page: number) => localizeHref(`/explore/movies/${slug}${page > 1 ? `?watchPage=${page}` : ""}#watch-history`, locale);
+  const pageHref = (page: number) => {
+    const query = new URLSearchParams();
+    if (page > 1) query.set("watchPage", String(page));
+    if (communityPage) query.set("communityPage", communityPage);
+    return localizeHref(`/explore/movies/${slug}${query.size ? `?${query}` : ""}#watch-history`, locale);
+  };
   const locked = editor?.id === null && unconfirmed;
 
   return <div className={styles.activity}>
@@ -182,8 +187,13 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
         <div className={styles.field}>
           <label htmlFor={commentId}>Comment <span className={styles.optional}>Optional</span></label>
           <textarea id={commentId} className={styles.input} rows={4} maxLength={2000} value={editor.comment} disabled={pending || locked} aria-describedby={`${commentId}-hint`} placeholder="What stayed with you?" onChange={(event) => setEditor({ ...editor, comment: event.target.value })} />
-          <div className={styles.commentHelp} id={`${commentId}-hint`}><span>Only you can see this comment.</span><span>{editor.comment.length}/2,000</span></div>
+          <div className={styles.commentHelp} id={`${commentId}-hint`}><span>{editor.isPublic ? "This comment is included when you share this watch." : "Only you can see this comment."}</span><span>{editor.comment.length}/2,000</span></div>
         </div>
+        <label className={styles.shareChoice}>
+          <input type="checkbox" checked={editor.isPublic} disabled={pending || locked || (!isProfilePublic && !editor.isPublic)} onChange={(event) => setEditor({ ...editor, isPublic: event.target.checked })} />
+          <span>Share this watch publicly</span>
+        </label>
+        <p className={styles.shareHint}>{isProfilePublic ? "Your watch and comment will appear in the community section when shared." : <>Your profile is private. Make it public before sharing; existing shared watches remain hidden. <Link href={localizeHref("/profile/settings", locale)}>Profile settings</Link></>}</p>
         {locked && <p className={styles.retryNotice}>This save hasn't been confirmed. Retry the same details before changing them, so the watch is only added once.</p>}
         {editorError && <p className={styles.error} role="alert">{editorError}</p>}
         <div className={styles.dialogActions}>

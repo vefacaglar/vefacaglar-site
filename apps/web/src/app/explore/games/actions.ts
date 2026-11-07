@@ -12,6 +12,8 @@ export type GameLogInput = {
   completedAt: string | null;
   playtimeHours: number | null;
   notes: string | null;
+  reviewText?: string | null;
+  isPublic?: boolean;
 };
 
 type Result = { id?: string; error?: string };

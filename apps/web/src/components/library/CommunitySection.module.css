@@ -1,0 +1,17 @@
+.section { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); }
+.heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 22px; }
+.heading h2 { margin: 0; color: var(--text-heading); font-size: 19px; font-weight: 500; }
+.rating { margin: 0; color: var(--muted); font-size: 13px; }
+.ratingHint { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+.rating strong { color: var(--accent); font-size: 18px; font-weight: 600; }
+.rating span, .muted, .meta, .sharedAt { color: var(--muted); font-size: 12px; }
+.entries { list-style: none; margin: 0; padding: 0; }
+.entry { padding: 18px 0; border-bottom: 1px solid var(--border); }
+.entryHeader { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; }
+.entryHeader a { color: var(--text-heading); text-decoration: none; overflow-wrap: anywhere; }
+.entryHeader a:hover { color: var(--accent); }
+.entryHeader span { color: var(--accent); white-space: nowrap; }
+.meta { margin: 8px 0 0; }
+.review { margin: 12px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); line-height: 1.7; font-size: 13px; }
+.sharedAt { display: block; margin-top: 10px; }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; font-size: 13px; }

@@ -43,6 +43,10 @@ textarea.input { resize: vertical; min-height: 118px; }
 .input:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .input:disabled { opacity: 0.6; }
 .commentHelp { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.shareChoice { display: flex; align-items: center; gap: 10px; color: var(--text-heading); font-size: 13px; }
+.shareChoice input { accent-color: var(--accent); }
+.shareHint { margin: -14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.shareHint a { color: var(--text); }
 .retryNotice { padding: 12px; margin: 0; border: 1px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.7; }
 .dialogActions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid var(--border); }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

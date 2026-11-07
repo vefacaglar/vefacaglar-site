@@ -21,6 +21,8 @@ export type GameLog = {
   completedAt: string | null;
   playtimeHours: number | null;
   notes: string | null;
+  reviewText: string | null;
+  isPublic: boolean;
   createdAt: string;
 };
 

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { httpClient } from "./httpClient";
 import type { MovieCard } from "./movies";
 import type { ProfileUser } from "./profileLibrary";
-export type MovieWatch = { id: string; watchedOn: string; comment: string | null; createdAt: string; updatedAt: string };
+export type MovieWatch = { id: string; watchedOn: string; comment: string | null; isPublic: boolean; createdAt: string; updatedAt: string };
 export type MovieActivity = { rating: number | null; watches: MovieWatch[]; total: number; page: number; limit: number; totalPages: number };
 export type ProfileMovie = MovieCard & { rating: number | null; watchCount: number; lastWatchedOn: string | null; watches: { id?: string; watchedOn: string }[] };
 export type MovieLibrary = { user: ProfileUser; isOwner: boolean;

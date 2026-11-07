@@ -11,6 +11,7 @@ import { getLoginHref } from "../../../../../../lib/oidc";
 import { libraryMetadata } from "../../../../../../lib/librarySeo";
 import type { GameLog } from "../../GameLogs";
 import LogEditForm, { type LogGameInfo } from "./LogEditForm";
+import { getSessionUser } from "../../../../../../lib/session";
 
 type LogDetail = {
   log: GameLog;
@@ -48,13 +49,14 @@ export default async function GameLogPage(props: LogPageProps) {
   const gameHref = localizeHref(`/explore/games/${params.slug}`, lang);
 
   const token = (await cookies()).get("session_token")?.value;
-  const [res, catalogGame] = await Promise.all([
+  const [res, catalogGame, user] = await Promise.all([
     token
       ? httpClient.get(`/api/games/logs/${encodeURIComponent(params.id)}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
       : Promise.resolve(null),
     getGame(params.slug) as Promise<CatalogGameDetail | null>,
+    getSessionUser(),
   ]);
 
   // Signed out (or session expired): sign in and come back to this log.
@@ -85,7 +87,7 @@ export default async function GameLogPage(props: LogPageProps) {
         <Link href={gameHref}>← {game.title}</Link>
       </p>
       <h1 className={styles.logPageTitle}>{dict.log_edit_title}</h1>
-      <LogEditForm slug={game.slug} log={log} platforms={game.platforms} gameInfo={gameInfo} />
+      <LogEditForm slug={game.slug} log={log} platforms={game.platforms} gameInfo={gameInfo} isProfilePublic={user?.isProfilePublic ?? false} />
     </article>
   );
 }

@@ -74,17 +74,20 @@ export default function LogEditForm({
   log,
   platforms,
   gameInfo,
+  isProfilePublic,
 }: {
   slug: string;
   log: GameLog;
   platforms: { id: string; name: string }[];
   gameInfo: LogGameInfo;
+  isProfilePublic: boolean;
 }) {
   const router = useRouter();
   const locale = useLocale();
   const dict = getDictionary(locale);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isPublic, setIsPublic] = useState(log.isPublic ?? false);
   const [pending, startTransition] = useTransition();
   const [playtimeValue, setPlaytimeValue] = useState<string>(() =>
     log.playtimeHours && log.playtimeHours > 0 ? String(log.playtimeHours) : "",
@@ -211,6 +214,8 @@ export default function LogEditForm({
       completedAt: text("completedAt"),
       playtimeHours: number("playtimeHours"),
       notes: text("notes"),
+      reviewText: text("reviewText"),
+      isPublic: form.get("isPublic") === "on",
     };
     run(() => updateGameLog(slug, log.id, input));
   };
@@ -424,6 +429,15 @@ export default function LogEditForm({
             <span className="label">{dict.log_notes}</span>
             <textarea name="notes" rows={4} maxLength={2000} className="textarea" defaultValue={log.notes ?? ""} />
           </label>
+          <label className="field">
+            <span className="label">Review</span>
+            <textarea name="reviewText" rows={4} maxLength={2000} className="textarea" defaultValue={log.reviewText ?? ""} placeholder="What did you think?" />
+          </label>
+          <label className={styles.shareChoice}>
+            <input type="checkbox" name="isPublic" checked={isPublic} disabled={!isProfilePublic && !isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
+            <span>Share this log publicly</span>
+          </label>
+          <p className={styles.shareHint}>{isProfilePublic ? "Your review and log will appear in the community section when shared. Notes remain private." : <>Your profile is private. Make it public before sharing; existing shared logs remain hidden. Notes remain private. <Link href={localizeHref("/profile/settings", locale)}>Profile settings</Link></>}</p>
           <div className={styles.formFooter}>
             <div className={styles.logActions}>
               <button type="submit" className="btnAccent" disabled={pending}>

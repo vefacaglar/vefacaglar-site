@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -15,6 +15,8 @@ import { formatDate } from "../../../../lib/formatDate";
 import GameLogs, { type GameLog } from "./GameLogs";
 import { scoreTier } from "../scoreTier";
 import { gameCompanyHref, type GameCompanyRole } from "../../../../lib/gameCompanies";
+import { communityPageNumber, getCommunity, type CommunityPage } from "../../../../lib/community";
+import CommunitySection from "../../../../components/library/CommunitySection";
 
 type Named = { name: string; slug: string };
 type GameDetail = {
@@ -37,6 +39,7 @@ type GameDetail = {
 
 interface GameProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ communityPage?: string; lang?: string }>;
 }
 
 export async function generateMetadata(props: GameProps) {
@@ -73,6 +76,11 @@ export default async function Game(props: GameProps) {
   const dict = getDictionary(lang);
   const game = (await getGame(params.slug)) as GameDetail | null;
   if (!game) notFound();
+
+  const query = await props.searchParams;
+  let community: CommunityPage | null = null;
+  try { community = await getCommunity("games", game.slug, communityPageNumber(query.communityPage)); }
+  catch (error) { unstable_rethrow(error); }
 
   const logs = await getMyLogs(game.slug);
   const loginHref = getLoginHref(localizeHref(`/explore/games/${game.slug}`, lang));
@@ -205,6 +213,7 @@ export default async function Game(props: GameProps) {
               </>
             )}
           </section>
+          <CommunitySection data={community} path={`/explore/games/${game.slug}`} params={query} />
         </div>
 
         {facts.length > 0 && (
