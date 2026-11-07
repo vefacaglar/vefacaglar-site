@@ -87,6 +87,10 @@ const CAPTURE: &str = r#"
             WHERE c.movie_id=m.id AND c.rank <> 'deprecated' ORDER BY p.wikidata_id::text),
           'interestScore', CASE WHEN m.wikipedia_source_date=s.source_date
             THEN coalesce(m.wikipedia_views,-1) ELSE -1 END,
+          'recognitionCount', coalesce(m.wikipedia_language_count,0),
+          'interestRecognitionRank', ((CASE WHEN m.wikipedia_source_date=s.source_date
+            THEN coalesce(m.wikipedia_views,-1) ELSE -1 END)::bigint+1)*1000000::bigint
+            + coalesce(m.wikipedia_language_count,0),
           'titleSort', lower(m.title), 'tieBreakId', l.movie_id::text))
       END AS document
     FROM candidates c JOIN movie_search_sync l ON l.movie_id=c.movie_id

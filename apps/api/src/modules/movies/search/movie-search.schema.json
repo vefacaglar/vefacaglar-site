@@ -5,6 +5,8 @@
     { "name": "originalTitle", "type": "string", "optional": true },
     { "name": "personQids", "type": "string[]", "facet": true },
     { "name": "interestScore", "type": "int32" },
+    { "name": "recognitionCount", "type": "int32" },
+    { "name": "interestRecognitionRank", "type": "int64" },
     { "name": "titleSort", "type": "string", "sort": true },
     { "name": "tieBreakId", "type": "string", "sort": true }
   ],

@@ -8,6 +8,7 @@ export type NormalizedMovie = {
   imdbId: string | null; imdbConflict: boolean;
   posterFileName: string | null;
   enwikiArticle: string | null;
+  wikipediaLanguageCount: number;
   releaseDate: string | null; releaseYear: number | null; releasePrecision: number | null;
   runtimeMinutes: number | null; isFilm: boolean; sourceRevision: number | null; sourceModifiedAt: Date | null;
   credits: SourceCredit[]; companyQids: string[]; genreQids: string[];

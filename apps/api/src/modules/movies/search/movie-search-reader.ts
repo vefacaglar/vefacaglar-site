@@ -9,15 +9,20 @@ export const MOVIE_SEARCH_READER = Symbol("MovieSearchReader");
 export type MovieSearchQuery = { collection: string; q?: string; personQid?: string; page: number; limit: number; fresh: boolean };
 export interface IMovieSearchReader { search(query: MovieSearchQuery): Promise<{ ids: string[]; total: number } | null> }
 export function isOwnedMovieCollection(collection: string): boolean {
-  return /^movies_en__v1_[a-zA-Z0-9_]+$/.test(collection);
+  return /^movies_en__v2_[a-zA-Z0-9_]+$/.test(collection);
 }
 export function movieSearchParameters(query: MovieSearchQuery) {
   if (!isOwnedMovieCollection(query.collection)) throw new Error("Invalid movie search collection");
   if (query.personQid && !/^Q[1-9]\d*$/.test(query.personQid)) throw new Error("Invalid movie person filter");
+  const typed = !!query.q?.trim();
   return {
     q: query.q || "*", query_by: schema.fields.filter((field) => field.type === "string" && !field.sort).map((field) => field.name).join(","), page: query.page, per_page: query.limit,
     include_fields: "id", exclude_fields: "", highlight_fields: "none", enable_overrides: false,
-    sort_by: query.fresh ? "interestScore:desc,titleSort:asc,tieBreakId:asc" : "titleSort:asc,tieBreakId:asc",
+    sort_by: typed
+      ? query.fresh ? "_text_match:desc,interestRecognitionRank:desc,tieBreakId:asc" : "_text_match:desc,recognitionCount:desc,tieBreakId:asc"
+      : query.fresh ? "interestScore:desc,titleSort:asc,tieBreakId:asc" : "titleSort:asc,tieBreakId:asc",
+    ...(typed ? { query_by_weights: "1,1", text_match_type: "max_score" as const, prioritize_exact_match: false,
+      prioritize_token_position: true, prioritize_num_matching_fields: false } : {}),
     ...(query.personQid ? { filter_by: `personQids:=${query.personQid}` } : {}),
   };
 }

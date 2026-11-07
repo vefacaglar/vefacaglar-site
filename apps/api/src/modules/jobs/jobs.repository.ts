@@ -98,6 +98,12 @@ export class DrizzleJobsRepository implements IJobsRepository {
     values: Pick<NewJob, "type" | "payload" | "concurrencyKey" | "recurringJobId" | "createdBy">
   ): Promise<Job | null> {
     return this.dbProvider.transaction(async () => {
+      // Match the scheduler's recurring -> jobs lock order. Inserting first
+      // can deadlock its concurrency-key check with this metadata update.
+      if (values.recurringJobId) {
+        await this.dbProvider.client.select({ id: recurringJobs.id }).from(recurringJobs)
+          .where(eq(recurringJobs.id, values.recurringJobId)).for("no key update");
+      }
       const [row] = await this.dbProvider.client
         .insert(jobs)
         .values(values)

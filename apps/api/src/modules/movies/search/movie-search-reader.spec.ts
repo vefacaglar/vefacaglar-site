@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TypesenseMovieSearchReader, movieSearchParameters } from "./movie-search-reader";
 import { reportRuntimeFailure } from "../../../shared/application-logs/runtime-failures";
 vi.mock("../../../shared/application-logs/runtime-failures", () => ({ reportRuntimeFailure: vi.fn() }));
-const query = { collection: "movies_en__v1_123abc", page: 1, limit: 21, fresh: true };
+const query = { collection: "movies_en__v2_123abc", page: 1, limit: 21, fresh: true };
 const config = { enabled: true, host: "localhost", port: 8108, protocol: "http" as const, apiKey: "test" };
 const id = "00000000-0000-4000-8000-000000000001";
 let search: ReturnType<typeof vi.fn>;
@@ -20,11 +20,18 @@ describe("movie index query and fallback policy", () => {
   it("uses three stable sort fields, with no implicit relevance fourth field", () => {
     expect(movieSearchParameters(query)).toMatchObject({ q: "*", query_by: "title,originalTitle",
       sort_by: "interestScore:desc,titleSort:asc,tieBreakId:asc", enable_overrides: false, include_fields: "id" });
+    expect(movieSearchParameters({ ...query, fresh: false })).toMatchObject({ sort_by: "titleSort:asc,tieBreakId:asc" });
+  });
+  it("ranks typed queries by equal-weight lexical match, then measured recognition and current interest", () => {
+    expect(movieSearchParameters({ ...query, q: "Star Wars" })).toMatchObject({ q: "Star Wars", query_by_weights: "1,1",
+      sort_by: "_text_match:desc,interestRecognitionRank:desc,tieBreakId:asc", text_match_type: "max_score",
+      prioritize_exact_match: false, prioritize_token_position: true, prioritize_num_matching_fields: false });
     expect(movieSearchParameters({ ...query, fresh: false, q: "Amélie", personQid: "Q123" })).toMatchObject({ q: "Amélie",
-      sort_by: "titleSort:asc,tieBreakId:asc", filter_by: "personQids:=Q123" });
+      sort_by: "_text_match:desc,recognitionCount:desc,tieBreakId:asc", filter_by: "personQids:=Q123" });
   });
   it("rejects unknown collections and filter injection", () => {
     expect(() => movieSearchParameters({ ...query, collection: "games_en" })).toThrow();
+    expect(() => movieSearchParameters({ ...query, collection: "movies_en__v1_legacy" })).toThrow();
     expect(() => movieSearchParameters({ ...query, personQid: "Q123 || id:*" })).toThrow();
   });
   it("returns validated IDs and counts only", async () => {

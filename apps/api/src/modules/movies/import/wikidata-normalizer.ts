@@ -21,6 +21,22 @@ export function sourceLabel(entity: unknown): string | null {
   return text(entity.labels.en?.value) ?? Object.values(entity.labels).map((label: any) => text(label?.value)).find(Boolean) ?? null;
 }
 
+/** Full sitelink URLs distinguish Wikipedia editions from sibling projects. */
+export function wikipediaLanguageCount(sitelinks: unknown): number {
+  if (!object(sitelinks)) throw new Error("incomplete_entity_sitelinks");
+  const editions = new Set<string>();
+  for (const [site, link] of Object.entries(sitelinks)) {
+    if (!object(link) || link.site !== site || !text(link.title) || typeof link.url !== "string") throw new Error("invalid_entity_sitelink");
+    let url: URL;
+    try { url = new URL(link.url); } catch { throw new Error("invalid_entity_sitelink"); }
+    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.port) throw new Error("invalid_entity_sitelink");
+    const host = url.hostname.toLowerCase();
+    if (host.endsWith(".wikipedia.org")) editions.add(host.replace(/\.m\.wikipedia\.org$/, ".wikipedia.org"));
+  }
+  if (editions.size >= 1_000_000) throw new Error("invalid_entity_sitelinks_count");
+  return editions.size;
+}
+
 function statements(claims: Record<string, unknown>, property: string, qid: string): any[] {
   const rows = claims[property];
   if (rows === undefined) return [];
@@ -46,6 +62,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   if (!Number.isSafeInteger(raw.lastrevid) || raw.lastrevid <= 0 ||
       typeof raw.modified !== "string" || !Number.isFinite(Date.parse(raw.modified))) throw new Error("incomplete_entity_info");
   if (!object(raw.sitelinks)) throw new Error("incomplete_entity_sitelinks");
+  const languageCount = wikipediaLanguageCount(raw.sitelinks);
   const enwikiArticle = raw.sitelinks.enwiki === undefined ? null : wikipediaArticleTitle(raw.sitelinks.enwiki?.title);
   if (raw.sitelinks.enwiki !== undefined && (raw.sitelinks.enwiki?.site !== "enwiki" || !enwikiArticle)) throw new Error("invalid_entity_sitelink");
   const claims = raw.claims;
@@ -96,7 +113,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   return { wikidataId: expectedQid, title, originalTitle, description: text(raw.descriptions?.en?.value),
     imdbId: imdbIds.length === 1 ? imdbIds[0] : null, imdbConflict: imdbIds.length > 1,
     posterFileName: posters.sort()[0] ?? null,
-    enwikiArticle,
+    enwikiArticle, wikipediaLanguageCount: languageCount,
     releaseDate: dates[0]?.date ?? null, releaseYear: dates[0]?.year ?? null, releasePrecision: dates[0]?.precision ?? null,
     runtimeMinutes: runtimes.length === 1 ? runtimes[0] : null,
     isFilm: qids(best(checked.get("P31")!)).includes("Q11424"),

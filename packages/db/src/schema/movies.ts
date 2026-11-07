@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, uuid, text, varchar, integer, doublePrecision, boolean, timestamp, jsonb, primaryKey, index, bigint, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, integer, doublePrecision, boolean, timestamp, jsonb, primaryKey, index, bigint, date, check } from 'drizzle-orm/pg-core';
 
 export const movies = pgTable('movies', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -37,9 +37,14 @@ export const movies = pgTable('movies', {
   // Sparse English Wikipedia top-article observations; null means unobserved.
   wikipediaViews: integer('wikipedia_views'),
   wikipediaSourceDate: date('wikipedia_source_date'),
+  // General recognition proxy: distinct Wikipedia editions, not a rating.
+  wikipediaLanguageCount: integer('wikipedia_language_count'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 }, (table) => ({
+  wikipediaLanguageCountCheck: check('movies_wikipedia_language_count_check', sql`${table.wikipediaLanguageCount} is null or (${table.wikipediaLanguageCount} >= 0 and ${table.wikipediaLanguageCount} < 1000000)`),
+  recognitionBackfillIdx: index('movies_recognition_backfill_idx').on(table.id)
+    .where(sql`${table.wikipediaLanguageCount} is null and ${table.isFilm} = true and ${table.hydratedAt} is not null and ${table.title} is not null`),
   publicTitleIdx: index('movies_public_title_idx').on(table.title, table.id)
     .where(sql`${table.isFilm} = true and ${table.hydratedAt} is not null and ${table.title} is not null`),
   searchIdx: index('movies_title_search_idx').using('gin', sql`to_tsvector('simple', coalesce(${table.title}, ''))`),

@@ -6,7 +6,7 @@ import type { IMoviesRepository } from "../../movies.repository.interface";
 function mockRepository(): Record<keyof IMoviesRepository, any> {
   return {
     ensureSourceAndSeeds: vi.fn(), sourceState: vi.fn(), saveSourceState: vi.fn(), insertDiscovered: vi.fn(),
-    hydrationCandidates: vi.fn(), refreshCandidates: vi.fn(), posterInputsCandidates: vi.fn(), persistMovie: vi.fn(),
+    hydrationCandidates: vi.fn(), refreshCandidates: vi.fn(), posterInputsCandidates: vi.fn(), recognitionCandidates: vi.fn(), persistMovie: vi.fn(),
     posterCandidates: vi.fn(), persistPoster: vi.fn(), markPosterFailure: vi.fn(), markEntityFailure: vi.fn(),
     findLabels: vi.fn(), labelRefreshCandidates: vi.fn(), writeLabels: vi.fn(), hasPendingWork: vi.fn(),
     listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), hydratePublicIds: vi.fn(), findPublicBySlug: vi.fn(), findPublicPerson: vi.fn(),

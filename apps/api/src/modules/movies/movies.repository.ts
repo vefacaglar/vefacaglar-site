@@ -74,6 +74,11 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
           then ${movies.wikipediaViews} else null end desc nulls last`, asc(movies.title), asc(movies.id))
       .limit(Math.min(50, limit));
   }
+  recognitionCandidates(limit: number, now: Date) {
+    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
+      .where(and(publicMovie(), isNull(movies.wikipediaLanguageCount), due(now)))
+      .orderBy(asc(movies.id)).limit(Math.min(50, limit));
+  }
   async findLabels(qids: string[]) {
     const out: Record<string, { name: string | null; checkedAt: Date }> = {};
     for (const batch of chunks([...new Set(qids)])) {
@@ -113,8 +118,10 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle, title: movie.title }, now,
         { preserveStoredTitle: disposition === "unchanged" });
       if (disposition === "unchanged") {
-        await db.update(movies).set({ ...poster, checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
-        if (poster.posterCandidateVersion !== undefined || poster.posterImageUrl !== undefined) await dirtyMovieSearch(db, existing.id);
+        const recognitionChanged = existing.wikipediaLanguageCount !== movie.wikipediaLanguageCount;
+        await db.update(movies).set({ ...poster, wikipediaLanguageCount: movie.wikipediaLanguageCount,
+          ...(recognitionChanged ? { updatedAt: now } : {}), checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
+        if (recognitionChanged || poster.posterCandidateVersion !== undefined || poster.posterImageUrl !== undefined) await dirtyMovieSearch(db, existing.id);
         return "unchanged";
       }
       let imdbId = movie.imdbConflict ? existing.imdbId : movie.imdbId;
@@ -138,7 +145,8 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       await db.update(movies).set({ ...poster, title: movie.title, originalTitle: movie.originalTitle, description: movie.description,
         slug: existing.hydratedAt ? existing.slug : movieSlug(movie.title, movie.wikidataId), imdbId, imdbConflict,
         releaseDate: movie.releaseDate, releaseYear: movie.releaseYear, releasePrecision: movie.releasePrecision, runtimeMinutes: movie.runtimeMinutes,
-        isFilm: movie.isFilm, sourceRevision: movie.sourceRevision ?? existing.sourceRevision, sourceModifiedAt: movie.sourceModifiedAt ?? existing.sourceModifiedAt,
+        isFilm: movie.isFilm, wikipediaLanguageCount: movie.wikipediaLanguageCount,
+        sourceRevision: movie.sourceRevision ?? existing.sourceRevision, sourceModifiedAt: movie.sourceModifiedAt ?? existing.sourceModifiedAt,
         hydratedAt: now, checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null, updatedAt: now }).where(eq(movies.id, existing.id));
       await db.delete(movieCredits).where(eq(movieCredits.movieId, existing.id));
       await db.delete(movieCompanyLinks).where(eq(movieCompanyLinks.movieId, existing.id));

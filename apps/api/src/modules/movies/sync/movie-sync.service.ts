@@ -207,6 +207,20 @@ export class MovieSyncService {
 
     // Existing notable seeds become usable before the much larger discovery projection.
     await hydrate(await this.repo.hydrationCandidates(5, now()), false);
+    // Enrich already hydrated films without waiting for the normal refresh
+    // cursor. Spend at most half this window, retaining daily refresh capacity.
+    let recognitionRemaining = Math.floor(maxMovies / 2);
+    const recognitionRequestCeiling = result.requests + Math.floor(Math.max(0, maxRequests - result.requests - 1) / 2);
+    while (room() && result.requests < recognitionRequestCeiling && recognitionRemaining > 0 && remainingMovies() > 1) {
+      const limit = Math.min(50, recognitionRemaining, remainingMovies() - 1);
+      const candidates = (await this.repo.recognitionCandidates(limit, now())).slice(0, limit);
+      if (!candidates.length) break;
+      const before = result.refreshed + result.failed;
+      await hydrate(candidates, true, false);
+      const processed = result.refreshed + result.failed - before;
+      recognitionRemaining -= processed;
+      if (!processed) break;
+    }
     // Bootstrap exact sitelinks for visible/popular films and seeds even when
     // their source revision was checked recently. No public ordering changes.
     if (room() && remainingMovies() > 0) await hydrate(await this.repo.posterInputsCandidates(Math.min(50, remainingMovies()), now()), true, false);
@@ -278,7 +292,8 @@ export class MovieSyncService {
       const refreshRemaining = (await this.repo.refreshCandidates(state.refreshCursor, 1, new Date(Date.now() - DAY), now())).length > 0;
       const postersRemaining = (await this.repo.posterCandidates(1, now(), artworkProviders())).length > 0;
       const posterInputsRemaining = (await this.repo.posterInputsCandidates(1, now())).length > 0;
-      result.hasMore = !state.discoveryComplete || await this.repo.hasPendingWork(now()) || refreshRemaining || postersRemaining || posterInputsRemaining;
+      const recognitionRemaining = (await this.repo.recognitionCandidates(1, now())).length > 0;
+      result.hasMore = !state.discoveryComplete || await this.repo.hasPendingWork(now()) || refreshRemaining || postersRemaining || posterInputsRemaining || recognitionRemaining;
     }
     result.hasMore &&= result.progressMade;
     result.durationMs = Date.now() - started;

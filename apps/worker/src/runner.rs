@@ -118,6 +118,13 @@ impl Worker {
     async fn claim_loop(&self, types: &[String]) {
         let mut db_errors: u32 = 0;
         while !self.shutdown.is_cancelled() {
+            if let Err(e) = scheduler::dispatch_movie_search(&self.pool, &self.registry).await {
+                tracing::error!(
+                    application_event = "movie_search_dispatch_failed",
+                    error = &e as &dyn std::error::Error,
+                    "failed to dispatch requested movie search synchronization"
+                );
+            }
             match queue::claim(&self.pool, &self.config.worker_id, types).await {
                 Ok(Some(job)) => {
                     db_errors = 0;

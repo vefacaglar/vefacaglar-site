@@ -6,11 +6,13 @@
 
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::cron::Schedule;
 use crate::handler::Registry;
 use crate::queue;
+
+const MOVIE_SEARCH_SYNC: &str = "search.movies.sync";
 
 #[derive(Debug, sqlx::FromRow)]
 struct DueRecurring {
@@ -59,76 +61,116 @@ pub fn decide(
     }
 }
 
-/// One scheduler pass. Rows are locked with `FOR UPDATE SKIP LOCKED` so
+/// One scheduler pass. Rows are locked with `FOR NO KEY UPDATE SKIP LOCKED` so
 /// several workers never enqueue the same run twice.
 pub async fn tick(pool: &PgPool, registry: &Registry) -> sqlx::Result<()> {
     let mut tx = pool.begin().await?;
     let due: Vec<DueRecurring> = sqlx::query_as(
         "SELECT id, type, cron, payload, next_run_at FROM recurring_jobs \
          WHERE enabled AND cron IS NOT NULL AND (next_run_at IS NULL OR next_run_at <= now()) \
-         ORDER BY id FOR UPDATE SKIP LOCKED",
+         ORDER BY id FOR NO KEY UPDATE SKIP LOCKED",
     )
     .fetch_all(&mut *tx)
     .await?;
 
-    let now = Utc::now();
     for row in due {
-        match decide(row.cron.as_deref(), row.next_run_at, now) {
-            Decision::ManualOnly => {}
-            Decision::InvalidCron(reason) => {
-                tracing::warn!(application_event = "recurring_job_invalid_cron", recurring_job_id = %row.id, %reason, "skipping recurring job with invalid cron");
-            }
-            Decision::ScheduleOnly { next_run_at } => {
-                sqlx::query(
-                    "UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1",
-                )
-                .bind(&row.id)
-                .bind(next_run_at)
-                .execute(&mut *tx)
-                .await?;
-                tracing::info!(recurring_job_id = %row.id, %next_run_at, "scheduled recurring job");
-            }
-            Decision::Enqueue { next_run_at } => {
-                let concurrency_key = registry
-                    .get(&row.job_type)
-                    .and_then(|h| h.concurrency_key(&row.payload));
-                let job_id = queue::enqueue_in_tx(
-                    &mut tx,
-                    &row.job_type,
-                    &row.payload,
-                    concurrency_key.as_deref(),
-                    Some(&row.id),
-                )
-                .await?;
-                match job_id {
-                    Some(job_id) => {
-                        sqlx::query(
-                            "UPDATE recurring_jobs SET next_run_at = $2, last_enqueued_at = now(), \
+        dispatch_row(&mut tx, registry, row).await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Source commits mark this registration due and notify `jobs`. Run before
+/// every claim so notifications, polling and job completion all drain demand.
+pub async fn dispatch_movie_search(pool: &PgPool, registry: &Registry) -> sqlx::Result<()> {
+    if registry.get(MOVIE_SEARCH_SYNC).is_none() {
+        return Ok(());
+    }
+    let mut tx = pool.begin().await?;
+    let row: Option<DueRecurring> = sqlx::query_as(
+        "SELECT id, type, cron, payload, next_run_at FROM recurring_jobs \
+         WHERE id=$1 AND type=$1 AND enabled AND cron IS NOT NULL \
+           AND (next_run_at IS NULL OR next_run_at <= now()) \
+         FOR NO KEY UPDATE SKIP LOCKED",
+    )
+    .bind(MOVIE_SEARCH_SYNC)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if let Some(row) = row {
+        dispatch_row(&mut tx, registry, row).await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn dispatch_row(
+    tx: &mut Transaction<'_, Postgres>,
+    registry: &Registry,
+    row: DueRecurring,
+) -> sqlx::Result<()> {
+    let movie_demand = row.id == MOVIE_SEARCH_SYNC && row.job_type == MOVIE_SEARCH_SYNC;
+    if movie_demand && registry.get(MOVIE_SEARCH_SYNC).is_none() {
+        return Ok(());
+    }
+    match decide(row.cron.as_deref(), row.next_run_at, Utc::now()) {
+        Decision::ManualOnly => {}
+        Decision::InvalidCron(reason) => {
+            tracing::warn!(application_event = "recurring_job_invalid_cron", recurring_job_id = %row.id, %reason, "skipping recurring job with invalid cron");
+        }
+        Decision::ScheduleOnly { next_run_at } => {
+            sqlx::query(
+                "UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1",
+            )
+            .bind(&row.id)
+            .bind(next_run_at)
+            .execute(&mut **tx)
+            .await?;
+            tracing::info!(recurring_job_id = %row.id, %next_run_at, "scheduled recurring job");
+        }
+        Decision::Enqueue { next_run_at } => {
+            let concurrency_key = registry
+                .get(&row.job_type)
+                .and_then(|h| h.concurrency_key(&row.payload));
+            let job_id = queue::enqueue_in_tx(
+                tx,
+                &row.job_type,
+                &row.payload,
+                concurrency_key.as_deref(),
+                Some(&row.id),
+            )
+            .await?;
+            match job_id {
+                Some(job_id) => {
+                    sqlx::query(
+                        "UPDATE recurring_jobs SET next_run_at = $2, last_enqueued_at = now(), \
                                  last_job_id = $3, updated_at = now() WHERE id = $1",
-                        )
-                        .bind(&row.id)
-                        .bind(next_run_at)
-                        .bind(job_id)
-                        .execute(&mut *tx)
-                        .await?;
-                        tracing::info!(recurring_job_id = %row.id, %job_id, %next_run_at, "enqueued recurring job");
-                    }
-                    None => {
+                    )
+                    .bind(&row.id)
+                    .bind(next_run_at)
+                    .bind(job_id)
+                    .execute(&mut **tx)
+                    .await?;
+                    tracing::info!(recurring_job_id = %row.id, %job_id, %next_run_at, "enqueued recurring job");
+                }
+                None => {
+                    // Movie due times also carry source-change requests.
+                    // Keep them pending while another search/retry/bounded
+                    // continuation owns the key; never shorten its run_at.
+                    if !movie_demand {
                         sqlx::query("UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1")
-                            .bind(&row.id)
-                            .bind(next_run_at)
-                            .execute(&mut *tx)
-                            .await?;
-                        tracing::info!(
-                            recurring_job_id = %row.id,
-                            "skipped recurring run: a job with the same concurrency key is active"
-                        );
+                                .bind(&row.id)
+                                .bind(next_run_at)
+                                .execute(&mut **tx)
+                                .await?;
                     }
+                    tracing::info!(
+                        recurring_job_id = %row.id,
+                        "skipped recurring run: a job with the same concurrency key is active"
+                    );
                 }
             }
         }
     }
-    tx.commit().await?;
     Ok(())
 }
 

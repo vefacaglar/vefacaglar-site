@@ -58,7 +58,8 @@ impl Model {
                     id,
                     Row {
                         document: Some(
-                            json!({"id":id,"title":format!("Film {index}"),"interestScore":-1}),
+                            json!({"id":id,"title":format!("Film {index}"),"interestScore":-1,
+                                "recognitionCount":0,"interestRecognitionRank":0}),
                         ),
                         requested: 1,
                         applied: 0,
@@ -69,7 +70,7 @@ impl Model {
             .collect();
         Self {
             state: State {
-                schema_version: 1,
+                schema_version: SCHEMA_VERSION,
                 active_collection: None,
                 building_collection: None,
                 phase: "scan".into(),
@@ -143,7 +144,7 @@ impl MovieSource for FakeSource {
     }
     async fn start_build(&self, target: &str) -> Result<()> {
         let mut m = self.model.lock().unwrap();
-        m.state.schema_version = 1;
+        m.state.schema_version = SCHEMA_VERSION;
         m.state.building_collection = Some(target.into());
         m.state.phase = "scan".into();
         m.state.cursor = None;
@@ -376,7 +377,7 @@ fn limits(documents: usize) -> Limits {
     }
 }
 fn ready(source: &FakeSource, backend: &Backend) {
-    let target = "movies_en__v1_existing";
+    let target = "movies_en__v2_existing";
     let mut m = source.model.lock().unwrap();
     m.state.active_collection = Some(target.into());
     m.state.phase = "ready".into();
@@ -404,16 +405,57 @@ fn movie_schema_is_exactly_the_api_contract() {
     .unwrap();
     assert_eq!(schema(ALIAS), expected);
     assert!(compatible(
-        &schema("movies_en__v1_test"),
-        "movies_en__v1_test"
+        &schema("movies_en__v2_test"),
+        "movies_en__v2_test"
     ));
-    let mut actual = schema("movies_en__v1_test");
+    let mut actual = schema("movies_en__v2_test");
     actual["fields"][4]["sort"] = json!(false);
-    assert!(!compatible(&actual, "movies_en__v1_test"));
-    assert!(owned("movies_en__v1_ABC_12"));
-    assert!(!owned("movies_en__v1_"));
-    assert!(!owned("movies_en__v1_x/evil"));
+    assert!(!compatible(&actual, "movies_en__v2_test"));
+    assert!(owned("movies_en__v2_ABC_12"));
+    assert!(!owned("movies_en__v2_"));
+    assert!(!owned("movies_en__v2_x/evil"));
     assert!(!owned("games_en__123"));
+    assert!(!owned("movies_en__v1_legacy"));
+}
+
+#[tokio::test]
+async fn version_one_checkpoint_starts_a_new_shadow_without_touching_the_live_alias() {
+    let (source, backend) = setup(501);
+    {
+        let mut m = source.model.lock().unwrap();
+        m.state.schema_version = 1;
+        m.state.active_collection = Some("movies_en__v1_live".into());
+        m.state.building_collection = Some("movies_en__v1_partial".into());
+        m.state.cursor = Some(Uuid::from_u128(500));
+        let mut e = backend.engine.lock().unwrap();
+        e.alias = Some("movies_en__v1_live".into());
+    }
+    assert!(matches!(
+        run(&Io::default(), &backend, &source, limits(500))
+            .await
+            .unwrap(),
+        JobOutcome::CompletedWithContinuation { .. }
+    ));
+    {
+        let m = source.model.lock().unwrap();
+        assert_eq!(m.state.schema_version, SCHEMA_VERSION);
+        assert_eq!(
+            m.state.active_collection.as_deref(),
+            Some("movies_en__v1_live")
+        );
+        assert!(owned(m.state.building_collection.as_deref().unwrap()));
+        assert_eq!(m.scans, vec![None]);
+        assert!(!m.ready);
+        let e = backend.engine.lock().unwrap();
+        assert_eq!(e.alias.as_deref(), Some("movies_en__v1_live"));
+        assert!(e.deleted_collections.is_empty());
+    }
+    run(&Io::default(), &backend, &source, limits(50_000))
+        .await
+        .unwrap();
+    let m = source.model.lock().unwrap();
+    assert!(m.ready);
+    assert!(owned(m.state.active_collection.as_deref().unwrap()));
 }
 #[tokio::test]
 async fn bootstrap_publishes_only_after_scan_and_replay_with_canonical_date() {
@@ -574,7 +616,7 @@ async fn missing_and_nonpublic_sources_are_deleted_and_tombstones_do_not_loop() 
         .lock()
         .unwrap()
         .docs
-        .get_mut("movies_en__v1_existing")
+        .get_mut("movies_en__v2_existing")
         .unwrap()
         .remove(&Uuid::from_u128(2).to_string());
     run(&Io::default(), &backend, &source, limits(50_000))
@@ -587,11 +629,11 @@ async fn missing_and_nonpublic_sources_are_deleted_and_tombstones_do_not_loop() 
     assert!(
         m.rows
             .values()
-            .all(|row| row.applied == 2 && row.target.as_deref() == Some("movies_en__v1_existing"))
+            .all(|row| row.applied == 2 && row.target.as_deref() == Some("movies_en__v2_existing"))
     );
     let e = backend.engine.lock().unwrap();
     assert_eq!(e.deletions, 2);
-    assert!(e.docs["movies_en__v1_existing"].is_empty());
+    assert!(e.docs["movies_en__v2_existing"].is_empty());
 }
 #[tokio::test]
 async fn bounded_bootstrap_continues_only_after_progress_with_remaining_work() {
@@ -738,7 +780,7 @@ async fn missing_physical_target_preserves_old_alias_and_active_while_rebuilding
         .lock()
         .unwrap()
         .schemas
-        .remove("movies_en__v1_existing");
+        .remove("movies_en__v2_existing");
     assert!(matches!(
         run(&Io::default(), &backend, &source, limits(500))
             .await
@@ -749,12 +791,12 @@ async fn missing_physical_target_preserves_old_alias_and_active_while_rebuilding
     assert!(!m.ready);
     assert_eq!(
         m.state.active_collection.as_deref(),
-        Some("movies_en__v1_existing")
+        Some("movies_en__v2_existing")
     );
     assert!(m.state.building_collection.is_some());
     assert_ne!(m.state.building_collection, m.state.active_collection);
     let e = backend.engine.lock().unwrap();
-    assert_eq!(e.alias.as_deref(), Some("movies_en__v1_existing"));
+    assert_eq!(e.alias.as_deref(), Some("movies_en__v2_existing"));
     assert!(e.deleted_collections.is_empty());
 }
 

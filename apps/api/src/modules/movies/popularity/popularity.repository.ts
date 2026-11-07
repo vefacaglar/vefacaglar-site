@@ -5,6 +5,7 @@ import { DbProvider } from "../../../db.provider";
 import { MOVIE_SOURCE_ID } from "../import/movie-source.types";
 import { assertCompleteProjection, snapshotDisposition } from "./wikipedia-interest";
 import { MOVIE_POPULARITY_SOURCE_ID, type IMoviePopularityRepository, type InterestProjection, type MoviePopularityState } from "./popularity.types";
+import { requestMovieSearchSync } from "../search/movie-search-state.repository";
 @injectable()
 export class DrizzleMoviePopularityRepository implements IMoviePopularityRepository {
   constructor(private readonly dbProvider: DbProvider) {}
@@ -66,6 +67,8 @@ export class DrizzleMoviePopularityRepository implements IMoviePopularityReposit
         articleCount: projection.articleCount, mappedArticleCount: projection.mappedArticleCount, missingArticleCount: projection.missingArticleCount,
         duplicateQidCount: projection.duplicateQidCount, observedMovieCount,
       }).where(eq(moviePopularityState.id, MOVIE_POPULARITY_SOURCE_ID));
+      // Also request publication when no movie rows changed: its generation did.
+      await requestMovieSearchSync(db);
       return { status: "published" as const, observedMovieCount };
     });
   }

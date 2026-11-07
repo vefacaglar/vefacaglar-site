@@ -16,7 +16,7 @@ beforeEach(() => {
   repo = { ensureSourceAndSeeds: vi.fn().mockResolvedValue({ inserted: 0, state: state() }), sourceState: vi.fn().mockResolvedValue(state()), saveSourceState: vi.fn(), insertDiscovered: vi.fn().mockResolvedValue(0),
     hydrationCandidates: vi.fn().mockResolvedValue([]), refreshCandidates: vi.fn().mockResolvedValue([]), persistMovie: vi.fn().mockResolvedValue("updated"), markEntityFailure: vi.fn(),
     findLabels: vi.fn().mockResolvedValue({}), labelRefreshCandidates: vi.fn().mockResolvedValue([]), writeLabels: vi.fn(), hasPendingWork: vi.fn().mockResolvedValue(false), listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), hydratePublicIds: vi.fn(), findPublicPerson: vi.fn(), findPublicBySlug: vi.fn(),
-    posterInputsCandidates: vi.fn().mockResolvedValue([]), posterCandidates: vi.fn().mockResolvedValue([]), persistPoster: vi.fn().mockResolvedValue(true), markPosterFailure: vi.fn() };
+    posterInputsCandidates: vi.fn().mockResolvedValue([]), recognitionCandidates: vi.fn().mockResolvedValue([]), posterCandidates: vi.fn().mockResolvedValue([]), persistPoster: vi.fn().mockResolvedValue(true), markPosterFailure: vi.fn() };
   client = { fetchEntities: vi.fn().mockResolvedValue({ Q47703: entity() }), fetchLabels: vi.fn().mockResolvedValue({}) };
   discovery = { discover: vi.fn() };
   posters = { fetchPosters: vi.fn().mockResolvedValue({}) };
@@ -137,7 +137,7 @@ describe("Wikipedia fallback orchestration", () => {
   });
   it("bootstraps sitelinks for recently checked priority films without advancing the normal refresh cursor", async () => {
     repo.posterInputsCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: 42 }]);
-    client.fetchEntities.mockResolvedValue({ Q47703: { ...entity(), sitelinks: { enwiki: { site: "enwiki", title: "The Godfather" } } } });
+    client.fetchEntities.mockResolvedValue({ Q47703: { ...entity(), sitelinks: { enwiki: { site: "enwiki", title: "The Godfather", url: "https://en.wikipedia.org/wiki/The_Godfather" } } } });
     expect(await run()).toMatchObject({ refreshed: 1, requests: 1, hasMore: false });
     expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ sourceRevision: 42, enwikiArticle: "The Godfather" }), expect.any(Date));
     expect(repo.saveSourceState).not.toHaveBeenCalledWith({ refreshCursor: "a" });
@@ -271,6 +271,29 @@ describe("bounded movie sync handler", () => {
     expect(repo.persistMovie).toHaveBeenCalledTimes(75);
     expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: "75" });
     expect(repo.refreshCandidates).toHaveBeenNthCalledWith(2, "50", 25, expect.any(Date), expect.any(Date));
+  });
+
+  it("backfills recognition at unchanged revisions while reserving normal refresh capacity and cursor", async () => {
+    const candidates = (start: number, count: number) => Array.from({ length: count }, (_, i) => ({
+      id: String(start + i), wikidataId: `Q${start + i}`, sourceRevision: 42,
+    }));
+    repo.recognitionCandidates.mockResolvedValueOnce(candidates(1, 50));
+    repo.refreshCandidates.mockResolvedValueOnce(candidates(100, 50));
+    client.fetchEntities.mockImplementation(async (qids: string[]) => Object.fromEntries(qids.map((qid) => [qid, entity(qid)])));
+    expect(await run({ maxMovies: 75 })).toMatchObject({ refreshed: 75, requests: 2, failed: 0 });
+    expect(repo.recognitionCandidates).toHaveBeenNthCalledWith(1, 37, expect.any(Date));
+    expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ sourceRevision: 42, wikipediaLanguageCount: 0 }), expect.any(Date));
+    expect(repo.saveSourceState).not.toHaveBeenCalledWith({ refreshCursor: "37" });
+    expect(repo.saveSourceState).toHaveBeenCalledWith({ refreshCursor: "137" });
+  });
+
+  it("does not spend the last request on recognition ahead of an ordinary refresh", async () => {
+    repo.recognitionCandidates.mockResolvedValue([{ id: "pending", wikidataId: "Q2", sourceRevision: 42 }]);
+    repo.refreshCandidates.mockResolvedValueOnce([{ id: "normal", wikidataId: "Q1", sourceRevision: 42 }]);
+    client.fetchEntities.mockResolvedValue({ Q1: entity("Q1") });
+    expect(await run({ maxRequests: 1 })).toMatchObject({ refreshed: 1, requests: 1, hasMore: true });
+    expect(client.fetchEntities).toHaveBeenCalledWith(["Q1"], expect.anything());
+    expect(repo.recognitionCandidates).toHaveBeenCalledTimes(1);
   });
 
 });

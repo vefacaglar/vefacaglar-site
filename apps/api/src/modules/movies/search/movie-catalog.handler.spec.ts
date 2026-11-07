@@ -11,7 +11,7 @@ const id = "00000000-0000-4000-8000-000000000001";
 const card = { slug: "inception-q25188", title: "Inception", releaseDate: null, releaseYear: 2010, runtimeMinutes: 148,
   posterImageUrl: "https://upload.wikimedia.org/current.jpg", posterAttribution: null };
 const fallback = { items: [], total: 91, ranking: { mode: "alphabetical", sourceDate: null, sourceUrl: null, isFresh: false } };
-const state = { id: "movies_en", schemaVersion: 1, activeCollection: "movies_en__v1_a1", buildingCollection: null,
+const state = { id: "movies_en", schemaVersion: 2, activeCollection: "movies_en__v2_a1", buildingCollection: null,
   bootstrapPhase: "ready", bootstrapCursor: null, rankingGeneration: 2, rankingReady: true,
   publishedSourceDate: "2026-11-06", repairCursor: null, repairCompletedAt: null, updatedAt: new Date() } satisfies MovieSearchState;
 let repo: Record<keyof IMoviesRepository, any>;
@@ -47,7 +47,8 @@ describe("movie catalog handlers using the movie index", () => {
     expect(repo.listPublic).not.toHaveBeenCalled();
   });
   it.each([null, { ...state, rankingReady: false }, { ...state, bootstrapPhase: "replay" },
-    { ...state, schemaVersion: 2 }, { ...state, activeCollection: "games_en__123" }])("falls back until an owned publication is ready (%j)", async (publication) => {
+    { ...state, schemaVersion: 1 }, { ...state, activeCollection: "movies_en__v1_legacy" },
+    { ...state, activeCollection: "games_en__123" }])("falls back until an owned publication is ready (%j)", async (publication) => {
     stateRepo.state.mockResolvedValue(publication);
     expect((await list()).total).toBe(91);
     expect(reader.search).not.toHaveBeenCalled();
@@ -62,7 +63,7 @@ describe("movie catalog handlers using the movie index", () => {
     expect((await list()).total).toBe(91);
   });
   it.each([{ ...state, rankingReady: false }, { ...state, rankingGeneration: 3 },
-    { ...state, activeCollection: "movies_en__v1_b2" }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
+    { ...state, activeCollection: "movies_en__v2_b2" }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
     stateRepo.state.mockResolvedValueOnce(state).mockResolvedValueOnce(after);
     expect((await list()).total).toBe(91);
   });

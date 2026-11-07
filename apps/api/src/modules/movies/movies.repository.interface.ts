@@ -23,6 +23,7 @@ export interface IMoviesRepository {
   hydrationCandidates(limit: number, now: Date): Promise<MovieCandidate[]>;
   refreshCandidates(afterId: string | null, limit: number, before: Date, now: Date): Promise<MovieCandidate[]>;
   posterInputsCandidates(limit: number, now: Date): Promise<MovieCandidate[]>;
+  recognitionCandidates(limit: number, now: Date): Promise<MovieCandidate[]>;
   persistMovie(movie: NormalizedMovie, now: Date): Promise<"updated" | "unchanged" | "imdb_conflict">;
   posterCandidates(limit: number, now: Date, available?: { commons: boolean; wikipedia: boolean }): Promise<MoviePosterCandidate[]>;
   persistPoster(candidate: MoviePosterCandidate, poster: MoviePoster | null, now: Date): Promise<boolean>;

@@ -1,0 +1,3 @@
+ALTER TABLE "movies" ADD COLUMN "wikipedia_language_count" integer;--> statement-breakpoint
+CREATE INDEX "movies_recognition_backfill_idx" ON "movies" USING btree ("id") WHERE "movies"."wikipedia_language_count" is null and "movies"."is_film" = true and "movies"."hydrated_at" is not null and "movies"."title" is not null;--> statement-breakpoint
+ALTER TABLE "movies" ADD CONSTRAINT "movies_wikipedia_language_count_check" CHECK ("movies"."wikipedia_language_count" is null or ("movies"."wikipedia_language_count" >= 0 and "movies"."wikipedia_language_count" < 1000000));

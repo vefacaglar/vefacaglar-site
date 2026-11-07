@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { describe, expect, it } from "vitest";
-import { addCharacterLabels, characterQidsFromQualifiers, isImdbId, movieSlug, movieSnapshotDisposition, normalizeMovie } from "./wikidata-normalizer";
+import { addCharacterLabels, characterQidsFromQualifiers, isImdbId, movieSlug, movieSnapshotDisposition, normalizeMovie, wikipediaLanguageCount } from "./wikidata-normalizer";
 const statement = (property: string, value: unknown, id = property) => ({ id: `Q47703$${id}`, rank: "normal", mainsnak: { property, snaktype: "value", datavalue: { value } } });
 const movie = (extra: Record<string, unknown> = {}) => ({ id: "Q47703", type: "item", labels: { en: { value: "The Godfather" } },
   lastrevid: 123, modified: "2026-11-05T00:00:00Z", sitelinks: {}, claims: { P31: [statement("P31", { id: "Q11424" })], ...extra } });
@@ -76,11 +76,26 @@ describe("Wikidata movie normalization", () => {
     expect(movieSnapshotDisposition(123, 123, true, false)).toBe("unchanged");
   });
   it("requires complete sitelinks and retains only the exact enwiki article title", () => {
-    expect(normalizeMovie({ ...movie(), sitelinks: { enwiki: { site: "enwiki", title: "The Godfather" } } }, "Q47703").enwikiArticle).toBe("The Godfather");
+    expect(normalizeMovie({ ...movie(), sitelinks: { enwiki: { site: "enwiki", title: "The Godfather", url: "https://en.wikipedia.org/wiki/The_Godfather" } } }, "Q47703").enwikiArticle).toBe("The Godfather");
     expect(normalizeMovie(movie(), "Q47703").enwikiArticle).toBeNull();
     const raw = movie() as Record<string, unknown>; delete raw.sitelinks;
     expect(() => normalizeMovie(raw, "Q47703")).toThrow("incomplete_entity_sitelinks");
     expect(() => normalizeMovie({ ...movie(), sitelinks: { enwiki: { site: "enwiki", title: "File:Poster.jpg" } } }, "Q47703")).toThrow("invalid_entity_sitelink");
+  });
+
+  it("counts distinct Wikipedia editions, excluding sibling projects and duplicate mobile hosts", () => {
+    const link = (site: string, url: string) => ({ site, title: "A film", url });
+    expect(wikipediaLanguageCount({
+      enwiki: link("enwiki", "https://en.wikipedia.org/wiki/A_film"),
+      mobile: link("mobile", "https://en.m.wikipedia.org/wiki/A_film"),
+      dewiki: link("dewiki", "https://de.wikipedia.org/wiki/A_film"),
+      commonswiki: link("commonswiki", "https://commons.wikimedia.org/wiki/Category:A_film"),
+      specieswiki: link("specieswiki", "https://species.wikimedia.org/wiki/A_film"),
+      enwikiquote: link("enwikiquote", "https://en.wikiquote.org/wiki/A_film"),
+    })).toBe(2);
+    expect(normalizeMovie(movie(), "Q47703").wikipediaLanguageCount).toBe(0);
+    expect(() => wikipediaLanguageCount({ enwiki: { site: "enwiki", title: "Film" } })).toThrow("invalid_entity_sitelink");
+    expect(() => wikipediaLanguageCount({ enwiki: link("other", "https://en.wikipedia.org/wiki/Film") })).toThrow("invalid_entity_sitelink");
   });
 
 });

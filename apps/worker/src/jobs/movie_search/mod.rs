@@ -23,9 +23,9 @@ use crate::queue::LogLevel;
 use source::{Batch, MovieSource, PgMovieSource, Publication, State};
 
 pub const ALIAS: &str = "movies_en";
-pub const SCHEMA_VERSION: i32 = 1;
+pub const SCHEMA_VERSION: i32 = 2;
 pub const BATCH_SIZE: usize = 500;
-const PREFIX: &str = "movies_en__v1_";
+const PREFIX: &str = "movies_en__v2_";
 const SCHEMA: &str =
     include_str!("../../../../api/src/modules/movies/search/movie-search.schema.json");
 
@@ -68,7 +68,8 @@ pub fn compatible(actual: &Value, target: &str) -> bool {
                 candidate["type"] == field["type"]
                     && ["optional", "facet", "sort"].into_iter().all(|key| {
                         // Numeric fields are sortable by default in Typesense.
-                        let default = key == "sort" && field["type"] == "int32";
+                        let default = key == "sort"
+                            && matches!(field["type"].as_str(), Some("int32" | "int64"));
                         candidate[key].as_bool().unwrap_or(default)
                             == field[key].as_bool().unwrap_or(default)
                     })
