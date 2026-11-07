@@ -3,6 +3,13 @@ import type { MovieCard } from "./list/list.schema";
 import type { MovieDetail } from "./detail/detail.schema";
 import type { EntityLabels, NormalizedMovie } from "./import/movie-source.types";
 import type { MoviePoster } from "./artwork/commons-poster";
+import type { MoviePersonFilm } from "./people/detail/detail.schema";
+export type MoviePersonResult = {
+  person: { wikidataId: string; name: string | null };
+  items: MoviePersonFilm[];
+  total: number;
+  ranking: MovieRanking;
+};
 export type MovieCandidate = { id: string; wikidataId: string; sourceRevision: number | null };
 export type MovieSourceState = { discoveryComplete: boolean; discoveryCycle: number; discoveryStrategy: string | null;
   nextDiscoveryAt: Date | null; cooldownUntil: Date | null; artworkCooldownUntil: Date | null; wikipediaArtworkCooldownUntil: Date | null; failureCount: number; refreshCursor: string | null; lastSuccessAt: Date | null };
@@ -27,4 +34,5 @@ export interface IMoviesRepository {
   hasPendingWork(now: Date): Promise<boolean>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number; ranking: MovieRanking }>;
   findPublicBySlug(slug: string): Promise<MovieDetail | null>;
+  findPublicPerson(wikidataId: string, filter: { page: number; limit: number }): Promise<MoviePersonResult | null>;
 }

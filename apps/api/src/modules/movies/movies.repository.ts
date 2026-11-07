@@ -1,5 +1,5 @@
 import { injectable } from "tsyringe";
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState } from "@vefacaglar/db";
 import { DbProvider } from "../../db.provider";
 import { MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
@@ -7,6 +7,7 @@ import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState, MoviePosterCandidate } from "./movies.repository.interface";
 import type { MoviePoster } from "./artwork/commons-poster";
+import type { MoviePersonRole } from "./people/detail/detail.schema";
 import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
@@ -180,8 +181,12 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     return (await this.labelRefreshCandidates(1, new Date(now.getTime() - 7 * 24 * 60 * 60_000))).length > 0;
   }
   async listPublic(filter: { page: number; limit: number; q?: string }) {
+    const { movieIds: _movieIds, ...result } = await this.listPublicMatching(filter);
+    return result;
+  }
+  private async listPublicMatching(filter: { page: number; limit: number; q?: string }, extraFilter?: SQL) {
     const tokens = filter.q?.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu)?.slice(0, 8) ?? [];
-    const where = and(publicMovie(), filter.q && !tokens.length ? sql`false` : tokens.length ? sql`to_tsvector('simple',coalesce(${movies.title},'')) @@ to_tsquery('simple',${tokens.map((token) => token + ':*').join(' & ')})` : undefined)!;
+    const where = and(publicMovie(), extraFilter, filter.q && !tokens.length ? sql`false` : tokens.length ? sql`to_tsvector('simple',coalesce(${movies.title},'')) @@ to_tsquery('simple',${tokens.map((token) => token + ':*').join(' & ')})` : undefined)!;
     // One statement owns both the ranking descriptor and the page ordering. A
     // concurrent publication cannot expose date A with ordered observations B.
     const rows = await this.dbProvider.client.execute(sql`
@@ -201,7 +206,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         order by interest desc nulls last, ${movies.title}, ${movies.id}
         limit ${filter.limit} offset ${(filter.page - 1) * filter.limit}
       )
-      select coalesce((select jsonb_agg(jsonb_build_object('slug',slug,'title',title,'releaseDate',release_date,
+      select coalesce((select jsonb_agg(jsonb_build_object('movieId',id,'slug',slug,'title',title,'releaseDate',release_date,
           'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution,
           'posterArticle',poster_article,'posterOrigin',poster_origin)
           order by interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
@@ -209,12 +214,38 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
         (select is_fresh from ranking) as is_fresh
     `);
-    const row = rows[0] as unknown as { items: (MovieCard & { posterArticle: string | null; posterOrigin: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
+    const row = rows[0] as unknown as { items: (MovieCard & { movieId: string; posterArticle: string | null; posterOrigin: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
     const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "alphabetical", sourceDate: row.source_date,
       sourceUrl: row.source_date ? sourceUrl(row.source_date) : null, isFresh: row.is_fresh };
-    const items = row.items.map(({ posterArticle, posterOrigin, ...card }) => ({ ...card,
+    const items = row.items.map(({ movieId: _movieId, posterArticle, posterOrigin, ...card }) => ({ ...card,
       ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin }) }));
-    return { items, total: Number(row.total), ranking };
+    return { items, movieIds: row.items.map((item) => item.movieId), total: Number(row.total), ranking };
+  }
+  async findPublicPerson(wikidataId: string, filter: { page: number; limit: number }) {
+    const db = this.dbProvider.client;
+    const [person] = await db.select({ id: moviePeople.id, wikidataId: moviePeople.wikidataId, name: moviePeople.name })
+      .from(moviePeople).where(eq(moviePeople.wikidataId, wikidataId));
+    if (!person) return null;
+    const linkedCredit = exists(db.select({ value: sql`1` }).from(movieCredits).where(and(
+      eq(movieCredits.movieId, movies.id), eq(movieCredits.personId, person.id), ne(movieCredits.rank, "deprecated"),
+    )));
+    const { items, movieIds, total, ranking } = await this.listPublicMatching(filter, linkedCredit);
+    // Read roles only for this page; repeated statements cannot duplicate a film.
+    const credits = movieIds.length ? await db.select({ movieId: movieCredits.movieId, roleProperty: movieCredits.roleProperty })
+      .from(movieCredits).where(and(eq(movieCredits.personId, person.id), inArray(movieCredits.movieId, movieIds), ne(movieCredits.rank, "deprecated")))
+      .groupBy(movieCredits.movieId, movieCredits.roleProperty) : [];
+    const properties = { P161: "cast", P57: "director", P162: "producer" } as const;
+    const roleOrder: MoviePersonRole[] = ["cast", "director", "producer"];
+    const roles = new Map<string, Set<MoviePersonRole>>();
+    for (const credit of credits) {
+      const role = properties[credit.roleProperty as keyof typeof properties];
+      if (!role) continue;
+      const filmRoles = roles.get(credit.movieId) ?? new Set<MoviePersonRole>();
+      filmRoles.add(role);
+      roles.set(credit.movieId, filmRoles);
+    }
+    return { person: { wikidataId: person.wikidataId, name: person.name }, total, ranking,
+      items: items.map((item, index) => ({ ...item, roles: roleOrder.filter((role) => roles.get(movieIds[index])?.has(role)) })) };
   }
   async findPublicBySlug(slug: string) {
     const db = this.dbProvider.client;
