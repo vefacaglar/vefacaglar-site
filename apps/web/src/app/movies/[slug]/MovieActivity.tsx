@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLocale } from "../../../components/LocaleProvider";
+import { LocaleProvider, useLocale } from "../../../components/LocaleProvider";
 import { localizeHref } from "../../../lib/localizeHref";
 import { formatDate } from "../../../lib/formatDate";
 import type { MovieActivity as Activity, MovieWatch } from "../../../lib/movieActivity";
@@ -10,6 +10,7 @@ import { createMovieWatch, updateMovieWatch, deleteMovieWatch, setMovieRating, t
 import { localToday } from "../watchDate";
 import { freezeWatchSubmission, type WatchSubmission } from "../watchSubmission";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import DatePicker from "../../components/DatePicker";
 import styles from "./MovieActivity.module.css";
 
 type WatchEditor = { id: string | null; watchedOn: string; comment: string };
@@ -21,23 +22,32 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
   const [editor, setEditor] = useState<WatchEditor | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ratingError, setRatingError] = useState<string | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [pending, startTransition] = useTransition();
   const busy = useRef(false);
+  const ratingChoicesRef = useRef<HTMLFieldSetElement>(null);
+  const restoreRatingFocus = useRef(false);
   const addition = useRef<WatchSubmission | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const returnFocus = useRef(false);
 
   useEffect(() => { setRating(activity.rating === null ? "" : String(activity.rating)); }, [activity.rating]);
   useEffect(() => {
+    if (pending || !restoreRatingFocus.current) return;
+    restoreRatingFocus.current = false;
+    if (document.activeElement === document.body) {
+      (ratingChoicesRef.current?.querySelector<HTMLInputElement>("input:checked") ??
+        ratingChoicesRef.current?.querySelector<HTMLInputElement>("input"))?.focus();
+    }
+  }, [pending, rating]);
+  useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (editor && !dialog.open) {
       dialog.showModal();
-      dateRef.current?.focus();
     } else if (!editor) {
       if (dialog.open) dialog.close();
       if (!pending && returnFocus.current) {
@@ -67,6 +77,21 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
         if (result.error) setError(result.error);
         else router.refresh();
       } catch { setError("Server connection error."); }
+      finally { busy.current = false; }
+    });
+  };
+  const saveRating = (next: string) => {
+    if (busy.current || pending || next === rating) return;
+    const previous = rating;
+    busy.current = true;
+    setRatingError(null);
+    setRating(next);
+    startTransition(async () => {
+      try {
+        const result = await setMovieRating(slug, next ? Number(next) : null);
+        if (result.error) { setRating(previous); setRatingError(result.error); }
+        else router.refresh();
+      } catch { setRating(previous); setRatingError("Server connection error."); }
       finally { busy.current = false; }
     });
   };
@@ -102,30 +127,27 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
   };
   const pageHref = (page: number) => localizeHref(`/movies/${slug}${page > 1 ? `?watchPage=${page}` : ""}#watch-history`, locale);
   const locked = editor?.id === null && unconfirmed;
-  const ratingChanged = rating !== (activity.rating === null ? "" : String(activity.rating));
 
   return <div className={styles.activity}>
     <section className={styles.section}>
-      <div className={styles.sectionHeading}><h2>Your rating</h2><span className={styles.savedRating}>{activity.rating === null ? "Not rated" : `${activity.rating} / 10`}</span></div>
-      <form className={styles.ratingForm} onSubmit={(event) => { event.preventDefault(); run(() => setMovieRating(slug, rating ? Number(rating) : null)); }}>
-        <fieldset className={styles.ratingChoices} disabled={pending}>
+      <div className={styles.sectionHeading}><h2>Your rating</h2><span className={styles.savedRating}>{rating ? `${rating} / 10` : "Not rated"}</span></div>
+      <div className={styles.ratingForm}>
+        <fieldset ref={ratingChoicesRef} className={styles.ratingChoices} disabled={pending}>
           <legend className={styles.srOnly}>Your rating from 1 to 10</legend>
           {Array.from({ length: 10 }, (_, index) => {
             const value = String(index + 1);
             return <label className={styles.ratingOption} key={value}>
-              <input className={styles.ratingInput} type="radio" name={ratingId} value={value} checked={rating === value} onChange={() => setRating(value)} aria-label={`${value} out of 10`} />
+              <input className={styles.ratingInput} type="radio" name={ratingId} value={value} checked={rating === value} onChange={() => { restoreRatingFocus.current = true; saveRating(value); }} aria-label={`${value} out of 10`} />
               <span className={styles.ratingBox}>{value}</span>
             </label>;
           })}
         </fieldset>
         <div className={styles.ratingFooter}>
-          <p className={styles.muted}>{ratingChanged ? "Unsaved rating" : "One rating per film. Update it whenever you like."}</p>
-          <div className={styles.controls}>
-            {(rating || activity.rating !== null) && <button className="btnGhost" type="button" disabled={pending} onClick={() => { if (activity.rating === null) setRating(""); else run(() => setMovieRating(slug, null)); }}>Clear rating</button>}
-            <button className="btnAccent" type="submit" disabled={pending || !rating || !ratingChanged}>Save rating</button>
-          </div>
+          <p className={styles.muted} aria-live="polite">{pending ? "Saving…" : "One rating per film. Update it whenever you like."}</p>
+          {rating && <button className={`btnGhost ${styles.clearRating}`} type="button" disabled={pending} onClick={() => saveRating("")}>Clear rating</button>}
         </div>
-      </form>
+        {ratingError && <p className={styles.ratingError} role="alert">{ratingError}</p>}
+      </div>
     </section>
     <section className={styles.section} id="watch-history">
       <div className={styles.sectionHeading}>
@@ -155,7 +177,7 @@ export default function MovieActivity({ slug, activity }: { slug: string; activi
         <div className={styles.dialogHeading}><span className={styles.eyebrow}>Watch history</span><h2 id={dialogTitleId}>{editor.id ? "Edit watch" : "Log a watch"}</h2></div>
         <div className={styles.field}>
           <label htmlFor={dateId}>Watched on</label>
-          <input ref={dateRef} id={dateId} type="date" required className={styles.input} value={editor.watchedOn} disabled={pending || locked} onChange={(event) => setEditor({ ...editor, watchedOn: event.target.value })} />
+          <LocaleProvider locale="en"><DatePicker id={dateId} value={editor.watchedOn} disabled={pending || locked} onChange={(watchedOn) => setEditor({ ...editor, watchedOn })} /></LocaleProvider>
         </div>
         <div className={styles.field}>
           <label htmlFor={commentId}>Comment <span className={styles.optional}>Optional</span></label>

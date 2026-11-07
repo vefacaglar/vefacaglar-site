@@ -48,6 +48,11 @@ export default async function Movie({ params, searchParams }: Props) {
   ];
   return (
     <article className={styles.movie}>
+      <div className={styles.hero}>
+      {movie.posterImageUrl && movie.posterAttribution && <div className={styles.backdrop} aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={movie.posterImageUrl} alt="" />
+      </div>}
       <Link className={styles.back} href={localizeHref("/movies", lang)}>← Movies</Link>
       <header className={styles.header}>
         <div>
@@ -67,6 +72,7 @@ export default async function Movie({ params, searchParams }: Props) {
           {movie.description && <p className={styles.description}>{movie.description}</p>}
         </div>
       </header>
+      </div>
       {activityUnavailable ? <section className={styles.section}>
         <h2>Your watches and rating</h2>
         <p className={styles.pending}>Your movie activity is temporarily unavailable.</p>

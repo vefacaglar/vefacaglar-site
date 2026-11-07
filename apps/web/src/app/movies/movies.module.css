@@ -1,5 +1,3 @@
-.rankingNotice { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.rankingNotice a { color: var(--text); }
 .empty { padding: 24px 0; margin: 0; color: var(--muted); }
 .pagination { margin-top: 40px; }
 .source { margin: 36px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
