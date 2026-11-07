@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { getMovie, moviePersonHref, type MovieCredit } from "../../../lib/movies";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizeHref } from "../../../lib/localizeHref";
 import { localizedAlternates } from "../../../lib/seo";
 import { libraryMetadata } from "../../../lib/librarySeo";
 import styles from "./movie.module.css";
-import { getMyMovieActivity } from "../../../lib/movieActivity";
+import { getMyMovieActivity, type MovieActivity as Activity } from "../../../lib/movieActivity";
 import { getLoginHref } from "../../../lib/oidc";
 import { moviePageNumber } from "../../../lib/movies";
 import MovieActivity from "./MovieActivity";
@@ -28,7 +28,14 @@ export default async function Movie({ params, searchParams }: Props) {
   if (!movie) notFound();
   const lang = await getActiveLanguage();
   const { watchPage } = await searchParams;
-  const activity = await getMyMovieActivity(movie.slug, moviePageNumber(watchPage));
+  let activity: Activity | null = null;
+  let activityUnavailable = false;
+  try {
+    activity = await getMyMovieActivity(movie.slug, moviePageNumber(watchPage));
+  } catch (error) {
+    unstable_rethrow(error);
+    activityUnavailable = true;
+  }
   const sourceCredits = movie.credits.filter((credit) => credit.rank !== "deprecated");
   const credits = sourceCredits.filter((credit) => !!credit.name);
   const companies = movie.companies.filter((company) => !!company.name);
@@ -60,7 +67,11 @@ export default async function Movie({ params, searchParams }: Props) {
           {movie.description && <p className={styles.description}>{movie.description}</p>}
         </div>
       </header>
-      {activity ? <MovieActivity slug={movie.slug} activity={activity} /> : <section className={styles.section}>
+      {activityUnavailable ? <section className={styles.section}>
+        <h2>Your watches and rating</h2>
+        <p className={styles.pending}>Your movie activity is temporarily unavailable.</p>
+        <a className="btnGhost" href={localizeHref(`/movies/${movie.slug}${watchPage ? `?watchPage=${moviePageNumber(watchPage)}` : ""}`, lang)}>Try again</a>
+      </section> : activity ? <MovieActivity slug={movie.slug} activity={activity} /> : <section className={styles.section}>
         <h2>Your watches and rating</h2>
         <Link className="btnAccent" href={getLoginHref(localizeHref(`/movies/${movie.slug}`, lang))}>Sign in to log a watch or rate</Link>
       </section>}
