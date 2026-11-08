@@ -52,15 +52,4 @@
 }
 .year { margin-top: auto; color: var(--muted); font-size: 8cqw; font-variant-numeric: tabular-nums; }
 
-/* Deterministic variants so a grid of generic posters is not monotonous. */
-.poster[data-variant="b"] .frame { justify-content: flex-end; }
-.poster[data-variant="b"] .year { margin-top: 0; order: -1; }
-.poster[data-variant="b"] .label { order: -2; }
-.poster[data-variant="b"] .rule { order: 5; width: 100%; }
-.poster[data-variant="c"] .frame { align-items: flex-end; text-align: right; }
-.poster[data-variant="c"] .rule { width: 44cqw; }
-.poster[data-variant="d"] .frame { border-left: 6cqw solid var(--accent); }
-.poster[data-variant="d"] .frame::before { display: none; }
-.poster[data-variant="d"] .rule { width: 100%; background: var(--border); }
-
 .large .title { font-size: 11cqw; -webkit-line-clamp: 7; line-clamp: 7; }
