@@ -88,6 +88,8 @@ jobs:
 
       - name: Check deployment scripts
         working-directory: .
+        env:
+          WORKER_DEPLOY_TEST_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           bash -n deploy/worker/deploy.sh deploy/worker/receive.sh deploy/worker/ssh-deploy.sh
           shellcheck deploy/worker/deploy.sh deploy/worker/receive.sh deploy/worker/ssh-deploy.sh
@@ -95,7 +97,8 @@ jobs:
           tmp=$(mktemp -d)
           cp deploy/worker/compose.yml "$tmp/"
           : > "$tmp/worker.env"
-          WORKER_IMAGE="ghcr.io/example/worker@sha256:$(printf 'a%.0s' {1..64})" \
+          WORKER_GENERATION=g00000000000000000000 \
+            WORKER_IMAGE="ghcr.io/example/worker@sha256:$(printf 'a%.0s' {1..64})" \
             docker compose --file "$tmp/compose.yml" config --quiet
 
   image_amd64:

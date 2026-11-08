@@ -31,7 +31,7 @@ class PrepareDeployTest(unittest.TestCase):
             (bundle / "compose.env").read_text(),
             f"WORKER_IMAGE={IMAGE}\nWORKER_DOCKER_NETWORK=databases_default\n",
         )
-        for name in ("compose.yml", "deploy.sh", "receive.sh", "image", "registry-user"):
+        for name in ("compose.yml", "deploy.sh", "receive.sh", "blue-green.py", "legacy-bootstrap.py", "image", "registry-user"):
             self.assertTrue((bundle / name).is_file(), name)
 
     def test_individual_secrets_override_worker_env(self):

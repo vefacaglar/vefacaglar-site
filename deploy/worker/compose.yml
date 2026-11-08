@@ -1,12 +1,11 @@
-name: vefacaglar-worker
-
-# Single replica. On `docker compose up -d` with a new image, Docker sends
-# SIGTERM; the worker stops claiming, checkpoints the running job at its next
-# batch boundary, re-queues it and exits well inside the grace period.
+# Each replica runs one job; the database admits at most two running jobs.
+# Every deployment has a separate Compose project and durable admission mode.
 services:
   worker:
     image: ${WORKER_IMAGE:?Set WORKER_IMAGE to the published image digest}
     restart: unless-stopped
+    deploy:
+      replicas: 2
     init: true
     env_file:
       - path: ./worker.env
@@ -14,6 +13,15 @@ services:
     environment:
       WORKER_LOG_FORMAT: json
       WORKER_HEALTH_FILE: /tmp/worker-health
+      WORKER_CONTROL_FILE: /run/worker-control/mode
+      WORKER_CONTROL_STATUS_FILE: /tmp/worker-control-status
+      # Override fixed ids from worker.env: replicas need separate leases.
+      WORKER_ID: ""
+    labels:
+      io.vefacaglar.worker.managed: "1"
+      io.vefacaglar.worker.generation: ${WORKER_GENERATION:?Set WORKER_GENERATION}
+    volumes:
+      - ./control:/run/worker-control:ro
     stop_signal: SIGTERM
     stop_grace_period: 120s
     read_only: true

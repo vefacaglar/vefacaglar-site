@@ -16,7 +16,7 @@ INDIVIDUAL_SECRETS = (
     "LOG_TYPESENSE_URL", "LOG_TYPESENSE_API_KEY", "LOG_ENVIRONMENT",
 )
 REQUIRED = ("DATABASE_URL", "TYPESENSE_HOST", "TYPESENSE_API_KEY")
-BUNDLE_FILES = ("compose.yml", "deploy.sh", "receive.sh")
+BUNDLE_FILES = ("compose.yml", "deploy.sh", "receive.sh", "blue-green.py", "legacy-bootstrap.py")
 
 
 def parse_env(raw):
