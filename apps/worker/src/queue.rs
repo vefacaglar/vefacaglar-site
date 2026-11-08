@@ -16,6 +16,11 @@ use crate::context::Progress;
 /// Seconds without a heartbeat after which a running job is considered lost.
 pub const STALE_AFTER_SECS: i64 = 60;
 
+/// Shared by every worker process connected to this queue database.
+pub const MAX_RUNNING_JOBS: i64 = 2;
+/// Transaction lock reserved for admitting jobs into the running state.
+const CLAIM_LOCK_KEY: i64 = 0x6a6f_6263_6c61_696d;
+
 /// Channel for live dashboard updates; payload = job id.
 pub const JOB_EVENTS_CHANNEL: &str = "job_events";
 /// Channel the API notifies on enqueue; payload = job id.
@@ -60,7 +65,25 @@ pub async fn claim(
     worker_id: &str,
     types: &[String],
 ) -> sqlx::Result<Option<ClaimedJob>> {
-    sqlx::query_as::<_, ClaimedJob>(&format!(
+    let mut tx = pool.begin().await?;
+    // A waiting claim needs a fresh snapshot after the preceding claim commits,
+    // even when the connection's default isolation level is repeatable read.
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("SELECT pg_advisory_xact_lock($1)")
+        .bind(CLAIM_LOCK_KEY)
+        .execute(&mut *tx)
+        .await?;
+    let running: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE status = 'running'")
+        .fetch_one(&mut *tx)
+        .await?;
+    if running >= MAX_RUNNING_JOBS {
+        tx.commit().await?;
+        return Ok(None);
+    }
+
+    let claimed = sqlx::query_as::<_, ClaimedJob>(&format!(
         "WITH c AS ( \
              UPDATE jobs SET status = 'running', locked_by = $1, locked_at = now(), heartbeat_at = now(), \
                  started_at = coalesce(started_at, now()), attempts = attempts + 1, updated_at = now() \
@@ -78,8 +101,10 @@ pub async fn claim(
     ))
     .bind(worker_id)
     .bind(types)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(claimed)
 }
 
 /// Inserts one job_logs row and notifies, in one statement.
@@ -494,12 +519,15 @@ pub async fn upsert_worker(
     Ok(())
 }
 
-/// Drops rows of workers offline for a day (worker ids change on every
-/// deploy, so the table would otherwise grow forever).
+/// Drops worker rows offline for an hour, retaining any current job lease.
+/// Job history stores worker ids independently and is preserved.
 pub async fn prune_workers(pool: &PgPool) -> sqlx::Result<u64> {
-    let done = sqlx::query("DELETE FROM workers WHERE last_seen_at < now() - interval '1 day'")
-        .execute(pool)
-        .await?;
+    let done = sqlx::query(
+        "DELETE FROM workers w WHERE last_seen_at < now() - interval '1 hour' \
+         AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.status = 'running' AND j.locked_by = w.id)",
+    )
+    .execute(pool)
+    .await?;
     Ok(done.rows_affected())
 }
 

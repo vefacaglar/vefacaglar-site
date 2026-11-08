@@ -57,9 +57,33 @@ the updated worker and its IGDB credentials; existing workers cannot execute the
 new type. A null `next_run_at` computes the next daily occurrence on enable.
 
 ### `workers`
-`id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`. Online = `last_seen_at` within 30 s.
+`id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`. Online = `last_seen_at` within 30 s. Maintenance removes rows last seen more than one hour ago, except workers still holding a running job. Jobs/logs retain their history independently of worker rows.
 
 ## Worker semantics (`apps/worker`)
+
+Every process executes one job at a time. Production runs two replicas. Claims
+share a transaction advisory lock and count all running jobs from a fresh READ
+COMMITTED snapshot, enforcing a global maximum of two even if extra workers
+connect. Cancellation requests continue using capacity until the job actually
+leaves `running`; queued retries and continuations do not consume a slot. The
+admission lock is released before the handler runs. Existing concurrency keys
+still limit which jobs may coexist.
+
+Managed generations read `WORKER_CONTROL_FILE` from a read-only bind-mounted
+control directory. `standby` workers register and heartbeat but do not dispatch,
+claim or maintain the queue; `active` admits work; `drain` permanently closes
+admission for that process. Missing or invalid managed control fails closed to
+standby. Unmanaged local workers without this setting retain the active default.
+The control status acknowledgement is serialized with in-flight claims.
+`worker --deployment-protocol` prints `1` without connecting to the database;
+`worker --control-status` reads the local acknowledgement.
+
+Deployment drain is independent of job cancellation and OS shutdown. A draining
+worker keeps its job heartbeat, lets the already claimed handler and finalization
+finish naturally, then exits successfully. There is no drain deadline, task abort
+or subprocess cancellation. A persisted drained generation cannot claim again
+after restart. Candidate generations remain healthy in standby until admitted;
+draining and active generations share the same global two-running-job gate.
 
 - **Claim**: `UPDATE jobs SET status='running', locked_by=$id, locked_at=now(), heartbeat_at=now(), started_at=coalesce(started_at, now()), attempts=attempts+1, updated_at=now() WHERE id = (SELECT id FROM jobs WHERE status='queued' AND run_at<=now() ORDER BY run_at, created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`.
 - **Wake-up**: `LISTEN jobs` (payload = job id) plus a 5 s poll fallback.
@@ -68,7 +92,7 @@ new type. A null `next_run_at` computes the next daily occurrence on enable.
 - **Reaper**: running jobs whose `heartbeat_at` is older than 60 s go back to `queued` with `locked_by = null`; the checkpoint is kept so the job resumes. Log `warn` "worker lost, resuming from checkpoint".
 - **Checkpoint**: handlers persist progress + checkpoint after every batch in a single UPDATE.
 - **Cancel**: handlers check `cancel_requested` between batches; on cancel → `status='cancelled'`, `finished_at=now()`.
-- **Graceful shutdown (SIGTERM/SIGINT)**: stop claiming, let the handler reach its next batch boundary, save checkpoint, set the job back to `queued` (`locked_by=null`), log "paused for shutdown", exit. Must finish well inside the container stop grace period (120 s).
+- **Explicit OS shutdown (SIGTERM/SIGINT)**: stop claiming, ask the handler to stop, save its checkpoint, set the job back to `queued` (`locked_by=null`), log "paused for shutdown", exit. Must finish well inside the container stop grace period (120 s). Deployment uses the independent drain protocol above, which allows the running job to finish instead.
 - **Failure**: error → if `attempts < max_attempts`, `status='queued'`, `run_at = now() + 30s * 2^(attempts-1)`, checkpoint kept; else `status='failed'`, `finished_at=now()`. `error` holds the message; a log line is written.
 - **Success**: `status='succeeded'`, `finished_at=now()`, `checkpoint=null`.
 - **Scheduler**: every 30 s, lock due `recurring_jobs` (`enabled AND cron IS NOT NULL AND (next_run_at IS NULL OR next_run_at <= now())`, `FOR UPDATE SKIP LOCKED`) — rows with `cron IS NULL` are manual-only and must be ignored entirely (`cron` is nullable, so decode it as an optional value); if `next_run_at` is null just compute it; otherwise insert a job (respecting `concurrency_key`; skip if one is active), set `last_enqueued_at`, `last_job_id`, and the next `next_run_at`. Invalid cron → log and skip.
@@ -175,6 +199,19 @@ Response headers: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Contr
 
 ## Deployment
 
-The worker runs as its own Docker container on the same VPS as the API (separate compose project, single replica, `stop_grace_period: 120s`, `restart: unless-stopped`), joined to the database network. Image: `ghcr.io/<repo>-worker`, built and deployed by `.github/workflows/worker-ci.yml`. Env: `DATABASE_URL`, `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, optional `WORKER_ID`, `RUST_LOG`.
+The worker runs as two active Docker replicas on the same VPS as the API, joined
+to the database network. Managed replicas use unique automatic worker IDs.
+Deployments use immutable generation configurations: health-check the candidate
+in standby, persistently drain previous generations without stopping their jobs,
+then activate the candidate. Old generations may remain in the background until
+their work finishes; the database still permits at most two running jobs overall.
+Rollback uses a fresh standby generation through the same protocol. Retired
+containers have restart disabled before drain and are cleaned up only after exit.
+Legacy images without the control protocol require a separate verified idle
+handoff; they must never be started as supposedly standby candidates.
+Image: `ghcr.io/<repo>-worker`, built and deployed by
+`.github/workflows/worker-ci.yml`. Env: `DATABASE_URL`, `TYPESENSE_HOST`,
+`TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, optional `WORKER_ID`
+for independently managed workers, `RUST_LOG`.
 
 Local: `pnpm --filter worker worker:dev` (deliberately not part of `pnpm dev`, because the local `.env` points at production services).

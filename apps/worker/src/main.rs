@@ -8,7 +8,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio_util::sync::CancellationToken;
 use worker::config::{self, Config, ConfigError};
 use worker::runner::Worker;
-use worker::{health, jobs, telemetry};
+use worker::{control, health, jobs, telemetry};
 
 fn load_dotenv() {
     // Local development only: the repo-root .env (production containers get
@@ -135,6 +135,25 @@ async fn run() -> Result<(), StartupFailure> {
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    if std::env::args()
+        .skip(1)
+        .any(|a| a == "--deployment-protocol")
+    {
+        println!("1");
+        return ExitCode::SUCCESS;
+    }
+    if std::env::args().skip(1).any(|a| a == "--control-status") {
+        return match control::read_status(&config::control_status_file_from_env()) {
+            Ok(mode) => {
+                println!("{}", mode.as_str());
+                ExitCode::SUCCESS
+            }
+            Err(reason) => {
+                eprintln!("{reason}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if std::env::args().skip(1).any(|a| a == "--healthcheck") {
         return healthcheck();
     }

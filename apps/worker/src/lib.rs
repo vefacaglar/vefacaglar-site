@@ -7,6 +7,7 @@
 pub mod backoff;
 pub mod config;
 pub mod context;
+pub mod control;
 pub mod cron;
 pub mod handler;
 pub mod health;

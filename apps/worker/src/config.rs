@@ -50,6 +50,8 @@ pub struct Config {
     pub worker_id: String,
     pub hostname: String,
     pub health_file: PathBuf,
+    pub control_file: Option<PathBuf>,
+    pub control_status_file: PathBuf,
     pub typesense: Option<TypesenseConfig>,
 }
 
@@ -68,6 +70,12 @@ pub fn health_file_from_env() -> PathBuf {
         .unwrap_or_else(|| std::env::temp_dir().join("worker-health"))
 }
 
+pub fn control_status_file_from_env() -> PathBuf {
+    env_opt("WORKER_CONTROL_STATUS_FILE")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| health_file_from_env().with_extension("state"))
+}
+
 impl Config {
     pub fn from_env() -> Result<Self, ConfigError> {
         let database_url = env_opt("DATABASE_URL").ok_or(ConfigError::MissingDatabaseUrl)?;
@@ -84,6 +92,8 @@ impl Config {
             worker_id,
             hostname,
             health_file: health_file_from_env(),
+            control_file: env_opt("WORKER_CONTROL_FILE").map(PathBuf::from),
+            control_status_file: control_status_file_from_env(),
             typesense: TypesenseConfig::from_values(
                 env_opt("TYPESENSE_HOST"),
                 env_opt("TYPESENSE_PORT"),

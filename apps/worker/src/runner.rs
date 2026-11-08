@@ -18,6 +18,7 @@ use uuid::Uuid;
 use crate::backoff::retry_delay;
 use crate::config::Config;
 use crate::context::{JobContext, JobFlags};
+use crate::control::{self, Mode};
 use crate::handler::{JobOutcome, Registry, is_permanent};
 use crate::queue::{self, ClaimedJob, LogLevel};
 use crate::{health, scheduler};
@@ -28,6 +29,8 @@ pub const POLL_INTERVAL: Duration = Duration::from_secs(5);
 pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(10);
 /// Reaper + scheduler cadence.
 pub const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(30);
+/// Deployment control is independent of shutdown/cancellation signals.
+pub const CONTROL_INTERVAL: Duration = Duration::from_millis(250);
 /// After shutdown starts, how long a handler may take to reach its next batch
 /// boundary before it is aborted (its last checkpoint is still kept). Leaves
 /// headroom inside the 120 s container stop grace period.
@@ -48,6 +51,7 @@ pub struct Worker {
     version: String,
     active: Arc<Mutex<Option<ActiveJob>>>,
     wake: Arc<Notify>,
+    admission: Arc<Mutex<Mode>>,
 }
 
 impl Worker {
@@ -57,6 +61,7 @@ impl Worker {
         registry: Registry,
         shutdown: CancellationToken,
     ) -> Self {
+        let mode = control::requested(config.control_file.as_deref());
         Self {
             pool,
             config,
@@ -66,11 +71,19 @@ impl Worker {
             version: crate::version(),
             active: Arc::new(Mutex::new(None)),
             wake: Arc::new(Notify::new()),
+            admission: Arc::new(Mutex::new(mode)),
         }
     }
 
     pub async fn run(self) -> sqlx::Result<()> {
         let types = self.registry.job_types();
+        let initial_mode = *self.admission.lock().await;
+        control::write_status(&self.config.control_status_file, initial_mode)
+            .map_err(sqlx::Error::Io)?;
+        if initial_mode == Mode::Drain {
+            health::remove(&self.config.health_file);
+            return Ok(());
+        }
         tracing::info!(
             application_event = "worker_starting",
             worker_id = %self.config.worker_id,
@@ -101,7 +114,8 @@ impl Worker {
         let side_tasks = vec![
             self.spawn_heartbeat(tasks_stop.clone()),
             self.spawn_listener(tasks_stop.clone()),
-            self.spawn_maintenance(),
+            self.spawn_maintenance(tasks_stop.clone()),
+            self.spawn_control(tasks_stop.clone()),
         ];
 
         self.claim_loop(&types).await;
@@ -118,14 +132,26 @@ impl Worker {
     async fn claim_loop(&self, types: &[String]) {
         let mut db_errors: u32 = 0;
         while !self.shutdown.is_cancelled() {
-            if let Err(e) = scheduler::dispatch_movie_search(&self.pool, &self.registry).await {
-                tracing::error!(
-                    application_event = "movie_search_dispatch_failed",
-                    error = &e as &dyn std::error::Error,
-                    "failed to dispatch requested movie search synchronization"
-                );
+            // The control monitor uses this same lock before acknowledging
+            // drain, so the acknowledgement fences any in-flight claim.
+            let admission = self.admission.lock().await;
+            if *admission == Mode::Drain {
+                break;
             }
-            match queue::claim(&self.pool, &self.config.worker_id, types).await {
+            let claimed = if *admission == Mode::Active {
+                if let Err(e) = scheduler::dispatch_movie_search(&self.pool, &self.registry).await {
+                    tracing::error!(
+                        application_event = "movie_search_dispatch_failed",
+                        error = &e as &dyn std::error::Error,
+                        "failed to dispatch requested movie search synchronization"
+                    );
+                }
+                queue::claim(&self.pool, &self.config.worker_id, types).await
+            } else {
+                Ok(None)
+            };
+            drop(admission);
+            match claimed {
                 Ok(Some(job)) => {
                     db_errors = 0;
                     self.run_job(job).await;
@@ -152,6 +178,50 @@ impl Worker {
                 _ = tokio::time::sleep(wait) => {}
             }
         }
+    }
+
+    fn spawn_control(&self, stop: CancellationToken) -> JoinHandle<()> {
+        let admission = self.admission.clone();
+        let config = self.config.clone();
+        let wake = self.wake.clone();
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(CONTROL_INTERVAL);
+            ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                tokio::select! {
+                    _ = stop.cancelled() => break,
+                    _ = ticker.tick() => {}
+                }
+                let requested = control::requested(config.control_file.as_deref());
+                let mut current = admission.lock().await;
+                let next = current.next(requested);
+                if next == *current {
+                    continue;
+                }
+                // Retirement is permanent even if writing its acknowledgement
+                // fails. An activation without acknowledgement stays closed.
+                if let Err(error) = control::write_status(&config.control_status_file, next) {
+                    *current = if next == Mode::Drain {
+                        Mode::Drain
+                    } else {
+                        Mode::Standby
+                    };
+                    tracing::warn!(
+                        application_event = "worker_control_status_failed",
+                        error = &error as &dyn std::error::Error,
+                        "cannot acknowledge deployment control"
+                    );
+                } else {
+                    *current = next;
+                    tracing::info!(
+                        application_event = "worker_control_changed",
+                        mode = next.as_str(),
+                        "worker admission changed"
+                    );
+                }
+                wake.notify_one();
+            }
+        })
     }
 
     async fn run_job(&self, job: ClaimedJob) {
@@ -417,18 +487,23 @@ impl Worker {
 
     /// Reaper, scheduler and worker-row pruning. Stops claiming new work as
     /// soon as shutdown begins (nothing here is needed to finish a job).
-    fn spawn_maintenance(&self) -> JoinHandle<()> {
+    fn spawn_maintenance(&self, stop: CancellationToken) -> JoinHandle<()> {
         let pool = self.pool.clone();
         let registry = self.registry.clone();
         let shutdown = self.shutdown.clone();
         let wake = self.wake.clone();
+        let admission = self.admission.clone();
         tokio::spawn(async move {
             let mut ticker = tokio::time::interval(MAINTENANCE_INTERVAL);
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
             loop {
                 tokio::select! {
                     _ = shutdown.cancelled() => break,
+                    _ = stop.cancelled() => break,
                     _ = ticker.tick() => {}
+                }
+                if *admission.lock().await != Mode::Active {
+                    continue;
                 }
                 match queue::reap_stale(&pool).await {
                     Ok(ids) if !ids.is_empty() => {
