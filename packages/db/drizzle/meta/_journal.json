@@ -274,6 +274,13 @@
       "when": 1794110935516,
       "tag": "0038_wooden_marvel_apes",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794127871908,
+      "tag": "0039_chubby_lenny_balinger",
+      "breakpoints": true
     }
   ]
 }

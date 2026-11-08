@@ -14,7 +14,7 @@ export type MovieCandidate = { id: string; wikidataId: string; sourceRevision: n
 export type MovieSourceState = { discoveryComplete: boolean; discoveryCycle: number; discoveryStrategy: string | null;
   nextDiscoveryAt: Date | null; cooldownUntil: Date | null; artworkCooldownUntil: Date | null; wikipediaArtworkCooldownUntil: Date | null; failureCount: number; refreshCursor: string | null; lastSuccessAt: Date | null };
 export type MoviePosterCandidate = { id: string; wikidataId: string; title: string; fileName: string | null; enwikiArticle: string | null;
-  version: number; hasImage: boolean; resolvedFrom: string | null };
+  commonsCategory: string | null; version: number; hasImage: boolean; resolvedFrom: string | null };
 export interface IMoviesRepository {
   ensureSourceAndSeeds(): Promise<{ inserted: number; state: MovieSourceState }>;
   sourceState(): Promise<MovieSourceState>;

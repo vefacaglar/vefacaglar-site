@@ -9,7 +9,7 @@ const entity = (qid = "Q47703") => ({ id: qid, type: "item", labels: { en: { val
 let repo: Record<keyof IMoviesRepository, any>;
 let client: { fetchEntities: any; fetchLabels: any };
 let discovery: { discover: any };
-let posters: { fetchPosters: any };
+let posters: { fetchPosters: any; fetchCategoryPoster: any };
 let wikipedia: { resolveArticles: any; fetchPosters: any };
 const run = (options = {}) => new SyncMoviesHandler(new MovieSyncService(repo, client, discovery, posters, wikipedia)).handle(options);
 beforeEach(() => {
@@ -19,7 +19,7 @@ beforeEach(() => {
     posterInputsCandidates: vi.fn().mockResolvedValue([]), recognitionCandidates: vi.fn().mockResolvedValue([]), posterCandidates: vi.fn().mockResolvedValue([]), persistPoster: vi.fn().mockResolvedValue(true), markPosterFailure: vi.fn() };
   client = { fetchEntities: vi.fn().mockResolvedValue({ Q47703: entity() }), fetchLabels: vi.fn().mockResolvedValue({}) };
   discovery = { discover: vi.fn() };
-  posters = { fetchPosters: vi.fn().mockResolvedValue({}) };
+  posters = { fetchPosters: vi.fn().mockResolvedValue({}), fetchCategoryPoster: vi.fn().mockResolvedValue({ poster: null, posterSubcategory: null }) };
   wikipedia = { resolveArticles: vi.fn().mockResolvedValue({}), fetchPosters: vi.fn().mockResolvedValue({}) };
 });
 
@@ -89,8 +89,8 @@ describe("Wikipedia fallback orchestration", () => {
   const candidate = { id: "a", wikidataId: "Q47703", title: "The Godfather", fileName: null, enwikiArticle: "The Godfather", version: 1, hasImage: false, resolvedFrom: null };
   const reference = { wikidataId: "Q47703", title: "The Godfather", article: "The Godfather", fileName: "Godfather ver1.jpg" };
   const poster = { imageUrl: "https://upload.wikimedia.org/wikipedia/en/1/1c/Godfather_ver1.jpg", origin: "wikipedia", fileName: reference.fileName,
-    attribution: { provider: "wikipedia", rightsKind: "non-free", artist: null, license: "Fair use", licenseUrl: null, sourceUrl: "https://en.wikipedia.org/wiki/File:Godfather_ver1.jpg" } };
-  it("counts article and file requests separately and publishes accurate non-free metadata", async () => {
+    attribution: { provider: "wikipedia", rightsKind: "reusable", artist: "Jane Doe", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/", sourceUrl: "https://en.wikipedia.org/wiki/File:Godfather_ver1.jpg" } };
+  it("counts article and file requests separately and publishes freely licensed metadata", async () => {
     repo.posterCandidates.mockResolvedValueOnce([candidate]);
     wikipedia.resolveArticles.mockResolvedValue({ Q47703: reference });
     wikipedia.fetchPosters.mockResolvedValue({ Q47703: poster });
@@ -141,6 +141,68 @@ describe("Wikipedia fallback orchestration", () => {
     expect(await run()).toMatchObject({ refreshed: 1, requests: 1, hasMore: false });
     expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ sourceRevision: 42, enwikiArticle: "The Godfather" }), expect.any(Date));
     expect(repo.saveSourceState).not.toHaveBeenCalledWith({ refreshCursor: "a" });
+  });
+});
+describe("Commons category fallback orchestration", () => {
+  const candidate = { id: "a", wikidataId: "Q47703", title: "Nosferatu", fileName: null, enwikiArticle: null, commonsCategory: "Nosferatu", version: 1, hasImage: false, resolvedFrom: null };
+  const poster = { imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Nosferatu_poster.jpg/500px-Nosferatu_poster.jpg", origin: "commons-category", fileName: "Nosferatu poster.jpg",
+    attribution: { provider: "commons", rightsKind: "reusable", artist: "Albin Grau", license: "Public domain", licenseUrl: "https://commons.wikimedia.org/wiki/Commons:Copyright_tags#Public_domain", sourceUrl: "https://commons.wikimedia.org/wiki/File:Nosferatu_poster.jpg" } };
+  it("uses the film category only when P3383 has no usable poster", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([{ ...candidate, fileName: "Still.jpg" }]);
+    posters.fetchPosters.mockResolvedValue({ "Still.jpg": null });
+    posters.fetchCategoryPoster.mockResolvedValue({ poster, posterSubcategory: null });
+    expect(await run()).toMatchObject({ requests: 2, postersUpdated: 1, posterFailures: 0 });
+    expect(posters.fetchCategoryPoster).toHaveBeenCalledWith("Nosferatu", {}, expect.anything());
+    expect(repo.persistPoster).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), poster, expect.any(Date));
+  });
+  it("does not query the category when P3383 resolves a poster", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([{ ...candidate, fileName: "Poster.jpg" }]);
+    posters.fetchPosters.mockResolvedValue({ "Poster.jpg": { ...poster, origin: undefined } });
+    expect(await run()).toMatchObject({ requests: 1, postersUpdated: 1 });
+    expect(posters.fetchCategoryPoster).not.toHaveBeenCalled();
+  });
+  it("follows one poster subcategory with a second counted request", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([candidate]);
+    posters.fetchCategoryPoster.mockResolvedValueOnce({ poster: null, posterSubcategory: "Nosferatu posters" }).mockResolvedValueOnce({ poster, posterSubcategory: null });
+    expect(await run()).toMatchObject({ requests: 2, postersUpdated: 1 });
+    expect(posters.fetchCategoryPoster).toHaveBeenLastCalledWith("Nosferatu posters", { posterSubcategoryOf: "Nosferatu" }, expect.anything());
+  });
+  it("defers rather than negative-caches an unfollowed poster subcategory", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([candidate]);
+    posters.fetchCategoryPoster.mockResolvedValueOnce({ poster: null, posterSubcategory: "Nosferatu posters" });
+    expect(await run({ maxRequests: 1 })).toMatchObject({ requests: 1, postersChecked: 0 });
+    expect(repo.persistPoster).not.toHaveBeenCalled();
+    expect(repo.markPosterFailure).not.toHaveBeenCalled();
+  });
+  it("negative-caches a complete category lookup without a poster", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([candidate]);
+    expect(await run()).toMatchObject({ requests: 1, postersChecked: 1, postersUpdated: 0 });
+    expect(repo.persistPoster).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), null, expect.any(Date));
+  });
+  it("runs only after the stronger Wikipedia fallback is settled", async () => {
+    repo.posterCandidates.mockResolvedValueOnce([{ ...candidate, enwikiArticle: "Nosferatu" }]);
+    expect(await run({ maxRequests: 1 })).toMatchObject({ requests: 0 });
+    expect(posters.fetchCategoryPoster).not.toHaveBeenCalled();
+    repo.posterCandidates.mockResolvedValueOnce([{ ...candidate, enwikiArticle: "Nosferatu" }]);
+    wikipedia.resolveArticles.mockResolvedValue({ Q47703: null });
+    posters.fetchCategoryPoster.mockResolvedValue({ poster, posterSubcategory: null });
+    expect(await run()).toMatchObject({ requests: 2, postersUpdated: 1 });
+  });
+  it("shares the Commons cooldown and preserves stored category artwork on failure", async () => {
+    const retryAfter = new Date(Date.now() + 3600_000);
+    repo.posterCandidates.mockResolvedValueOnce([{ ...candidate, hasImage: true, resolvedFrom: "commons-category" }]);
+    posters.fetchCategoryPoster.mockRejectedValue({ retryAfter });
+    expect(await run()).toMatchObject({ requests: 1, posterFailures: 1, postersUpdated: 0 });
+    expect(repo.persistPoster).not.toHaveBeenCalled();
+    expect(repo.saveSourceState).toHaveBeenCalledWith({ artworkCooldownUntil: retryAfter });
+    expect(repo.markPosterFailure).toHaveBeenCalledWith([expect.objectContaining({ id: "a" })], retryAfter);
+  });
+  it("bounds category lookups per window", async () => {
+    const rows = Array.from({ length: 10 }, (_, i) => ({ ...candidate, id: `c${i}`, wikidataId: `Q${i + 1}` }));
+    repo.posterCandidates.mockResolvedValueOnce(rows.slice(0, 5)).mockResolvedValueOnce(rows.slice(5));
+    expect(await run()).toMatchObject({ requests: 6, postersChecked: 6 });
+    expect(posters.fetchCategoryPoster).toHaveBeenCalledTimes(6);
+    expect(repo.markPosterFailure).not.toHaveBeenCalled();
   });
 });
 describe("bounded movie sync handler", () => {

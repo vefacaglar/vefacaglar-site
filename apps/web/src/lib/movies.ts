@@ -9,7 +9,7 @@ export interface MovieCard {
   releaseYear: number | null;
   runtimeMinutes: number | null;
   posterImageUrl: string | null;
-  posterAttribution: { provider?: "commons" | "wikipedia"; rightsKind?: "reusable" | "non-free";
+  posterAttribution: { provider?: "commons" | "wikipedia"; rightsKind?: "reusable";
     sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null } | null;
 }
 export interface MovieList {

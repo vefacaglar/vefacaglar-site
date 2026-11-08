@@ -12,6 +12,8 @@ export const movies = pgTable('movies', {
   description: text('description'),
   posterFileName: text('poster_file_name'),
   enwikiArticle: text('enwiki_article'),
+  // Wikidata P373 Commons category name (without the "Category:" prefix).
+  commonsCategory: text('commons_category'),
   posterInputsCheckedAt: timestamp('poster_inputs_checked_at', { withTimezone: true, mode: 'date' }),
   posterCandidateVersion: integer('poster_candidate_version').notNull().default(0),
   posterResolvedFileName: text('poster_resolved_file_name'),
@@ -54,6 +56,8 @@ export const movies = pgTable('movies', {
     .where(sql`${table.posterFileName} is not null and ${table.isFilm} = true`),
   wikipediaPosterRefreshIdx: index('movies_wikipedia_poster_refresh_idx').on(table.posterRetryAfter, table.posterCheckedAt, table.id)
     .where(sql`${table.enwikiArticle} is not null and ${table.isFilm} = true`),
+  commonsCategoryPosterRefreshIdx: index('movies_commons_category_poster_refresh_idx').on(table.posterRetryAfter, table.posterCheckedAt, table.id)
+    .where(sql`${table.commonsCategory} is not null and ${table.isFilm} = true`),
   posterInputsIdx: index('movies_poster_inputs_idx').on(table.posterInputsCheckedAt, table.id)
     .where(sql`${table.isFilm} = true and ${table.hydratedAt} is not null`),
 }));

@@ -1,6 +1,6 @@
 export type PosterAttribution = { provider?: "commons" | "wikipedia"; rightsKind?: "reusable" | "non-free";
   sourceUrl: string; artist: string | null; license: string; licenseUrl: string | null; articleTitle?: string };
-export type MoviePoster = { imageUrl: string; attribution: PosterAttribution; fileName?: string; origin?: "commons" | "wikipedia" };
+export type MoviePoster = { imageUrl: string; attribution: PosterAttribution; fileName?: string; origin?: "commons" | "wikipedia" | "commons-category" };
 
 export function commonsFileName(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -34,6 +34,8 @@ export function safeWikimediaUrl(value: unknown, host: string, prefix: string): 
 
 export function reusablePosterCredit(metadata: any): Pick<PosterAttribution, "artist" | "license" | "licenseUrl"> | null {
   if (!metadata || typeof metadata !== "object") return null;
+  // Conflicting free-license metadata must never override an explicit non-free flag.
+  if (String(metadata.NonFree?.value).trim().toLowerCase() === "true") return null;
   const artist = attributionText(metadata.Artist?.value);
   const license = attributionText(metadata.LicenseShortName?.value);
   if (!artist || !license || attributionText(metadata.Restrictions?.value)) return null;

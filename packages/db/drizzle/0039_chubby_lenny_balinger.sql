@@ -1,0 +1,2 @@
+ALTER TABLE "movies" ADD COLUMN "commons_category" text;--> statement-breakpoint
+CREATE INDEX "movies_commons_category_poster_refresh_idx" ON "movies" USING btree ("poster_retry_after","poster_checked_at","id") WHERE "movies"."commons_category" is not null and "movies"."is_film" = true;

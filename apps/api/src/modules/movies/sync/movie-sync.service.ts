@@ -9,6 +9,10 @@ import { WIKIPEDIA_POSTER_CLIENT, type IWikipediaPosterClient } from "../artwork
 import type { MoviePoster } from "../artwork/commons-poster";
 
 const DAY = 86_400_000;
+/** Category lookups are unbatchable (one category per request), so they get a small per-window share. */
+const CATEGORY_REQUESTS_PER_WINDOW = 6;
+type ArtworkPhase = "commons" | "wikipedia" | "category";
+const originPhase = (origin: string | null): ArtworkPhase => origin === "wikipedia" ? "wikipedia" : origin === "commons-category" ? "category" : "commons";
 export type MovieSyncOptions = { budgetMs?: number; maxRequests?: number; maxMovies?: number };
 export type MovieSyncResult = { discovered: number; hydrated: number; refreshed: number; failed: number; imdbConflicts: number;
   labelsChecked: number; postersChecked: number; postersUpdated: number; posterFailures: number;
@@ -55,6 +59,7 @@ export class MovieSyncService {
     const artworkProviders = () => ({ commons: !state.artworkCooldownUntil || state.artworkCooldownUntil <= now(),
       wikipedia: !state.wikipediaArtworkCooldownUntil || state.wikipediaArtworkCooldownUntil <= now() });
     const attemptedArtwork = new Set<string>();
+    let categoryRequests = 0;
     const artworkCooldown = async (provider: "commons" | "wikipedia", error: unknown, affected: number) => {
       const retry = (error as { retryAfter?: unknown })?.retryAfter;
       const until = new Date(Math.max(Date.now() + 60_000, retry instanceof Date && Number.isFinite(retry.getTime()) ? retry.getTime() : 0));
@@ -71,8 +76,14 @@ export class MovieSyncService {
         const outcomes = new Map(candidates.map((row) => [row.id, {
           commons: (row.fileName ? available.commons ? "pending" : "transient" : "absent") as Status,
           wikipedia: (row.enwikiArticle ? available.wikipedia ? "pending" : "transient" : "absent") as Status,
+          category: (row.commonsCategory ? available.commons ? "pending" : "transient" : "absent") as Status,
           poster: null as MoviePoster | null,
         }]));
+        // A lower-precedence source never replaces stored artwork while the source that resolved it is unavailable.
+        const preservesStored = (row: (typeof candidates)[number], phase: ArtworkPhase) => {
+          const origin = originPhase(row.resolvedFrom);
+          return row.hasImage && origin !== phase && outcomes.get(row.id)![origin] === "transient";
+        };
         const commons = candidates.filter((row) => row.fileName && available.commons);
         if (commons.length && artworkRoom()) {
           result.requests++;
@@ -89,8 +100,7 @@ export class MovieSyncService {
             await artworkCooldown("commons", error, commons.length);
           }
         }
-        const fallback = candidates.filter((row) => !outcomes.get(row.id)!.poster && row.enwikiArticle &&
-          !(row.hasImage && (row.resolvedFrom ?? "commons") === "commons" && outcomes.get(row.id)!.commons === "transient"));
+        const fallback = candidates.filter((row) => !outcomes.get(row.id)!.poster && row.enwikiArticle && !preservesStored(row, "wikipedia"));
         if (fallback.length && available.wikipedia && artworkRoom() && maxRequests - result.requests >= 2) {
           result.requests++;
           try {
@@ -112,12 +122,41 @@ export class MovieSyncService {
             await artworkCooldown("wikipedia", error, fallback.length);
           }
         }
+        // Last resort: the film's own Commons category (P373), only after the stronger article
+        // fallback has settled, so it never runs ahead of a deferred Wikipedia lookup.
+        const categoryRows = candidates.filter((row) => {
+          const outcome = outcomes.get(row.id)!;
+          return !outcome.poster && outcome.category === "pending" && outcome.wikipedia !== "pending" && !preservesStored(row, "category");
+        });
+        for (const candidate of categoryRows) {
+          const outcome = outcomes.get(candidate.id)!;
+          if (!artworkProviders().commons) { outcome.category = "transient"; continue; }
+          if (!artworkRoom() || categoryRequests >= CATEGORY_REQUESTS_PER_WINDOW) break;
+          try {
+            categoryRequests++;
+            result.requests++;
+            let found = await this.posters.fetchCategoryPoster(candidate.commonsCategory!, {}, signal);
+            if (!found.poster && found.posterSubcategory) {
+              // An unfollowed poster subcategory leaves the lookup incomplete (deferred), never negative.
+              if (!artworkRoom() || categoryRequests >= CATEGORY_REQUESTS_PER_WINDOW) continue;
+              categoryRequests++;
+              result.requests++;
+              found = await this.posters.fetchCategoryPoster(found.posterSubcategory, { posterSubcategoryOf: candidate.commonsCategory! }, signal);
+            }
+            outcome.category = "negative";
+            outcome.poster = found.poster;
+            await save({ artworkCooldownUntil: null });
+          } catch (error) {
+            outcome.category = "transient";
+            await artworkCooldown("commons", error, 1);
+          }
+        }
         // Incomplete phases are retried; they are never negative-cached as absent artwork.
         for (const candidate of candidates) {
           const outcome = outcomes.get(candidate.id)!;
-          for (const provider of ["commons", "wikipedia"] as const) if (outcome[provider] === "pending") outcome[provider] = "deferred";
-          const complete = [outcome.commons, outcome.wikipedia].every((status) => status === "absent" || status === "negative");
-          const previousInvalidated = candidate.hasImage && outcome[(candidate.resolvedFrom ?? "commons") as "commons" | "wikipedia"] === "negative";
+          for (const provider of ["commons", "wikipedia", "category"] as const) if (outcome[provider] === "pending") outcome[provider] = "deferred";
+          const complete = [outcome.commons, outcome.wikipedia, outcome.category].every((status) => status === "absent" || status === "negative");
+          const previousInvalidated = candidate.hasImage && outcome[originPhase(candidate.resolvedFrom)] === "negative";
           if (outcome.poster || complete || previousInvalidated) {
             if (await this.repo.persistPoster(candidate, outcome.poster, now())) {
               result.postersChecked++;
@@ -125,8 +164,8 @@ export class MovieSyncService {
               result.progressMade = true;
             }
           }
-          if (!outcome.poster && !complete && ([outcome.commons, outcome.wikipedia].includes("transient") || previousInvalidated)) {
-            const retries = [outcome.commons === "transient" ? state.artworkCooldownUntil : null,
+          if (!outcome.poster && !complete && ([outcome.commons, outcome.wikipedia, outcome.category].includes("transient") || previousInvalidated)) {
+            const retries = [outcome.commons === "transient" || outcome.category === "transient" ? state.artworkCooldownUntil : null,
               outcome.wikipedia === "transient" ? state.wikipediaArtworkCooldownUntil : null].filter((date): date is Date => !!date);
             await this.repo.markPosterFailure([candidate], retries.sort((a, b) => a.getTime() - b.getTime())[0] ?? new Date(Date.now() + 60_000));
           }

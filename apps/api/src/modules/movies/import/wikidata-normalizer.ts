@@ -1,6 +1,7 @@
 import type { EntityLabels, NormalizedMovie, SourceCredit, StatementRank } from "./movie-source.types";
 import { commonsFileName } from "../artwork/commons-poster";
 import { wikipediaArticleTitle } from "../artwork/wikipedia-poster";
+import { commonsCategoryName } from "../artwork/commons-category-poster";
 
 export const isQid = (value: unknown): value is string => typeof value === "string" && /^Q[1-9]\d{0,20}$/.test(value);
 export const isImdbId = (value: unknown): value is string => typeof value === "string" && /^tt\d{7,10}$/.test(value);
@@ -66,7 +67,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   const enwikiArticle = raw.sitelinks.enwiki === undefined ? null : wikipediaArticleTitle(raw.sitelinks.enwiki?.title);
   if (raw.sitelinks.enwiki !== undefined && (raw.sitelinks.enwiki?.site !== "enwiki" || !enwikiArticle)) throw new Error("invalid_entity_sitelink");
   const claims = raw.claims;
-  const checked = new Map(["P31", "P1476", "P345", "P577", "P2047", "P161", "P57", "P162", "P272", "P136", "P3383"].map((property) => [property, statements(claims, property, expectedQid)]));
+  const checked = new Map(["P31", "P1476", "P345", "P577", "P2047", "P161", "P57", "P162", "P272", "P136", "P3383", "P373"].map((property) => [property, statements(claims, property, expectedQid)]));
   const all = [...checked.values()].flat();
   if (all.length > 10_000 || new Set(all.map((row) => row.id.toLowerCase())).size !== all.length) throw new Error("invalid_claims");
   for (const property of ["P31", "P272", "P136"]) {
@@ -77,6 +78,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   if (!title) throw new Error("title_missing");
   const imdbIds = [...new Set(best(checked.get("P345")!).map(value).filter(isImdbId))];
   const posters = [...new Set(best(checked.get("P3383")!).map((row) => commonsFileName(value(row))).filter((file): file is string => file !== null))];
+  const commonsCategories = [...new Set(best(checked.get("P373")!).map((row) => commonsCategoryName(value(row))).filter((name): name is string => name !== null))];
   const dates = best(checked.get("P577")!).flatMap((row) => {
     const time = value(row);
     if (!object(time) || typeof time.time !== "string" || !Number.isInteger(time.precision) || time.precision < 9 ||
@@ -113,6 +115,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
   return { wikidataId: expectedQid, title, originalTitle, description: text(raw.descriptions?.en?.value),
     imdbId: imdbIds.length === 1 ? imdbIds[0] : null, imdbConflict: imdbIds.length > 1,
     posterFileName: posters.sort()[0] ?? null,
+    commonsCategory: commonsCategories.sort()[0] ?? null,
     enwikiArticle, wikipediaLanguageCount: languageCount,
     releaseDate: dates[0]?.date ?? null, releaseYear: dates[0]?.year ?? null, releasePrecision: dates[0]?.precision ?? null,
     runtimeMinutes: runtimes.length === 1 ? runtimes[0] : null,

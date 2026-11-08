@@ -5,7 +5,7 @@ export const MovieCardSchema = Type.Object({ slug: Type.String(), title: Type.St
   releaseYear: nullableNumber, runtimeMinutes: nullableNumber, posterImageUrl: nullableString,
   posterAttribution: Type.Union([Type.Object({ sourceUrl: Type.String(), artist: nullableString, license: Type.String(), licenseUrl: nullableString,
     provider: Type.Optional(Type.Union([Type.Literal("commons"), Type.Literal("wikipedia")])),
-    rightsKind: Type.Optional(Type.Union([Type.Literal("reusable"), Type.Literal("non-free")])) }), Type.Null()]) });
+    rightsKind: Type.Optional(Type.Literal("reusable")) }), Type.Null()]) });
 export const ListMoviesQuerySchema = Type.Object({ page: Type.Optional(Type.Integer({ minimum: 1 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 48 })), q: Type.Optional(Type.String({ maxLength: 140 })) });
 export const MovieRankingSchema = Type.Object({ mode: Type.Union([Type.Literal("wikipedia_interest"), Type.Literal("alphabetical")]),

@@ -18,8 +18,8 @@ const person = { wikidataId: "Q25191", name: "Christopher Nolan" };
 const film = {
   slug: "inception-q25188", title: "Inception", releaseDate: null, releaseYear: 2010, runtimeMinutes: 148,
   posterImageUrl: "https://upload.wikimedia.org/poster.jpg",
-  posterAttribution: { provider: "wikipedia" as const, rightsKind: "non-free" as const,
-    sourceUrl: "https://en.wikipedia.org/wiki/File:Inception.jpg", artist: null, license: "Fair use", licenseUrl: null },
+  posterAttribution: { provider: "wikipedia" as const, rightsKind: "reusable" as const,
+    sourceUrl: "https://en.wikipedia.org/wiki/File:Inception.jpg", artist: null, license: "CC BY-SA 4.0", licenseUrl: null },
   roles: ["director", "producer"] as const,
 };
 

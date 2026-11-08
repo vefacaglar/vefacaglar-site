@@ -6,15 +6,20 @@ const info = () => ({ mime: "image/jpeg", thumburl: "https://upload.wikimedia.or
   descriptionurl: "https://en.wikipedia.org/wiki/File:Godfather_ver1.jpg",
   extmetadata: { Categories: { value: "All non-free media|1970s American film posters" }, NonFree: { value: "true" },
     Copyrighted: { value: "True" }, LicenseShortName: { value: "Fair use" } } });
+const freeInfo = (category = "1970s American film posters") => { const row = info();
+  row.extmetadata.Categories.value = category; row.extmetadata.NonFree.value = "false"; row.extmetadata.Copyrighted.value = "False";
+  Object.assign(row.extmetadata, { LicenseShortName: { value: "CC BY-SA 4.0" }, LicenseUrl: { value: "https://creativecommons.org/licenses/by-sa/4.0/" }, Artist: { value: "Jane Doe" } });
+  return row; };
 const candidate = { wikidataId: "Q47703", article: "The Godfather", title: "The Godfather" };
 
 describe("Wikipedia poster source validation", () => {
-  it("accepts genuine poster metadata with explicit non-free rights and no invented creator", () => {
-    expect(normalizeWikipediaPoster(info())).toMatchObject({ attribution: { provider: "wikipedia", rightsKind: "non-free",
-      artist: null, license: "Fair use", licenseUrl: null } });
+  it("rejects non-free (fair-use) poster files", () => {
+    expect(normalizeWikipediaPoster(info())).toBeNull();
+  });
+  it("accepts freely licensed Wikipedia-hosted posters across film poster categories", () => {
     for (const category of ["2020s American film posters", "Film posters for English-language films", "Dune (franchise) film posters"]) {
-      const row = info(); row.extmetadata.Categories.value = category;
-      expect(normalizeWikipediaPoster(row)).not.toBeNull();
+      const row = freeInfo(category);
+      expect(normalizeWikipediaPoster(row)).toMatchObject({ attribution: { rightsKind: "reusable" } });
     }
   });
   it("rejects stills/logos even when a filename looks like a poster", () => {
@@ -44,7 +49,7 @@ describe("Wikipedia poster source validation", () => {
   it("matches normalized file titles and marks the resolved source for compare-and-swap writes", () => {
     const reference = { ...candidate, fileName: "Godfather_ver1.jpg" };
     const body = { query: { normalized: [{ from: "File:Godfather_ver1.jpg", to: "File:Godfather ver1.jpg" }],
-      pages: [{ ns: 6, title: "File:Godfather ver1.jpg", imageinfo: [info()] }] } };
+      pages: [{ ns: 6, title: "File:Godfather ver1.jpg", imageinfo: [freeInfo()] }] } };
     expect(wikipediaPostersResponse(body, [reference]).Q47703).toMatchObject({ origin: "wikipedia", fileName: "Godfather_ver1.jpg" });
     expect(() => wikipediaPostersResponse({ query: { pages: [] } }, [reference])).toThrow("wikipedia_missing_file_response");
   });

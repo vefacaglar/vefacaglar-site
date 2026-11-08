@@ -75,6 +75,15 @@ describe("Wikidata movie normalization", () => {
     expect(normalizeMovie(movie({ P3383: [statement("P3383", "Other.jpg"), poster] }), "Q47703").posterFileName).toBe("Preferred.jpg");
     expect(movieSnapshotDisposition(123, 123, true, false)).toBe("unchanged");
   });
+  it("extracts the active P373 Commons category without the namespace prefix", () => {
+    expect(normalizeMovie(movie(), "Q47703").commonsCategory).toBeNull();
+    expect(normalizeMovie(movie({ P373: [statement("P373", "The_Godfather")] }), "Q47703").commonsCategory).toBe("The Godfather");
+    expect(normalizeMovie(movie({ P373: [statement("P373", "Category:The Godfather (film)")] }), "Q47703").commonsCategory).toBe("The Godfather (film)");
+    expect(normalizeMovie(movie({ P373: [{ ...statement("P373", "Old"), rank: "deprecated" }] }), "Q47703").commonsCategory).toBeNull();
+    expect(normalizeMovie(movie({ P373: [statement("P373", "A|B")] }), "Q47703").commonsCategory).toBeNull();
+    const preferred = { ...statement("P373", "Preferred", "preferred-category"), rank: "preferred" };
+    expect(normalizeMovie(movie({ P373: [statement("P373", "Other"), preferred] }), "Q47703").commonsCategory).toBe("Preferred");
+  });
   it("requires complete sitelinks and retains only the exact enwiki article title", () => {
     expect(normalizeMovie({ ...movie(), sitelinks: { enwiki: { site: "enwiki", title: "The Godfather", url: "https://en.wikipedia.org/wiki/The_Godfather" } } }, "Q47703").enwikiArticle).toBe("The Godfather");
     expect(normalizeMovie(movie(), "Q47703").enwikiArticle).toBeNull();

@@ -68,10 +68,8 @@ export function normalizeWikipediaPoster(info: unknown): MoviePoster | null {
   if (!sourceUrl || !imageUrl || attributionText(metadata.Restrictions?.value)) return null;
   const reusable = reusablePosterCredit(metadata);
   if (reusable) return { imageUrl, attribution: { ...reusable, sourceUrl, provider: "wikipedia", rightsKind: "reusable" } };
-  // This describes Wikipedia's source metadata, not a grant of reuse rights.
-  if (String(metadata.NonFree?.value).toLowerCase() !== "true" || String(metadata.Copyrighted?.value).toLowerCase() !== "true") return null;
-  return { imageUrl, attribution: { provider: "wikipedia", rightsKind: "non-free", sourceUrl,
-    artist: attributionText(metadata.Artist?.value), license: attributionText(metadata.LicenseShortName?.value) ?? "Non-free", licenseUrl: null } };
+  // Non-free (fair-use) files are never usable: only freely licensed artwork may be shown.
+  return null;
 }
 
 export function wikipediaPostersResponse(data: unknown, requested: WikipediaPosterReference[]): Record<string, MoviePoster | null> {

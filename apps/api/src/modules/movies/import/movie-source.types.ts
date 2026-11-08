@@ -7,6 +7,8 @@ export type NormalizedMovie = {
   wikidataId: string; title: string; originalTitle: string | null; description: string | null;
   imdbId: string | null; imdbConflict: boolean;
   posterFileName: string | null;
+  /** Wikidata P373 Commons category, used only as a strictly verified free poster fallback. */
+  commonsCategory: string | null;
   enwikiArticle: string | null;
   wikipediaLanguageCount: number;
   releaseDate: string | null; releaseYear: number | null; releasePrecision: number | null;

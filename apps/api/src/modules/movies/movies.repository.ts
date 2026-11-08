@@ -115,7 +115,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const [existing] = await db.select().from(movies).where(eq(movies.wikidataId, movie.wikidataId)).for("update");
       if (!existing) throw new Error("Movie stub is missing");
       const disposition = movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict);
-      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle, title: movie.title }, now,
+      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle, commonsCategory: movie.commonsCategory, title: movie.title }, now,
         { preserveStoredTitle: disposition === "unchanged" });
       if (disposition === "unchanged") {
         const recognitionChanged = existing.wikipediaLanguageCount !== movie.wikipediaLanguageCount;
@@ -161,13 +161,18 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
   }
   posterCandidates(limit: number, now: Date, available = { commons: true, wikipedia: true }) {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, title: sql<string>`${movies.title}`, fileName: movies.posterFileName,
-      enwikiArticle: movies.enwikiArticle, version: movies.posterCandidateVersion, hasImage: sql<boolean>`${movies.posterImageUrl} is not null`, resolvedFrom: movies.posterResolvedFrom }).from(movies)
+      enwikiArticle: movies.enwikiArticle, commonsCategory: movies.commonsCategory, version: movies.posterCandidateVersion,
+      hasImage: sql<boolean>`${movies.posterImageUrl} is not null`, resolvedFrom: movies.posterResolvedFrom }).from(movies)
       .where(and(publicMovie(), isNotNull(movies.posterInputsCheckedAt),
         or(available.commons ? isNotNull(movies.posterFileName) : sql`false`,
+          // The category fallback only fills missing artwork or re-verifies its own result.
+          available.commons ? and(isNotNull(movies.commonsCategory), or(isNull(movies.posterImageUrl), eq(movies.posterResolvedFrom, "commons-category"))) : sql`false`,
           available.wikipedia ? and(isNotNull(movies.enwikiArticle), or(isNull(movies.posterImageUrl),
             sql`coalesce(${movies.posterResolvedFrom},'commons') <> 'commons'`, isNull(movies.posterFileName))) : sql`false`),
-        or(isNull(movies.posterRetryAfter), lte(movies.posterRetryAfter, now)),
-        or(isNull(movies.posterCheckedAt), lt(movies.posterCheckedAt, new Date(now.getTime() - 7 * 86_400_000)))))
+        // Legacy non-free posters are hidden on read and always due so a refresh clears them.
+        or(sql`${movies.posterAttribution}->>'rightsKind' = 'non-free'`, and(
+          or(isNull(movies.posterRetryAfter), lte(movies.posterRetryAfter, now)),
+          or(isNull(movies.posterCheckedAt), lt(movies.posterCheckedAt, new Date(now.getTime() - 7 * 86_400_000)))))))
       .orderBy(desc(movies.seedPriority),
         sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
           and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
