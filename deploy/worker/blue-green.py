@@ -32,6 +32,9 @@ def atomic_write(path, value, mode=0o600):
     temporary = path.with_name(path.name + ".tmp-" + uuid.uuid4().hex)
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     with os.fdopen(descriptor, "w") as stream:
+        # deploy.sh deliberately uses umask077. Public admission controls still
+        # need their exact requested mode for the non-root container user.
+        os.fchmod(stream.fileno(), mode)
         stream.write(value + "\n")
         stream.flush()
         os.fsync(stream.fileno())
@@ -83,7 +86,11 @@ class Deployment:
         self.docker = docker or Docker()
 
     def mode(self, generation, value):
-        atomic_write(generation / "control" / "mode", value, 0o644)
+        control = generation / "control"
+        # Also repairs snapshots written by an earlier deploy under umask077.
+        # Only this secret-free mounted directory is made traversable.
+        control.chmod(0o755)
+        atomic_write(control / "mode", value, 0o644)
 
     def generation_for(self, container):
         info = self.docker.inspect(container)

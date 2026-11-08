@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -160,6 +161,33 @@ class DeployTest(unittest.TestCase):
         self.assertEqual((generation / "control").stat().st_mode & 0o777, 0o755)
         self.assertEqual(generation.stat().st_mode & 0o777, 0o700)
         self.assertIn("WORKER_GENERATION=" + generation.name, (generation / "compose.env").read_text())
+
+    def test_private_deployment_umask_preserves_readable_control_and_private_secrets(self):
+        previous = os.umask(0o077)
+        try:
+            generation = self.deployment.create(self.bundle)
+            self.deployment.mode(generation, "active")
+        finally:
+            os.umask(previous)
+        self.assertEqual((generation / "control").stat().st_mode & 0o777, 0o755)
+        self.assertEqual((generation / "control/mode").stat().st_mode & 0o777, 0o644)
+        self.assertEqual((generation / "worker.env").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((generation / "compose.env").stat().st_mode & 0o777, 0o600)
+        self.assertEqual(generation.stat().st_mode & 0o777, 0o700)
+
+    def test_failed_generation_control_permissions_are_repaired_before_drain(self):
+        generation, members = self.old()
+        (generation / "control").chmod(0o700)
+        (generation / "control/mode").chmod(0o600)
+        previous = os.umask(0o077)
+        try:
+            self.deployment.drain(members)
+        finally:
+            os.umask(previous)
+        self.assertEqual((generation / "control").stat().st_mode & 0o777, 0o755)
+        self.assertEqual((generation / "control/mode").stat().st_mode & 0o777, 0o644)
+        self.assertEqual((generation / "control/mode").read_text().strip(), "drain")
+        self.assertEqual((generation / "worker.env").stat().st_mode & 0o777, 0o600)
 
     def test_legacy_is_retired_before_candidate_activation(self):
         self.deployment.legacy = lambda: ["legacy"]
