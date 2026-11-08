@@ -60,7 +60,7 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
   const openEditor = (watch?: MovieWatch) => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setEditorError(null);
-    setEditor(watch ? { id: watch.id, watchedOn: watch.watchedOn, comment: watch.comment ?? "", isPublic: watch.isPublic ?? false }
+    setEditor(watch ? { id: watch.id, watchedOn: watch.watchedOn ?? "", comment: watch.comment ?? "", isPublic: watch.isPublic ?? false }
       : { id: null, watchedOn: addition.current?.watchedOn ?? localToday(), comment: addition.current?.comment ?? "", isPublic: addition.current?.isPublic ?? false });
   };
   const closeEditor = () => {
@@ -161,7 +161,7 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
       </div>
       {activity.total === 0 ? <p className={styles.empty}>No watches logged yet.</p> : <>
         <ul className={styles.watches}>{activity.watches.map((watch) => <li key={watch.id} className={styles.watch}>
-          <div className={styles.watchDetails}><time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time>{watch.comment && <p className={styles.watchComment}>{watch.comment}</p>}</div>
+          <div className={styles.watchDetails}>{watch.watchedOn ? <time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time> : <span>Date not specified</span>}{watch.comment && <p className={styles.watchComment}>{watch.comment}</p>}</div>
           <div className={styles.controls}>
             <button className="btnGhost" disabled={pending} type="button" onClick={() => openEditor(watch)}>Edit watch</button>
             <button className="btnGhost" disabled={pending} type="button" onClick={() => setDeleting(watch.id)}>Delete</button>

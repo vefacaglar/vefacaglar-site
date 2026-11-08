@@ -34,7 +34,7 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
           <h2><Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)}>{movie.title}</Link></h2>
           {movie.releaseYear !== null && <p className={styles.muted}>{movie.releaseYear}</p>}
           <p>{movie.rating === null ? "Not rated" : `${movie.rating}/10`} · {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}</p>
-          {movie.watches.length > 0 && <details className={styles.history}><summary>Watch dates</summary><ul>{movie.watches.map((watch, index) => <li key={watch.id ?? `${watch.watchedOn}-${index}`}><time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time></li>)}</ul></details>}
+          {movie.watches.length > 0 && <details className={styles.history}><summary>Watch history</summary><ul>{movie.watches.map((watch, index) => <li key={watch.id ?? `${watch.watchedOn}-${index}`}>{watch.watchedOn ? <time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time> : "Date not specified"}</li>)}</ul></details>}
           {isOwner && <Link className={`btnGhost ${styles.manage}`} href={localizeHref(`/explore/movies/${movie.slug}#watch-history`, lang)}>Manage watches and rating</Link>}
         </div>
       </li>)}</ul>}

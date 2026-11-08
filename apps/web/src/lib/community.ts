@@ -9,7 +9,7 @@ export type CommunityEntry = {
   status?: "backlog" | "playing" | "completed" | "on_hold" | "abandoned";
   startedAt?: string | null;
   completedAt?: string | null;
-  watchedOn?: string;
+  watchedOn?: string | null;
 };
 
 export type CommunityPage = {

@@ -22,7 +22,7 @@ export default function CommunitySection({ data, path, params }: {
             <Link href={localizeHref(`/profile/${encodeURIComponent(entry.author.username)}`, params.lang ?? "en")}>{entry.author.displayName}</Link>
             <span>{entry.rating === null ? null : `${entry.rating} / ${data.rating.scale}`}</span>
           </div>
-          <p className={styles.meta}>{[entry.status ? statuses[entry.status] : null, entry.watchedOn ? `Watched ${formatDate(entry.watchedOn, "en")}` : null,
+          <p className={styles.meta}>{[entry.status ? statuses[entry.status] : null, entry.watchedOn === null ? "Date not specified" : entry.watchedOn ? `Watched ${formatDate(entry.watchedOn, "en")}` : null,
             entry.completedAt ? `Completed ${formatDate(entry.completedAt, "en")}` : null, entry.startedAt ? `Started ${formatDate(entry.startedAt, "en")}` : null].filter(Boolean).join(" · ")}</p>
           {entry.text && <p className={styles.review}>{entry.text}</p>}
           <time className={styles.sharedAt} dateTime={entry.sharedAt}>Shared {formatDate(entry.sharedAt, "en")}</time>
