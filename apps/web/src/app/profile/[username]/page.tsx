@@ -14,6 +14,8 @@ import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
 import { sortShelf } from "../libraryShelf";
 import { activityStatusLabel } from "../../explore/games/gameLogStatus";
+import PosterCredit from "../../../components/movies/PosterCredit";
+import { getProfileMovieLibrary } from "../movieLibrary";
 
 const RECENT_COUNT = 12;
 
@@ -50,6 +52,7 @@ export default async function ProfileOverview(props: OverviewProps) {
   }
 
   const library = result.data;
+  const movieLibrary = await getProfileMovieLibrary(handle);
   const dict = getDictionary(lang);
   const { summary, games, recentActivity, user, isOwner } = library;
   const name = user.displayName || user.username;
@@ -161,6 +164,50 @@ export default async function ProfileOverview(props: OverviewProps) {
               );
             })}
           </ul>
+        )}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle}>Movies</h2>
+          {movieLibrary && movieLibrary.summary.filmCount > 0 && (
+            <Link href={localizeHref(profilePath(user.username, "movies"), lang)} className={styles.sectionLink}>
+              View all movies
+            </Link>
+          )}
+        </div>
+        {!movieLibrary ? (
+          <p className={styles.muted}>Movie library is temporarily unavailable.</p>
+        ) : (
+          <>
+            <dl className={styles.stats}>
+              <div className={styles.stat}><dt className={styles.statLabel}>Movies</dt><dd className={styles.statValue}>{movieLibrary.summary.filmCount}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>Films watched</dt><dd className={styles.statValue}>{movieLibrary.summary.watchedFilmCount}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>Watches</dt><dd className={styles.statValue}>{movieLibrary.summary.watchCount}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>Average rating</dt><dd className={styles.statValue}>{movieLibrary.summary.averageRating ?? "—"}{movieLibrary.summary.averageRating !== null && <span className={styles.statUnit}>/10</span>}</dd></div>
+            </dl>
+            {movieLibrary.movies.length === 0 ? (
+              <p className={styles.muted}>Watches and ratings will appear here.</p>
+            ) : (
+              <ul className={styles.movieShelf}>
+                {movieLibrary.movies.slice(0, 6).map((movie) => (
+                  <li key={movie.slug} className={styles.movieShelfItem}>
+                    <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.movieShelfPoster} aria-label={movie.title}>
+                      {movie.posterImageUrl && movie.posterAttribution ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={movie.posterImageUrl} alt="" loading="lazy" />
+                      ) : <span>Film</span>}
+                    </Link>
+                    {movie.posterImageUrl && movie.posterAttribution && <PosterCredit attribution={movie.posterAttribution} />}
+                    <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.activityTitle}>{movie.title}</Link>
+                    <p className={styles.movieShelfMeta}>
+                      {movie.rating === null ? "Not rated" : `${movie.rating}/10`} · {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
     </>

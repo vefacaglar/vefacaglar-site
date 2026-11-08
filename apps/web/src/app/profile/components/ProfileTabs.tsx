@@ -10,7 +10,7 @@ import styles from "../profile.module.css";
 type Tab = { key: "overview" | "games" | "movies"; path: string; label: string; count?: number };
 
 /** Overview / games / movies tabs under the profile header. Client-side so the active tab follows navigation. */
-export default function ProfileTabs({ basePath, gameCount }: { basePath: string; gameCount: number }) {
+export default function ProfileTabs({ basePath, gameCount, movieCount }: { basePath: string; gameCount: number; movieCount?: number }) {
   const locale = useLocale();
   const dict = getDictionary(locale);
   const pathname = decodeURIComponent(usePathname() || "/").toLowerCase();
@@ -19,7 +19,7 @@ export default function ProfileTabs({ basePath, gameCount }: { basePath: string;
   const tabs: Tab[] = [
     { key: "overview", path: basePath, label: dict.profile_overview },
     { key: "games", path: `${basePath}/games`, label: dict.games, count: gameCount },
-    { key: "movies", path: `${basePath}/movies`, label: dict.movies },
+    { key: "movies", path: `${basePath}/movies`, label: dict.movies, count: movieCount },
   ];
 
   const isActive = (tab: Tab) => {

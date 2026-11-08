@@ -8,6 +8,7 @@ import { libraryMetadata } from "../../../lib/librarySeo";
 import { decodeUsername, getProfileLibrary, profilePath } from "../../../lib/profileLibrary";
 import { librarySignOutAction } from "../../../components/library/actions";
 import ProfileTabs from "../components/ProfileTabs";
+import { getProfileMovieLibrary } from "../movieLibrary";
 
 interface ProfileLayoutProps {
   params: Promise<{ username: string }>;
@@ -49,6 +50,7 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
   if (result.kind === "private") return <>{props.children}</>;
 
   const library = result.data;
+  const movieLibrary = await getProfileMovieLibrary(decodeUsername(username));
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const { user, isOwner } = library;
@@ -86,7 +88,11 @@ export default async function UserProfileLayout(props: ProfileLayoutProps) {
           )}
         </header>
 
-        <ProfileTabs basePath={profilePath(user.username)} gameCount={library.summary.gameCount} />
+        <ProfileTabs
+          basePath={profilePath(user.username)}
+          gameCount={library.summary.gameCount}
+          movieCount={movieLibrary?.summary.filmCount}
+        />
       </div>
 
       <div className={styles.content}>{props.children}</div>
