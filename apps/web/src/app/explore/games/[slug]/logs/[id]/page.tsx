@@ -87,7 +87,7 @@ export default async function GameLogPage(props: LogPageProps) {
         <Link href={gameHref}>← {game.title}</Link>
       </p>
       <h1 className={styles.logPageTitle}>{dict.log_edit_title}</h1>
-      <LogEditForm slug={game.slug} log={log} platforms={game.platforms} gameInfo={gameInfo} isProfilePublic={user?.isProfilePublic ?? false} />
+      <LogEditForm slug={game.slug} log={log} platforms={game.platforms} gameInfo={gameInfo} userId={user?.id ?? null} isProfilePublic={user?.isProfilePublic ?? false} />
     </article>
   );
 }

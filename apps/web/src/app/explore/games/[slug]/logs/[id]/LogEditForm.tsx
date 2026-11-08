@@ -13,6 +13,7 @@ import ConfirmDialog from "../../../../../components/ConfirmDialog";
 import DatePicker from "../../../../../components/DatePicker";
 import { toDecimal, toDigits } from "../../../../../../lib/numericInput";
 import { istanbulToday, isAllowedLogDate } from "../../../../../../lib/logDates";
+import { writeGameLogPreferences } from "../../../../../../lib/logPreferences";
 import { useLogCalendarToday } from "../../../../../../lib/useLogCalendarToday";
 import styles from "../../game.module.css";
 
@@ -77,12 +78,14 @@ export default function LogEditForm({
   platforms,
   gameInfo,
   isProfilePublic,
+  userId,
 }: {
   slug: string;
   log: GameLog;
   platforms: { id: string; name: string }[];
   gameInfo: LogGameInfo;
   isProfilePublic: boolean;
+  userId: string | null;
 }) {
   const router = useRouter();
   const locale = useLocale();
@@ -225,7 +228,11 @@ export default function LogEditForm({
       reviewText: text("reviewText"),
       isPublic: form.get("isPublic") === "on",
     };
-    run(() => updateGameLog(slug, log.id, input));
+    run(async () => {
+      const result = await updateGameLog(slug, log.id, input);
+      if (!result.error) writeGameLogPreferences(userId, { startedAt, completedAt, isPublic: input.isPublic ?? false });
+      return result;
+    });
   };
 
   const onDelete = () => {

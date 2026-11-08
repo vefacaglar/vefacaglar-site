@@ -85,7 +85,7 @@ export default async function Movie({ params, searchParams }: Props) {
         <h2>Your watches and rating</h2>
         <p className={styles.pending}>Your movie activity is temporarily unavailable.</p>
         <a className="btnGhost" href={localizeHref(`/explore/movies/${movie.slug}${watchPage ? `?watchPage=${moviePageNumber(watchPage)}` : ""}`, lang)}>Try again</a>
-      </section> : activity ? <MovieActivity slug={movie.slug} activity={activity} isProfilePublic={user?.isProfilePublic ?? false} communityPage={query.communityPage} /> : <section className={styles.section}>
+      </section> : activity ? <MovieActivity slug={movie.slug} activity={activity} userId={user?.id ?? null} isProfilePublic={user?.isProfilePublic ?? false} communityPage={query.communityPage} /> : <section className={styles.section}>
         <h2>Your watches and rating</h2>
         <Link className="btnAccent" href={getLoginHref(localizeHref(`/explore/movies/${movie.slug}`, lang))}>Sign in to log a watch or rate</Link>
       </section>}

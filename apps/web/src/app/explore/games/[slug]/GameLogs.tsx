@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { useLocale } from "../../../../components/LocaleProvider";
 import { getDictionary } from "../../../../dictionaries";
 import { localizeHref } from "../../../../lib/localizeHref";
+import { readGameLogPreferences } from "../../../../lib/logPreferences";
 import { formatDate } from "../../../../lib/formatDate";
 import { createGameLog, deleteGameLog, type GameLogInput } from "../actions";
 import { statusLabel } from "../gameLogStatus";
@@ -38,7 +39,7 @@ const QUICK_LOG: GameLogInput = {
 };
 
 /** The signed-in user's logs for one game. Logging adds one instantly; each opens its own edit page. */
-export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[] }) {
+export default function GameLogs({ slug, logs, userId, isProfilePublic }: { slug: string; logs: GameLog[]; userId: string | null; isProfilePublic: boolean }) {
   const router = useRouter();
   const locale = useLocale();
   const dict = getDictionary(locale);
@@ -57,7 +58,8 @@ export default function GameLogs({ slug, logs }: { slug: string; logs: GameLog[]
   const onLog = () => {
     setError(null);
     startTransition(async () => {
-      const result = await createGameLog(slug, QUICK_LOG);
+      const defaults = readGameLogPreferences(userId, isProfilePublic);
+      const result = await createGameLog(slug, { ...QUICK_LOG, ...defaults });
       if (result.error) setError(result.error);
       else if (result.id) router.push(localizeHref(`/explore/games/${slug}/logs/${encodeURIComponent(result.id)}`, locale));
     });

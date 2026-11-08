@@ -16,6 +16,7 @@ import GameLogs, { type GameLog } from "./GameLogs";
 import { scoreTier } from "../scoreTier";
 import { gameCompanyHref, type GameCompanyRole } from "../../../../lib/gameCompanies";
 import { communityPageNumber, getCommunity, type CommunityPage } from "../../../../lib/community";
+import { getSessionUser } from "../../../../lib/session";
 import CommunitySection from "../../../../components/library/CommunitySection";
 
 type Named = { name: string; slug: string };
@@ -82,7 +83,7 @@ export default async function Game(props: GameProps) {
   try { community = await getCommunity("games", game.slug, communityPageNumber(query.communityPage)); }
   catch (error) { unstable_rethrow(error); }
 
-  const logs = await getMyLogs(game.slug);
+  const [logs, user] = await Promise.all([getMyLogs(game.slug), getSessionUser()]);
   const loginHref = getLoginHref(localizeHref(`/explore/games/${game.slug}`, lang));
 
   const companyLinks = (items: Named[], role: GameCompanyRole) => items.map((company, index) => (
@@ -206,7 +207,7 @@ export default async function Game(props: GameProps) {
               </Link>
             ) : (
               <>
-                <GameLogs slug={game.slug} logs={logs} />
+                <GameLogs slug={game.slug} logs={logs} userId={user?.id ?? null} isProfilePublic={user?.isProfilePublic ?? false} />
                 <p className={styles.libraryLink}>
                   <Link href={localizeHref("/profile", lang)}>{dict.view_profile}</Link>
                 </p>

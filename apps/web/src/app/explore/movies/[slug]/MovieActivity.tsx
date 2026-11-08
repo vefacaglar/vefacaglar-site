@@ -11,12 +11,13 @@ import { freezeWatchSubmission, type WatchSubmission } from "../watchSubmission"
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import DatePicker from "../../../components/DatePicker";
 import { istanbulToday, isAllowedLogDate } from "../../../../lib/logDates";
+import { readMovieLogPreferences, writeMovieLogPreferences } from "../../../../lib/logPreferences";
 import { useLogCalendarToday } from "../../../../lib/useLogCalendarToday";
 import styles from "./MovieActivity.module.css";
 
 type WatchEditor = { id: string | null; watchedOn: string; comment: string; isPublic: boolean };
 
-export default function MovieActivity({ slug, activity, isProfilePublic, communityPage }: { slug: string; activity: Activity; isProfilePublic: boolean; communityPage?: string }) {
+export default function MovieActivity({ slug, activity, userId, isProfilePublic, communityPage }: { slug: string; activity: Activity; userId: string | null; isProfilePublic: boolean; communityPage?: string }) {
   const router = useRouter(), locale = useLocale();
   const ratingId = useId(), dialogTitleId = useId(), dateId = useId(), commentId = useId();
   const [rating, setRating] = useState(activity.rating === null ? "" : String(activity.rating));
@@ -62,8 +63,11 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
   const openEditor = (watch?: MovieWatch) => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setEditorError(null);
+    const defaults = readMovieLogPreferences(userId, isProfilePublic);
+    const retry = addition.current;
     setEditor(watch ? { id: watch.id, watchedOn: watch.watchedOn ?? "", comment: watch.comment ?? "", isPublic: watch.isPublic ?? false }
-      : { id: null, watchedOn: addition.current?.watchedOn ?? "", comment: addition.current?.comment ?? "", isPublic: addition.current?.isPublic ?? false });
+      : retry ? { id: null, watchedOn: retry.watchedOn ?? "", comment: retry.comment ?? "", isPublic: retry.isPublic }
+      : { id: null, watchedOn: defaults.watchedOn ?? "", comment: "", isPublic: defaults.isPublic });
   };
   const closeEditor = () => {
     if (busy.current) return;
@@ -120,6 +124,7 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
             else if (!unconfirmed) addition.current = null;
           }
         } else {
+          writeMovieLogPreferences(userId, { watchedOn: editingId ? editor.watchedOn || null : submission!.watchedOn, isPublic: editingId ? editor.isPublic : submission!.isPublic });
           if (!editingId) { addition.current = null; setUnconfirmed(false); }
           returnFocus.current = true;
           setEditor(null);
