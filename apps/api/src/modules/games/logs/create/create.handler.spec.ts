@@ -1,8 +1,11 @@
 import "reflect-metadata";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CreateGameLogHandler } from "./create.handler";
 import type { IGamesRepository } from "../../../catalog/games.repository.interface";
 import type { IGameLogsRepository } from "../../game-logs.repository.interface";
+
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-08T09:00:00Z")); });
+afterEach(() => { vi.useRealTimers(); });
 
 const createdRow = {
   id: "l-1", status: "playing", platformId: null, platformName: null, rating: null,
@@ -86,6 +89,23 @@ describe("CreateGameLogHandler", () => {
     await expect(
       handler.handle(request({ status: "completed", startedAt: "2026-02-01", completedAt: "2026-01-01" }))
     ).rejects.toThrow("Completion date");
+  });
+  it.each(["startedAt", "completedAt"])("uses Istanbul today and rejects future %s", async (field) => {
+    vi.setSystemTime(new Date("2026-11-07T21:00:00Z"));
+    await handler.handle(request({ status: "completed", [field]: "2026-11-08" }));
+    expect(logsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ [field]: "2026-11-08" }), null, false);
+    logsRepo.create.mockClear();
+    await expect(handler.handle(request({ status: "completed", [field]: "2026-11-09" }))).rejects.toThrow("err_log_future_date");
+    expect(logsRepo.create).not.toHaveBeenCalled();
+  });
+  it.each(["startedAt", "completedAt"])("does not accept tomorrow just before Istanbul midnight for %s", async (field) => {
+    vi.setSystemTime(new Date("2026-11-07T20:59:59Z"));
+    await expect(handler.handle(request({ status: "completed", [field]: "2026-11-08" }))).rejects.toThrow("err_log_future_date");
+    expect(logsRepo.create).not.toHaveBeenCalled();
+  });
+  it.each(["startedAt", "completedAt"])("rejects an invalid nonempty %s", async (field) => {
+    await expect(handler.handle(request({ status: "completed", [field]: "2026-02-30" }))).rejects.toThrow("err_log_date");
+    expect(logsRepo.create).not.toHaveBeenCalled();
   });
 
   it("throws NotFound for an unknown game", async () => {

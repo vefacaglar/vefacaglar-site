@@ -4,7 +4,7 @@ import { GetMovieActivityHandler } from "./get.handler";
 import { NotFoundError } from "../../../../shared/http-errors";
 import type { IMovieActivityRepository } from "../activity.repository.interface";
 const mockActivityRepo = (): Record<keyof IMovieActivityRepository, any> => ({
-  findPublicMovieId: vi.fn().mockResolvedValue("movie"), getActivity: vi.fn(), createWatch: vi.fn(), updateWatch: vi.fn(), deleteWatch: vi.fn(), setRating: vi.fn(), listLibrary: vi.fn(), countPublicMovies: vi.fn(),
+  findWatch: vi.fn(), findPublicMovieId: vi.fn().mockResolvedValue("movie"), getActivity: vi.fn(), createWatch: vi.fn(), updateWatch: vi.fn(), deleteWatch: vi.fn(), setRating: vi.fn(), listLibrary: vi.fn(), countPublicMovies: vi.fn(),
 });
 const watch = { id: "watch", watchedOn: "2026-11-07", comment: null, createdAt: new Date("2026-11-07T10:00:00Z"), updatedAt: new Date("2026-11-07T10:00:00Z") };
 const request = (body = {}, params = {}) => ({ params: { slug: "film", id: "watch", ...params }, body, query: {}, user: { id: "owner" } }) as any;
@@ -23,6 +23,12 @@ describe("GetMovieActivityHandler", () => {
     const repo = mockActivityRepo(); repo.getActivity.mockResolvedValue({ rating: null, watches: [], total: 3 });
     const req = request(); req.query = { page: 5, limit: 2 };
     expect(await new GetMovieActivityHandler(repo).handle(req)).toMatchObject({ watches: [], total: 3, totalPages: 2, page: 5 });
+  });
+  it("returns an undated watch without replacing its date or changing total counts", async () => {
+    const repo = mockActivityRepo(); repo.getActivity.mockResolvedValue({ rating: 8, watches: [{ ...watch, watchedOn: null }], total: 1 });
+    const result = await new GetMovieActivityHandler(repo).handle(request());
+    expect(result).toMatchObject({ rating: 8, total: 1, totalPages: 1 });
+    expect(result.watches[0]).toMatchObject({ watchedOn: null, createdAt: "2026-11-07T10:00:00.000Z" });
   });
   it("rejects unavailable films before reading personal activity", async () => {
     const repo = mockActivityRepo(); repo.findPublicMovieId.mockResolvedValue(null);

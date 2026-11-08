@@ -42,6 +42,13 @@ describe("GetMovieCommunityHandler", () => {
     expect(repo.getCommunity).toHaveBeenCalledWith("content", 9, 5);
     expect(result).toMatchObject({ entries: [], total: 13, totalPages: 3, page: 9, limit: 5 });
   });
+  it("keeps a shared undated watch independent from its publication timestamp", async () => {
+    const repo = makeRepo();
+    repo.getCommunity.mockResolvedValue({ rating: { average: 9, count: 1 }, entries: [{ ...entry, watchedOn: null }], total: 1 });
+    const result = await new GetMovieCommunityHandler(repo).handle(request());
+    expect(result.entries[0]).toMatchObject({ watchedOn: null, sharedAt: "2026-11-08T10:00:00.000Z" });
+    expect(result).toMatchObject({ total: 1, rating: { average: 9, count: 1, scale: 10 } });
+  });
   it("returns a real empty and unrated state", async () => {
     const repo = makeRepo();
     repo.getCommunity.mockResolvedValue({ rating: { average: null, count: 0 }, entries: [], total: 0 });

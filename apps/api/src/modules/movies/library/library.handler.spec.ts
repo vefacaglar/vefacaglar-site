@@ -12,7 +12,7 @@ describe("GetMovieLibraryHandler", () => {
   let user: any;
   beforeEach(() => {
     users = { findById: vi.fn(), findByEmail: vi.fn(), findByUsername: vi.fn(), findByOidcSubject: vi.fn(), linkOidc: vi.fn(), create: vi.fn(), updateLastLogin: vi.fn(), updateProfile: vi.fn(), updateProfileVisibility: vi.fn(), changePasswordAndRevokeOtherSessions: vi.fn() };
-    repo = { findPublicMovieId: vi.fn(), getActivity: vi.fn(), createWatch: vi.fn(), updateWatch: vi.fn(), deleteWatch: vi.fn(), setRating: vi.fn(), listLibrary: vi.fn().mockResolvedValue([]), countPublicMovies: vi.fn() };
+    repo = { findWatch: vi.fn(), findPublicMovieId: vi.fn(), getActivity: vi.fn(), createWatch: vi.fn(), updateWatch: vi.fn(), deleteWatch: vi.fn(), setRating: vi.fn(), listLibrary: vi.fn().mockResolvedValue([]), countPublicMovies: vi.fn() };
     user = { id: "owner", username: "vefa", displayName: "Vefa", isActive: true, isProfilePublic: true, email: "private@example.com" };
     users.findByUsername.mockImplementation(async () => user);
   });
@@ -30,6 +30,23 @@ describe("GetMovieLibraryHandler", () => {
     const result = await new GetMovieLibraryHandler(users, repo).handle(request("owner"));
     expect(JSON.stringify(result)).not.toContain("This comment must remain private");
     expect(result.isOwner).toBe(true); expect(result.movies[0].watches[0].id).toBe(watch.id);
+  });
+  it("counts dated and undated watches and finds the latest known date independently of history order", async () => {
+    repo.listLibrary.mockResolvedValue([{ movie, rating: null, watches: [
+      { ...watch, id: "undated", watchedOn: null },
+      { ...watch, id: "backdated", watchedOn: "2020-01-01" },
+      { ...watch, id: "latest", watchedOn: "2026-11-07" },
+    ] }]);
+    const result = await new GetMovieLibraryHandler(users, repo).handle(request());
+    expect(result.summary).toMatchObject({ watchedFilmCount: 1, watchCount: 3 });
+    expect(result.movies[0]).toMatchObject({ watchCount: 3, lastWatchedOn: "2026-11-07" });
+    expect(result.movies[0].watches).toEqual([{ watchedOn: null }, { watchedOn: "2020-01-01" }, { watchedOn: "2026-11-07" }]);
+  });
+  it("keeps an all-undated film watched while leaving its latest date unknown", async () => {
+    repo.listLibrary.mockResolvedValue([{ movie, rating: 9, watches: [{ ...watch, watchedOn: null }, { ...watch, id: "other", watchedOn: null }] }]);
+    const result = await new GetMovieLibraryHandler(users, repo).handle(request());
+    expect(result.summary).toMatchObject({ watchedFilmCount: 1, watchCount: 2, ratedFilmCount: 1, averageRating: 9 });
+    expect(result.movies[0].lastWatchedOn).toBeNull();
   });
   it.each([[undefined, UnauthorizedError], ["other", ForbiddenError]])("withholds a private profile from %s", async (viewer, error) => {
     user.isProfilePublic = false;

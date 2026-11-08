@@ -25,7 +25,7 @@ export class UpdateGameLogHandler {
     const game = await this.gamesRepo.findById(log.gameId);
     if (!game) throw new NotFoundError("Game not found.");
 
-    const values = toGameLogValues(request.body, game);
+    const values = toGameLogValues(request.body, game, log);
     // Only playtime increases are audited; lowering or clearing it records nothing.
     const updated = await this.logsRepo.update(
       log.id,

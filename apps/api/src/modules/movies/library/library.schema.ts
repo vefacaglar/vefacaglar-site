@@ -8,7 +8,7 @@ export const MovieLibrarySchema = Type.Object({
   summary: Type.Object({ filmCount: Type.Integer(), watchedFilmCount: Type.Integer(), watchCount: Type.Integer(), ratedFilmCount: Type.Integer(), averageRating: Type.Union([Type.Number(), Type.Null()]) }),
   movies: Type.Array(Type.Composite([MovieCardSchema, Type.Object({ rating: MovieRatingBodySchema.properties.rating,
     watchCount: Type.Integer(), lastWatchedOn: Type.Union([Type.String(), Type.Null()]),
-    watches: Type.Array(Type.Object({ id: Type.Optional(Type.String()), watchedOn: Type.String() })) })])),
+    watches: Type.Array(Type.Object({ id: Type.Optional(Type.String()), watchedOn: Type.Union([Type.String(), Type.Null()]) })) })])),
 });
 export type MovieLibraryParams = Static<typeof MovieLibraryParamsSchema>;
 export type MovieLibrary = Static<typeof MovieLibrarySchema>;

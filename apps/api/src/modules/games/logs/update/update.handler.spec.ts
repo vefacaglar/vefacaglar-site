@@ -1,8 +1,11 @@
 import "reflect-metadata";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { UpdateGameLogHandler } from "./update.handler";
 import type { IGamesRepository } from "../../../catalog/games.repository.interface";
 import type { IGameLogsRepository } from "../../game-logs.repository.interface";
+
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-08T09:00:00Z")); });
+afterEach(() => { vi.useRealTimers(); });
 
 const row = {
   id: "l-1", userId: "u-1", gameId: "g-1", status: "playing", platformId: null, platformName: null,
@@ -104,6 +107,29 @@ describe("UpdateGameLogHandler", () => {
 
   it("hides another user's log as not found", async () => {
     await expect(handler.handle(request("u-2"))).rejects.toThrow("Log not found.");
+    expect(logsRepo.update).not.toHaveBeenCalled();
+  });
+  it.each(["startedAt", "completedAt"])("preserves an unchanged legacy future %s without writing it back", async (field) => {
+    logsRepo.findById.mockResolvedValue({ ...row, [field]: "2099-01-01" });
+    await handler.handle(request("u-1", { [field]: "2099-01-01", notes: "Edited note" }));
+    const patch = logsRepo.update.mock.calls[0][1];
+    expect(patch).not.toHaveProperty(field);
+    expect(patch.notes).toBe("Edited note");
+  });
+  it.each(["startedAt", "completedAt"])("rejects changed future %s and permits clearing it", async (field) => {
+    logsRepo.findById.mockResolvedValue({ ...row, [field]: "2099-01-01" });
+    await expect(handler.handle(request("u-1", { [field]: "2099-01-02" }))).rejects.toThrow("err_log_future_date");
+    expect(logsRepo.update).not.toHaveBeenCalled();
+    await handler.handle(request("u-1", { [field]: null }));
+    expect(logsRepo.update).toHaveBeenCalledWith("l-1", expect.objectContaining({ [field]: null }), null, undefined);
+  });
+  it("rejects new future dates on an existing undated log", async () => {
+    await expect(handler.handle(request("u-1", { startedAt: "2099-01-01" }))).rejects.toThrow("err_log_future_date");
+    expect(logsRepo.update).not.toHaveBeenCalled();
+  });
+  it("keeps start/completion ordering validation when legacy dates are unchanged", async () => {
+    logsRepo.findById.mockResolvedValue({ ...row, startedAt: "2099-01-02", completedAt: "2099-01-01" });
+    await expect(handler.handle(request("u-1", { startedAt: "2099-01-02", completedAt: "2099-01-01" }))).rejects.toThrow("Completion date");
     expect(logsRepo.update).not.toHaveBeenCalled();
   });
   it("preserves omitted review and sharing fields for older clients", async () => {

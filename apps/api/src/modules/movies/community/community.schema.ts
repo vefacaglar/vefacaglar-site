@@ -12,7 +12,7 @@ export const MovieCommunityEntrySchema = Type.Object({
   sharedAt: Type.String(),
   text: NullableString,
   rating: Type.Union([Type.Number({ minimum: 1, maximum: 10 }), Type.Null()]),
-  watchedOn: Type.String(),
+  watchedOn: Type.Union([Type.String(), Type.Null()]),
 });
 export const MovieCommunitySchema = Type.Object({
   rating: Type.Object({

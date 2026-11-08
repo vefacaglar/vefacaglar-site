@@ -6,7 +6,7 @@ export const userMovieWatches = pgTable("user_movie_watches", {
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   movieId: uuid("movie_id").notNull().references(() => movies.id, { onDelete: "cascade" }),
-  watchedOn: date("watched_on").notNull(),
+  watchedOn: date("watched_on"),
   comment: text("comment"),
   sharedAt: timestamp("shared_at", { withTimezone: true, mode: "date" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),

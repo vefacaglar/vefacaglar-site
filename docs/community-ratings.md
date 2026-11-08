@@ -25,6 +25,8 @@ A review or shared log is not required to contribute a rating. A movie entry dis
 
 Entries are ordered by `shared_at DESC, id DESC`, giving stable pagination when publication times tie.
 
+A movie entry's `watchedOn` can be null when its author did not specify a watch date. The publication timestamp remains independent and is never substituted as the watch date. Undated shared watches still contribute to entry counts and do not change rating eligibility or averages.
+
 ## Mutation compatibility and retry behavior
 
 New owner body fields are optional. Omitting `reviewText` or `isPublic` on an existing game log preserves those stored fields; other existing game fields keep their established replacement behavior. Omitting `isPublic` on a watch update preserves sharing. Create requests default to private.

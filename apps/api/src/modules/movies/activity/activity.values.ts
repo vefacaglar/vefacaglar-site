@@ -1,14 +1,12 @@
 import { BadRequestError } from "../../../shared/http-errors";
 import type { MovieWatchRow } from "./activity.repository.interface";
 import type { MovieWatch } from "./activity.schema";
-export function validateWatchDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestError("err_movie_watch_date");
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  date.setUTCHours(0, 0, 0, 0);
-  if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw new BadRequestError("err_movie_watch_date");
-  return value;
+import { validateLogDate } from "../../../shared/log-dates";
+export function validateWatchDate(value: string | null | undefined, previous?: string | null, now = new Date()): string | null {
+  return validateLogDate(value, previous, now, "err_movie_watch_date");
+}
+export function latestKnownWatchDate(watches: readonly Pick<MovieWatchRow, "watchedOn">[]): string | null {
+  return watches.reduce<string | null>((latest, watch) => watch.watchedOn !== null && (latest === null || watch.watchedOn > latest) ? watch.watchedOn : latest, null);
 }
 export function normalizeWatchComment(value: string | null | undefined): string | null {
   if (value == null) return null;

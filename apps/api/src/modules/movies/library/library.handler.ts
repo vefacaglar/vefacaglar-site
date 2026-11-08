@@ -6,6 +6,7 @@ import type { IUsersRepository } from "../../auth/users.repository.interface";
 import { MOVIE_ACTIVITY_REPOSITORY } from "../activity/activity.tokens";
 import type { IMovieActivityRepository } from "../activity/activity.repository.interface";
 import type { MovieLibrary, MovieLibraryParams } from "./library.schema";
+import { latestKnownWatchDate } from "../activity/activity.values";
 @injectable()
 export class GetMovieLibraryHandler {
   constructor(@inject(USERS_REPOSITORY) private readonly users: IUsersRepository,
@@ -20,7 +21,7 @@ export class GetMovieLibraryHandler {
       slug: movie.slug, title: movie.title, releaseDate: movie.releaseDate, releaseYear: movie.releaseYear,
       runtimeMinutes: movie.runtimeMinutes, posterImageUrl: movie.posterImageUrl, posterAttribution: movie.posterAttribution,
       rating, watchCount: watches.length,
-      lastWatchedOn: watches.reduce<string | null>((latest, watch) => !latest || watch.watchedOn > latest ? watch.watchedOn : latest, null),
+      lastWatchedOn: latestKnownWatchDate(watches),
       watches: watches.map((watch) => ({ ...(isOwner ? { id: watch.id } : {}), watchedOn: watch.watchedOn })),
     }));
     const ratings = movies.flatMap((movie) => movie.rating === null ? [] : [movie.rating]);
