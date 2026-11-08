@@ -28,7 +28,7 @@ export default async function LibraryShell({
     <div className={styles.shell} data-library="" data-ui-theme="graphite">
       <header className={styles.header}>
         <Link href={localizeHref("/explore", lang)} className={styles.wordmark}>
-          {dict.back_to_home} | Explorer
+          {dict.back_to_home} | Explore
         </Link>
 
         <ExploreNavigation lang={lang} labels={{ games: dict.games, movies: dict.movies }} />
