@@ -10,6 +10,7 @@ import { getMyMovieActivity, type MovieActivity as Activity } from "../../../../
 import { getLoginHref } from "../../../../lib/oidc";
 import { moviePageNumber } from "../../../../lib/movies";
 import MovieActivity from "./MovieActivity";
+import GenericPoster from "../../../../components/movies/GenericPoster";
 import PosterCredit from "../../../../components/movies/PosterCredit";
 import { communityPageNumber, getCommunity, type CommunityPage } from "../../../../lib/community";
 import CommunitySection from "../../../../components/library/CommunitySection";
@@ -68,9 +69,9 @@ export default async function Movie({ params, searchParams }: Props) {
             {movie.posterImageUrl && movie.posterAttribution ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={movie.posterImageUrl} alt="" />
-            ) : "Film"}
+            ) : <GenericPoster title={movie.title} year={movie.releaseYear} size="large" />}
           </span>
-          {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
+          {movie.posterImageUrl && movie.posterAttribution && <PosterCredit attribution={movie.posterAttribution} />}
         </div>
         <div>
           <h1 className={styles.title}>{movie.title}</h1>

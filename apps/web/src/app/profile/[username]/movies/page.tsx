@@ -6,6 +6,7 @@ import { formatDate } from "../../../../lib/formatDate";
 import { decodeUsername, profilePath } from "../../../../lib/profileLibrary";
 import { getMovieLibrary } from "../../../../lib/movieActivity";
 import PrivateProfile from "../../components/PrivateProfile";
+import GenericPoster from "../../../../components/movies/GenericPoster";
 import PosterCredit from "../../../../components/movies/PosterCredit";
 import styles from "./movies.module.css";
 export default async function ProfileMovies({ params }: { params: Promise<{ username: string }> }) {
@@ -26,9 +27,9 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
       <ul className={styles.movies}>{movies.map((movie) => <li key={movie.slug} className={styles.movie}>
         <div className={styles.posterColumn}>
           <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.poster} aria-label={movie.title}>
-            {movie.posterImageUrl && movie.posterAttribution ? <img src={movie.posterImageUrl} alt="" loading="lazy" /> : <span>Film</span>}
+            {movie.posterImageUrl && movie.posterAttribution ? <img src={movie.posterImageUrl} alt="" loading="lazy" /> : <GenericPoster title={movie.title} year={movie.releaseYear} />}
           </Link>
-          {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
+          {movie.posterImageUrl && movie.posterAttribution && <PosterCredit attribution={movie.posterAttribution} />}
         </div>
         <div className={styles.details}>
           <h2><Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)}>{movie.title}</Link></h2>

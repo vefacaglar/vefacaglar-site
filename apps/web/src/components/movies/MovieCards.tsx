@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { MovieCard, MoviePersonRole } from "../../lib/movies";
 import { localizeHref } from "../../lib/localizeHref";
+import GenericPoster from "./GenericPoster";
 import PosterCredit from "./PosterCredit";
 import styles from "./movieCards.module.css";
 
@@ -17,7 +18,7 @@ export default function MovieCards({ movies, lang }: {
           {movie.posterImageUrl && movie.posterAttribution ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={movie.posterImageUrl} alt="" loading="lazy" />
-          ) : <span className={styles.posterMark}>Film</span>}
+          ) : <GenericPoster title={movie.title} year={movie.releaseYear} />}
         </span>
         <span className={styles.caption}>
           <span className={styles.title}>{movie.title}</span>
@@ -26,7 +27,7 @@ export default function MovieCards({ movies, lang }: {
           {!!movie.roles?.length && <span className={styles.roles}>{movie.roles.map((role) => roleLabels[role]).join(" · ")}</span>}
         </span>
       </Link>
-      {movie.posterImageUrl && <PosterCredit attribution={movie.posterAttribution} />}
+      {movie.posterImageUrl && movie.posterAttribution && <PosterCredit attribution={movie.posterAttribution} />}
     </li>)}
   </ul>;
 }

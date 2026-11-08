@@ -1,0 +1,66 @@
+.poster {
+  container-type: inline-size;
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-body);
+  text-align: left;
+}
+.frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 9cqw;
+  gap: 6cqw;
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: 4cqw;
+  border: 1px solid var(--border);
+  pointer-events: none;
+}
+.label {
+  color: var(--muted);
+  font-size: 7cqw;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.rule { flex: 0 0 auto; width: 22cqw; height: 2px; background: var(--accent); }
+.title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden;
+  color: var(--text-heading);
+  font-size: 12cqw;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+.year { margin-top: auto; color: var(--muted); font-size: 8cqw; font-variant-numeric: tabular-nums; }
+
+/* Deterministic variants so a grid of generic posters is not monotonous. */
+.poster[data-variant="b"] .frame { justify-content: flex-end; }
+.poster[data-variant="b"] .year { margin-top: 0; order: -1; }
+.poster[data-variant="b"] .label { order: -2; }
+.poster[data-variant="b"] .rule { order: 5; width: 100%; }
+.poster[data-variant="c"] .frame { align-items: flex-end; text-align: right; }
+.poster[data-variant="c"] .rule { width: 44cqw; }
+.poster[data-variant="d"] .frame { border-left: 6cqw solid var(--accent); }
+.poster[data-variant="d"] .frame::before { display: none; }
+.poster[data-variant="d"] .rule { width: 100%; background: var(--border); }
+
+.large .title { font-size: 11cqw; -webkit-line-clamp: 7; line-clamp: 7; }

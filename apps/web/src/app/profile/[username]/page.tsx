@@ -14,6 +14,7 @@ import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
 import { sortShelf } from "../libraryShelf";
 import { activityStatusLabel } from "../../explore/games/gameLogStatus";
+import GenericPoster from "../../../components/movies/GenericPoster";
 import PosterCredit from "../../../components/movies/PosterCredit";
 import { getProfileMovieLibrary } from "../movieLibrary";
 
@@ -196,7 +197,7 @@ export default async function ProfileOverview(props: OverviewProps) {
                       {movie.posterImageUrl && movie.posterAttribution ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={movie.posterImageUrl} alt="" loading="lazy" />
-                      ) : <span>Film</span>}
+                      ) : <GenericPoster title={movie.title} year={movie.releaseYear} />}
                     </Link>
                     {movie.posterImageUrl && movie.posterAttribution && <PosterCredit attribution={movie.posterAttribution} />}
                     <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.activityTitle}>{movie.title}</Link>

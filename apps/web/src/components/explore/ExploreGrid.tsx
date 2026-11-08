@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { localizeHref } from "../../lib/localizeHref";
 import type { MovieCard } from "../../lib/movies";
+import GenericPoster from "../movies/GenericPoster";
 import PosterCredit from "../movies/PosterCredit";
 import styles from "./ExploreGrid.module.css";
 
@@ -40,7 +41,7 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={image} alt="" loading="lazy" />
-            ) : <span className={styles.coverFallback}>{isGame ? "Game" : "Film"}</span>}
+            ) : isGame ? <span className={styles.coverFallback}>Game</span> : <GenericPoster title={item.title} year={year} />}
           </span>
           <span className={styles.caption}>
             <span className={styles.kind}>{isGame ? "Game" : "Movie"}</span>
