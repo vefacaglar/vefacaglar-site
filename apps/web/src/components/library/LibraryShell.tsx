@@ -58,9 +58,7 @@ export default async function LibraryShell({
         <p className={styles.sources}>
           Game data: <a href="https://www.igdb.com/">IGDB</a>.{" "}
           Film data: <a href="https://www.wikidata.org/">Wikidata</a>.{" "}
-          Page-view data: <a href="https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html">Wikimedia Analytics (CC0)</a>.{" "}
-          Posters: <a href="https://en.wikipedia.org/">Wikipedia</a> and <a href="https://commons.wikimedia.org/">Wikimedia Commons</a>.{" "}
-          Individual poster credits and licenses are shown with each image.
+          Page-view data: <a href="https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html">Wikimedia Analytics (CC0)</a>.
         </p>
       </footer>
     </div>
