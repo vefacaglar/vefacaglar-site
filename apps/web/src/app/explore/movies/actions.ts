@@ -19,7 +19,7 @@ async function send(method: "POST" | "PUT" | "DELETE", slug: string, suffix: str
   return {};
 }
 /** The caller keeps the same UUID when retrying one intended watch. */
-export async function createMovieWatch(slug: string, id: string, watchedOn: string, comment: string | null, isPublic: boolean): Promise<MovieActionResult> { return send("POST", slug, "watches", { id, watchedOn, comment, isPublic }); }
-export async function updateMovieWatch(slug: string, id: string, watchedOn: string, comment: string | null, isPublic: boolean): Promise<MovieActionResult> { return send("PUT", slug, `watches/${encodeURIComponent(id)}`, { watchedOn, comment, isPublic }); }
+export async function createMovieWatch(slug: string, id: string, watchedOn: string | null, comment: string | null, isPublic: boolean): Promise<MovieActionResult> { return send("POST", slug, "watches", { id, watchedOn, comment, isPublic }); }
+export async function updateMovieWatch(slug: string, id: string, watchedOn: string | null, comment: string | null, isPublic: boolean): Promise<MovieActionResult> { return send("PUT", slug, `watches/${encodeURIComponent(id)}`, { watchedOn, comment, isPublic }); }
 export async function deleteMovieWatch(slug: string, id: string): Promise<MovieActionResult> { return send("DELETE", slug, `watches/${encodeURIComponent(id)}`); }
 export async function setMovieRating(slug: string, rating: number | null): Promise<MovieActionResult> { return send("PUT", slug, "rating", { rating }); }

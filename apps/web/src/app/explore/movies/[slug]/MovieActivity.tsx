@@ -7,10 +7,11 @@ import { localizeHref } from "../../../../lib/localizeHref";
 import { formatDate } from "../../../../lib/formatDate";
 import type { MovieActivity as Activity, MovieWatch } from "../../../../lib/movieActivity";
 import { createMovieWatch, updateMovieWatch, deleteMovieWatch, setMovieRating, type MovieActionResult } from "../actions";
-import { localToday } from "../watchDate";
 import { freezeWatchSubmission, type WatchSubmission } from "../watchSubmission";
 import ConfirmDialog from "../../../components/ConfirmDialog";
 import DatePicker from "../../../components/DatePicker";
+import { istanbulToday, isAllowedLogDate } from "../../../../lib/logDates";
+import { useLogCalendarToday } from "../../../../lib/useLogCalendarToday";
 import styles from "./MovieActivity.module.css";
 
 type WatchEditor = { id: string | null; watchedOn: string; comment: string; isPublic: boolean };
@@ -20,6 +21,7 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
   const ratingId = useId(), dialogTitleId = useId(), dateId = useId(), commentId = useId();
   const [rating, setRating] = useState(activity.rating === null ? "" : String(activity.rating));
   const [editor, setEditor] = useState<WatchEditor | null>(null);
+  const [logToday, refreshLogToday] = useLogCalendarToday(editor !== null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ratingError, setRatingError] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setEditorError(null);
     setEditor(watch ? { id: watch.id, watchedOn: watch.watchedOn ?? "", comment: watch.comment ?? "", isPublic: watch.isPublic ?? false }
-      : { id: null, watchedOn: addition.current?.watchedOn ?? localToday(), comment: addition.current?.comment ?? "", isPublic: addition.current?.isPublic ?? false });
+      : { id: null, watchedOn: addition.current?.watchedOn ?? "", comment: addition.current?.comment ?? "", isPublic: addition.current?.isPublic ?? false });
   };
   const closeEditor = () => {
     if (busy.current) return;
@@ -97,7 +99,11 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
   };
   const saveWatch = () => {
     if (!editor || busy.current) return;
-    if (!editor.watchedOn) { setEditorError("Choose a watch date."); return; }
+    const previous = editor.id ? activity.watches.find((watch) => watch.id === editor.id)?.watchedOn ?? null : null;
+    if (!isAllowedLogDate(editor.watchedOn || null, previous, istanbulToday())) {
+      setEditorError("Watch date cannot be in the future.");
+      return;
+    }
     const editingId = editor.id;
     const submission = editingId ? null : freezeWatchSubmission(addition.current, editor, () => crypto.randomUUID());
     if (submission) addition.current = submission;
@@ -105,7 +111,7 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
     startTransition(async () => {
       try {
         const result = editingId
-          ? await updateMovieWatch(slug, editingId, editor.watchedOn, editor.comment.trim() || null, editor.isPublic)
+          ? await updateMovieWatch(slug, editingId, editor.watchedOn || null, editor.comment.trim() || null, editor.isPublic)
           : await createMovieWatch(slug, submission!.id, submission!.watchedOn, submission!.comment, submission!.isPublic);
         if (result.error) {
           setEditorError(result.error);
@@ -180,9 +186,9 @@ export default function MovieActivity({ slug, activity, isProfilePublic, communi
       onClick={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
       {editor && <form className={styles.dialogBody} onSubmit={(event) => { event.preventDefault(); saveWatch(); }}>
         <div className={styles.dialogHeading}><span className={styles.eyebrow}>Watch history</span><h2 id={dialogTitleId}>{editor.id ? "Edit watch" : "Log a watch"}</h2></div>
-        <div className={styles.field}>
-          <label htmlFor={dateId}>Watched on</label>
-          <LocaleProvider locale="en"><DatePicker id={dateId} value={editor.watchedOn} disabled={pending || locked} onChange={(watchedOn) => setEditor({ ...editor, watchedOn })} /></LocaleProvider>
+        <div className={styles.field} onFocusCapture={refreshLogToday}>
+          <label htmlFor={dateId}>Watched on <span className={styles.optional}>Optional</span></label>
+          <LocaleProvider locale="en"><DatePicker id={dateId} value={editor.watchedOn} max={logToday} today={logToday} disabled={pending || locked} onChange={(watchedOn) => setEditor({ ...editor, watchedOn })} /></LocaleProvider>
         </div>
         <div className={styles.field}>
           <label htmlFor={commentId}>Comment <span className={styles.optional}>Optional</span></label>

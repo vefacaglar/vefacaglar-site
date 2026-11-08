@@ -144,6 +144,12 @@
   background: var(--border);
 }
 
+.day:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: transparent;
+}
+
 .day:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 1px;

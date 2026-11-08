@@ -22,4 +22,10 @@ describe("freezeWatchSubmission", () => {
     expect(first.comment).toBeNull();
     expect(next.id).not.toBe(first.id);
   });
+  it("preserves an unspecified date and visibility across uncertain retries", () => {
+    const original = freezeWatchSubmission(null, { watchedOn: "", comment: "  Note  ", isPublic: true }, () => "watch-id");
+    expect(original).toEqual({ id: "watch-id", watchedOn: null, comment: "Note", isPublic: true });
+    const retry = freezeWatchSubmission(original, { watchedOn: "2026-11-07", comment: "Changed", isPublic: false }, () => "new-id");
+    expect(retry).toBe(original);
+  });
 });

@@ -48,6 +48,10 @@ interface DatePickerProps {
   onChange?: (value: string) => void;
   id?: string;
   disabled?: boolean;
+  /** Optional latest selectable calendar day, YYYY-MM-DD. */
+  max?: string;
+  /** Optional calendar day used for Today and its highlight, YYYY-MM-DD. */
+  today?: string;
   /** Wording overrides for sections with their own voice (the library uses sentence case). */
   labels?: Partial<Pick<Dictionary, DateLabelKey>>;
 }
@@ -68,6 +72,8 @@ export default function DatePicker({
   onChange,
   id,
   disabled,
+  max,
+  today,
   labels,
 }: DatePickerProps) {
   const locale = useLocale();
@@ -102,7 +108,8 @@ export default function DatePicker({
     };
   }, [locale]);
 
-  const todayKey = toDateKey(new Date());
+  const todayKey = normalizeDateKey(today) || toDateKey(new Date());
+  const maxKey = normalizeDateKey(max);
   const focusKey = toDateKey(focusDate);
   const selectedDate = parseDateKey(value);
 
@@ -143,6 +150,7 @@ export default function DatePicker({
   };
 
   const selectDate = (date: Date) => {
+    if (maxKey && toDateKey(date) > maxKey) return;
     setValue(toDateKey(date));
     setFocusDate(date);
     closeAndFocusTrigger();
@@ -154,14 +162,18 @@ export default function DatePicker({
   };
 
   const openPopover = () => {
-    setFocusDate(parseDateKey(value) ?? new Date());
+    const next = parseDateKey(value) ?? parseDateKey(todayKey) ?? new Date();
+    setFocusDate(maxKey && toDateKey(next) > maxKey ? parseDateKey(maxKey)! : next);
     setOpen(true);
   };
 
   const moveMonth = (offset: number) => {
     // Keep focus on the header button instead of pulling it into the grid.
     skipGridFocus.current = true;
-    setFocusDate((current) => addMonths(current, offset));
+    setFocusDate((current) => {
+      const next = addMonths(current, offset);
+      return maxKey && toDateKey(next) > maxKey ? parseDateKey(maxKey)! : next;
+    });
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -207,6 +219,7 @@ export default function DatePicker({
     }
 
     event.preventDefault();
+    if (maxKey && toDateKey(next) > maxKey) return;
     setFocusDate(next);
   };
 
@@ -306,6 +319,7 @@ export default function DatePicker({
                   aria-label={formatDate(day, locale)}
                   aria-current={isToday ? "date" : undefined}
                   aria-pressed={isSelected}
+                  disabled={!!maxKey && key > maxKey}
                   onClick={() => selectDate(day)}
                 >
                   {day.getDate()}
@@ -315,7 +329,7 @@ export default function DatePicker({
           </div>
 
           <div className={styles.footer}>
-            <button type="button" className="btnGhost" onClick={() => selectDate(new Date())}>
+            <button type="button" className="btnGhost" disabled={!!maxKey && todayKey > maxKey} onClick={() => selectDate(parseDateKey(todayKey)!)}>
               {dict.date_today}
             </button>
             <button type="button" className="btnGhost" onClick={clearDate}>

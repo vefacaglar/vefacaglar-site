@@ -12,6 +12,8 @@ import type { GameLog } from "../../GameLogs";
 import ConfirmDialog from "../../../../../components/ConfirmDialog";
 import DatePicker from "../../../../../components/DatePicker";
 import { toDecimal, toDigits } from "../../../../../../lib/numericInput";
+import { istanbulToday, isAllowedLogDate } from "../../../../../../lib/logDates";
+import { useLogCalendarToday } from "../../../../../../lib/useLogCalendarToday";
 import styles from "../../game.module.css";
 
 export type LogGameInfo = {
@@ -89,6 +91,7 @@ export default function LogEditForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPublic, setIsPublic] = useState(log.isPublic ?? false);
   const [pending, startTransition] = useTransition();
+  const [logToday, refreshLogToday] = useLogCalendarToday(true);
   const [playtimeValue, setPlaytimeValue] = useState<string>(() =>
     log.playtimeHours && log.playtimeHours > 0 ? String(log.playtimeHours) : "",
   );
@@ -206,12 +209,17 @@ export default function LogEditForm({
       const num = Number(value);
       return Number.isFinite(num) && num > 0 ? num : null;
     };
+    const startedAt = text("startedAt"), completedAt = text("completedAt"), today = istanbulToday();
+    if (!isAllowedLogDate(startedAt, log.startedAt, today) || !isAllowedLogDate(completedAt, log.completedAt, today)) {
+      setError("Log dates cannot be in the future.");
+      return;
+    }
     const input: GameLogInput = {
       status: form.get("status") as GameLogInput["status"],
       platformId: text("platformId"),
       rating: number("rating"),
-      startedAt: text("startedAt"),
-      completedAt: text("completedAt"),
+      startedAt,
+      completedAt,
       playtimeHours: number("playtimeHours"),
       notes: text("notes"),
       reviewText: text("reviewText"),
@@ -412,17 +420,17 @@ export default function LogEditForm({
                 }}
               />
             </label>
-            <div className="field">
+            <div className="field" onFocusCapture={refreshLogToday}>
               <label className="label" htmlFor="startedAt">
                 {dict.log_started}
               </label>
-              <DatePicker id="startedAt" name="startedAt" defaultValue={log.startedAt} labels={dateLabels} />
+              <DatePicker id="startedAt" name="startedAt" defaultValue={log.startedAt} labels={dateLabels} max={logToday} today={logToday} />
             </div>
-            <div className="field">
+            <div className="field" onFocusCapture={refreshLogToday}>
               <label className="label" htmlFor="completedAt">
                 {dict.log_completed}
               </label>
-              <DatePicker id="completedAt" name="completedAt" defaultValue={log.completedAt} labels={dateLabels} />
+              <DatePicker id="completedAt" name="completedAt" defaultValue={log.completedAt} labels={dateLabels} max={logToday} today={logToday} />
             </div>
           </div>
           <label className="field">
