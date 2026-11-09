@@ -6,6 +6,7 @@ import { logoutAction } from "../actions";
 import dashStyles from "../dashboard.module.css";
 import styles from "./jobs.module.css";
 import ds from "../../../lib/dashboard-strings";
+import DashboardTabs from "../components/DashboardTabs";
 import { requireAdmin } from "../../../lib/session";
 import { jobsApi } from "./jobsApi";
 import { countJobs, listJobs } from "./jobsQueries";
@@ -155,20 +156,7 @@ export default async function JobsDashboard(props: PageProps) {
         </div>
       </div>
 
-      <div className={dashStyles.tabsContainer}>
-        <Link href="/dashboard" className={dashStyles.tab}>
-          {ds.nav.tabs.content}
-        </Link>
-        <Link href="/dashboard/packages" className={dashStyles.tab}>
-          {ds.nav.tabs.packages}
-        </Link>
-        <Link href="/dashboard/games" className={dashStyles.tab}>
-          {ds.nav.tabs.games}
-        </Link>
-        <Link href="/dashboard/jobs" className={`${dashStyles.tab} ${dashStyles.activeTab}`}>
-          {ds.nav.tabs.jobs}
-        </Link>
-      </div>
+      <DashboardTabs active="jobs" />
 
       <AutoRefresh active={autoRefresh.active} intervalMs={autoRefresh.intervalMs} />
 

@@ -7,6 +7,7 @@ import { listPackagesAction } from "./actions";
 import PackagesDashboardClient from "./PackagesDashboardClient";
 import styles from "../dashboard.module.css";
 import ds from "../../../lib/dashboard-strings";
+import DashboardTabs from "../components/DashboardTabs";
 import { requireAdmin } from "../../../lib/session";
 
 export const dynamic = "force-dynamic";
@@ -64,20 +65,7 @@ export default async function PackagesDashboard(props: PageProps) {
         </div>
       </div>
 
-      <div className={styles.tabsContainer}>
-        <Link href="/dashboard" className={styles.tab}>
-          {ds.nav.tabs.content}
-        </Link>
-        <Link href="/dashboard/packages" className={`${styles.tab} ${styles.activeTab}`}>
-          {ds.nav.tabs.packages}
-        </Link>
-        <Link href="/dashboard/games" className={styles.tab}>
-          {ds.nav.tabs.games}
-        </Link>
-        <Link href="/dashboard/jobs" className={styles.tab}>
-          {ds.nav.tabs.jobs}
-        </Link>
-      </div>
+      <DashboardTabs active="packages" />
 
       <PackagesDashboardClient
         packages={packages}

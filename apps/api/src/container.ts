@@ -1,6 +1,8 @@
 import "reflect-metadata";
 import { MOVIE_ACTIVITY_REPOSITORY } from "./modules/movies/activity/activity.tokens";
 import { DrizzleMovieActivityRepository } from "./modules/movies/activity/activity.repository";
+import { MOVIE_DASHBOARD_REPOSITORY } from "./modules/movies/dashboard/movies-dashboard.repository.interface";
+import { DrizzleMovieDashboardRepository } from "./modules/movies/dashboard/movies-dashboard.repository";
 import { container } from "tsyringe";
 import { db } from "@vefacaglar/db";
 import { DB_CONNECTION } from "./db.tokens";
@@ -104,6 +106,7 @@ container.registerSingleton(GAME_LOGS_REPOSITORY, DrizzleGameLogsRepository);
 container.registerSingleton(GAME_COMMUNITY_REPOSITORY, DrizzleGameCommunityRepository);
 container.registerSingleton(MOVIE_COMMUNITY_REPOSITORY, DrizzleMovieCommunityRepository);
 container.registerSingleton(MOVIE_ACTIVITY_REPOSITORY, DrizzleMovieActivityRepository);
+container.registerSingleton(MOVIE_DASHBOARD_REPOSITORY, DrizzleMovieDashboardRepository);
 container.registerSingleton(PACKAGES_REPOSITORY, DrizzlePackagesRepository);
 container.registerSingleton(JOBS_REPOSITORY, DrizzleJobsRepository);
 // Process-wide LISTEN job_events; connects lazily on the first stream subscriber.

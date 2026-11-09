@@ -6,7 +6,7 @@ const now = new Date("2026-11-07T10:00:00Z");
 const stored = () => ({ title: "The Godfather", posterFileName: null, enwikiArticle: "The Godfather", commonsCategory: null as string | null, posterInputsCheckedAt: now,
   posterCandidateVersion: 7, posterResolvedFrom: "wikipedia", posterAttribution: null });
 describe("public poster rights guard", () => {
-  const base = { title: "Inception", enwikiArticle: "Inception", posterResolvedFrom: "wikipedia", posterImageUrl: "https://upload.wikimedia.org/p.jpg" };
+  const base = { title: "Inception", enwikiArticle: "Inception", posterResolvedFrom: "wikipedia", posterImageUrl: "https://upload.wikimedia.org/p.jpg", posterBlockedAt: null };
   const attribution = { sourceUrl: "https://en.wikipedia.org/wiki/File:P.jpg", artist: null, license: "x", licenseUrl: null };
   it("hides stored non-free posters", () => {
     expect(publicMoviePoster({ ...base, posterAttribution: { ...attribution, provider: "wikipedia", rightsKind: "non-free" } }))
@@ -15,6 +15,12 @@ describe("public poster rights guard", () => {
   it("keeps reusable and legacy attribution-less-rights posters", () => {
     expect(publicMoviePoster({ ...base, posterAttribution: { ...attribution, rightsKind: "reusable" } }).posterImageUrl).toBe(base.posterImageUrl);
     expect(publicMoviePoster({ ...base, posterAttribution: attribution }).posterImageUrl).toBe(base.posterImageUrl);
+  });
+  it("hides an admin-blocked reusable poster together with its credit", () => {
+    const reusable = { ...base, posterResolvedFrom: "commons", posterAttribution: { ...attribution, rightsKind: "reusable" as const } };
+    expect(publicMoviePoster({ ...reusable, posterBlockedAt: new Date("2026-11-01T00:00:00Z") })).toEqual({ posterImageUrl: null, posterAttribution: null });
+    // Raw JSON reads carry the timestamp as a string.
+    expect(publicMoviePoster({ ...reusable, posterBlockedAt: "2026-11-01T00:00:00+00:00" })).toEqual({ posterImageUrl: null, posterAttribution: null });
   });
 });
 
@@ -73,7 +79,7 @@ describe("source-aware poster invalidation", () => {
   });
   it("suppresses both cached Wikipedia image and credit, including Commons-hosted article artwork", () => {
     const attribution = { provider: "commons" as const, sourceUrl: "https://commons.wikimedia.org/wiki/File:Poster.jpg", artist: "Studio", license: "CC0", licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/" };
-    const movie = { title: "Jailer 3", enwikiArticle: "Jailer 2", posterResolvedFrom: "wikipedia", posterImageUrl: "https://upload.wikimedia.org/wikipedia/commons/Poster.jpg", posterAttribution: attribution };
+    const movie = { title: "Jailer 3", enwikiArticle: "Jailer 2", posterResolvedFrom: "wikipedia", posterImageUrl: "https://upload.wikimedia.org/wikipedia/commons/Poster.jpg", posterAttribution: attribution, posterBlockedAt: null };
     expect(publicMoviePoster(movie)).toEqual({ posterImageUrl: null, posterAttribution: null });
     expect(publicMoviePoster({ ...movie, posterResolvedFrom: "commons" })).toEqual({ posterImageUrl: movie.posterImageUrl, posterAttribution: attribution });
     expect(publicMoviePoster({ ...movie, enwikiArticle: "Jailer 3", posterAttribution: { ...attribution, articleTitle: "Jailer 2" } }))

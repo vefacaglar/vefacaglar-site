@@ -10,5 +10,4 @@ export interface IMovieActivityRepository {
   deleteWatch(userId: string, movieId: string, id: string): Promise<boolean>;
   setRating(userId: string, movieId: string, rating: number | null): Promise<void>;
   listLibrary(userId: string): Promise<MovieLibraryRow[]>;
-  countPublicMovies(): Promise<number>;
 }

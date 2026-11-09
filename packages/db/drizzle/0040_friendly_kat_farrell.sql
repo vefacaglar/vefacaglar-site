@@ -1,0 +1,1 @@
+ALTER TABLE "movies" ADD COLUMN "poster_blocked_at" timestamp with time zone;

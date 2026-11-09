@@ -9,10 +9,12 @@ import { GetMoviePersonHandler } from "./people/detail/detail.handler";
 import { GetMoviePersonParamsSchema, GetMoviePersonQuerySchema, MoviePersonPageSchema,
   type GetMoviePersonParams, type GetMoviePersonQuery } from "./people/detail/detail.schema";
 import { movieActivityRoutes } from "./activity/activity.routes";
+import { movieDashboardRoutes } from "./dashboard/movies-dashboard.routes";
 import { GetMovieCommunityHandler } from "./community/community.handler";
 import { MovieCommunityParamsSchema, MovieCommunityQuerySchema, MovieCommunitySchema, type MovieCommunityParams, type MovieCommunityQuery } from "./community/community.schema";
 export async function moviesRoutes(app: FastifyInstance) {
   await movieActivityRoutes(app);
+  await movieDashboardRoutes(app);
   const list = container.resolve(ListMoviesHandler);
   const detail = container.resolve(GetMovieHandler);
   const person = container.resolve(GetMoviePersonHandler);

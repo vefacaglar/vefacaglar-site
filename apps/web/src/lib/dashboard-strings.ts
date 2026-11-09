@@ -7,7 +7,44 @@ const dashboardStrings = {
       content: "Content",
       packages: "Packages",
       games: "Games",
+      movies: "Movies",
       jobs: "Jobs",
+    },
+  },
+
+  movies: {
+    stats: {
+      publicFilms: "Public films",
+      catalog: "Catalog rows",
+      withPoster: "With poster",
+      posterBlocked: "Posters blocked",
+      unavailable: "Movie stats are unavailable.",
+    },
+    search: {
+      placeholder: "Search movies by title...",
+      submit: "Search",
+      clear: "Clear",
+    },
+    filters: {
+      all: "All movies",
+      blocked: "Blocked posters only",
+    },
+    list: {
+      title: "Movies",
+      empty: "No movies yet.",
+      emptySearch: "No movies match \"{q}\".",
+      emptyBlocked: "No posters are blocked.",
+      loadFailed: "Could not load movies. The movies API may be unavailable.",
+      noPoster: "No poster",
+      public: "Public",
+      notPublic: "Not public",
+      blocked: "Poster blocked",
+      viewPublic: "View",
+    },
+    actions: {
+      block: "Block poster",
+      unblock: "Unblock poster",
+      blockHint: "Hides the poster image and its credit on every public page. Movie data stays visible.",
     },
   },
 

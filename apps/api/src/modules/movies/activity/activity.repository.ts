@@ -68,8 +68,4 @@ export class DrizzleMovieActivityRepository implements IMovieActivityRepository 
       runtimeMinutes: movie.runtimeMinutes, ...publicMoviePoster(movie) }, rating: ratingByMovie.get(movie.id) ?? null, watches: watchesByMovie.get(movie.id) ?? [] }))
       .sort((a, b) => (latestKnownWatchDate(b.watches) ?? "").localeCompare(latestKnownWatchDate(a.watches) ?? "") || a.movie.title.localeCompare(b.movie.title) || a.movie.slug.localeCompare(b.movie.slug));
   }
-  async countPublicMovies(): Promise<number> {
-    const [row] = await this.dbProvider.client.select({ total: count() }).from(movies).where(publicMovie());
-    return Number(row?.total ?? 0);
-  }
 }

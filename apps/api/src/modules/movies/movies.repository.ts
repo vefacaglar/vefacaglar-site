@@ -10,6 +10,7 @@ import type { IMoviesRepository, MovieSourceState, MoviePosterCandidate } from "
 import type { MoviePoster } from "./artwork/commons-poster";
 import type { MoviePersonRole } from "./people/detail/detail.schema";
 import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
+import { movieTitleMatch } from "./movie-title-search";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
 
@@ -163,7 +164,8 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, title: sql<string>`${movies.title}`, fileName: movies.posterFileName,
       enwikiArticle: movies.enwikiArticle, commonsCategory: movies.commonsCategory, version: movies.posterCandidateVersion,
       hasImage: sql<boolean>`${movies.posterImageUrl} is not null`, resolvedFrom: movies.posterResolvedFrom }).from(movies)
-      .where(and(publicMovie(), isNotNull(movies.posterInputsCheckedAt),
+      // A blocked poster is never shown, so artwork jobs do not spend provider requests on it.
+      .where(and(publicMovie(), isNotNull(movies.posterInputsCheckedAt), isNull(movies.posterBlockedAt),
         or(available.commons ? isNotNull(movies.posterFileName) : sql`false`,
           // The category fallback only fills missing artwork or re-verifies its own result.
           available.commons ? and(isNotNull(movies.commonsCategory), or(isNull(movies.posterImageUrl), eq(movies.posterResolvedFrom, "commons-category"))) : sql`false`,
@@ -204,8 +206,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     return result;
   }
   private async listPublicMatching(filter: { page: number; limit: number; q?: string }, extraFilter?: SQL) {
-    const tokens = filter.q?.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu)?.slice(0, 8) ?? [];
-    const where = and(publicMovie(), extraFilter, filter.q && !tokens.length ? sql`false` : tokens.length ? sql`to_tsvector('simple',coalesce(${movies.title},'')) @@ to_tsquery('simple',${tokens.map((token) => token + ':*').join(' & ')})` : undefined)!;
+    const where = and(publicMovie(), extraFilter, movieTitleMatch(filter.q))!;
     // One statement owns both the ranking descriptor and the page ordering. A
     // concurrent publication cannot expose date A with ordered observations B.
     const rows = await this.dbProvider.client.execute(sql`
@@ -217,7 +218,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       ), page as (
         select ${movies.id} as id, ${movies.slug} as slug, ${movies.title} as title,
           ${movies.posterImageUrl} as poster_image_url, ${movies.posterAttribution} as poster_attribution,
-          ${movies.enwikiArticle} as poster_article, ${movies.posterResolvedFrom} as poster_origin,
+          ${movies.enwikiArticle} as poster_article, ${movies.posterResolvedFrom} as poster_origin, ${movies.posterBlockedAt} as poster_blocked_at,
           ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
           case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
             then ${movies.wikipediaViews} else null end as interest
@@ -227,17 +228,17 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       )
       select coalesce((select jsonb_agg(jsonb_build_object('movieId',id,'slug',slug,'title',title,'releaseDate',release_date,
           'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution,
-          'posterArticle',poster_article,'posterOrigin',poster_origin)
+          'posterArticle',poster_article,'posterOrigin',poster_origin,'posterBlockedAt',poster_blocked_at)
           order by interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
         (select count(*) from ${movies} where ${where}) as total,
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
         (select is_fresh from ranking) as is_fresh
     `);
-    const row = rows[0] as unknown as { items: (MovieCard & { movieId: string; posterArticle: string | null; posterOrigin: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
+    const row = rows[0] as unknown as { items: (MovieCard & { movieId: string; posterArticle: string | null; posterOrigin: string | null; posterBlockedAt: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
     const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "alphabetical", sourceDate: row.source_date,
       sourceUrl: row.source_date ? sourceUrl(row.source_date) : null, isFresh: row.is_fresh };
-    const items = row.items.map(({ movieId: _movieId, posterArticle, posterOrigin, ...card }) => ({ ...card,
-      ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin }) }));
+    const items = row.items.map(({ movieId: _movieId, posterArticle, posterOrigin, posterBlockedAt, ...card }) => ({ ...card,
+      ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin, posterBlockedAt }) }));
     return { items, movieIds: row.items.map((item) => item.movieId), total: Number(row.total), ranking };
   }
   async findPublicPerson(wikidataId: string, filter: { page: number; limit: number }) {

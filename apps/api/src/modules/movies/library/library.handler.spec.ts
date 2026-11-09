@@ -12,7 +12,7 @@ describe("GetMovieLibraryHandler", () => {
   let user: any;
   beforeEach(() => {
     users = { findById: vi.fn(), findByEmail: vi.fn(), findByUsername: vi.fn(), findByOidcSubject: vi.fn(), linkOidc: vi.fn(), create: vi.fn(), updateLastLogin: vi.fn(), updateProfile: vi.fn(), updateProfileVisibility: vi.fn(), changePasswordAndRevokeOtherSessions: vi.fn() };
-    repo = { findWatch: vi.fn(), findPublicMovieId: vi.fn(), getActivity: vi.fn(), createWatch: vi.fn(), updateWatch: vi.fn(), deleteWatch: vi.fn(), setRating: vi.fn(), listLibrary: vi.fn().mockResolvedValue([]), countPublicMovies: vi.fn() };
+    repo = { findWatch: vi.fn(), findPublicMovieId: vi.fn(), getActivity: vi.fn(), createWatch: vi.fn(), updateWatch: vi.fn(), deleteWatch: vi.fn(), setRating: vi.fn(), listLibrary: vi.fn().mockResolvedValue([]) };
     user = { id: "owner", username: "vefa", displayName: "Vefa", isActive: true, isProfilePublic: true, email: "private@example.com" };
     users.findByUsername.mockImplementation(async () => user);
   });

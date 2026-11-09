@@ -281,6 +281,13 @@
       "when": 1794127871908,
       "tag": "0039_chubby_lenny_balinger",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794250766648,
+      "tag": "0040_friendly_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

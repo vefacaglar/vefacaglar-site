@@ -23,6 +23,8 @@ export const movies = pgTable('movies', {
   posterCheckedAt: timestamp('poster_checked_at', { withTimezone: true, mode: 'date' }),
   posterRetryAfter: timestamp('poster_retry_after', { withTimezone: true, mode: 'date' }),
   posterErrorCode: varchar('poster_error_code', { length: 80 }),
+  // Admin takedown: when set, the poster image and its credit are never shown publicly and artwork jobs skip the film.
+  posterBlockedAt: timestamp('poster_blocked_at', { withTimezone: true, mode: 'date' }),
   releaseDate: text('release_date'),
   releaseYear: integer('release_year'),
   releasePrecision: integer('release_precision'),

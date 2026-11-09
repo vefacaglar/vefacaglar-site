@@ -7,6 +7,7 @@ import styles from "../dashboard.module.css";
 import GamesDashboardClient from "./GamesDashboardClient";
 import { SubTab } from "./types";
 import ds from "../../../lib/dashboard-strings";
+import DashboardTabs from "../components/DashboardTabs";
 import {
   listGamesAction,
   listDevelopersAction,
@@ -85,20 +86,7 @@ export default async function GamesDashboard(props: PageProps) {
         </div>
       </div>
 
-      <div className={styles.tabsContainer}>
-          <Link href="/dashboard" className={styles.tab}>
-            {ds.nav.tabs.content}
-          </Link>
-          <Link href="/dashboard/packages" className={styles.tab}>
-            {ds.nav.tabs.packages}
-          </Link>
-        <Link href="/dashboard/games" className={`${styles.tab} ${styles.activeTab}`}>
-          {ds.nav.tabs.games}
-        </Link>
-        <Link href="/dashboard/jobs" className={styles.tab}>
-          {ds.nav.tabs.jobs}
-        </Link>
-      </div>
+      <DashboardTabs active="games" />
 
       <GamesDashboardClient
         initialItems={initialItems}
