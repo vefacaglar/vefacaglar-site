@@ -7,6 +7,8 @@ import { localizeHref } from "../../lib/localizeHref";
 import { getAuthMode, getLoginHref } from "../../lib/oidc";
 import { getSessionUser } from "../../lib/session";
 import { profilePath } from "../../lib/profileLibrary";
+import FooterContent from "../FooterContent";
+import { getFooterPage } from "../../lib/data";
 import AccountLink from "./AccountLink";
 import ExploreNavigation from "./ExploreNavigation";
 import ExploreSignInLink from "./ExploreSignInLink";
@@ -23,6 +25,8 @@ export default async function LibraryShell({
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const user = await getSessionUser();
+  const footerPage = await getFooterPage();
+  const footerContent: string | null = footerPage?.content?.trim() || null;
 
   return (
     <div className={styles.shell} data-library="" data-ui-theme="graphite">
@@ -60,6 +64,15 @@ export default async function LibraryShell({
           Film data: <a href="https://www.wikidata.org/">Wikidata</a>.{" "}
           Page-view data: <a href="https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html">Wikimedia Analytics (CC0)</a>.
         </p>
+        {footerContent ? (
+          <div className={styles.sources}>
+            <FooterContent content={footerContent} className={styles.sourcesLine} />
+          </div>
+        ) : (
+          <p className={styles.sources}>
+            Rights or takedown requests: <a href="mailto:vefacaglar@outlook.com">vefacaglar@outlook.com</a>.
+          </p>
+        )}
       </footer>
     </div>
   );

@@ -7,6 +7,7 @@ import { localizedAlternates } from "../../lib/seo";
 import styles from "./page.module.css";
 import AdminEditLink from "../../components/AdminEditLink";
 import { localizeHref } from "../../lib/localizeHref";
+import { RESERVED_PAGE_SLUGS } from "../../lib/reservedSlugs";
 import { getPage } from "../../lib/data";
 
 
@@ -14,7 +15,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const params = await props.params;
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
-  const page = await getPage(params.slug);
+  const page = RESERVED_PAGE_SLUGS.includes(params.slug) ? null : await getPage(params.slug);
 
   if (!page) return { title: dict.page_not_found_title };
 
@@ -28,7 +29,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
 export default async function DynamicPage(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
   const lang = await getActiveLanguage();
-  const page = await getPage(params.slug);
+  const page = RESERVED_PAGE_SLUGS.includes(params.slug) ? null : await getPage(params.slug);
 
   if (!page) notFound();
 

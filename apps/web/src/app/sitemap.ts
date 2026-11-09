@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 
+import { RESERVED_PAGE_SLUGS } from "../lib/reservedSlugs";
+
 export const runtime = "edge";
 
 const apiUrl = process.env.API_URL;
@@ -120,7 +122,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  const excludedSlugs = ["about", "home", "games", "movies", "explore"];
+  const excludedSlugs = ["about", "games", "movies", "explore", ...RESERVED_PAGE_SLUGS];
   for (const page of pages ?? []) {
     if (excludedSlugs.includes(page.slug) || page.status !== "published") continue;
     dynamicRoutes.push(

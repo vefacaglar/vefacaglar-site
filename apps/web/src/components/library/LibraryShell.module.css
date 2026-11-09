@@ -161,6 +161,10 @@
   color: var(--text);
 }
 
+.sourcesLine {
+  margin: 0;
+}
+
 .footerMark {
   font-size: 13px;
   color: var(--muted);

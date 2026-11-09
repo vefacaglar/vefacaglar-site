@@ -35,6 +35,15 @@ async function getJson<T = any>(path: string, { cached = true }: { cached?: bool
 
 export const getHomePage = cache(() => getJson("/api/pages/home"));
 
+// Footer chrome renders on every page, so an API failure must not take the whole site down.
+export const getFooterPage = cache(async () => {
+  try {
+    return await getJson("/api/pages/footer");
+  } catch {
+    return null;
+  }
+});
+
 export const getPage = cache((slug: string) => getJson(`/api/pages/${slug}`));
 
 export const getPost = cache((slug: string) => getJson(`/api/posts/${slug}`));
