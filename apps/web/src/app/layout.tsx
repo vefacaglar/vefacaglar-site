@@ -8,7 +8,6 @@ import AuthWarmup from "../components/AuthWarmup";
 import { getActiveLanguage } from "../lib/lang";
 import { getDictionary } from "../dictionaries";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
-import { getFooterPage } from "../lib/data";
 import { getAuthMode } from "../lib/oidc";
 import "@vefacaglar/ui/styles.css";
 import "./globals.css";
@@ -39,8 +38,6 @@ export default async function RootLayout({
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
   const locale = (lang === "tr" ? "tr" : "en") as "en" | "tr";
-  const footerPage = await getFooterPage();
-  const footerContent: string | null = footerPage?.content?.trim() || null;
   const issuer = process.env.OIDC_ISSUER?.replace(/\/+$/, "");
   const warmupUrl =
     getAuthMode() === "oidc" && issuer ? `${issuer}/.well-known/openid-configuration` : null;
@@ -55,7 +52,7 @@ export default async function RootLayout({
           <main className={styles.main}>
             <Header dict={dict} />
             <div className={styles.content}>{children}</div>
-            <Footer dict={dict} content={footerContent} />
+            <Footer dict={dict} />
           </main>
         </LocaleProvider>
       </body>

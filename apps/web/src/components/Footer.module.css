@@ -13,34 +13,6 @@
   color: var(--muted);
 }
 
-.footerEnd {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 24px;
-}
-
-.contact {
-  font-size: 13px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.contactLine {
-  margin: 0;
-}
-
-.contact a {
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.contact a:hover,
-a.contact:hover {
-  color: var(--text);
-}
-
 .footer button {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
