@@ -134,7 +134,7 @@ export function gameCardFromDoc(doc: GameDoc): GameCard {
     id: doc.id,
     slug: doc.slug,
     title: doc.title,
-    coverImageUrl: doc.coverImageUrl ?? null,
+    coverImageUrl: null,
     releaseDate: doc.releaseDate ?? null,
     metacriticScore: doc.metacriticScore ?? null,
     openCriticScore: doc.openCriticScore ?? null,

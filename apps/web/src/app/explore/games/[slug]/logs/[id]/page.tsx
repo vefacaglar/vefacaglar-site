@@ -15,7 +15,7 @@ import { getSessionUser } from "../../../../../../lib/session";
 
 type LogDetail = {
   log: GameLog;
-  game: { slug: string; title: string; coverImageUrl: string | null; platforms: { id: string; name: string }[] };
+  game: { slug: string; title: string; platforms: { id: string; name: string }[] };
 };
 
 type CatalogGameDetail = {
@@ -73,7 +73,6 @@ export default async function GameLogPage(props: LogPageProps) {
   const gameInfo: LogGameInfo = {
     slug: game.slug,
     title: game.title,
-    coverImageUrl: game.coverImageUrl,
     releaseYear: catalogGame?.releaseDate?.slice(0, 4) ?? null,
     developers: catalogGame?.developers?.map((d) => d.name).join(", ") || null,
     genres: catalogGame?.genres?.slice(0, 3).map((g) => g.name) ?? [],

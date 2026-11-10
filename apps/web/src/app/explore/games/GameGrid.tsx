@@ -1,4 +1,5 @@
 import Link from "next/link";
+import GenericPoster from "../../../components/movies/GenericPoster";
 import { localizeHref } from "../../../lib/localizeHref";
 import { formatHltbHours, formatReviewScore, selectReviewScores } from "./cardMetrics";
 import { scoreTier } from "./scoreTier";
@@ -7,7 +8,7 @@ import styles from "./GameGrid.module.css";
 export type GameCardItem = {
   slug: string;
   title: string;
-  coverImageUrl: string | null;
+  coverImageUrl?: string | null;
   releaseDate: string | null;
   // Optional while an older API deployment does not expose the provider fields.
   metacriticScore?: number | null;
@@ -32,14 +33,9 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
         return (
           <li key={game.slug}>
             <Link href={localizeHref(`/explore/games/${game.slug}`, lang)} className={styles.card}>
-              <div className={styles.cover}>
-                {game.coverImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={game.coverImageUrl} alt="" loading="lazy" />
-                ) : (
-                  <span className={styles.coverFallback}>{game.title}</span>
-                )}
-              </div>
+              <span className={styles.cover} aria-hidden="true">
+                <GenericPoster kicker="Game" title={game.title} year={game.releaseDate?.slice(0, 4)} />
+              </span>
               <span className={styles.caption}>
                 <span className={styles.title}>{game.title}</span>
                 {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}

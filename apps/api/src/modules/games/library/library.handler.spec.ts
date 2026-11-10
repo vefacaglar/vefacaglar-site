@@ -7,10 +7,22 @@ const log = (over: Record<string, unknown>) => ({
   id: "l", userId: "u-1", gameId: "g-1", status: "playing", platformId: null, platformName: null,
   rating: null, startedAt: null, completedAt: null, playtimeHours: null, notes: null,
   createdAt: new Date("2026-01-01T00:00:00.000Z"), updatedAt: null,
-  game: { slug: "doom", title: "Doom", coverImageUrl: null, criticScore: null, criticScoreCount: null },
+  game: {
+    slug: "doom",
+    title: "Doom",
+    coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
+    criticScore: null,
+    criticScoreCount: null,
+  },
   ...over,
 });
-const quake = { slug: "quake", title: "Quake", coverImageUrl: null, criticScore: null, criticScoreCount: null };
+const quake = {
+  slug: "quake",
+  title: "Quake",
+  coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7g.jpg",
+  criticScore: null,
+  criticScoreCount: null,
+};
 
 describe("GetLibraryHandler", () => {
   let logsRepo: Record<keyof IGameLogsRepository, any>;
@@ -38,8 +50,8 @@ describe("GetLibraryHandler", () => {
 
   it("lists each playtime session separately in recentActivity without merging hours", async () => {
     logsRepo.listForUser.mockResolvedValue([
-      log({ id: "l-pb", gameId: "g-1", status: "playing", playtimeHours: "2", game: { slug: "phantom-blade", title: "Phantom Blade", coverImageUrl: null, criticScore: null, criticScoreCount: null } }),
-      log({ id: "l-bg3", gameId: "g-2", status: "completed", playtimeHours: "3", game: { slug: "baldurs-gate-3", title: "Baldurs Gate 3", coverImageUrl: null, criticScore: null, criticScoreCount: null } }),
+      log({ id: "l-pb", gameId: "g-1", status: "playing", playtimeHours: "2", game: { slug: "phantom-blade", title: "Phantom Blade", coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co9999.jpg", criticScore: null, criticScoreCount: null } }),
+      log({ id: "l-bg3", gameId: "g-2", status: "completed", playtimeHours: "3", game: { slug: "baldurs-gate-3", title: "Baldurs Gate 3", coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co8888.jpg", criticScore: null, criticScoreCount: null } }),
     ]);
     logsRepo.listPlaytimeActivityForUser.mockResolvedValue([
       { id: "e3", userGameId: "l-pb", status: "playing", deltaHours: "1.0", lastRecordedAt: new Date("2026-05-03T12:00:00.000Z") },

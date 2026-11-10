@@ -22,4 +22,8 @@ describe("gameCardFromDoc", () => {
     expect(gameCardFromDoc({ ...doc, metacriticScore: 0, openCriticScore: 89 }))
       .toMatchObject({ metacriticScore: 0, openCriticScore: 89 });
   });
+
+  it("suppresses stored coverImageUrl on public search cards", () => {
+    expect(gameCardFromDoc({ ...doc, coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1234.jpg" }).coverImageUrl).toBeNull();
+  });
 });

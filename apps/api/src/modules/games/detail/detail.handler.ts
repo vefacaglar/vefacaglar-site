@@ -22,7 +22,7 @@ export class GetGameHandler {
       slug: game.slug,
       title: game.title,
       description: game.description,
-      coverImageUrl: game.coverImageUrl,
+      coverImageUrl: null,
       releaseDate: game.releaseDate,
       criticScore,
       criticScoreCount: criticScore === null ? null : game.criticScoreCount,

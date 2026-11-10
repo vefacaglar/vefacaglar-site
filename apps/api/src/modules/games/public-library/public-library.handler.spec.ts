@@ -21,7 +21,13 @@ const log = (over: Record<string, unknown>) => ({
   rating: null, startedAt: null, completedAt: null, playtimeHours: null,
   notes: "private note", reviewText: "private review", purchasePrice: "59.99",
   createdAt: new Date("2026-01-01T00:00:00.000Z"), updatedAt: null,
-  game: { slug: "doom", title: "Doom", coverImageUrl: null, criticScore: 90, criticScoreCount: 20 },
+  game: {
+    slug: "doom",
+    title: "Doom",
+    coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
+    criticScore: 90,
+    criticScoreCount: 20,
+  },
   ...over,
 });
 
@@ -87,6 +93,7 @@ describe("GetPublicLibraryHandler", () => {
     expect(serialized).not.toContain("private note");
     expect(serialized).not.toContain("private review");
     expect(serialized).not.toContain("59.99");
+    expect(serialized).not.toContain("images.igdb.com");
   });
 
   it.each([

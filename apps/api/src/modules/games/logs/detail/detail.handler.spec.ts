@@ -18,7 +18,8 @@ describe("GetGameLogHandler", () => {
   beforeEach(() => {
     gamesRepo = {
       findById: vi.fn().mockResolvedValue({
-        id: "g-1", slug: "doom", title: "Doom", coverImageUrl: null,
+        id: "g-1", slug: "doom", title: "Doom",
+        coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
         platforms: [{ id: "p-1", name: "PC", slug: "win" }],
       }),
     } as unknown as Record<keyof IGamesRepository, any>;
@@ -26,11 +27,12 @@ describe("GetGameLogHandler", () => {
     handler = new GetGameLogHandler(gamesRepo, logsRepo);
   });
 
-  it("returns the owner's log with its game", async () => {
+  it("returns the owner's log with its game while suppressing coverImageUrl", async () => {
     const result = await handler.handle({ params: { id: "l-1" }, user: { id: "u-1" } } as any);
 
     expect(result.log).toMatchObject({ id: "l-1", status: "playing" });
     expect(result.game).toEqual({ slug: "doom", title: "Doom", coverImageUrl: null, platforms: [{ id: "p-1", name: "PC" }] });
+    expect(JSON.stringify(result)).not.toContain("images.igdb.com");
   });
 
   it("hides another user's log as not found", async () => {

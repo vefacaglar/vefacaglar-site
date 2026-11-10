@@ -48,7 +48,7 @@ describe("GetDeveloperGamesHandler", () => {
       company: { ...company, createdAt: new Date(), privateNotes: "not public" },
       total: 2,
       items: [
-        { id: "internal-a", slug: "a", title: "A", coverImageUrl: null, releaseDate: "2030-01-01", metacriticScore: 88,
+        { id: "internal-a", slug: "a", title: "A", coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1111.jpg", releaseDate: "2030-01-01", metacriticScore: 88,
           openCriticScore: 90, criticScore: 95, criticScoreCount: 2, popularityScore: 0.8,
           hltbMainHours: "20.5", hltbMainExtraHours: "0", hltbCompletionistHours: "bad", rawData: "not public" },
         { id: "internal-b", slug: "b", title: "B", coverImageUrl: null, releaseDate: null, metacriticScore: 101,
@@ -59,7 +59,7 @@ describe("GetDeveloperGamesHandler", () => {
     const result = await handler.handle({ params: { slug: "studio" }, query: {} } as any);
     expect(result.company).toEqual(company);
     expect(result.items.map((game) => game.slug)).toEqual(["a", "b"]);
-    expect(result.items[0]).toMatchObject({ metacriticScore: 88, openCriticScore: 90, criticScore: null,
+    expect(result.items[0]).toMatchObject({ coverImageUrl: null, metacriticScore: 88, openCriticScore: 90, criticScore: null,
       popularityScore: 0.8, hltbMainHours: "20.5", hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[1]).toMatchObject({ metacriticScore: null, openCriticScore: null, criticScore: 83,
       popularityScore: null, hltbMainExtraHours: "35", hltbCompletionistHours: "60" });

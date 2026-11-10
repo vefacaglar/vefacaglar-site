@@ -155,6 +155,35 @@ describe("getProfileLibrary", () => {
 
     expect(res.kind === "ok" && res.data.summary).toEqual({ platforms: [] });
   });
+
+  it("strips any coverImageUrl from games and recentActivity", async () => {
+    const igdbUrl = "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg";
+    mocks.get.mockResolvedValue(
+      json({
+        user,
+        summary,
+        isOwner: false,
+        games: [{ ...baseGame, coverImageUrl: igdbUrl }],
+        recentActivity: [
+          {
+            slug: "hades",
+            title: "Hades",
+            coverImageUrl: igdbUrl,
+            status: "completed",
+            playtimeHours: 40,
+            activityAt: "2026-01-03T00:00:00.000Z",
+            logId: null,
+          },
+        ],
+      })
+    );
+
+    const res = await getProfileLibrary("vefa");
+
+    expect(res.kind === "ok" && res.data.games[0].coverImageUrl).toBeNull();
+    expect(res.kind === "ok" && res.data.recentActivity?.[0].coverImageUrl).toBeNull();
+    expect(JSON.stringify(res)).not.toContain("images.igdb.com");
+  });
 });
 
 describe("profilePath", () => {

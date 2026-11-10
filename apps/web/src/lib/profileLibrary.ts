@@ -102,6 +102,7 @@ export const getProfileLibrary = cache(async (username: string): Promise<Profile
 function withDefaults(data: ProfileLibrary): ProfileLibrary {
   const games = (data.games ?? []).map((game) => ({
     ...game,
+    coverImageUrl: null,
     platformName: game.platformName ?? null,
     criticScore: typeof game.criticScore === "number" ? game.criticScore : null,
     addedAt: game.addedAt ?? game.lastLoggedAt,
@@ -111,7 +112,7 @@ function withDefaults(data: ProfileLibrary): ProfileLibrary {
   const recentActivity = Array.isArray(data.recentActivity)
     ? data.recentActivity.map((item) => ({
         ...item,
-        coverImageUrl: item.coverImageUrl ?? null,
+        coverImageUrl: null,
         playtimeHours: typeof item.playtimeHours === "number" ? item.playtimeHours : null,
         logId: item.logId ?? null,
       }))

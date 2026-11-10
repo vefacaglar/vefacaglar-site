@@ -27,7 +27,9 @@ export default async function ExplorePage() {
     getPublicGames(1),
     getPublicMovies(1),
   ]);
-  const games = ((gamesData?.items ?? []) as ExploreGame[]).slice(0, PREVIEW_SIZE);
+  const games: ExploreGame[] = ((gamesData?.items ?? []) as { slug: string; title: string; releaseDate: string | null }[])
+    .slice(0, PREVIEW_SIZE)
+    .map(({ slug, title, releaseDate }) => ({ slug, title, releaseDate }));
   const movies = (moviesData?.items ?? []).slice(0, PREVIEW_SIZE);
 
   return <div>

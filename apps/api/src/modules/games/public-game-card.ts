@@ -2,12 +2,15 @@ import type { GameCard } from "../catalog/games.repository.interface";
 import { publicCriticScore } from "./critic-score";
 import type { PublicGameCard } from "./list/list.schema";
 
-/** A shared public projection for the library and company catalogs. */
+/**
+ * A shared public projection for the library and company catalogs.
+ * Stored IGDB cover URLs are non-free and never exposed on public endpoints.
+ */
 export function publicGameCard(game: GameCard): PublicGameCard {
   return {
     slug: game.slug,
     title: game.title,
-    coverImageUrl: game.coverImageUrl,
+    coverImageUrl: null,
     releaseDate: game.releaseDate,
     metacriticScore: publicReviewScore(game.metacriticScore),
     openCriticScore: publicReviewScore(game.openCriticScore),

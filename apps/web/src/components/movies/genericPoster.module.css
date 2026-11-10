@@ -9,6 +9,7 @@
   overflow: hidden;
   background: var(--bg);
   border: 1px solid var(--border);
+  border-radius: 0;
   color: var(--text);
   font-family: var(--font-body);
   text-align: left;

@@ -8,7 +8,6 @@ import styles from "./ExploreGrid.module.css";
 export interface ExploreGame {
   slug: string;
   title: string;
-  coverImageUrl: string | null;
   releaseDate: string | null;
 }
 
@@ -31,7 +30,7 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
     {items.map(({ type, item }) => {
       const isGame = type === "game";
       const image = isGame
-        ? item.coverImageUrl
+        ? null
         : item.posterImageUrl && item.posterAttribution ? item.posterImageUrl : null;
       const year = isGame ? item.releaseDate?.slice(0, 4) : item.releaseYear;
 
@@ -41,7 +40,7 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={image} alt="" loading="lazy" />
-            ) : isGame ? <span className={styles.coverFallback}>Game</span> : <GenericPoster title={item.title} year={year} />}
+            ) : <GenericPoster kicker={isGame ? "Game" : "Film"} title={item.title} year={year} />}
           </span>
           <span className={styles.caption}>
             <span className={styles.kind}>{isGame ? "Game" : "Movie"}</span>

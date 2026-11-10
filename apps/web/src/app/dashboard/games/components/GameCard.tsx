@@ -39,11 +39,7 @@ export default function GameCard({ game, editHref, onDelete }: GameCardProps) {
   return (
     <div className={styles.gameCard}>
       <div className={styles.gameCardCover}>
-        {game.coverImageUrl ? (
-          <img src={game.coverImageUrl} alt={game.title} className={styles.gameCardImage} loading="lazy" />
-        ) : (
-          <div className={styles.gameCardPlaceholder}>{initials}</div>
-        )}
+        <div className={styles.gameCardPlaceholder} aria-hidden="true">{initials}</div>
         {(game.metacriticScore || game.openCriticScore) && (
           <div className={styles.gameCardScores}>
             {game.metacriticScore && (

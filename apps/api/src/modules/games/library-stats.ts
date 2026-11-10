@@ -42,7 +42,7 @@ export function buildLibrary(
     activityItems.push({
       slug: l.game.slug,
       title: l.game.title,
-      coverImageUrl: l.game.coverImageUrl,
+      coverImageUrl: null,
       status: a.status ?? l.status,
       playtimeHours: round1(Number(a.deltaHours)),
       activityAt: a.lastRecordedAt.toISOString(),
@@ -59,7 +59,7 @@ export function buildLibrary(
     activityItems.push({
       slug: l.game.slug,
       title: l.game.title,
-      coverImageUrl: l.game.coverImageUrl,
+      coverImageUrl: null,
       status: l.status,
       playtimeHours:
         l.playtimeHours !== null && Number(l.playtimeHours) > 0 ? round1(Number(l.playtimeHours)) : null,
@@ -93,7 +93,7 @@ export function buildLibrary(
     return {
       slug: latest.game.slug,
       title: latest.game.title,
-      coverImageUrl: latest.game.coverImageUrl,
+      coverImageUrl: null,
       status: latest.status,
       rating: rated ? rated.rating : null,
       playtimeHours: hours.length > 0 ? round1(hours.reduce((a, b) => a + b, 0)) : null,

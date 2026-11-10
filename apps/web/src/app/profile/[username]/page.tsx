@@ -61,7 +61,7 @@ export default async function ProfileOverview(props: OverviewProps) {
   const fallbackActivity: LibraryActivityItem[] = sortShelf(games, "activity").map((g) => ({
     slug: g.slug,
     title: g.title,
-    coverImageUrl: g.coverImageUrl,
+    coverImageUrl: null,
     status: g.status,
     playtimeHours: g.playtimeHours,
     activityAt: g.lastActivityAt || g.lastLoggedAt,
@@ -131,12 +131,7 @@ export default async function ProfileOverview(props: OverviewProps) {
                   <div className={styles.activityMain}>
                     <span className={styles.activityMarker} aria-hidden="true" />
                     <Link href={href} className={styles.activityThumb} tabIndex={-1} aria-hidden="true">
-                      {item.coverImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.coverImageUrl} alt="" loading="lazy" />
-                      ) : (
-                        <span className={styles.activityThumbFallback}>{item.title.slice(0, 1)}</span>
-                      )}
+                      <span className={styles.activityThumbFallback}>{item.title.slice(0, 1)}</span>
                     </Link>
                     <Link href={href} className={styles.activityTitle}>
                       {item.title}

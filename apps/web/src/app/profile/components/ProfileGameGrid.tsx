@@ -1,5 +1,6 @@
 import Link from "next/link";
-import shelf from "../../explore/games/games.module.css";
+import GenericPoster from "../../../components/movies/GenericPoster";
+import shelf from "./ProfileGameGrid.module.css";
 import styles from "../profile.module.css";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
@@ -64,12 +65,7 @@ export default function ProfileGameGrid({
           <li key={game.slug} className={styles.cardItem}>
             <Link href={href} className={shelf.card}>
               <div className={shelf.cover}>
-                {game.coverImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={game.coverImageUrl} alt="" loading="lazy" />
-                ) : (
-                  <span className={shelf.coverFallback}>{game.title}</span>
-                )}
+                <GenericPoster kicker="Game" title={game.title} />
                 {game.rating !== null && (
                   <span
                     className={shelf.score}

@@ -20,17 +20,14 @@
   display: flex;
   flex: 0 0 110px;
   width: 110px;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 2 / 3;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 0;
 }
-.cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.cover[data-type="movie"] { aspect-ratio: 2 / 3; }
-.cover[data-type="movie"] img { object-fit: contain; }
-.coverFallback { color: var(--muted); font-size: 14px; }
+.cover img { display: block; width: 100%; height: 100%; object-fit: contain; border: 1px solid var(--border); box-sizing: border-box; }
 .caption { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; padding-top: 4px; }
 .kind, .year { color: var(--muted); font-size: 12px; }
 .year { font-variant-numeric: tabular-nums; }

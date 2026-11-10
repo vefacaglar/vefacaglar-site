@@ -37,12 +37,8 @@ export default function GameCompactRow({ game, editHref, onDelete }: GameCompact
 
   return (
     <div className={styles.gameCompactRow}>
-      <div className={styles.gameCompactThumb}>
-        {game.coverImageUrl ? (
-          <img src={game.coverImageUrl} alt={game.title} className={styles.gameCompactImage} loading="lazy" />
-        ) : (
-          <div className={styles.gameCompactPlaceholder}>{initials}</div>
-        )}
+      <div className={styles.gameCompactThumb} aria-hidden="true">
+        <div className={styles.gameCompactPlaceholder}>{initials}</div>
       </div>
       <div className={styles.gameCompactTitleCol}>
         <h4 className={styles.gameCompactTitle} title={game.title}>{game.title}</h4>

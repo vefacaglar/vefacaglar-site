@@ -18,13 +18,13 @@ import { gameCompanyHref, type GameCompanyRole } from "../../../../lib/gameCompa
 import { communityPageNumber, getCommunity, type CommunityPage } from "../../../../lib/community";
 import { getSessionUser } from "../../../../lib/session";
 import CommunitySection from "../../../../components/library/CommunitySection";
+import GenericPoster from "../../../../components/movies/GenericPoster";
 
 type Named = { name: string; slug: string };
 type GameDetail = {
   slug: string;
   title: string;
   description: string | null;
-  coverImageUrl: string | null;
   releaseDate: string | null;
   criticScore: number | null;
   criticScoreCount: number | null;
@@ -53,8 +53,6 @@ export async function generateMetadata(props: GameProps) {
     section: "games",
     title: game.title,
     description: game.description?.slice(0, 160) || getDictionary(lang).games_subtitle,
-    // Games with a cover share it; the rest get the library preview card.
-    image: game.coverImageUrl,
     alternates: localizedAlternates(`/explore/games/${game.slug}`, lang),
   });
 }
@@ -119,17 +117,10 @@ export default async function Game(props: GameProps) {
   return (
     <article>
       <header className={styles.hero}>
-        {game.coverImageUrl && (
-          <div className={styles.backdrop} aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={game.coverImageUrl} alt="" />
-          </div>
-        )}
-        <div className={game.coverImageUrl ? styles.heroInner : `${styles.heroInner} ${styles.heroNoCover}`}>
-          {game.coverImageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className={styles.cover} src={game.coverImageUrl} alt="" />
-          )}
+        <div className={styles.heroInner}>
+          <span className={styles.cover} aria-hidden="true">
+            <GenericPoster kicker="Game" title={game.title} year={year} size="large" />
+          </span>
           <div className={styles.heading}>
             <p className={styles.back}>
               <Link href={localizeHref("/explore/games", lang)}>← {dict.back_to_games}</Link>

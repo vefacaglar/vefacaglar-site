@@ -144,4 +144,26 @@ describe("ListGamesHandler", () => {
       ["announced", "2099-01-01"], ["undated", null], ["released", "2000-01-01"],
     ]);
   });
+
+  it("never exposes stored IGDB cover URLs in browse or search responses", async () => {
+    const igdbUrl = "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg";
+    gamesRepo.listPublic.mockResolvedValue({
+      items: [{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: igdbUrl, releaseDate: "1993-12-10" }],
+      total: 1,
+    });
+    const browseResult = await handler.handle({ query: {} } as any);
+    expect(browseResult.items[0].coverImageUrl).toBeNull();
+    expect(JSON.stringify(browseResult)).not.toContain("images.igdb.com");
+
+    reader.searchPublicGames.mockResolvedValue({
+      items: [{ id: "g-1", slug: "doom", title: "Doom", coverImageUrl: igdbUrl }],
+      total: 1,
+    });
+    gamesRepo.findPublicCardsByIds.mockResolvedValue([
+      { id: "g-1", slug: "doom", title: "Doom", coverImageUrl: igdbUrl },
+    ]);
+    const searchResult = await handler.handle({ query: { q: "doom" } } as any);
+    expect(searchResult.items[0].coverImageUrl).toBeNull();
+    expect(JSON.stringify(searchResult)).not.toContain("images.igdb.com");
+  });
 });

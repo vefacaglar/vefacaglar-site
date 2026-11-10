@@ -27,7 +27,7 @@ export class GetGameLogHandler {
       game: {
         slug: game.slug,
         title: game.title,
-        coverImageUrl: game.coverImageUrl,
+        coverImageUrl: null,
         platforms: game.platforms.map((p) => ({ id: p.id, name: p.name })),
       },
     };
