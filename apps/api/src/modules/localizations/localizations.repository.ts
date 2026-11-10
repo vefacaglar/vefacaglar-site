@@ -52,6 +52,37 @@ export class DrizzleLocalizationsRepository implements ILocalizationsRepository 
     return row;
   }
 
+  async deleteOne(values: FindLocalizationValues): Promise<number> {
+    const deleted = await this.dbProvider.client
+      .delete(localizations)
+      .where(and(
+        eq(localizations.entityType, values.entityType),
+        eq(localizations.entityId, values.entityId),
+        eq(localizations.languageCode, values.languageCode),
+        eq(localizations.field, values.field)
+      ))
+      .returning({ id: localizations.id });
+
+    return deleted.length;
+  }
+
+  async deleteByEntity(
+    entityType: string,
+    entityId: string,
+    languageCode: string
+  ): Promise<number> {
+    const deleted = await this.dbProvider.client
+      .delete(localizations)
+      .where(and(
+        eq(localizations.entityType, entityType),
+        eq(localizations.entityId, entityId),
+        eq(localizations.languageCode, languageCode)
+      ))
+      .returning({ id: localizations.id });
+
+    return deleted.length;
+  }
+
   async findByEntity(
     entityType: string,
     entityId: string,

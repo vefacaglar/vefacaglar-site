@@ -1,19 +1,27 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getLocalizationAction, upsertLocalizationAction } from "../actions";
+import {
+  deleteLocalizationAction,
+  getLocalizationAction,
+  upsertLocalizationAction,
+} from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import styles from "./LocalizationButton.module.css";
+import {
+  resolveInitialModalState,
+  type LocalizationEntityType,
+  type LocalizationField,
+} from "./LocalizationButton.helpers";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
 
-type EntityType = "page" | "post" | "project";
 type InputType = "input" | "textarea";
 
 interface LocalizationButtonProps {
-  entityType: EntityType;
+  entityType: LocalizationEntityType;
   entityId?: string;
-  field: string;
+  field: LocalizationField;
   label: string;
   initialValue?: string | null;
   inputType?: InputType;
@@ -29,7 +37,9 @@ export default function LocalizationButton({
 }: LocalizationButtonProps) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
+  const [hasSavedTranslation, setHasSavedTranslation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [loadingValue, setLoadingValue] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -49,6 +59,7 @@ export default function LocalizationButton({
 
   const openPopup = async () => {
     setValue(initialValue || "");
+    setHasSavedTranslation(false);
     setError(null);
     setSuccess(false);
     setOpen(true);
@@ -67,12 +78,14 @@ export default function LocalizationButton({
       return;
     }
 
-    setValue(result.data?.value || initialValue || "");
+    const resolved = resolveInitialModalState(result.data, initialValue);
+    setValue(resolved.value);
+    setHasSavedTranslation(resolved.hasSavedTranslation);
     setLoadingValue(false);
   };
 
   const close = () => {
-    if (loading) return;
+    if (loading || removing) return;
     setOpen(false);
     setError(null);
     setSuccess(false);
@@ -102,9 +115,38 @@ export default function LocalizationButton({
       return;
     }
 
+    setHasSavedTranslation(true);
     setSuccess(true);
     setLoading(false);
   };
+
+  const handleRemove = async () => {
+    setRemoving(true);
+    setError(null);
+    setSuccess(false);
+
+    const result = await deleteLocalizationAction({
+      entityType,
+      entityId,
+      languageCode: "tr",
+      field,
+    });
+
+    if (result.error) {
+      setError(result.error);
+      setRemoving(false);
+      return;
+    }
+
+    setHasSavedTranslation(false);
+    setValue(initialValue || "");
+    setRemoving(false);
+    setError(null);
+    setSuccess(false);
+    setOpen(false);
+  };
+
+  const busy = loading || removing || loadingValue;
 
   return (
     <>
@@ -167,12 +209,25 @@ export default function LocalizationButton({
               </div>
 
               <div className={styles.actions}>
-                <Button type="button" variant="ghost" onClick={close}>
-                  {ds.localization.cancel}
-                </Button>
-                <Button type="button" variant="accent" disabled={loading || loadingValue} onClick={handleSave}>
-                  {loading ? ds.localization.saving : ds.localization.save}
-                </Button>
+                {hasSavedTranslation && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className={styles.removeBtn}
+                    disabled={busy}
+                    onClick={handleRemove}
+                  >
+                    {removing ? ds.localization.removing : ds.localization.remove}
+                  </Button>
+                )}
+                <div className={styles.actionsRight}>
+                  <Button type="button" variant="ghost" disabled={loading || removing} onClick={close}>
+                    {ds.localization.cancel}
+                  </Button>
+                  <Button type="button" variant="accent" disabled={busy} onClick={handleSave}>
+                    {loading ? ds.localization.saving : ds.localization.save}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

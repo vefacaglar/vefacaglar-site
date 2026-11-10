@@ -1,0 +1,17 @@
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.heading {
+  margin: 0;
+}
+
+.removeTranslationBtn {
+  color: var(--accent);
+  border-color: var(--accent);
+}

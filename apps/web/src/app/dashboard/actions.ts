@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { httpClient } from "../../lib/httpClient";
 import { authedRequest, authedMutation } from "../../lib/apiAction";
 import { endSession } from "../../lib/logout";
+import { buildLocalizationQueryPath } from "./components/LocalizationButton.helpers";
 
 export async function loginAction(prevState: any, formData: FormData) {
   const email = formData.get("email") as string;
@@ -272,16 +273,31 @@ export async function getLocalizationAction(data: {
   languageCode: "tr";
   field: string;
 }): Promise<{ error?: string; data?: any }> {
-  const params = new URLSearchParams({
-    entityType: data.entityType,
-    entityId: data.entityId,
-    languageCode: data.languageCode,
-    field: data.field,
-  });
-
-  const res = await authedRequest("GET", `/api/localizations?${params.toString()}`, {
+  const res = await authedRequest("GET", buildLocalizationQueryPath(data), {
     fallbackError: "Failed to load localization.",
   });
   if ("error" in res) return { error: res.error };
   return { data: res.data };
+}
+
+export async function deleteLocalizationAction(data: {
+  entityType: "page" | "post" | "project";
+  entityId: string;
+  languageCode: "tr";
+  field?: string;
+}): Promise<{
+  error?: string;
+  success?: true;
+  data?: { success: boolean; deletedCount: number };
+}> {
+  const res = await authedRequest<{ success: boolean; deletedCount: number }>(
+    "DELETE",
+    buildLocalizationQueryPath(data),
+    {
+      revalidate: [],
+      fallbackError: "Failed to remove localization.",
+    }
+  );
+  if ("error" in res) return { error: res.error };
+  return { success: true, data: res.data };
 }

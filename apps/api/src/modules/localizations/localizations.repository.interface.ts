@@ -10,6 +10,12 @@ export type FindLocalizationValues = Omit<UpsertLocalizationValues, "value">;
 export interface ILocalizationsRepository {
   findOne(values: FindLocalizationValues): Promise<Localization | null>;
   upsert(values: UpsertLocalizationValues): Promise<Localization>;
+  deleteOne(values: FindLocalizationValues): Promise<number>;
+  deleteByEntity(
+    entityType: string,
+    entityId: string,
+    languageCode: string
+  ): Promise<number>;
   findByEntity(
     entityType: string,
     entityId: string,

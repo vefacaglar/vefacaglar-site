@@ -14,6 +14,8 @@ describe("UpsertLocalizationHandler", () => {
     mockRepo = {
       findOne: vi.fn(),
       upsert: vi.fn(),
+      deleteOne: vi.fn(),
+      deleteByEntity: vi.fn(),
       findByEntity: vi.fn(),
       findByEntities: vi.fn(),
     };

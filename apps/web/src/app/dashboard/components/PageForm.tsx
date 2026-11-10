@@ -3,10 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createPageAction, updatePageAction } from "../actions";
+import { createPageAction, deleteLocalizationAction, updatePageAction } from "../actions";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import LocalizationButton from "./LocalizationButton";
+import { formatEntityRemoveFeedback } from "./LocalizationButton.helpers";
+import { useConfirm } from "./ConfirmProvider";
 import styles from "./form.module.css";
+import pageStyles from "./PageForm.module.css";
 import Button from "../../../components/Button";
 import ds from "../../../lib/dashboard-strings";
 import { safeInternalPath } from "../../../lib/safePath";
@@ -27,8 +30,11 @@ export default function PageForm({ initialData }: PageFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromUrl = safeInternalPath(searchParams.get("from"));
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(false);
+  const [removingTranslation, setRemovingTranslation] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Form states
   const [title, setTitle] = useState(initialData?.title || "");
@@ -58,10 +64,49 @@ export default function PageForm({ initialData }: PageFormProps) {
     }
   }, [title, initialData]);
 
+  const handleRemoveTurkishTranslation = async () => {
+    if (!initialData?.id) return;
+    const confirmed = await confirm(
+      ds.localization.removeAllConfirm.replace("{title}", title || initialData.title),
+      {
+        title: ds.localization.removeAllModalTitle,
+        confirmText: ds.localization.removeAllConfirmButton,
+        cancelText: ds.localization.cancel,
+      }
+    );
+    if (!confirmed) return;
+
+    setRemovingTranslation(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    const result = await deleteLocalizationAction({
+      entityType: "page",
+      entityId: initialData.id,
+      languageCode: "tr",
+    });
+
+    if (result.error) {
+      setError(result.error);
+      setRemovingTranslation(false);
+      return;
+    }
+
+    setSuccessMessage(
+      formatEntityRemoveFeedback(result.data?.deletedCount, {
+        removedAll: ds.localization.removedAll,
+        nothingToRemove: ds.localization.nothingToRemove,
+      })
+    );
+    setRemovingTranslation(false);
+    router.refresh();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     const payload = {
       title,
@@ -96,14 +141,32 @@ export default function PageForm({ initialData }: PageFormProps) {
         </Link>
       </div>
 
-      <h1>
-        {initialData ? ds.forms.editPage : ds.forms.addNewPage}
-      </h1>
+      <div className={pageStyles.headerRow}>
+        <h1 className={pageStyles.heading}>
+          {initialData ? ds.forms.editPage : ds.forms.addNewPage}
+        </h1>
+        {initialData?.id && (
+          <Button
+            type="button"
+            variant="ghost"
+            className={pageStyles.removeTranslationBtn}
+            disabled={loading || removingTranslation}
+            onClick={handleRemoveTurkishTranslation}
+          >
+            {removingTranslation ? ds.localization.removingAll : ds.localization.removeAll}
+          </Button>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         {error && (
           <div className="errorMsg">
             {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="successMsg">
+            {successMessage}
           </div>
         )}
 
@@ -210,7 +273,7 @@ export default function PageForm({ initialData }: PageFormProps) {
 
         <Button
           type="submit"
-          disabled={loading}
+          disabled={loading || removingTranslation}
           className={styles.submitBtn}
         >
           {loading ? ds.forms.saving : initialData ? ds.forms.saveChanges : ds.forms.publishPage}

@@ -432,6 +432,15 @@ const dashboardStrings = {
     saving: "Saving...",
     saved: "Localization saved.",
     error: "Please enter a translation.",
+    remove: "Remove translation",
+    removing: "Removing...",
+    removeAll: "Remove Turkish translation",
+    removingAll: "Removing translation...",
+    removeAllModalTitle: "Remove Turkish translation",
+    removeAllConfirm: 'Are you sure you want to remove all Turkish translations for "{title}"? Public visitors viewing Turkish will see the default English content.',
+    removeAllConfirmButton: "Yes, remove",
+    removedAll: "Turkish translation removed.",
+    nothingToRemove: "No Turkish translation was saved.",
   },
 
   packages: {
