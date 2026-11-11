@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: web-ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 env:
   NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api2.vefacaglar.com' }}
