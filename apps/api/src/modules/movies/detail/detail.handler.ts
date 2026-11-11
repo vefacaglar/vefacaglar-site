@@ -10,6 +10,6 @@ export class GetMovieHandler {
   async handle(request: FastifyRequest<{ Params: GetMovieParams }>): Promise<MovieDetail> {
     const movie = await this.repo.findPublicBySlug(request.params.slug);
     if (!movie) throw new NotFoundError("err_movie_not_found");
-    return movie;
+    return { ...movie, posterImageUrl: null, posterAttribution: null };
   }
 }

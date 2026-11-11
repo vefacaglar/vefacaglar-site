@@ -9,7 +9,7 @@ export type ListDashboardMoviesQuery = Static<typeof ListDashboardMoviesQuerySch
 export const DashboardMovieSchema = Type.Object({
   id: Type.String({ format: "uuid" }), slug: Type.String(), title: Type.String(),
   releaseYear: Type.Union([Type.Integer(), Type.Null()]),
-  posterImageUrl: Type.Union([Type.String(), Type.Null()], { description: "Stored poster URL, shown to admins even when blocked" }),
+  posterImageUrl: Type.Union([Type.String(), Type.Null()], { description: "Always null; external movie posters are suppressed" }),
   isPublic: Type.Boolean(), posterBlocked: Type.Boolean(), posterBlockedAt: Type.Union([Type.String(), Type.Null()]),
 });
 export type DashboardMovie = Static<typeof DashboardMovieSchema>;

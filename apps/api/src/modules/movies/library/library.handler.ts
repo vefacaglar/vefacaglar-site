@@ -19,7 +19,7 @@ export class GetMovieLibraryHandler {
     const rows = await this.repo.listLibrary(user.id);
     const movies = rows.map(({ movie, rating, watches }) => ({
       slug: movie.slug, title: movie.title, releaseDate: movie.releaseDate, releaseYear: movie.releaseYear,
-      runtimeMinutes: movie.runtimeMinutes, posterImageUrl: movie.posterImageUrl, posterAttribution: movie.posterAttribution,
+      runtimeMinutes: movie.runtimeMinutes, posterImageUrl: null, posterAttribution: null,
       rating, watchCount: watches.length,
       lastWatchedOn: latestKnownWatchDate(watches),
       watches: watches.map((watch) => ({ ...(isOwner ? { id: watch.id } : {}), watchedOn: watch.watchedOn })),

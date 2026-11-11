@@ -13,7 +13,6 @@ async function main() {
     // without forwarding provider bodies or relying on redacted JSON output.
     const counters = [["discovered", result.discovered], ["hydrated", result.hydrated],
       ["refreshed", result.refreshed], ["failed", result.failed], ["labels checked", result.labelsChecked],
-      ["posters checked", result.postersChecked], ["posters updated", result.postersUpdated], ["poster failures", result.posterFailures],
       ["source requests", result.requests]] as const;
     console.log(`[catalog:movies] finished: ${counters.map(([label, value]) =>
       `${label}: ${Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0}`).join(", ")}; more work: ${result.hasMore ? "yes" : "no"}`);

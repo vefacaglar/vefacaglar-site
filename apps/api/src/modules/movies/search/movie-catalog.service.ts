@@ -45,7 +45,11 @@ export class MovieCatalogService implements IMovieCatalogService {
       const selected = await this.reader.search({ ...filter, collection: before.activeCollection,
         fresh: ranking.isFresh, personQid: person?.wikidataId });
       if (!selected) return null;
-      const items = await this.repo.hydratePublicIds(selected.ids, person?.id);
+      const items = (await this.repo.hydratePublicIds(selected.ids, person?.id)).map((item) => ({
+        ...item,
+        posterImageUrl: null,
+        posterAttribution: null,
+      }));
       const after = await this.stateRepo.state();
       if (!samePublication(before, after) || ranking.isFresh !== movieRanking(after?.publishedSourceDate ?? null).isFresh || items.length !== selected.ids.length) return null;
       return { items, total: selected.total, ranking };

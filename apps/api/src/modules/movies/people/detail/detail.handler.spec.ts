@@ -6,8 +6,8 @@ import type { IMoviesRepository } from "../../movies.repository.interface";
 function mockRepository(): Record<keyof IMoviesRepository, any> {
   return {
     ensureSourceAndSeeds: vi.fn(), sourceState: vi.fn(), saveSourceState: vi.fn(), insertDiscovered: vi.fn(),
-    hydrationCandidates: vi.fn(), refreshCandidates: vi.fn(), posterInputsCandidates: vi.fn(), recognitionCandidates: vi.fn(), persistMovie: vi.fn(),
-    posterCandidates: vi.fn(), persistPoster: vi.fn(), markPosterFailure: vi.fn(), markEntityFailure: vi.fn(),
+    hydrationCandidates: vi.fn(), refreshCandidates: vi.fn(), recognitionCandidates: vi.fn(), persistMovie: vi.fn(),
+    markEntityFailure: vi.fn(),
     findLabels: vi.fn(), labelRefreshCandidates: vi.fn(), writeLabels: vi.fn(), hasPendingWork: vi.fn(),
     listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), hydratePublicIds: vi.fn(), findPublicBySlug: vi.fn(), findPublicPerson: vi.fn(),
   };
@@ -15,7 +15,7 @@ function mockRepository(): Record<keyof IMoviesRepository, any> {
 
 const ranking = { mode: "wikipedia_interest" as const, sourceDate: "2026-11-06", sourceUrl: "https://wikimedia.org/", isFresh: true };
 const person = { wikidataId: "Q25191", name: "Christopher Nolan" };
-const film = {
+const storedFilm = {
   slug: "inception-q25188", title: "Inception", releaseDate: null, releaseYear: 2010, runtimeMinutes: 148,
   posterImageUrl: "https://upload.wikimedia.org/poster.jpg",
   posterAttribution: { provider: "wikipedia" as const, rightsKind: "reusable" as const,
@@ -24,12 +24,22 @@ const film = {
 };
 
 describe("public movie person handler", () => {
-  it("returns the person's catalog films with public poster metadata, roles, and default pagination", async () => {
+  it("returns the person's catalog films with suppressed poster fields, roles, and default pagination", async () => {
     const repo = mockRepository();
-    repo.findPublicPerson.mockResolvedValue({ person, items: [film], total: 22, ranking });
+    repo.findPublicPerson.mockResolvedValue({ person, items: [storedFilm], total: 22, ranking });
     const result = await new GetMoviePersonHandler(repo).handle({ params: { wikidataId: person.wikidataId }, query: {} } as any);
     expect(repo.findPublicPerson).toHaveBeenCalledWith("Q25191", { page: 1, limit: 21 });
-    expect(result).toEqual({ person, items: [film], total: 22, page: 1, limit: 21, totalPages: 2, ranking });
+    expect(result).toEqual({
+      person,
+      items: [{ ...storedFilm, posterImageUrl: null, posterAttribution: null }],
+      total: 22,
+      page: 1,
+      limit: 21,
+      totalPages: 2,
+      ranking,
+    });
+    expect(JSON.stringify(result.items)).not.toContain("wikimedia.org");
+    expect(JSON.stringify(result.items)).not.toContain("wikipedia.org");
   });
 
   it("preserves an out-of-range page and the real total instead of treating the person as missing", async () => {

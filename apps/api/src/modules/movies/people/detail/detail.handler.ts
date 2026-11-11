@@ -16,6 +16,7 @@ export class GetMoviePersonHandler {
     if (!result) throw new NotFoundError("err_page_not_found");
     return {
       ...result,
+      items: result.items.map((item) => ({ ...item, posterImageUrl: null, posterAttribution: null })),
       person: { ...result.person, name: result.person.name?.trim() || result.person.wikidataId },
       page, limit, totalPages: Math.ceil(result.total / limit),
     };

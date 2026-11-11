@@ -6,8 +6,7 @@ import { DbProvider } from "../../db.provider";
 import { MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
 import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
-import type { IMoviesRepository, MovieSourceState, MoviePosterCandidate } from "./movies.repository.interface";
-import type { MoviePoster } from "./artwork/commons-poster";
+import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
 import type { MoviePersonRole } from "./people/detail/detail.schema";
 import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
 import { movieTitleMatch } from "./movie-title-search";
@@ -65,15 +64,6 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
       .where(and(isNotNull(movies.hydratedAt), lt(movies.checkedAt, before), due(now), afterId ? gt(movies.id, afterId) : undefined))
       .orderBy(asc(movies.id)).limit(Math.min(50, limit));
-  }
-  posterInputsCandidates(limit: number, now: Date) {
-    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
-      .where(and(publicMovie(), isNull(movies.posterInputsCheckedAt), due(now)))
-      .orderBy(desc(movies.seedPriority),
-        sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
-          and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
-          then ${movies.wikipediaViews} else null end desc nulls last`, asc(movies.title), asc(movies.id))
-      .limit(Math.min(50, limit));
   }
   recognitionCandidates(limit: number, now: Date) {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
@@ -159,42 +149,6 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       await dirtyMovieSearch(db, existing.id);
       return imdbConflict ? "imdb_conflict" : "updated";
     });
-  }
-  posterCandidates(limit: number, now: Date, available = { commons: true, wikipedia: true }) {
-    return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, title: sql<string>`${movies.title}`, fileName: movies.posterFileName,
-      enwikiArticle: movies.enwikiArticle, commonsCategory: movies.commonsCategory, version: movies.posterCandidateVersion,
-      hasImage: sql<boolean>`${movies.posterImageUrl} is not null`, resolvedFrom: movies.posterResolvedFrom }).from(movies)
-      // A blocked poster is never shown, so artwork jobs do not spend provider requests on it.
-      .where(and(publicMovie(), isNotNull(movies.posterInputsCheckedAt), isNull(movies.posterBlockedAt),
-        or(available.commons ? isNotNull(movies.posterFileName) : sql`false`,
-          // The category fallback only fills missing artwork or re-verifies its own result.
-          available.commons ? and(isNotNull(movies.commonsCategory), or(isNull(movies.posterImageUrl), eq(movies.posterResolvedFrom, "commons-category"))) : sql`false`,
-          available.wikipedia ? and(isNotNull(movies.enwikiArticle), or(isNull(movies.posterImageUrl),
-            sql`coalesce(${movies.posterResolvedFrom},'commons') <> 'commons'`, isNull(movies.posterFileName))) : sql`false`),
-        // Legacy non-free posters are hidden on read and always due so a refresh clears them.
-        or(sql`${movies.posterAttribution}->>'rightsKind' = 'non-free'`, and(
-          or(isNull(movies.posterRetryAfter), lte(movies.posterRetryAfter, now)),
-          or(isNull(movies.posterCheckedAt), lt(movies.posterCheckedAt, new Date(now.getTime() - 7 * 86_400_000)))))))
-      .orderBy(desc(movies.seedPriority),
-        sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
-          and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
-          then ${movies.wikipediaViews} else null end desc nulls last`, asc(movies.title), asc(movies.id)).limit(Math.min(5, limit));
-  }
-  async persistPoster(candidate: MoviePosterCandidate, poster: MoviePoster | null, now: Date) {
-    return this.dbProvider.transaction(async () => {
-      const updated = await this.dbProvider.client.update(movies).set({ posterImageUrl: poster?.imageUrl ?? null, posterAttribution: poster?.attribution ?? null,
-        posterResolvedFileName: poster ? poster.fileName ?? candidate.fileName : null, posterResolvedFrom: poster ? poster.origin ?? "commons" : null,
-        posterCheckedAt: now, posterRetryAfter: new Date(now.getTime() + (poster ? 7 : 30) * 86_400_000),
-        posterErrorCode: poster ? null : "poster_missing_or_unverified", updatedAt: now })
-        .where(and(eq(movies.id, candidate.id), eq(movies.posterCandidateVersion, candidate.version))).returning({ id: movies.id });
-      if (updated.length) await dirtyMovieSearch(this.dbProvider.client, candidate.id);
-      return updated.length > 0;
-    });
-  }
-  async markPosterFailure(candidates: MoviePosterCandidate[], retryAfter: Date) {
-    for (const candidate of candidates) await this.dbProvider.client.update(movies)
-      .set({ posterCheckedAt: null, posterRetryAfter: retryAfter, posterErrorCode: "artwork_temporarily_unavailable" })
-      .where(and(eq(movies.id, candidate.id), eq(movies.posterCandidateVersion, candidate.version)));
   }
   async hasPendingWork(now: Date) {
     const pending = await this.dbProvider.client.select({ id: movies.id }).from(movies).where(and(isNull(movies.hydratedAt), due(now))).limit(1);

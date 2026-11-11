@@ -18,9 +18,9 @@ describe("gameCardFromDoc", () => {
     expect(gameCardFromDoc({ ...doc, popularityScore: 0 }).popularityScore).toBe(0);
   });
 
-  it("keeps indexed Metacritic and OpenCritic values, including zero", () => {
-    expect(gameCardFromDoc({ ...doc, metacriticScore: 0, openCriticScore: 89 }))
-      .toMatchObject({ metacriticScore: 0, openCriticScore: 89 });
+  it("suppresses indexed Metacritic and OpenCritic values while preserving IGDB criticScore", () => {
+    expect(gameCardFromDoc({ ...doc, metacriticScore: 88, openCriticScore: 89, criticScore: 91, criticScoreCount: 12 }))
+      .toMatchObject({ metacriticScore: null, openCriticScore: null, criticScore: 91, criticScoreCount: 12 });
   });
 
   it("suppresses stored coverImageUrl on public search cards", () => {

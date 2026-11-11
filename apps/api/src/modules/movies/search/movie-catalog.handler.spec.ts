@@ -8,8 +8,11 @@ import type { IMovieSearchStateRepository, MovieSearchState } from "./movie-sear
 import type { IMovieSearchReader } from "./movie-search-reader";
 
 const id = "00000000-0000-4000-8000-000000000001";
-const card = { slug: "inception-q25188", title: "Inception", releaseDate: null, releaseYear: 2010, runtimeMinutes: 148,
-  posterImageUrl: "https://upload.wikimedia.org/current.jpg", posterAttribution: null };
+const storedCard = { slug: "inception-q25188", title: "Inception", releaseDate: null, releaseYear: 2010, runtimeMinutes: 148,
+  posterImageUrl: "https://upload.wikimedia.org/current.jpg",
+  posterAttribution: { provider: "commons" as const, rightsKind: "reusable" as const,
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Inception.jpg", artist: "Studio", license: "CC0", licenseUrl: null } };
+const card = { ...storedCard, posterImageUrl: null, posterAttribution: null };
 const fallback = { items: [], total: 91, ranking: { mode: "alphabetical", sourceDate: null, sourceUrl: null, isFresh: false } };
 const state = { id: "movies_en", schemaVersion: 2, activeCollection: "movies_en__v2_a1", buildingCollection: null,
   bootstrapPhase: "ready", bootstrapCursor: null, rankingGeneration: 2, rankingReady: true,
@@ -23,7 +26,7 @@ const person = (query = {}) => new GetMoviePersonHandler(service).handle({ param
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-07T12:00:00Z"));
   repo = {
-    listPublic: vi.fn().mockResolvedValue(fallback), hydratePublicIds: vi.fn().mockResolvedValue([card]),
+    listPublic: vi.fn().mockResolvedValue(fallback), hydratePublicIds: vi.fn().mockResolvedValue([storedCard]),
     findPublicPersonHeader: vi.fn().mockResolvedValue({ id: "person-uuid", wikidataId: "Q25191", name: "Christopher Nolan" }),
     findPublicPerson: vi.fn().mockResolvedValue({ ...fallback, person: { wikidataId: "Q25191", name: "Christopher Nolan" } }),
   } as unknown as Record<keyof IMoviesRepository, any>;
@@ -34,10 +37,11 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("movie catalog handlers using the movie index", () => {
-  it("uses Typesense for browse and typed search and returns current canonical poster cards", async () => {
+  it("uses Typesense for browse and typed search and suppresses poster fields on cards", async () => {
     const browse = await list();
     expect(reader.search).toHaveBeenCalledWith({ page: 1, limit: 21, collection: state.activeCollection, fresh: true, personQid: undefined });
     expect(browse.items).toEqual([card]);
+    expect(JSON.stringify(browse.items)).not.toContain("wikimedia.org");
     expect(browse.total).toBe(22); expect(browse.totalPages).toBe(2);
     expect(browse.ranking.mode).toBe("wikipedia_interest");
     await list({ q: " Inception " });
@@ -87,7 +91,7 @@ describe("movie catalog handlers using the movie index", () => {
     expect(reader.search).toHaveBeenCalledWith(expect.objectContaining({ fresh: false }));
   });
   it("uses a person QID filter, page-only role hydration, and the canonical header", async () => {
-    repo.hydratePublicIds.mockResolvedValue([{ ...card, roles: ["director", "producer"] }]);
+    repo.hydratePublicIds.mockResolvedValue([{ ...storedCard, roles: ["director", "producer"] }]);
     expect(await person()).toMatchObject({ person: { name: "Christopher Nolan" }, items: [{ ...card, roles: ["director", "producer"] }], total: 22 });
     expect(reader.search).toHaveBeenCalledWith(expect.objectContaining({ personQid: "Q25191" }));
     expect(repo.hydratePublicIds).toHaveBeenCalledWith([id], "person-uuid");

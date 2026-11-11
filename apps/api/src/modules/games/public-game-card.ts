@@ -4,7 +4,7 @@ import type { PublicGameCard } from "./list/list.schema";
 
 /**
  * A shared public projection for the library and company catalogs.
- * Stored IGDB cover URLs and completion durations are never exposed on public endpoints.
+ * Stored IGDB cover URLs, unattributed third-party review scores, and completion durations are never exposed on public endpoints.
  */
 export function publicGameCard(game: GameCard): PublicGameCard {
   return {
@@ -12,8 +12,8 @@ export function publicGameCard(game: GameCard): PublicGameCard {
     title: game.title,
     coverImageUrl: null,
     releaseDate: game.releaseDate,
-    metacriticScore: publicReviewScore(game.metacriticScore),
-    openCriticScore: publicReviewScore(game.openCriticScore),
+    metacriticScore: null,
+    openCriticScore: null,
     criticScore: publicReviewScore(publicCriticScore(game.criticScore, game.criticScoreCount)),
     popularityScore: Number.isFinite(game.popularityScore) && game.popularityScore! >= 0 && game.popularityScore! <= 1
       ? game.popularityScore : null,

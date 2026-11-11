@@ -59,7 +59,7 @@ describe("GetDeveloperGamesHandler", () => {
     const result = await handler.handle({ params: { slug: "studio" }, query: {} } as any);
     expect(result.company).toEqual(company);
     expect(result.items.map((game) => game.slug)).toEqual(["a", "b"]);
-    expect(result.items[0]).toMatchObject({ coverImageUrl: null, metacriticScore: 88, openCriticScore: 90, criticScore: null,
+    expect(result.items[0]).toMatchObject({ coverImageUrl: null, metacriticScore: null, openCriticScore: null, criticScore: null,
       popularityScore: 0.8, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[1]).toMatchObject({ metacriticScore: null, openCriticScore: null, criticScore: 83,
       popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });

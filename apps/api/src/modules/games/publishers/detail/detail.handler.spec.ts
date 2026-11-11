@@ -44,7 +44,7 @@ describe("GetPublisherGamesHandler", () => {
     const result = await handler.handle({ params: { slug: "studio" }, query: { page: 2, limit: 21 } } as any);
     expect(result).toMatchObject({ company, total: 22, page: 2, limit: 21, totalPages: 2 });
     expect(result.company).not.toHaveProperty("createdAt");
-    expect(result.items[0]).toMatchObject({ coverImageUrl: null, criticScore: 82, openCriticScore: 86, popularityScore: 0,
+    expect(result.items[0]).toMatchObject({ coverImageUrl: null, criticScore: 82, metacriticScore: null, openCriticScore: null, popularityScore: 0,
       hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[0]).not.toHaveProperty("id");
   });

@@ -27,7 +27,7 @@ export class DrizzleMovieDashboardRepository implements IMovieDashboardRepositor
     const where = and(isNotNull(movies.title), filter.blockedOnly ? isNotNull(movies.posterBlockedAt) : undefined, movieTitleMatch(filter.q));
     const [rows, totals] = await Promise.all([
       this.dbProvider.client.select({ id: movies.id, slug: movies.slug, title: sql<string>`${movies.title}`, releaseYear: movies.releaseYear,
-        posterImageUrl: movies.posterImageUrl, isPublic, posterBlockedAt: movies.posterBlockedAt }).from(movies).where(where)
+        posterImageUrl: sql<null>`null`, isPublic, posterBlockedAt: movies.posterBlockedAt }).from(movies).where(where)
         .orderBy(asc(movies.title), asc(movies.id)).limit(filter.limit).offset((filter.page - 1) * filter.limit),
       this.dbProvider.client.select({ total: count() }).from(movies).where(where),
     ]);

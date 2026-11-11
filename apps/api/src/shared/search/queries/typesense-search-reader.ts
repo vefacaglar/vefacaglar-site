@@ -182,7 +182,7 @@ export class TypesenseSearchReader implements ISearchReader {
         : {
             sort_by: "popularityScore:desc,releaseTimestamp:desc",
           }),
-      include_fields: "id,slug,title,releaseDate,metacriticScore,openCriticScore,criticScore,criticScoreCount,popularityScore",
+      include_fields: "id,slug,title,releaseDate,criticScore,criticScoreCount,popularityScore",
       page: query.page ?? 1,
       per_page: query.limit ?? 24,
     });
@@ -291,6 +291,8 @@ export class TypesenseSearchReader implements ISearchReader {
       items: result.items.map((item) => ({
         ...item,
         coverImageUrl: null,
+        metacriticScore: null,
+        openCriticScore: null,
         hltbMainHours: null,
         hltbMainExtraHours: null,
         hltbCompletionistHours: null,

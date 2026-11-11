@@ -1,7 +1,5 @@
 import type { EntityLabels, NormalizedMovie, SourceCredit, StatementRank } from "./movie-source.types";
-import { commonsFileName } from "../artwork/commons-poster";
-import { wikipediaArticleTitle } from "../artwork/wikipedia-poster";
-import { commonsCategoryName } from "../artwork/commons-category-poster";
+import { commonsCategoryName, commonsFileName, wikipediaArticleTitle } from "../artwork/poster-source";
 
 export const isQid = (value: unknown): value is string => typeof value === "string" && /^Q[1-9]\d{0,20}$/.test(value);
 export const isImdbId = (value: unknown): value is string => typeof value === "string" && /^tt\d{7,10}$/.test(value);

@@ -2,7 +2,6 @@ import type { MovieRanking } from "./popularity/popularity.types";
 import type { MovieCard } from "./list/list.schema";
 import type { MovieDetail } from "./detail/detail.schema";
 import type { EntityLabels, NormalizedMovie } from "./import/movie-source.types";
-import type { MoviePoster } from "./artwork/commons-poster";
 import type { MoviePersonFilm } from "./people/detail/detail.schema";
 export type MoviePersonResult = {
   person: { wikidataId: string; name: string | null };
@@ -13,8 +12,6 @@ export type MoviePersonResult = {
 export type MovieCandidate = { id: string; wikidataId: string; sourceRevision: number | null };
 export type MovieSourceState = { discoveryComplete: boolean; discoveryCycle: number; discoveryStrategy: string | null;
   nextDiscoveryAt: Date | null; cooldownUntil: Date | null; artworkCooldownUntil: Date | null; wikipediaArtworkCooldownUntil: Date | null; failureCount: number; refreshCursor: string | null; lastSuccessAt: Date | null };
-export type MoviePosterCandidate = { id: string; wikidataId: string; title: string; fileName: string | null; enwikiArticle: string | null;
-  commonsCategory: string | null; version: number; hasImage: boolean; resolvedFrom: string | null };
 export interface IMoviesRepository {
   ensureSourceAndSeeds(): Promise<{ inserted: number; state: MovieSourceState }>;
   sourceState(): Promise<MovieSourceState>;
@@ -22,12 +19,8 @@ export interface IMoviesRepository {
   insertDiscovered(qids: string[]): Promise<number>;
   hydrationCandidates(limit: number, now: Date): Promise<MovieCandidate[]>;
   refreshCandidates(afterId: string | null, limit: number, before: Date, now: Date): Promise<MovieCandidate[]>;
-  posterInputsCandidates(limit: number, now: Date): Promise<MovieCandidate[]>;
   recognitionCandidates(limit: number, now: Date): Promise<MovieCandidate[]>;
   persistMovie(movie: NormalizedMovie, now: Date): Promise<"updated" | "unchanged" | "imdb_conflict">;
-  posterCandidates(limit: number, now: Date, available?: { commons: boolean; wikipedia: boolean }): Promise<MoviePosterCandidate[]>;
-  persistPoster(candidate: MoviePosterCandidate, poster: MoviePoster | null, now: Date): Promise<boolean>;
-  markPosterFailure(candidates: MoviePosterCandidate[], retryAfter: Date): Promise<void>;
   markEntityFailure(qid: string, code: string, now: Date): Promise<void>;
   findLabels(qids: string[]): Promise<Record<string, { name: string | null; checkedAt: Date }>>;
   labelRefreshCandidates(limit: number, before: Date): Promise<string[]>;

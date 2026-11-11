@@ -5,7 +5,22 @@ import type { IMovieActivityRepository } from "../activity/activity.repository.i
 import type { IUsersRepository } from "../../auth/users.repository.interface";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../../../shared/http-errors";
 const watch = { id: "private-watch-id", watchedOn: "2026-11-07", comment: "This comment must remain private", createdAt: new Date(), updatedAt: new Date() };
-const movie = { slug: "film", title: "Film", releaseDate: null, releaseYear: 2026, runtimeMinutes: 100, posterImageUrl: null, posterAttribution: null };
+const movie = {
+  slug: "film",
+  title: "Film",
+  releaseDate: null,
+  releaseYear: 2026,
+  runtimeMinutes: 100,
+  posterImageUrl: "https://upload.wikimedia.org/wikipedia/commons/poster.jpg",
+  posterAttribution: {
+    provider: "commons" as const,
+    rightsKind: "reusable" as const,
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Poster.jpg",
+    artist: "Studio",
+    license: "CC0",
+    licenseUrl: null,
+  },
+};
 const request = (viewer?: string) => ({ params: { username: "vefa" }, user: viewer ? { id: viewer } : undefined }) as any;
 describe("GetMovieLibraryHandler", () => {
   let users: Record<keyof IUsersRepository, any>, repo: Record<keyof IMovieActivityRepository, any>;
@@ -20,8 +35,10 @@ describe("GetMovieLibraryHandler", () => {
     repo.listLibrary.mockResolvedValue([{ movie, rating: 8, watches: [watch, { ...watch, id: "second" }] }, { movie: { ...movie, slug: "other" }, rating: 10, watches: [] }]);
     const result = await new GetMovieLibraryHandler(users, repo).handle(request());
     expect(result.summary).toEqual({ filmCount: 2, watchedFilmCount: 1, watchCount: 2, ratedFilmCount: 2, averageRating: 9 });
+    expect(result.movies[0]).toMatchObject({ posterImageUrl: null, posterAttribution: null });
     expect(result.movies[0].watches).toEqual([{ watchedOn: "2026-11-07" }, { watchedOn: "2026-11-07" }]);
     expect(result.user).toEqual({ username: "vefa", displayName: "Vefa", isProfilePublic: true });
+    expect(JSON.stringify(result)).not.toContain("wikimedia.org");
     expect(JSON.stringify(result)).not.toContain("This comment must remain private");
     expect(JSON.stringify(result)).not.toContain("private-watch-id"); expect(JSON.stringify(result)).not.toContain("private@example.com");
   });

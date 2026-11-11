@@ -75,7 +75,7 @@ describe("ListGamesHandler", () => {
       ["b", null, null, null],
       ["a", null, null, null],
     ]);
-    expect(result.items[0].metacriticScore).toBe(88);
+    expect(result.items[0].metacriticScore).toBeNull();
     expect(result.items[1].criticScore).toBe(91);
     expect(result).toMatchObject({ total: 45, page: 2, limit: 21, totalPages: 3 });
     expect(gamesRepo.listPublic).not.toHaveBeenCalled();
@@ -106,7 +106,7 @@ describe("ListGamesHandler", () => {
     expect(gamesRepo.findPublicCardsByIds).not.toHaveBeenCalled();
   });
 
-  it("exposes stored provider scores independently and rejects invalid values", async () => {
+  it("suppresses Metacritic and OpenCritic scores while keeping eligible IGDB criticScore values", async () => {
     gamesRepo.listPublic.mockResolvedValue({ items: [
       { slug: "providers", title: "Providers", metacriticScore: 87, openCriticScore: 89, criticScore: 95, criticScoreCount: 5 },
       { slug: "zero", title: "Zero", metacriticScore: 0, openCriticScore: 0, criticScore: 0, criticScoreCount: 3 },
@@ -115,8 +115,8 @@ describe("ListGamesHandler", () => {
     ], total: 4 });
     const result = await handler.handle({ query: {} } as any);
     expect(result.items.map(({ metacriticScore, openCriticScore, criticScore }) => ({ metacriticScore, openCriticScore, criticScore }))).toEqual([
-      { metacriticScore: 87, openCriticScore: 89, criticScore: 95 },
-      { metacriticScore: 0, openCriticScore: 0, criticScore: 0 },
+      { metacriticScore: null, openCriticScore: null, criticScore: 95 },
+      { metacriticScore: null, openCriticScore: null, criticScore: 0 },
       { metacriticScore: null, openCriticScore: null, criticScore: null },
       { metacriticScore: null, openCriticScore: null, criticScore: null },
     ]);

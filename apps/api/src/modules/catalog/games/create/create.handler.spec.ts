@@ -118,12 +118,16 @@ describe("CreateGameHandler", () => {
       expect.objectContaining({
         title: "Celeste",
         slug: "celeste",
+        metacriticScore: undefined,
+        openCriticScore: undefined,
         hltbMainHours: undefined,
         hltbMainExtraHours: undefined,
         hltbCompletionistHours: undefined,
       }),
       expect.any(Object)
     );
+    expect(result.metacriticScore).toBeNull();
+    expect(result.openCriticScore).toBeNull();
     expect(result.hltbMainHours).toBeNull();
     expect(result.hltbMainExtraHours).toBeNull();
     expect(result.hltbCompletionistHours).toBeNull();
