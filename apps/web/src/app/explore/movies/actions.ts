@@ -3,16 +3,19 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { httpClient } from "../../../lib/httpClient";
 import { getSessionUser } from "../../../lib/session";
+import { getActiveLanguage } from "../../../lib/lang";
+import { movieActionConnectionError, movieActionError } from "./movieActionErrors";
 export type MovieActionResult = { error?: string; uncertain?: boolean };
 async function send(method: "POST" | "PUT" | "DELETE", slug: string, suffix: string, body?: unknown): Promise<MovieActionResult> {
+  const lang = await getActiveLanguage();
   const token = (await cookies()).get("session_token")?.value;
-  if (!token) return { error: "Please sign in again." };
+  if (!token) return { error: lang === "tr" ? "Lütfen tekrar giriş yap." : "Please sign in again." };
   const path = `/api/movies/${encodeURIComponent(slug)}/${suffix}`;
   const options = { headers: { Authorization: `Bearer ${token}` } };
   try {
     const response = method === "POST" ? await httpClient.post(path, body, options) : method === "PUT" ? await httpClient.put(path, body, options) : await httpClient.delete(path, options);
-    if (!response.ok) { const data = await response.json().catch(() => ({})); return { error: data.message || "Request failed.", uncertain: response.status >= 500 }; }
-  } catch { return { error: "Server connection error.", uncertain: true }; }
+    if (!response.ok) { const data = await response.json().catch(() => ({})); return { error: movieActionError(response.status, data.message, lang), uncertain: response.status >= 500 }; }
+  } catch { return { error: movieActionConnectionError(lang), uncertain: true }; }
   revalidatePath(`/explore/movies/${slug}`, "layout");
   const user = await getSessionUser();
   if (user) revalidatePath(`/profile/${encodeURIComponent(user.username)}`, "layout");

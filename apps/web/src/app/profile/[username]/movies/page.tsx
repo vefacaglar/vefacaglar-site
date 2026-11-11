@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getDictionary } from "../../../../dictionaries";
 import { notFound } from "next/navigation";
 import { getActiveLanguage } from "../../../../lib/lang";
 import { localizeHref } from "../../../../lib/localizeHref";
@@ -15,6 +16,7 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
   if (result.kind === "not_found") notFound();
 
   const lang = await getActiveLanguage();
+  const dict = getDictionary(lang);
   if (result.kind === "private") {
     return <PrivateProfile username={handle} path={profilePath(handle, "movies")} signedIn={result.signedIn} lang={lang} />;
   }
@@ -25,19 +27,19 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
     <section>
       <dl className={styles.summary}>
         <div className={styles.stat}>
-          <dt>Films watched</dt>
+          <dt>{dict.movie_films_watched}</dt>
           <dd>{summary.watchedFilmCount}</dd>
         </div>
         <div className={styles.stat}>
-          <dt>Watches</dt>
+          <dt>{dict.movie_watches}</dt>
           <dd>{summary.watchCount}</dd>
         </div>
         <div className={styles.stat}>
-          <dt>Films rated</dt>
+          <dt>{dict.movie_films_rated}</dt>
           <dd>{summary.ratedFilmCount}</dd>
         </div>
         <div className={styles.stat}>
-          <dt>Average rating</dt>
+          <dt>{dict.movie_average_rating}</dt>
           <dd>
             {summary.averageRating === null ? (
               "—"
@@ -53,11 +55,11 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
 
       {movies.length === 0 ? (
         <div className={styles.empty}>
-          <h2>No movies yet</h2>
-          <p>Watches and ratings will appear here.</p>
+          <h2>{dict.movie_no_movies}</h2>
+          <p>{dict.movie_library_hint}</p>
           {isOwner && (
             <Link className="btnGhost" href={localizeHref("/explore/movies", lang)}>
-              Browse movies
+              {dict.movie_browse}
             </Link>
           )}
         </div>
@@ -74,24 +76,24 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
                 </div>
                 <p className={styles.metrics}>
                   <span className={movie.rating !== null ? styles.rating : undefined}>
-                    {movie.rating === null ? "Not rated" : `${movie.rating}/10`}
+                    {movie.rating === null ? dict.movie_not_rated : `${movie.rating}/10`}
                   </span>
                   <span>
-                    {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}
+                    {movie.watchCount} {movie.watchCount === 1 ? dict.movie_watch_singular : dict.movie_watch_plural}
                   </span>
                 </p>
               </div>
 
               {movie.watches.length > 0 && (
                 <details className={styles.history}>
-                  <summary>Watch history</summary>
+                  <summary>{dict.movie_watch_history}</summary>
                   <ul>
                     {movie.watches.map((watch, index) => (
                       <li key={watch.id ?? `${watch.watchedOn}-${index}`}>
                         {watch.watchedOn ? (
-                          <time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time>
+                          <time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, lang)}</time>
                         ) : (
-                          "Date not specified"
+                          dict.movie_date_unspecified
                         )}
                       </li>
                     ))}
@@ -105,7 +107,7 @@ export default async function ProfileMovies({ params }: { params: Promise<{ user
                     className="btnGhost"
                     href={localizeHref(`/explore/movies/${movie.slug}#watch-history`, lang)}
                   >
-                    Manage watches and rating
+                    {dict.movie_manage}
                   </Link>
                 </div>
               )}

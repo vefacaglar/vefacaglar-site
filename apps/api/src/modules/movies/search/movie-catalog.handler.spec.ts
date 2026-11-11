@@ -31,6 +31,7 @@ beforeEach(() => {
     findPublicPerson: vi.fn().mockResolvedValue({ ...fallback, person: { wikidataId: "Q25191", name: "Christopher Nolan" } }),
   } as unknown as Record<keyof IMoviesRepository, any>;
   stateRepo = { state: vi.fn().mockResolvedValue(state) };
+  repo.hydrateCatalogPage = vi.fn().mockResolvedValue({ items: [storedCard], state });
   reader = { search: vi.fn().mockResolvedValue({ ids: [id], total: 22 }) };
   service = new MovieCatalogService(repo, stateRepo, reader);
 });
@@ -46,8 +47,8 @@ describe("movie catalog handlers using the movie index", () => {
     expect(browse.ranking.mode).toBe("wikipedia_interest");
     await list({ q: " Inception " });
     expect(reader.search).toHaveBeenLastCalledWith(expect.objectContaining({ q: "Inception" }));
-    expect(repo.hydratePublicIds).toHaveBeenCalledWith([id], undefined);
-    expect(stateRepo.state).toHaveBeenCalledTimes(4);
+    expect(repo.hydrateCatalogPage).toHaveBeenCalledWith([id]);
+    expect(stateRepo.state).toHaveBeenCalledTimes(2);
     expect(repo.listPublic).not.toHaveBeenCalled();
   });
   it.each([null, { ...state, rankingReady: false }, { ...state, bootstrapPhase: "replay" },
@@ -68,21 +69,25 @@ describe("movie catalog handlers using the movie index", () => {
   });
   it.each([{ ...state, rankingReady: false }, { ...state, rankingGeneration: 3 },
     { ...state, activeCollection: "movies_en__v2_b2" }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
-    stateRepo.state.mockResolvedValueOnce(state).mockResolvedValueOnce(after);
+    repo.hydrateCatalogPage.mockResolvedValue({ items: [storedCard], state: after });
     expect((await list()).total).toBe(91);
   });
   it("keeps a successful zero-match result without falling back", async () => {
-    reader.search.mockResolvedValue({ ids: [], total: 0 }); repo.hydratePublicIds.mockResolvedValue([]);
+    reader.search.mockResolvedValue({ ids: [], total: 0 }); repo.hydrateCatalogPage.mockResolvedValue({ items: [], state });
     expect(await list({ q: "no film" })).toMatchObject({ items: [], total: 0, totalPages: 0 });
     expect(repo.listPublic).not.toHaveBeenCalled();
   });
   it("preserves totals on an out-of-range index page", async () => {
-    reader.search.mockResolvedValue({ ids: [], total: 22 }); repo.hydratePublicIds.mockResolvedValue([]);
+    reader.search.mockResolvedValue({ ids: [], total: 22 }); repo.hydrateCatalogPage.mockResolvedValue({ items: [], state });
     expect(await list({ page: 9 })).toMatchObject({ items: [], total: 22, totalPages: 2 });
     expect(repo.listPublic).not.toHaveBeenCalled();
   });
   it("falls back if an indexed film is deleted or no longer public", async () => {
-    repo.hydratePublicIds.mockResolvedValue([]);
+    repo.hydrateCatalogPage.mockResolvedValue({ items: [], state });
+    expect((await list()).total).toBe(91);
+  });
+  it("falls back if the publication disappears during hydration", async () => {
+    repo.hydrateCatalogPage.mockResolvedValue({ items: [], state: null });
     expect((await list()).total).toBe(91);
   });
   it("uses alphabetical index ordering once the source date expires", async () => {

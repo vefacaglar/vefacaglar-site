@@ -1,3 +1,4 @@
+import { getDictionary } from "../../../../dictionaries";
 import { Fragment } from "react";
 import Link from "next/link";
 import { notFound, unstable_rethrow } from "next/navigation";
@@ -23,11 +24,13 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const movie = await getMovie(slug);
   if (!movie) return {};
+  const lang = await getActiveLanguage();
+  const dict = getDictionary(lang);
   return libraryMetadata({
     section: "movies",
     title: movie.title,
-    description: movie.description ?? "Film details, cast, and filmmakers.",
-    alternates: localizedAlternates(`/explore/movies/${movie.slug}`, await getActiveLanguage()),
+    description: movie.description ?? dict.movie_detail_description,
+    alternates: localizedAlternates(`/explore/movies/${movie.slug}`, lang),
   });
 }
 
@@ -36,6 +39,7 @@ export default async function Movie({ params, searchParams }: Props) {
   const movie = await getMovie(slug);
   if (!movie) notFound();
   const lang = await getActiveLanguage();
+  const dict = getDictionary(lang);
   const query = await searchParams;
   const { watchPage } = query;
   const user = await getSessionUser();
@@ -63,9 +67,9 @@ export default async function Movie({ params, searchParams }: Props) {
   const people = (role: MovieCredit["role"]) => credits.filter((credit) => credit.role === role);
   const directors = people("director");
   const sections: { title: string; items: MovieCredit[] }[] = [
-    { title: "Directors", items: directors },
-    { title: "Producers", items: people("producer") },
-    { title: "Cast", items: people("cast") },
+    { title: dict.movie_directors, items: directors },
+    { title: dict.movie_producers, items: people("producer") },
+    { title: dict.movie_cast, items: people("cast") },
   ];
 
   const hasFigures =
@@ -77,7 +81,7 @@ export default async function Movie({ params, searchParams }: Props) {
     <article className={styles.movie}>
       <header className={styles.header}>
         <p className={styles.back}>
-          <Link href={localizeHref("/explore/movies", lang)}>← Movies</Link>
+          <Link href={localizeHref("/explore/movies", lang)}>← {dict.movies}</Link>
         </p>
         <h1 className={styles.title}>{movie.title}</h1>
         {movie.originalTitle && movie.originalTitle !== movie.title && (
@@ -85,7 +89,7 @@ export default async function Movie({ params, searchParams }: Props) {
         )}
         {directors.length > 0 && (
           <p className={styles.byline}>
-            Directed by{" "}
+            {dict.movie_directed_by}{" "}
             {directors.map((director, index) => (
               <Fragment key={director.statementId}>
                 {index > 0 && ", "}
@@ -107,22 +111,22 @@ export default async function Movie({ params, searchParams }: Props) {
           <dl className={styles.figures}>
             {movie.releaseYear !== null && (
               <div className={styles.figure}>
-                <dt>Released</dt>
+                <dt>{dict.movie_released}</dt>
                 <dd className={styles.figureValue}>{movie.releaseYear}</dd>
               </div>
             )}
             {movie.runtimeMinutes !== null && (
               <div className={styles.figure}>
-                <dt>Runtime</dt>
+                <dt>{dict.movie_runtime}</dt>
                 <dd className={styles.figureValue}>
                   {movie.runtimeMinutes}
-                  <span className={styles.figureUnit}>min</span>
+                  <span className={styles.figureUnit}>{dict.movie_minutes}</span>
                 </dd>
               </div>
             )}
             {community && community.rating.average !== null && (
               <div className={styles.figure}>
-                <dt>Site rating</dt>
+                <dt>{dict.movie_site_rating}</dt>
                 <dd className={`${styles.figureValue} ${styles.figureAccent}`}>
                   {community.rating.average.toFixed(1)}
                   <span className={styles.figureUnit}>/{community.rating.scale}</span>
@@ -137,8 +141,8 @@ export default async function Movie({ params, searchParams }: Props) {
 
       {activityUnavailable ? (
         <section className={styles.leadSection}>
-          <h2>Your watches and rating</h2>
-          <p className={styles.pending}>Your movie activity is temporarily unavailable.</p>
+          <h2>{dict.movie_watches_rating}</h2>
+          <p className={styles.pending}>{dict.movie_activity_unavailable}</p>
           <a
             className="btnGhost"
             href={localizeHref(
@@ -146,7 +150,7 @@ export default async function Movie({ params, searchParams }: Props) {
               lang,
             )}
           >
-            Try again
+            {dict.movie_try_again}
           </a>
         </section>
       ) : activity ? (
@@ -159,16 +163,16 @@ export default async function Movie({ params, searchParams }: Props) {
         />
       ) : (
         <section className={styles.leadSection}>
-          <h2>Your watches and rating</h2>
+          <h2>{dict.movie_watches_rating}</h2>
           <Link className="btnAccent" href={getLoginHref(localizeHref(`/explore/movies/${movie.slug}`, lang))}>
-            Sign in to log a watch or rate
+            {dict.movie_sign_in_log}
           </Link>
         </section>
       )}
 
-      <CommunitySection data={community} path={`/explore/movies/${movie.slug}`} params={query} />
+      <CommunitySection data={community} path={`/explore/movies/${movie.slug}`} params={query} lang={lang} />
 
-      {pendingCredits && <p className={styles.pending}>Additional credits are syncing.</p>}
+      {pendingCredits && <p className={styles.pending}>{dict.movie_credits_syncing}</p>}
 
       {sections
         .filter((section) => section.items.length > 0)
@@ -190,7 +194,7 @@ export default async function Movie({ params, searchParams }: Props) {
 
       {companies.length > 0 && (
         <section className={styles.section}>
-          <h2>Production companies</h2>
+          <h2>{dict.movie_companies}</h2>
           <ul className={styles.credits}>
             {companies.map((company) => (
               <li key={company.wikidataId}>
@@ -202,9 +206,9 @@ export default async function Movie({ params, searchParams }: Props) {
       )}
 
       <footer className={styles.source}>
-        <a href={`https://www.wikidata.org/wiki/${movie.wikidataId}`}>Source: Wikidata</a>
+        <a href={`https://www.wikidata.org/wiki/${movie.wikidataId}`}>{dict.movie_source}</a>
         {movie.imdbId && <a href={`https://www.imdb.com/title/${movie.imdbId}/`}>IMDb</a>}
-        <p>Credits reflect the available source data and may be incomplete.</p>
+        <p>{dict.movie_credits_note}</p>
       </footer>
     </article>
   );

@@ -161,25 +161,25 @@ export default async function ProfileOverview(props: OverviewProps) {
 
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2 className={styles.sectionTitle}>Movies</h2>
+          <h2 className={styles.sectionTitle}>{dict.movies}</h2>
           {movieLibrary && movieLibrary.summary.filmCount > 0 && (
             <Link href={localizeHref(profilePath(user.username, "movies"), lang)} className={styles.sectionLink}>
-              View all movies
+              {dict.movie_view_all}
             </Link>
           )}
         </div>
         {!movieLibrary ? (
-          <p className={styles.muted}>Movie library is temporarily unavailable.</p>
+          <p className={styles.muted}>{dict.movie_library_unavailable}</p>
         ) : (
           <>
             <dl className={styles.stats}>
-              <div className={styles.stat}><dt className={styles.statLabel}>Movies</dt><dd className={styles.statValue}>{movieLibrary.summary.filmCount}</dd></div>
-              <div className={styles.stat}><dt className={styles.statLabel}>Films watched</dt><dd className={styles.statValue}>{movieLibrary.summary.watchedFilmCount}</dd></div>
-              <div className={styles.stat}><dt className={styles.statLabel}>Watches</dt><dd className={styles.statValue}>{movieLibrary.summary.watchCount}</dd></div>
-              <div className={styles.stat}><dt className={styles.statLabel}>Average rating</dt><dd className={styles.statValue}>{movieLibrary.summary.averageRating ?? "—"}{movieLibrary.summary.averageRating !== null && <span className={styles.statUnit}>/10</span>}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>{dict.movies}</dt><dd className={styles.statValue}>{movieLibrary.summary.filmCount}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>{dict.movie_films_watched}</dt><dd className={styles.statValue}>{movieLibrary.summary.watchedFilmCount}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>{dict.movie_watches}</dt><dd className={styles.statValue}>{movieLibrary.summary.watchCount}</dd></div>
+              <div className={styles.stat}><dt className={styles.statLabel}>{dict.movie_average_rating}</dt><dd className={styles.statValue}>{movieLibrary.summary.averageRating ?? "—"}{movieLibrary.summary.averageRating !== null && <span className={styles.statUnit}>/10</span>}</dd></div>
             </dl>
             {movieLibrary.movies.length === 0 ? (
-              <p className={styles.muted}>Watches and ratings will appear here.</p>
+              <p className={styles.muted}>{dict.movie_library_hint}</p>
             ) : (
               <ul className={styles.movieShelf}>
                 {movieLibrary.movies.slice(0, 6).map((movie) => (
@@ -188,13 +188,13 @@ export default async function ProfileOverview(props: OverviewProps) {
                       <span className={styles.movieShelfTitle}>{movie.title}</span>
                       <span className={styles.movieShelfMeta}>
                         <span className={movie.rating !== null ? styles.movieShelfRating : undefined}>
-                          {movie.rating === null ? "Not rated" : `${movie.rating}/10`}
+                          {movie.rating === null ? dict.movie_not_rated : `${movie.rating}/10`}
                         </span>
                         <span>
-                          {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}
+                          {movie.watchCount} {movie.watchCount === 1 ? dict.movie_watch_singular : dict.movie_watch_plural}
                         </span>
                         {movie.lastWatchedOn && (
-                          <time dateTime={movie.lastWatchedOn}>{formatDate(movie.lastWatchedOn, "en")}</time>
+                          <time dateTime={movie.lastWatchedOn}>{formatDate(movie.lastWatchedOn, lang)}</time>
                         )}
                         {movie.releaseYear !== null && (
                           <span className={styles.movieShelfYear}>{movie.releaseYear}</span>

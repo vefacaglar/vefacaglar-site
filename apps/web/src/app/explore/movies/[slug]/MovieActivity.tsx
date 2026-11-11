@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LocaleProvider, useLocale } from "../../../../components/LocaleProvider";
+import { useLocale } from "../../../../components/LocaleProvider";
 import { localizeHref } from "../../../../lib/localizeHref";
 import { formatDate } from "../../../../lib/formatDate";
 import type { MovieActivity as Activity, MovieWatch } from "../../../../lib/movieActivity";
@@ -14,11 +14,13 @@ import { istanbulToday, isAllowedLogDate } from "../../../../lib/logDates";
 import { readMovieLogPreferences, writeMovieLogPreferences } from "../../../../lib/logPreferences";
 import { useLogCalendarToday } from "../../../../lib/useLogCalendarToday";
 import styles from "./MovieActivity.module.css";
+import { movieActivityLabels } from "./movieActivityLabels";
 
 type WatchEditor = { id: string | null; watchedOn: string; comment: string; isPublic: boolean };
 
 export default function MovieActivity({ slug, activity, userId, isProfilePublic, communityPage }: { slug: string; activity: Activity; userId: string | null; isProfilePublic: boolean; communityPage?: string }) {
   const router = useRouter(), locale = useLocale();
+  const labels = movieActivityLabels[locale];
   const ratingId = useId(), dialogTitleId = useId(), dateId = useId(), commentId = useId();
   const [rating, setRating] = useState(activity.rating === null ? "" : String(activity.rating));
   const [editor, setEditor] = useState<WatchEditor | null>(null);
@@ -82,7 +84,7 @@ export default function MovieActivity({ slug, activity, userId, isProfilePublic,
         const result = await action();
         if (result.error) setError(result.error);
         else router.refresh();
-      } catch { setError("Server connection error."); }
+      } catch { setError(labels.serverError); }
       finally { busy.current = false; }
     });
   };
@@ -97,7 +99,7 @@ export default function MovieActivity({ slug, activity, userId, isProfilePublic,
         const result = await setMovieRating(slug, next ? Number(next) : null);
         if (result.error) { setRating(previous); setRatingError(result.error); }
         else router.refresh();
-      } catch { setRating(previous); setRatingError("Server connection error."); }
+      } catch { setRating(previous); setRatingError(labels.serverError); }
       finally { busy.current = false; }
     });
   };
@@ -105,7 +107,7 @@ export default function MovieActivity({ slug, activity, userId, isProfilePublic,
     if (!editor || busy.current) return;
     const previous = editor.id ? activity.watches.find((watch) => watch.id === editor.id)?.watchedOn ?? null : null;
     if (!isAllowedLogDate(editor.watchedOn || null, previous, istanbulToday())) {
-      setEditorError("Watch date cannot be in the future.");
+      setEditorError(labels.futureDate);
       return;
     }
     const editingId = editor.id;
@@ -131,7 +133,7 @@ export default function MovieActivity({ slug, activity, userId, isProfilePublic,
           router.refresh();
         }
       } catch {
-        setEditorError("We couldn't confirm the save. Please try again.");
+        setEditorError(labels.saveUnconfirmed);
         if (!editingId) setUnconfirmed(true);
       } finally { busy.current = false; }
     });
@@ -146,42 +148,42 @@ export default function MovieActivity({ slug, activity, userId, isProfilePublic,
 
   return <div className={styles.activity}>
     <section className={styles.section}>
-      <div className={styles.sectionHeading}><h2>Your rating</h2><span className={styles.savedRating}>{rating ? `${rating} / 10` : "Not rated"}</span></div>
+      <div className={styles.sectionHeading}><h2>{labels.rating}</h2><span className={styles.savedRating}>{rating ? `${rating} / 10` : labels.notRated}</span></div>
       <div className={styles.ratingForm}>
         <fieldset ref={ratingChoicesRef} className={styles.ratingChoices} disabled={pending}>
-          <legend className={styles.srOnly}>Your rating from 1 to 10</legend>
+          <legend className={styles.srOnly}>{labels.ratingLegend}</legend>
           {Array.from({ length: 10 }, (_, index) => {
             const value = String(index + 1);
             return <label className={styles.ratingOption} key={value}>
-              <input className={styles.ratingInput} type="radio" name={ratingId} value={value} checked={rating === value} onChange={() => { restoreRatingFocus.current = true; saveRating(value); }} aria-label={`${value} out of 10`} />
+              <input className={styles.ratingInput} type="radio" name={ratingId} value={value} checked={rating === value} onChange={() => { restoreRatingFocus.current = true; saveRating(value); }} aria-label={labels.outOfTen.replace("{value}", value)} />
               <span className={styles.ratingBox}>{value}</span>
             </label>;
           })}
         </fieldset>
         <div className={styles.ratingFooter}>
-          <p className={styles.muted} aria-live="polite">{pending ? "Saving…" : "One rating per film. Update it whenever you like."}</p>
-          {rating && <button className={`btnGhost ${styles.clearRating}`} type="button" disabled={pending} onClick={() => saveRating("")}>Clear rating</button>}
+          <p className={styles.muted} aria-live="polite">{pending ? labels.saving : labels.ratingHint}</p>
+          {rating && <button className={`btnGhost ${styles.clearRating}`} type="button" disabled={pending} onClick={() => saveRating("")}>{labels.clearRating}</button>}
         </div>
         {ratingError && <p className={styles.ratingError} role="alert">{ratingError}</p>}
       </div>
     </section>
     <section className={styles.section} id="watch-history">
       <div className={styles.sectionHeading}>
-        <div><h2>Watch history</h2><p className={styles.muted}>{activity.total === 0 ? "Keep a record of each viewing." : `${activity.total} ${activity.total === 1 ? "watch" : "watches"} logged`}</p></div>
-        <button className="btnAccent" type="button" disabled={pending} onClick={() => openEditor()}>Log watch</button>
+        <div><h2>{labels.history}</h2><p className={styles.muted}>{activity.total === 0 ? labels.historyHint : activity.total === 1 ? labels.watchOne : labels.watchCount.replace("{count}", String(activity.total))}</p></div>
+        <button className="btnAccent" type="button" disabled={pending} onClick={() => openEditor()}>{labels.logWatch}</button>
       </div>
-      {activity.total === 0 ? <p className={styles.empty}>No watches logged yet.</p> : <>
+      {activity.total === 0 ? <p className={styles.empty}>{labels.noWatches}</p> : <>
         <ul className={styles.watches}>{activity.watches.map((watch) => <li key={watch.id} className={styles.watch}>
-          <div className={styles.watchDetails}>{watch.watchedOn ? <time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, "en")}</time> : <span>Date not specified</span>}{watch.comment && <p className={styles.watchComment}>{watch.comment}</p>}</div>
+          <div className={styles.watchDetails}>{watch.watchedOn ? <time dateTime={watch.watchedOn}>{formatDate(watch.watchedOn, locale)}</time> : <span>{labels.noDate}</span>}{watch.comment && <p className={styles.watchComment}>{watch.comment}</p>}</div>
           <div className={styles.controls}>
-            <button className="btnGhost" disabled={pending} type="button" onClick={() => openEditor(watch)}>Edit watch</button>
-            <button className="btnGhost" disabled={pending} type="button" onClick={() => setDeleting(watch.id)}>Delete</button>
+            <button className="btnGhost" disabled={pending} type="button" onClick={() => openEditor(watch)}>{labels.edit}</button>
+            <button className="btnGhost" disabled={pending} type="button" onClick={() => setDeleting(watch.id)}>{labels.delete}</button>
           </div>
         </li>)}</ul>
-        {activity.totalPages > 1 && <nav className={styles.controls} aria-label="Watch history pages">
-          {activity.page > 1 && <Link className="btnGhost" href={pageHref(activity.page - 1)}>Previous</Link>}
-          <span>Page {activity.page} of {activity.totalPages}</span>
-          {activity.page < activity.totalPages && <Link className="btnGhost" href={pageHref(activity.page + 1)}>Next</Link>}
+        {activity.totalPages > 1 && <nav className={styles.controls} aria-label={labels.pages}>
+          {activity.page > 1 && <Link className="btnGhost" href={pageHref(activity.page - 1)}>{labels.previous}</Link>}
+          <span>{labels.pageOf.replace("{current}", String(activity.page)).replace("{total}", String(activity.totalPages))}</span>
+          {activity.page < activity.totalPages && <Link className="btnGhost" href={pageHref(activity.page + 1)}>{labels.next}</Link>}
         </nav>}
       </>}
     </section>
@@ -190,30 +192,30 @@ export default function MovieActivity({ slug, activity, userId, isProfilePublic,
       onCancel={(event) => { event.preventDefault(); closeEditor(); }}
       onClick={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
       {editor && <form className={styles.dialogBody} onSubmit={(event) => { event.preventDefault(); saveWatch(); }}>
-        <div className={styles.dialogHeading}><span className={styles.eyebrow}>Watch history</span><h2 id={dialogTitleId}>{editor.id ? "Edit watch" : "Log a watch"}</h2></div>
+        <div className={styles.dialogHeading}><span className={styles.eyebrow}>{labels.history}</span><h2 id={dialogTitleId}>{editor.id ? labels.edit : labels.logAWatch}</h2></div>
         <div className={styles.field} onFocusCapture={refreshLogToday}>
-          <label htmlFor={dateId}>Watched on <span className={styles.optional}>Optional</span></label>
-          <LocaleProvider locale="en"><DatePicker id={dateId} value={editor.watchedOn} max={logToday} today={logToday} disabled={pending || locked} onChange={(watchedOn) => setEditor({ ...editor, watchedOn })} /></LocaleProvider>
+          <label htmlFor={dateId}>{labels.watchedOn} <span className={styles.optional}>{labels.optional}</span></label>
+          <DatePicker id={dateId} value={editor.watchedOn} max={logToday} today={logToday} disabled={pending || locked} onChange={(watchedOn) => setEditor({ ...editor, watchedOn })} />
         </div>
         <div className={styles.field}>
-          <label htmlFor={commentId}>Comment <span className={styles.optional}>Optional</span></label>
-          <textarea id={commentId} className={styles.input} rows={4} maxLength={2000} value={editor.comment} disabled={pending || locked} aria-describedby={`${commentId}-hint`} placeholder="What stayed with you?" onChange={(event) => setEditor({ ...editor, comment: event.target.value })} />
-          <div className={styles.commentHelp} id={`${commentId}-hint`}><span>{editor.isPublic ? "This comment is included when you share this watch." : "Only you can see this comment."}</span><span>{editor.comment.length}/2,000</span></div>
+          <label htmlFor={commentId}>{labels.comment} <span className={styles.optional}>{labels.optional}</span></label>
+          <textarea id={commentId} className={styles.input} rows={4} maxLength={2000} value={editor.comment} disabled={pending || locked} aria-describedby={`${commentId}-hint`} placeholder={labels.commentPlaceholder} onChange={(event) => setEditor({ ...editor, comment: event.target.value })} />
+          <div className={styles.commentHelp} id={`${commentId}-hint`}><span>{editor.isPublic ? labels.commentPublic : labels.commentPrivate}</span><span>{editor.comment.length}/2,000</span></div>
         </div>
         <label className={styles.shareChoice}>
           <input type="checkbox" checked={editor.isPublic} disabled={pending || locked || (!isProfilePublic && !editor.isPublic)} onChange={(event) => setEditor({ ...editor, isPublic: event.target.checked })} />
-          <span>Share this watch publicly</span>
+          <span>{labels.share}</span>
         </label>
-        <p className={styles.shareHint}>{isProfilePublic ? "Your watch and comment will appear in the community section when shared." : <>Your profile is private. Make it public before sharing; existing shared watches remain hidden. <Link href={localizeHref("/profile/settings", locale)}>Profile settings</Link></>}</p>
-        {locked && <p className={styles.retryNotice}>This save hasn't been confirmed. Retry the same details before changing them, so the watch is only added once.</p>}
+        <p className={styles.shareHint}>{isProfilePublic ? labels.shareHint : <>{labels.privateHint} <Link href={localizeHref("/profile/settings", locale)}>{labels.profileSettings}</Link></>}</p>
+        {locked && <p className={styles.retryNotice}>{labels.retryHint}</p>}
         {editorError && <p className={styles.error} role="alert">{editorError}</p>}
         <div className={styles.dialogActions}>
-          <button className="btnGhost" type="button" disabled={pending} onClick={closeEditor}>Cancel</button>
-          <button className="btnAccent" type="submit" disabled={pending}>{pending ? "Saving…" : locked ? "Retry save" : "Save watch"}</button>
+          <button className="btnGhost" type="button" disabled={pending} onClick={closeEditor}>{labels.cancel}</button>
+          <button className="btnAccent" type="submit" disabled={pending}>{pending ? labels.saving : locked ? labels.retry : labels.save}</button>
         </div>
       </form>}
     </dialog>
-    <ConfirmDialog open={deleting !== null} message="Delete this watch entry? Your rating will stay saved." confirmLabel="Delete" cancelLabel="Cancel" pending={pending}
+    <ConfirmDialog open={deleting !== null} message={labels.deleteConfirm} confirmLabel={labels.delete} cancelLabel={labels.cancel} pending={pending}
       onConfirm={() => { if (deleting) { const id = deleting; setDeleting(null); run(() => deleteMovieWatch(slug, id)); } }} onCancel={() => setDeleting(null)} />
   </div>;
 }

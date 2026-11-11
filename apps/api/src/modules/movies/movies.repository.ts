@@ -1,7 +1,8 @@
+import { MOVIE_SEARCH_ID } from "./search/movie-search.types";
 import { dirtyMovieSearch } from "./search/movie-search-state.repository";
 import { injectable } from "tsyringe";
 import { and, asc, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
-import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState } from "@vefacaglar/db";
+import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState, movieSearchState } from "@vefacaglar/db";
 import { DbProvider } from "../../db.provider";
 import { MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
 import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
@@ -211,6 +212,23 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     const [person] = await this.dbProvider.client.select({ id: moviePeople.id, wikidataId: moviePeople.wikidataId, name: moviePeople.name })
       .from(moviePeople).where(eq(moviePeople.wikidataId, wikidataId));
     return person ?? null;
+  }
+  async hydrateCatalogPage(ids: string[]) {
+    // Hydrate cards and validate the index publication in the same database
+    // snapshot, saving a round trip without accepting mixed publications.
+    const rows = await this.dbProvider.client.select({
+      state: movieSearchState,
+      movie: { id: movies.id, slug: movies.slug, title: movies.title,
+        releaseDate: movies.releaseDate, releaseYear: movies.releaseYear, runtimeMinutes: movies.runtimeMinutes },
+    }).from(movieSearchState).leftJoin(movies, and(publicMovie(), inArray(movies.id, ids)))
+      .where(eq(movieSearchState.id, MOVIE_SEARCH_ID));
+    const byId = new Map(rows.flatMap(({ movie }) => movie ? [[movie.id, movie] as const] : []));
+    const items = ids.flatMap((id) => {
+      const movie = byId.get(id);
+      return movie ? [{ slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate,
+        releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes, posterImageUrl: null, posterAttribution: null }] : [];
+    });
+    return { items, state: rows[0]?.state ?? null };
   }
   async hydratePublicIds(ids: string[], personId?: string) {
     if (!ids.length) return [];

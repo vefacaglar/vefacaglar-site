@@ -3,6 +3,7 @@ import type { MovieCard } from "./list/list.schema";
 import type { MovieDetail } from "./detail/detail.schema";
 import type { EntityLabels, NormalizedMovie } from "./import/movie-source.types";
 import type { MoviePersonFilm } from "./people/detail/detail.schema";
+import type { MovieSearchState } from "./search/movie-search.types";
 export type MoviePersonResult = {
   person: { wikidataId: string; name: string | null };
   items: MoviePersonFilm[];
@@ -29,6 +30,7 @@ export interface IMoviesRepository {
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number; ranking: MovieRanking }>;
   findPublicPersonHeader(wikidataId: string): Promise<{ id: string; wikidataId: string; name: string | null } | null>;
   hydratePublicIds(ids: string[], personId?: string): Promise<(MovieCard | MoviePersonFilm)[]>;
+  hydrateCatalogPage(ids: string[]): Promise<{ items: MovieCard[]; state: MovieSearchState | null }>;
   findPublicBySlug(slug: string): Promise<MovieDetail | null>;
   findPublicPerson(wikidataId: string, filter: { page: number; limit: number }): Promise<MoviePersonResult | null>;
 }

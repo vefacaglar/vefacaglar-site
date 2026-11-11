@@ -34,7 +34,7 @@ export interface MovieRanking {
 }
 
 /** Only show an observation when the API identifies a fresh, valid source day. */
-export function getMovieRankingNotice(ranking: MovieRanking | null | undefined) {
+export function getMovieRankingNotice(ranking: MovieRanking | null | undefined, lang = "en") {
   if (!ranking || ranking.mode !== "wikipedia_interest" || !ranking.isFresh ||
       !ranking.sourceDate || !/^\d{4}-\d{2}-\d{2}$/.test(ranking.sourceDate) ||
       !parseDateKey(ranking.sourceDate)) return null;
@@ -53,7 +53,7 @@ export function getMovieRankingNotice(ranking: MovieRanking | null | undefined) 
       // The link falls back to the source documentation if the URL is invalid.
     }
   }
-  return { date: formatDate(ranking.sourceDate, "en"), sourceUrl };
+  return { date: formatDate(ranking.sourceDate, lang), sourceUrl };
 }
 export interface MovieCredit {
   statementId: string;

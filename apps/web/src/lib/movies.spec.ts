@@ -75,6 +75,10 @@ describe("movie ranking source notice", () => {
     });
   });
 
+  it("formats a ranking date in Turkish when requested", () => {
+    expect(getMovieRankingNotice(ranking, "tr")?.date).toBe("4 Kasım 2026");
+  });
+
   it("does not imply an observation for missing, stale, or invalid metadata", () => {
     expect(getMovieRankingNotice(undefined)).toBeNull();
     expect(getMovieRankingNotice({ ...ranking, isFresh: false })).toBeNull();
