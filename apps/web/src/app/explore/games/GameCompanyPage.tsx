@@ -59,9 +59,6 @@ export default async function GameCompanyPage({ role, slug, page }: {
         className={libraryStyles.pagination}
         labels={{ previous: "Previous", next: "Next", pageOf: "Page {current} of {total}" }}
       />
-      <p className={libraryStyles.source}>
-        Game data from <a href="https://www.igdb.com" target="_blank" rel="noopener noreferrer">IGDB</a>.
-      </p>
     </div>
   );
 }

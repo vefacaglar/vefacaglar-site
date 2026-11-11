@@ -53,13 +53,6 @@ export default async function Games(props: GamesProps) {
           />
         </>
       )}
-      <p className={styles.source}>
-        {dict.source_game_catalog}{" "}
-        <a href="https://www.igdb.com" target="_blank" rel="noopener noreferrer">
-          IGDB
-        </a>
-        .
-      </p>
     </div>
   );
 }
