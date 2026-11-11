@@ -56,7 +56,6 @@ export default function GameCard({ game, editHref, onDelete }: GameCardProps) {
         {game.originalTitle && <div className={styles.gameCardOriginalTitle}>{game.originalTitle}</div>}
         <div className={styles.gameCardMeta}>
           <span>{ds.games.card.release} {game.releaseDate || "—"}</span>
-          {game.hltbMainHours && <span>{ds.games.card.hltb} {game.hltbMainHours}h</span>}
         </div>
         <div className={styles.gameCardRelations}>
           <RelationPills pills={pills} />

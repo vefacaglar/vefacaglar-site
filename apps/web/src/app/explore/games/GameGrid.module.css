@@ -61,25 +61,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.durations {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.duration {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.durationHours {
-  color: var(--text);
-}
-
 .ratings {
   display: inline-flex;
   align-items: center;
@@ -148,7 +129,6 @@
     gap: 6px 14px;
   }
 
-  .durations,
   .ratings {
     flex-wrap: wrap;
   }

@@ -17,8 +17,6 @@ import formsStyles from "./components/forms.module.css";
 import GameFieldsForm, { GameFieldsState } from "./components/GameFieldsForm";
 import RelationsGrid from "./components/RelationsGrid";
 import ds from "../../../lib/dashboard-strings";
-import HltbLookupPanel from "./components/HltbLookupPanel";
-import { sameHours, toHours, type HltbTimes } from "./hltb-types";
 
 function gameToFields(game: Game): GameFieldsState {
   return {
@@ -30,9 +28,6 @@ function gameToFields(game: Game): GameFieldsState {
     releaseDate: game.releaseDate || "",
     metacriticScore: game.metacriticScore ?? "",
     openCriticScore: game.openCriticScore ?? "",
-    hltbMainHours: game.hltbMainHours || "",
-    hltbMainExtraHours: game.hltbMainExtraHours || "",
-    hltbCompletionistHours: game.hltbCompletionistHours || "",
   };
 }
 
@@ -52,11 +47,6 @@ export default function GameEditForm({
   const [selectedThemes, setSelectedThemes] = useState<GameRelationItem[]>(game.themes);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [hltbBusy, setHltbBusy] = useState(false);
-  const [savedHours, setSavedHours] = useState<HltbTimes>({ mainHours: toHours(game.hltbMainHours), mainExtraHours: toHours(game.hltbMainExtraHours), completionistHours: toHours(game.hltbCompletionistHours) });
-  const durationDirty = !sameHours(savedHours, { mainHours: toHours(fields.hltbMainHours), mainExtraHours: toHours(fields.hltbMainExtraHours), completionistHours: toHours(fields.hltbCompletionistHours) });
-  const setDurationFields = (times: HltbTimes) => setFields((previous) => ({ ...previous, hltbMainHours: times.mainHours ?? "", hltbMainExtraHours: times.mainExtraHours ?? "", hltbCompletionistHours: times.completionistHours ?? "" }));
-  const hltbApplied = (times: HltbTimes) => { setSavedHours(times); setDurationFields(times); };
 
   const [options, setOptions] = useState<{
     genres: GameRelationItem[];
@@ -102,7 +92,6 @@ export default function GameEditForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (hltbBusy) return;
     if (!fields.title.trim()) {
       setError(ds.games.errors.titleRequired);
       return;
@@ -124,9 +113,6 @@ export default function GameEditForm({
       releaseDate: fields.releaseDate.trim() || null,
       metacriticScore: fields.metacriticScore !== "" ? Number(fields.metacriticScore) : null,
       openCriticScore: fields.openCriticScore !== "" ? Number(fields.openCriticScore) : null,
-      hltbMainHours: fields.hltbMainHours !== "" ? String(fields.hltbMainHours) : null,
-      hltbMainExtraHours: fields.hltbMainExtraHours !== "" ? String(fields.hltbMainExtraHours) : null,
-      hltbCompletionistHours: fields.hltbCompletionistHours !== "" ? String(fields.hltbCompletionistHours) : null,
     });
 
     if (res.error) {
@@ -156,17 +142,8 @@ export default function GameEditForm({
             <GameFieldsForm
               values={fields}
               onChange={updateField}
-              disabled={submitting || hltbBusy}
-              showPlaceholders={false}
-            />
-            <HltbLookupPanel
-              gameId={game.id}
-              title={game.title}
-              durationDirty={durationDirty}
               disabled={submitting}
-              onApplied={hltbApplied}
-              onDiscard={() => setDurationFields(savedHours)}
-              onBusyChange={setHltbBusy}
+              showPlaceholders={false}
             />
           </div>
           <RelationsGrid
@@ -180,12 +157,12 @@ export default function GameEditForm({
             selectedGenres={selectedGenres}
             selectedPlatforms={selectedPlatforms}
             selectedThemes={selectedThemes}
-            disabled={submitting || hltbBusy}
+            disabled={submitting}
           />
         </div>
         <div className={formsStyles.formActions}>
           <Button href={returnUrl} variant="ghost">{ds.games.buttons.cancel}</Button>
-          <Button type="submit" variant="accent" disabled={submitting || hltbBusy}>
+          <Button type="submit" variant="accent" disabled={submitting}>
             {submitting ? ds.games.buttons.saving : ds.games.buttons.saveChanges}
           </Button>
         </div>

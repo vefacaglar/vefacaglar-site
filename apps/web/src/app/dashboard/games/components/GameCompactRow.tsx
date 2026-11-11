@@ -54,7 +54,6 @@ export default function GameCompactRow({ game, editHref, onDelete }: GameCompact
       </div>
       <div className={styles.gameCompactMetaCol}>
         <span>{ds.games.card.release} {game.releaseDate || "—"}</span>
-        {game.hltbMainHours && <span>{ds.games.card.hltb} {game.hltbMainHours}h</span>}
       </div>
       <div className={styles.gameCompactRelationsCol}>
         <RelationPills pills={pills} />

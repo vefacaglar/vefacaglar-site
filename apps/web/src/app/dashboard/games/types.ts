@@ -56,9 +56,6 @@ export interface Game {
   releaseDate: string | null;
   metacriticScore: number | null;
   openCriticScore: number | null;
-  hltbMainHours: string | null;
-  hltbMainExtraHours: string | null;
-  hltbCompletionistHours: string | null;
   createdAt: string;
   updatedAt: string | null;
 

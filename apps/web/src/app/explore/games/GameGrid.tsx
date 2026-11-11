@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { localizeHref } from "../../../lib/localizeHref";
-import { formatHltbHours, formatReviewScore, selectReviewScores } from "./cardMetrics";
+import { formatReviewScore, selectReviewScores } from "./cardMetrics";
 import { scoreTier } from "./scoreTier";
 import styles from "./GameGrid.module.css";
 
@@ -13,9 +13,6 @@ export type GameCardItem = {
   metacriticScore?: number | null;
   openCriticScore?: number | null;
   criticScore?: number | null;
-  hltbMainHours?: string | null;
-  hltbMainExtraHours?: string | null;
-  hltbCompletionistHours?: string | null;
 };
 
 export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang: string }) {
@@ -24,12 +21,7 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
       {games.map((game) => {
         const year = game.releaseDate?.slice(0, 4) ?? null;
         const reviews = selectReviewScores(game);
-        const durations = [
-          { label: "Main", hours: formatHltbHours(game.hltbMainHours, lang) },
-          { label: "Extras", hours: formatHltbHours(game.hltbMainExtraHours, lang) },
-          { label: "100%", hours: formatHltbHours(game.hltbCompletionistHours, lang) },
-        ].filter((duration) => duration.hours !== null);
-        const hasMeta = durations.length > 0 || reviews.length > 0 || year !== null;
+        const hasMeta = reviews.length > 0 || year !== null;
 
         return (
           <li key={game.slug} className={styles.item}>
@@ -37,16 +29,6 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
               <span className={styles.title}>{game.title}</span>
               {hasMeta && (
                 <span className={styles.meta}>
-                  {durations.length > 0 && (
-                    <span className={styles.durations}>
-                      {durations.map(({ label, hours }) => (
-                        <span className={styles.duration} key={label}>
-                          <span>{label}</span>
-                          <span className={styles.durationHours}>{hours}h</span>
-                        </span>
-                      ))}
-                    </span>
-                  )}
                   {reviews.length > 0 && (
                     <span className={styles.ratings}>
                       {reviews.map(({ source, value }) => (

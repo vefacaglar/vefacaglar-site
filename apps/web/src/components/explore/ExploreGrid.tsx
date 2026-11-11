@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatHltbHours, formatReviewScore, selectReviewScores } from "../../app/explore/games/cardMetrics";
+import { formatReviewScore, selectReviewScores } from "../../app/explore/games/cardMetrics";
 import { scoreTier } from "../../app/explore/games/scoreTier";
 import { localizeHref } from "../../lib/localizeHref";
 import type { MovieCard } from "../../lib/movies";
@@ -12,7 +12,6 @@ export interface ExploreGame {
   metacriticScore?: number | null;
   openCriticScore?: number | null;
   criticScore?: number | null;
-  hltbMainHours?: string | null;
 }
 
 export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
@@ -38,10 +37,9 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
         const isGame = type === "game";
         const year = isGame ? item.releaseDate?.slice(0, 4) ?? null : item.releaseYear;
         const topScore = isGame ? selectReviewScores(item)[0] : undefined;
-        const mainHours = isGame ? formatHltbHours(item.hltbMainHours, lang) : null;
         const runtime = !isGame && item.runtimeMinutes !== null ? `${item.runtimeMinutes} min` : null;
         const hasMeta =
-          showKind || Boolean(mainHours) || Boolean(topScore) || Boolean(runtime) || (year !== null && year !== "");
+          showKind || Boolean(topScore) || Boolean(runtime) || (year !== null && year !== "");
 
         return (
           <li key={`${type}:${item.slug}`} className={styles.item}>
@@ -53,11 +51,6 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
               {hasMeta && (
                 <span className={styles.metaGroup}>
                   {showKind && <span className={styles.kind}>{isGame ? "Game" : "Film"}</span>}
-                  {mainHours && (
-                    <span className={styles.meta}>
-                      Main <span className={styles.metaValue}>{mainHours}h</span>
-                    </span>
-                  )}
                   {topScore && (
                     <span className={styles.rating}>
                       <span className={styles.meta}>{topScore.source}</span>

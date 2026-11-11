@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatHltbHours, formatReviewScore, selectReviewScores } from "./cardMetrics";
+import { formatReviewScore, selectReviewScores } from "./cardMetrics";
 
 describe("game card metrics", () => {
   it("keeps both real review providers without adding a duplicate IGDB aggregate", () => {
@@ -27,13 +27,5 @@ describe("game card metrics", () => {
     expect(formatReviewScore(87.5, "tr")).toBe("87,5");
     expect(formatReviewScore(0, "en")).toBe("0");
     expect(formatReviewScore(100, "en")).toBe("100");
-  });
-
-  it("formats actual HLTB hours and hides absent or unusable values", () => {
-    expect(formatHltbHours("30.50", "en")).toBe("30.5");
-    expect(formatHltbHours("30.50", "tr")).toBe("30,5");
-    for (const value of [null, undefined, "", " ", "0", "0.001", "-2", "not a number", "Infinity"]) {
-      expect(formatHltbHours(value, "en")).toBeNull();
-    }
   });
 });

@@ -24,7 +24,6 @@ export type LogGameInfo = {
   developers: string | null;
   genres: string[];
   criticScore: number | null;
-  hltbMainHours: number | null;
 };
 
 type StoredTimer = {
@@ -254,18 +253,11 @@ export default function LogEditForm({
               {gameInfo.genres.length > 0 && (
                 <p className={styles.logGameGenres}>{gameInfo.genres.join(", ")}</p>
               )}
-              {(gameInfo.criticScore !== null || gameInfo.hltbMainHours !== null) && (
+              {gameInfo.criticScore !== null && (
                 <div className={styles.logGameBadges}>
-                  {gameInfo.criticScore !== null && (
-                    <span className={styles.logGameBadge}>
-                      {dict.critic_score} {gameInfo.criticScore}/100
-                    </span>
-                  )}
-                  {gameInfo.hltbMainHours !== null && (
-                    <span className={styles.logGameBadge}>
-                      {dict.hltb_main} {gameInfo.hltbMainHours}{dict.hours_short}
-                    </span>
-                  )}
+                  <span className={styles.logGameBadge}>
+                    {dict.critic_score} {gameInfo.criticScore}/100
+                  </span>
                 </div>
               )}
             </div>

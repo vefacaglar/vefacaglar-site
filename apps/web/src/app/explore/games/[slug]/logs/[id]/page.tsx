@@ -21,7 +21,6 @@ type LogDetail = {
 type CatalogGameDetail = {
   releaseDate?: string | null;
   criticScore?: number | null;
-  hltbMainHours?: number | null;
   developers?: { name: string }[];
   genres?: { name: string }[];
 };
@@ -77,7 +76,6 @@ export default async function GameLogPage(props: LogPageProps) {
     developers: catalogGame?.developers?.map((d) => d.name).join(", ") || null,
     genres: catalogGame?.genres?.slice(0, 3).map((g) => g.name) ?? [],
     criticScore: typeof catalogGame?.criticScore === "number" ? catalogGame.criticScore : null,
-    hltbMainHours: typeof catalogGame?.hltbMainHours === "number" ? catalogGame.hltbMainHours : null,
   };
 
   return (

@@ -1,11 +1,10 @@
 import React from "react";
 import styles from "./forms.module.css";
 import ds from "../../../../lib/dashboard-strings";
-import { toDecimal, toDigits } from "../../../../lib/numericInput";
+import { toDigits } from "../../../../lib/numericInput";
 import DatePicker from "../../../components/DatePicker";
 
 export type ScoreField = number | "";
-export type HoursField = string | number;
 
 export interface GameFieldsState {
   title: string;
@@ -16,9 +15,6 @@ export interface GameFieldsState {
   releaseDate: string;
   metacriticScore: ScoreField;
   openCriticScore: ScoreField;
-  hltbMainHours: HoursField;
-  hltbMainExtraHours: HoursField;
-  hltbCompletionistHours: HoursField;
 }
 
 export type GameFieldKey = keyof GameFieldsState;
@@ -150,48 +146,6 @@ export default function GameFieldsForm({
               const digits = toDigits(e.target.value);
               onChange("openCriticScore", digits === "" ? "" : Math.min(100, Number(digits)));
             }}
-            disabled={disabled}
-          />
-        </div>
-      </div>
-
-      <div className={styles.rowThreeFields}>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="game-hltb-main">{ds.games.form.hltbMain}</label>
-          <input
-            id="game-hltb-main"
-            type="text"
-            inputMode="decimal"
-            className={styles.input}
-            placeholder={showPlaceholders ? ds.games.placeholders.hltbMain : undefined}
-            value={values.hltbMainHours}
-            onChange={(e) => onChange("hltbMainHours", toDecimal(e.target.value))}
-            disabled={disabled}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="game-hltb-extra">{ds.games.form.hltbMainEx}</label>
-          <input
-            id="game-hltb-extra"
-            type="text"
-            inputMode="decimal"
-            className={styles.input}
-            placeholder={showPlaceholders ? ds.games.placeholders.hltbMainEx : undefined}
-            value={values.hltbMainExtraHours}
-            onChange={(e) => onChange("hltbMainExtraHours", toDecimal(e.target.value))}
-            disabled={disabled}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="game-hltb-comp">{ds.games.form.hltbComp}</label>
-          <input
-            id="game-hltb-comp"
-            type="text"
-            inputMode="decimal"
-            className={styles.input}
-            placeholder={showPlaceholders ? ds.games.placeholders.hltbComp : undefined}
-            value={values.hltbCompletionistHours}
-            onChange={(e) => onChange("hltbCompletionistHours", toDecimal(e.target.value))}
             disabled={disabled}
           />
         </div>

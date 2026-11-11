@@ -99,9 +99,6 @@ const EMPTY_GAME_FIELDS: GameFieldsState = {
   releaseDate: "",
   metacriticScore: "",
   openCriticScore: "",
-  hltbMainHours: "",
-  hltbMainExtraHours: "",
-  hltbCompletionistHours: "",
 };
 
 interface GamesDashboardClientProps {
@@ -223,9 +220,6 @@ export default function GamesDashboardClient({
       releaseDate: game.releaseDate || "",
       metacriticScore: game.metacriticScore !== null ? game.metacriticScore : "",
       openCriticScore: game.openCriticScore !== null ? game.openCriticScore : "",
-      hltbMainHours: game.hltbMainHours || "",
-      hltbMainExtraHours: game.hltbMainExtraHours || "",
-      hltbCompletionistHours: game.hltbCompletionistHours || "",
     });
     setSelectedDevelopers(game.developers);
     setSelectedPublishers(game.publishers);
@@ -308,9 +302,6 @@ export default function GamesDashboardClient({
         releaseDate: gameFields.releaseDate.trim() || null,
         metacriticScore: gameFields.metacriticScore !== "" ? Number(gameFields.metacriticScore) : null,
         openCriticScore: gameFields.openCriticScore !== "" ? Number(gameFields.openCriticScore) : null,
-        hltbMainHours: gameFields.hltbMainHours !== "" ? String(gameFields.hltbMainHours) : null,
-        hltbMainExtraHours: gameFields.hltbMainExtraHours !== "" ? String(gameFields.hltbMainExtraHours) : null,
-        hltbCompletionistHours: gameFields.hltbCompletionistHours !== "" ? String(gameFields.hltbCompletionistHours) : null,
       };
 
       if (editingItem) {

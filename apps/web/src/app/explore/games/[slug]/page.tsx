@@ -27,9 +27,6 @@ type GameDetail = {
   releaseDate: string | null;
   criticScore: number | null;
   criticScoreCount: number | null;
-  hltbMainHours: number | null;
-  hltbMainExtraHours: number | null;
-  hltbCompletionistHours: number | null;
   developers: Named[];
   publishers: Named[];
   genres: Named[];
@@ -105,14 +102,6 @@ export default async function Game(props: GameProps) {
     ] as Fact[]
   ).filter((fact) => fact.text || fact.tags?.length || fact.companies?.length);
 
-  const hltb: [string, number | null][] = [
-    [dict.hltb_main, game.hltbMainHours],
-    [dict.hltb_main_extra, game.hltbMainExtraHours],
-    [dict.hltb_completionist, game.hltbCompletionistHours],
-  ];
-  const longest = Math.max(0, ...hltb.map(([, hours]) => hours ?? 0));
-  const hasHltb = longest > 0;
-
   return (
     <article>
       <header className={styles.hero}>
@@ -156,36 +145,6 @@ export default async function Game(props: GameProps) {
       <div className={styles.body}>
         <div className={styles.main}>
           {game.description && <p className={styles.description}>{game.description}</p>}
-
-          {hasHltb && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>{dict.how_long_to_beat}</h2>
-              <ul className={styles.hltb}>
-                {hltb.map(([label, hours]) => (
-                  <li key={label} className={styles.hltbRow}>
-                    <span className={styles.hoursLabel}>{label}</span>
-                    {/* Bar length is relative to the longest of the three times. */}
-                    <svg className={styles.bar} viewBox="0 0 100 3" preserveAspectRatio="none" aria-hidden="true">
-                      <rect className={styles.barTrack} x="0" y="0" width="100" height="3" />
-                      {hours !== null && (
-                        <rect className={styles.barFill} x="0" y="0" width={(hours / longest) * 100} height="3" />
-                      )}
-                    </svg>
-                    <span className={styles.hours}>
-                      {hours !== null ? (
-                        <>
-                          {hours}
-                          <span className={styles.hoursUnit}>{dict.hours_short}</span>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{dict.my_logs}</h2>
