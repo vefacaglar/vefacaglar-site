@@ -55,7 +55,7 @@ export const JOB_TYPES = {
   }),
   "catalog.popularity.refresh": defineJobType({
     description:
-      "Refresh game popularity from IGDB and optional HowLongToBeat engagement, supplement missing completion hours, and synchronize game search documents. Runs daily and shares the search indexing lock.",
+      "Refresh game popularity and owner recommendations from IGDB signals and game modes, and synchronize game search documents. Runs daily and shares the search indexing lock.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),

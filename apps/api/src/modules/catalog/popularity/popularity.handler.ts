@@ -1,9 +1,8 @@
 import { inject, injectable } from "tsyringe";
 import { GAMES_REPOSITORY } from "../catalog.tokens";
-import type { HltbPopularityUpdate, IGamesRepository, PopularitySignal } from "../games.repository.interface";
-import { HLTB_CLIENT, IGDB_CLIENT } from "../import/import.tokens";
-import type { IHltbClient, IIgdbClient } from "../import/import.types";
-import { matchHltbGames } from "../import/hltb-data";
+import type { IGamesRepository, PopularitySignal } from "../games.repository.interface";
+import { IGDB_CLIENT } from "../import/import.tokens";
+import type { IIgdbClient } from "../import/import.types";
 import { EVENT_BUS } from "../../../shared/events/events.tokens";
 import type { IEventBus } from "../../../shared/events/event-bus";
 import { gamesImported } from "../catalog.events";
@@ -22,9 +21,9 @@ const SCORE_EPSILON = 1e-9;
 
 /**
  * Pulls current IGDB interest signals, stores those belonging to the catalog,
- * supplements HLTB data separately, and recomputes each game's trend score
- * and owner-taste recommendation, and reindexes changed games. Strict CLI runs resynchronize all considered
- * games so retrying a failed search write also repairs unchanged scores.
+ * recomputes each game's trend score and owner-taste recommendation, and
+ * reindexes changed games. Strict CLI runs resynchronize all considered games
+ * so retrying a failed search write also repairs unchanged scores.
  */
 @injectable()
 export class RefreshPopularityHandler {
@@ -32,7 +31,6 @@ export class RefreshPopularityHandler {
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(IGDB_CLIENT) private readonly igdb: IIgdbClient,
     @inject(EVENT_BUS) private readonly eventBus: IEventBus,
-    @inject(HLTB_CLIENT) private readonly hltb: IHltbClient,
     private readonly ownerRanking: OwnerRankingService
   ) {}
 
@@ -41,7 +39,7 @@ export class RefreshPopularityHandler {
     const modes = await this.ownerRanking.backfillGameModes();
     const sources = await this.gamesRepo.listPopularitySources();
     if (sources.length === 0) {
-      return { gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0, hltbStatus: "updated", hltbFetchedCount: 0, hltbMatchedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
+      return { gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
     }
     const gameIdByIgdbId = new Map(sources.map((s) => [s.igdbId, s.id]));
 
@@ -62,32 +60,6 @@ export class RefreshPopularityHandler {
       throw new Error("IGDB returned no current popularity data for this catalog; existing scores were kept");
     }
 
-    const hltbUpdates: HltbPopularityUpdate[] = [];
-    let hltbStatus: RefreshPopularityResponse["hltbStatus"] = "updated";
-    let hltbFetchedCount = 0;
-    if (sources.length > 0) {
-      try {
-        const entries = await this.hltb.listPopular();
-        hltbFetchedCount = entries.length;
-        const sourceById = new Map(sources.map((source) => [source.id, source]));
-        for (const [gameId, entry] of matchHltbGames(sources, entries)) {
-          const previous = sourceById.get(gameId)!.hltb;
-          // Missing fields on a changed provider response never erase a last good count.
-          hltbUpdates.push({
-            gameId, hltbId: entry.hltbId,
-            completed: entry.completed ?? previous?.completed ?? null,
-            backlog: entry.backlog ?? previous?.backlog ?? null,
-            playing: entry.playing ?? previous?.playing ?? null,
-            updatedAt: [entry.completed, entry.backlog, entry.playing].some((count) => count !== null)
-              ? new Date() : previous?.updatedAt ?? new Date(),
-            times: entry.times,
-          });
-        }
-      } catch {
-        // Optional website data must not block IGDB or expose public session tokens in errors.
-        hltbStatus = "unavailable";
-      }
-    }
     const valueOf = (gameId: string, type: number) => signalsByKey.get(`${gameId}:${type}`)?.value ?? null;
     const inputs: PopularityInput[] = sources.map((s) => ({
       id: s.id,
@@ -111,7 +83,6 @@ export class RefreshPopularityHandler {
       scores,
       recommendationScores,
       recommendationVersion: OWNER_RANKING_CONFIG.version,
-      hltbUpdates,
       updatedAt: new Date(),
     });
 
@@ -124,7 +95,6 @@ export class RefreshPopularityHandler {
           ...recommendationScores.filter((score) => scoreChanged(
             sourcesById.get(score.id)?.recommendationScore ?? null, score.score
           )).map((score) => score.id),
-          ...hltbUpdates.map((update) => update.gameId),
         ])];
     // The bulk-change event reindexes the games in batches through the search subscriber.
     await this.eventBus.publish(
@@ -137,9 +107,6 @@ export class RefreshPopularityHandler {
       signalCount: signals.length,
       scoredCount: scores.filter((s) => s.score !== null).length,
       reindexedCount: changedIds.length,
-      hltbStatus,
-      hltbFetchedCount,
-      hltbMatchedCount: hltbUpdates.length,
       recommendationScoredCount: recommendationScores.length,
       gameModesCheckedCount: modes.checkedCount,
       gameModesStatus: modes.status,

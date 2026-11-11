@@ -25,7 +25,7 @@ export class ListGamesHandler {
       limit: limitNum,
     });
 
-    // Keep search relevance/counts, but never display stale indexed completion times.
+    // Keep search relevance/counts, while hydrating current fields and relations from SQL.
     // Administrative pages need relations; load at most one validated page in small batches.
     const ids = hits.slice(0, Math.min(limitNum, 250)).map((hit) => hit.id);
     const batches: string[][] = [];

@@ -22,24 +22,6 @@ export type ImportedGame = {
   themes: ImportedLookup[];
 };
 
-/** Completion times in hours, as reported by HowLongToBeat. */
-export type ImportedTimes = {
-  mainHours: number | null;
-  mainExtraHours: number | null;
-  completionistHours: number | null;
-};
-
-/** Public HLTB search data; its website interface is not a supported developer API. */
-export type HltbPopularityGame = {
-  hltbId: number;
-  title: string;
-  releaseYear: number | null;
-  completed: number | null;
-  backlog: number | null;
-  playing: number | null;
-  times: ImportedTimes;
-};
-
 export type ImportedGamePage = {
   /** IGDB id of the last raw row in the page; pass it back as `afterId`. Null when the catalog is exhausted. */
   lastId: number | null;
@@ -65,13 +47,6 @@ export interface IIgdbClient {
   listPopularity(popularityTypes: number[]): Promise<PopularityPrimitive[]>;
   /** At most 500 explicit ids; omitted games are not reported as empty modes. */
   listGameModes(igdbIds: number[], signal?: AbortSignal): Promise<{ igdbId: number; gameModeIds: number[] }[]>;
-}
-
-export interface IHltbClient {
-  searchCandidates(title: string): Promise<HltbPopularityGame[]>;
-  findTimes(title: string): Promise<ImportedTimes | null>;
-  /** At most 100 popular games, fetched in a bounded number of public search pages. */
-  listPopular(): Promise<HltbPopularityGame[]>;
 }
 
 /** Lowercase alphanumerics only, so "The Witcher 3: Wild Hunt" matches "the witcher 3 wild hunt". */

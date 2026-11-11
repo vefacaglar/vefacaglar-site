@@ -78,7 +78,7 @@ export class TypesenseSearchReader implements ISearchReader {
   searchPublicGames(query: SearchQuery): Promise<SearchResult<GameCard>> {
     return this.runSearch(
       () => this.runPublicGamesSearch(query),
-      () => this.gamesRepo.listPublic({ q: query.q, page: query.page ?? 1, limit: query.limit ?? 24 }),
+      () => this.fallbackPublicGamesSearch(query),
       "public games"
     );
   }
@@ -182,7 +182,7 @@ export class TypesenseSearchReader implements ISearchReader {
         : {
             sort_by: "popularityScore:desc,releaseTimestamp:desc",
           }),
-      include_fields: "id,slug,title,coverImageUrl,releaseDate,metacriticScore,openCriticScore,criticScore,criticScoreCount,popularityScore,hltbMainHours,hltbMainExtraHours,hltbCompletionistHours",
+      include_fields: "id,slug,title,releaseDate,metacriticScore,openCriticScore,criticScore,criticScoreCount,popularityScore",
       page: query.page ?? 1,
       per_page: query.limit ?? 24,
     });
@@ -282,6 +282,20 @@ export class TypesenseSearchReader implements ISearchReader {
 
   private fallbackGamesSearch(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
     return this.gamesRepo.list({ q: query.q, page: query.page, limit: query.limit });
+  }
+
+  private async fallbackPublicGamesSearch(query: SearchQuery): Promise<SearchResult<GameCard>> {
+    const result = await this.gamesRepo.listPublic({ q: query.q, page: query.page ?? 1, limit: query.limit ?? 24 });
+    return {
+      total: result.total,
+      items: result.items.map((item) => ({
+        ...item,
+        coverImageUrl: null,
+        hltbMainHours: null,
+        hltbMainExtraHours: null,
+        hltbCompletionistHours: null,
+      })),
+    };
   }
 
   private fallbackPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {

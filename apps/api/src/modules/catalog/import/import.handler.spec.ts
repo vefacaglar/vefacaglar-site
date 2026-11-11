@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ImportGameHandler } from "./import.handler";
 import type { CatalogImportWrite, CatalogIndex, IGamesRepository } from "../games.repository.interface";
 import type { IEventBus } from "../../../shared/events/event-bus";
-import type { IHltbClient, IIgdbClient, ImportedGame } from "./import.types";
+import type { IIgdbClient, ImportedGame } from "./import.types";
 
 const igdbGame: ImportedGame = {
   igdbId: 14593,
@@ -58,7 +58,6 @@ const noLookups = () => ({ developer: [], publisher: [], genre: [], platform: []
 describe("ImportGameHandler", () => {
   let gamesRepo: Record<keyof IGamesRepository, any>;
   let igdb: Record<keyof IIgdbClient, any>;
-  let hltb: Record<keyof IHltbClient, any>;
   let eventBus: Record<keyof IEventBus, any>;
   let handler: ImportGameHandler;
 
@@ -75,14 +74,9 @@ describe("ImportGameHandler", () => {
         lookups: { ...noLookups(), platform: [{ id: "plat-new", slug: "win", created: true }] },
       })),
     } as unknown as Record<keyof IGamesRepository, any>;
-    igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn(), listPopularity: vi.fn() };
-    hltb = {
-      searchCandidates: vi.fn(),
-      findTimes: vi.fn().mockResolvedValue({ mainHours: 27, mainExtraHours: 41.6, completionistHours: 65.6 }),
-      listPopular: vi.fn(),
-    };
+    igdb = { findGame: vi.fn().mockResolvedValue(igdbGame), listGames: vi.fn(), listPopularity: vi.fn() } as unknown as Record<keyof IIgdbClient, any>;
     eventBus = { publish: vi.fn(), subscribe: vi.fn() };
-    handler = new ImportGameHandler(gamesRepo, igdb, hltb, eventBus);
+    handler = new ImportGameHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient, eventBus as unknown as IEventBus);
   });
 
   const withIndexedGame = (game: Partial<CatalogIndex["games"][number]> = {}, record: object = {}) => {
@@ -107,7 +101,15 @@ describe("ImportGameHandler", () => {
     expect(gamesRepo.writeImportPage).toHaveBeenCalledTimes(1);
     const write = lastWrite();
     expect(write.newGames).toEqual([
-      expect.objectContaining({ igdbId: 14593, slug: "hollow-knight", criticScore: 87, igdbRatingCount: 4200, hltbMainHours: "27", hltbMainExtraHours: "41.6" }),
+      expect.objectContaining({
+        igdbId: 14593,
+        slug: "hollow-knight",
+        criticScore: 87,
+        igdbRatingCount: 4200,
+        hltbMainHours: null,
+        hltbMainExtraHours: null,
+        hltbCompletionistHours: null,
+      }),
     ]);
     const gameId = write.newGames[0].id;
     expect(write.lookups.platform).toEqual([{ name: "PC", slug: "win" }]);
@@ -129,8 +131,8 @@ describe("ImportGameHandler", () => {
   it("writes a whole page at once and loads the catalog index only once per run", async () => {
     const other = { ...igdbGame, igdbId: 1, title: "Celeste", slug: "celeste" };
 
-    const results = await handler.importPage([igdbGame, other], { skipHltb: true });
-    await handler.importPage([{ ...other, igdbId: 2, slug: "celeste-2", title: "Celeste 2" }], { skipHltb: true });
+    const results = await handler.importPage([igdbGame, other]);
+    await handler.importPage([{ ...other, igdbId: 2, slug: "celeste-2", title: "Celeste 2" }]);
 
     expect(results.map((r) => r.status)).toEqual(["created", "created"]);
     expect(gamesRepo.writeImportPage).toHaveBeenCalledTimes(2);
@@ -139,7 +141,7 @@ describe("ImportGameHandler", () => {
   });
 
   it("skips a second record in the same page that matches a game the page created", async () => {
-    const results = await handler.importPage([igdbGame, { ...igdbGame, igdbId: 99 }], { skipHltb: true });
+    const results = await handler.importPage([igdbGame, { ...igdbGame, igdbId: 99 }]);
 
     expect(results.map((r) => r.status)).toEqual(["created", "skipped"]);
     expect(lastWrite().newGames).toHaveLength(1);
@@ -170,8 +172,6 @@ describe("ImportGameHandler", () => {
           coverImageUrl: "https://images.igdb.com/cover.jpg",
           criticScore: 87,
           criticScoreCount: 12,
-          hltbMainHours: "27",
-          hltbMainExtraHours: "41.6",
           igdbRatingCount: 4200,
           updatedAt: expect.any(Date),
         },
@@ -265,27 +265,10 @@ describe("ImportGameHandler", () => {
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 
-  it("still imports when HLTB fails", async () => {
-    hltb.findTimes.mockRejectedValue(new Error("HLTB search failed: 500"));
-
-    const result = await handler.handle("Hollow Knight");
-
-    expect(result.status).toBe("created");
-    expect(result.notes).toContain("HLTB error: HLTB search failed: 500");
-    expect(lastWrite().newGames[0]).toMatchObject({ hltbMainHours: null });
-  });
-
-  it("does not call HLTB when it is skipped", async () => {
-    await handler.importPage([igdbGame], { skipHltb: true });
-
-    expect(hltb.findTimes).not.toHaveBeenCalled();
-    expect(igdb.findGame).not.toHaveBeenCalled();
-  });
-
   it("throws from importPage when the bulk write fails, so the crawl can retry the page", async () => {
     gamesRepo.writeImportPage.mockRejectedValue(new Error("connection reset"));
 
-    await expect(handler.importPage([igdbGame], { skipHltb: true })).rejects.toThrow("connection reset");
+    await expect(handler.importPage([igdbGame])).rejects.toThrow("connection reset");
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 

@@ -39,13 +39,13 @@ describe("GetPublisherGamesHandler", () => {
       company: { ...company, createdAt: new Date() }, total: 22,
       items: [{ slug: "game", title: "Game", coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co2222.jpg", releaseDate: null,
         criticScore: 82, criticScoreCount: 3, metacriticScore: null, openCriticScore: 86,
-        popularityScore: 0, hltbMainHours: "15", hltbMainExtraHours: "Infinity", hltbCompletionistHours: "999999", id: "private-id" }],
+        popularityScore: 0, hltbMainHours: "15", hltbMainExtraHours: "30", hltbCompletionistHours: "60", id: "private-id" }],
     });
     const result = await handler.handle({ params: { slug: "studio" }, query: { page: 2, limit: 21 } } as any);
     expect(result).toMatchObject({ company, total: 22, page: 2, limit: 21, totalPages: 2 });
     expect(result.company).not.toHaveProperty("createdAt");
     expect(result.items[0]).toMatchObject({ coverImageUrl: null, criticScore: 82, openCriticScore: 86, popularityScore: 0,
-      hltbMainHours: "15", hltbMainExtraHours: null, hltbCompletionistHours: null });
+      hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[0]).not.toHaveProperty("id");
   });
 

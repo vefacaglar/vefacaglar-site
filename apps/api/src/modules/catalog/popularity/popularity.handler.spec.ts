@@ -4,7 +4,7 @@ import type { OwnerRankingService } from "./owner-ranking.service";
 import { RefreshPopularityHandler } from "./popularity.handler";
 import { computePopularityScores, percentileRanks, type PopularityInput } from "./popularity-score";
 import type { IGamesRepository } from "../games.repository.interface";
-import type { IHltbClient, IIgdbClient } from "../import/import.types";
+import type { IIgdbClient } from "../import/import.types";
 import type { IEventBus } from "../../../shared/events/event-bus";
 
 const at = (iso: string) => new Date(iso);
@@ -19,9 +19,9 @@ describe("percentileRanks", () => {
 });
 
 describe("computePopularityScores", () => {
-  it("does not invent current interest from historical ratings, reviews or HLTB completions", () => {
+  it("does not invent current interest from historical ratings or reviews", () => {
     const scores = computePopularityScores([
-      { id: "historical", signals: { played: 10_000_000, steamReviews: 5_000_000, ratingCount: 1_000_000, hltbEngagement: 100_000_000 } } as unknown as PopularityInput,
+      { id: "historical", signals: { played: 10_000_000, steamReviews: 5_000_000, ratingCount: 1_000_000 } } as unknown as PopularityInput,
       { id: "unknown", signals: {} },
     ]);
     expect(scores.get("historical")).toBeNull();
@@ -39,7 +39,7 @@ describe("computePopularityScores", () => {
 
   it("ranks recent interest above an older game with enormous lifetime counters", () => {
     const scores = computePopularityScores([
-      { id: "old", signals: { visits: 1, playing: 1, steam24hPeak: 1, played: 1e9, ratingCount: 1e9, hltbEngagement: 1e9 } } as unknown as PopularityInput,
+      { id: "old", signals: { visits: 1, playing: 1, steam24hPeak: 1, played: 1e9, ratingCount: 1e9 } } as unknown as PopularityInput,
       { id: "recent", signals: { visits: 100, playing: 10, steam24hPeak: 10 } },
     ]);
     expect(scores.get("recent")).toBe(1);
@@ -83,16 +83,15 @@ describe("RefreshPopularityHandler", () => {
   let gamesRepo: Record<keyof IGamesRepository, any>;
   let igdb: Record<keyof IIgdbClient, any>;
   let eventBus: Record<keyof IEventBus, any>;
-  let hltb: Record<keyof IHltbClient, any>;
   let handler: RefreshPopularityHandler;
   let ownerRanking: { backfillGameModes: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     gamesRepo = {
       listPopularitySources: vi.fn().mockResolvedValue([
-        { id: "g-a", igdbId: 1, title: "Game A", originalTitle: null, releaseDate: "2020-01-01", hltb: null, igdbRatingCount: 100, popularityScore: null },
-        { id: "g-b", igdbId: 2, title: "Game B", originalTitle: null, releaseDate: null, hltb: null, igdbRatingCount: 10, popularityScore: 0.5 },
-        { id: "g-c", igdbId: 3, title: "Game C", originalTitle: null, releaseDate: null, hltb: null, igdbRatingCount: 100_000_000, popularityScore: null },
+        { id: "g-a", igdbId: 1, igdbRatingCount: 100, popularityScore: null },
+        { id: "g-b", igdbId: 2, igdbRatingCount: 10, popularityScore: 0.5 },
+        { id: "g-c", igdbId: 3, igdbRatingCount: 100_000_000, popularityScore: null },
       ]),
       writePopularity: vi.fn().mockResolvedValue(undefined),
     } as unknown as Record<keyof IGamesRepository, any>;
@@ -107,10 +106,9 @@ describe("RefreshPopularityHandler", () => {
       ]),
     };
     eventBus = { publish: vi.fn().mockResolvedValue(undefined), subscribe: vi.fn() };
-    hltb = { searchCandidates: vi.fn(), findTimes: vi.fn(), listPopular: vi.fn().mockResolvedValue([]) };
     ownerRanking = { backfillGameModes: vi.fn().mockResolvedValue({ checkedCount: 0, status: "complete" }) };
     handler = new RefreshPopularityHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient,
-      eventBus as unknown as IEventBus, hltb as unknown as IHltbClient, ownerRanking as unknown as OwnerRankingService);
+      eventBus as unknown as IEventBus, ownerRanking as unknown as OwnerRankingService);
   });
 
 
@@ -166,7 +164,6 @@ describe("RefreshPopularityHandler", () => {
     const result = await handler.handle();
     expect(result).toMatchObject({ gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0 });
     expect(igdb.listPopularity).not.toHaveBeenCalled();
-    expect(hltb.listPopular).not.toHaveBeenCalled();
     expect(gamesRepo.writePopularity).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
@@ -182,7 +179,6 @@ describe("RefreshPopularityHandler", () => {
     await expect(handler.handle()).rejects.toThrow("existing scores were kept");
     expect(gamesRepo.writePopularity).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
-    expect(hltb.listPopular).not.toHaveBeenCalled();
   });
 
   it("keeps stored scores if the provider fails before completing pagination", async () => {
@@ -198,41 +194,6 @@ describe("RefreshPopularityHandler", () => {
     expect(gamesRepo.writePopularity.mock.calls[0][0].scores).toEqual([
       { id: "g-a", score: 0 }, { id: "g-b", score: null }, { id: "g-c", score: null },
     ]);
-  });
-
-  it("stores HLTB engagement and completion hours independently of the trend score", async () => {
-    hltb.listPopular.mockResolvedValue([{
-      hltbId: 103, title: "Game C", releaseYear: null, completed: 100_000_000, backlog: 100_000_000, playing: 100_000_000,
-      times: { mainHours: 20, mainExtraHours: null, completionistHours: 35 },
-    }]);
-    const result = await handler.handle();
-    const write = gamesRepo.writePopularity.mock.calls[0][0];
-    expect(result).toMatchObject({ hltbStatus: "updated", hltbFetchedCount: 1, hltbMatchedCount: 1 });
-    expect(write.hltbUpdates).toEqual([expect.objectContaining({ gameId: "g-c", hltbId: 103, completed: 100_000_000,
-      times: { mainHours: 20, mainExtraHours: null, completionistHours: 35 } })]);
-    expect(write.scores[2]).toEqual({ id: "g-c", score: null });
-  });
-
-  it("retains HLTB snapshots on optional provider failure without affecting current scores", async () => {
-    const sources = await gamesRepo.listPopularitySources();
-    sources[2].hltb = { hltbId: 103, completed: 1e9, backlog: 1e9, playing: 1e9, updatedAt: new Date() };
-    hltb.listPopular.mockRejectedValue(new Error("private provider session details"));
-    const result = await handler.handle();
-    const write = gamesRepo.writePopularity.mock.calls[0][0];
-    expect(result.hltbStatus).toBe("unavailable");
-    expect(write.hltbUpdates).toEqual([]);
-    expect(write.scores[2]).toEqual({ id: "g-c", score: null });
-  });
-
-  it("preserves last good HLTB counts when a response omits them", async () => {
-    const sources = await gamesRepo.listPopularitySources();
-    sources[0].hltb = { hltbId: 101, completed: 900, backlog: 20, playing: 10, updatedAt: at("2026-10-01T00:00:00Z") };
-    hltb.listPopular.mockResolvedValue([{
-      hltbId: 101, title: "Game A", releaseYear: 2020, completed: null, backlog: 0, playing: null,
-      times: { mainHours: null, mainExtraHours: null, completionistHours: null },
-    }]);
-    await handler.handle();
-    expect(gamesRepo.writePopularity.mock.calls[0][0].hltbUpdates[0]).toMatchObject({ completed: 900, backlog: 0, playing: 10 });
   });
 
   it("propagates strict indexing failure and repairs unchanged persisted scores on a rerun", async () => {

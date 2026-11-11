@@ -1,5 +1,4 @@
 import { FastifyInstance } from "fastify";
-import { hltbRoutes } from "./hltb/hltb.routes";
 import { container } from "../../container";
 import { CreateGameHandler } from "./games/create/create.handler";
 import {
@@ -35,7 +34,6 @@ import { RefreshPopularityResponseSchema } from "./popularity/popularity.schema"
 import { ErrorResponseSchema } from "../../shared/error-schema";
 
 export async function gamesRoutes(app: FastifyInstance) {
-  await hltbRoutes(app);
   const createGameHandler = container.resolve(CreateGameHandler);
   const listGamesHandler = container.resolve(ListGamesHandler);
   const getGameHandler = container.resolve(GetGameHandler);

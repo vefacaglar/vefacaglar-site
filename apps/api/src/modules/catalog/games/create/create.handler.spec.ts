@@ -87,6 +87,48 @@ describe("CreateGameHandler", () => {
     expect(result.genres).toEqual([{ id: "g-2", name: "RPG", slug: "rpg" }]);
   });
 
+  it("allows omitting optional duration fields when creating a game", async () => {
+    mockCatalog.createGame.mockResolvedValue({
+      id: "g-2",
+      slug: "celeste",
+      title: "Celeste",
+      originalTitle: null,
+      description: null,
+      coverImageUrl: null,
+      releaseDate: null,
+      metacriticScore: null,
+      openCriticScore: null,
+      hltbMainHours: null,
+      hltbMainExtraHours: null,
+      hltbCompletionistHours: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: null,
+      developers: [],
+      publishers: [],
+      genres: [],
+      platforms: [],
+      themes: [],
+    });
+
+    const result = await handler.handle({
+      body: { title: "Celeste", slug: "celeste" },
+    } as unknown as FastifyRequest<{ Body: any }>);
+
+    expect(mockCatalog.createGame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Celeste",
+        slug: "celeste",
+        hltbMainHours: undefined,
+        hltbMainExtraHours: undefined,
+        hltbCompletionistHours: undefined,
+      }),
+      expect.any(Object)
+    );
+    expect(result.hltbMainHours).toBeNull();
+    expect(result.hltbMainExtraHours).toBeNull();
+    expect(result.hltbCompletionistHours).toBeNull();
+  });
+
   it("should propagate catalog errors", async () => {
     mockCatalog.createGame.mockRejectedValue(new Error("db constraint"));
 

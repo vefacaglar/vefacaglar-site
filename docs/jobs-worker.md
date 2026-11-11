@@ -11,8 +11,8 @@ dashboard (apps/web) ──HTTP──▶ api (apps/api) ──INSERT + pg_notify
 ```
 
 Job types: `search.reindex` (full reindex), `search.sync` (fill in missing
-documents), and `catalog.popularity.refresh` (daily game popularity and optional
-HowLongToBeat enrichment). All are registered jobs and share the `search.index`
+documents), and `catalog.popularity.refresh` (daily game popularity and owner
+ranking refresh). All are registered jobs and share the `search.index`
 concurrency key, so live popularity writes cannot race with search alias swaps.
 The search jobs remain manual-only; game popularity runs daily at 07:15 UTC.
 
@@ -133,11 +133,11 @@ The worker heartbeat continues while the child runs. Bounded, sanitized CLI
 output updates the job log/progress; raw credentials and provider payloads are
 not forwarded. There is no short task timeout: a roughly 308,000-game catalog
 can take tens of minutes and over 1 GiB RSS for its initial full refresh.
-HLTB reads remain capped at 100 popular entries. Strict indexing failures fail
-the job and retries replay the refresh, including indexing unchanged scores to
-repair a previously committed database update. No provider-scan checkpoint is
-saved. Cancel, shutdown or lost lease kills and reaps the child; abrupt task
-drop also requests child termination. A later attempt safely starts over.
+Strict indexing failures fail the job and retries replay the refresh, including
+indexing unchanged scores to repair a previously committed database update. No
+provider-scan checkpoint is saved. Cancel, shutdown or lost lease kills and
+reaps the child; abrupt task drop also requests child termination. A later
+attempt safely starts over.
 
 ## API (`apps/api`, module `jobs`, all `preHandler: app.requireAdmin`)
 

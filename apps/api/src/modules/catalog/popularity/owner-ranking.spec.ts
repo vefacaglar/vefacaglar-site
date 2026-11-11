@@ -54,9 +54,9 @@ describe("ownerRankingBreakdown", () => {
     }
   });
 
-  it("does not incorporate HLTB duration, engagement or private ratings into ranking", () => {
+  it("does not incorporate external engagement, durations or private ratings into ranking", () => {
     const original = source({ popularityScore: 0.5 });
-    const extra = { ...original, hltb: { completed: 1e12, mainHours: 200 }, userRating: 100 };
+    const extra = { ...original, engagement: { completed: 1e12, mainHours: 200 }, userRating: 100 };
     expect(ownerRankingBreakdown(extra)).toEqual(ownerRankingBreakdown(original));
   });
 });

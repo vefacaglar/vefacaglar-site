@@ -5,9 +5,9 @@ import { gameCardFromDoc, POPULARITY_UNKNOWN, type GameDoc } from "./game.mapper
 describe("gameCardFromDoc", () => {
   const doc = { id: "a", slug: "a", title: "A" } as GameDoc;
 
-  it("exposes indexed popularity and HLTB hours to public cards", () => {
+  it("exposes indexed popularity while suppressing stored completion hours on public cards", () => {
     expect(gameCardFromDoc({ ...doc, popularityScore: 0.8, hltbMainHours: "20.0", hltbMainExtraHours: "30.5", hltbCompletionistHours: "45" }))
-      .toMatchObject({ popularityScore: 0.8, hltbMainHours: "20.0", hltbMainExtraHours: "30.5", hltbCompletionistHours: "45" });
+      .toMatchObject({ popularityScore: 0.8, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
   });
 
   it("maps old or unknown indexed values to nullable public fields", () => {

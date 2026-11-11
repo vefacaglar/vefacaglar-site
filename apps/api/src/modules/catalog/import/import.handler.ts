@@ -12,21 +12,16 @@ import type {
 import { EVENT_BUS } from "../../../shared/events/events.tokens";
 import type { IEventBus } from "../../../shared/events/event-bus";
 import { gamesImported } from "../catalog.events";
-import { HLTB_CLIENT, IGDB_CLIENT } from "./import.tokens";
+import { IGDB_CLIENT } from "./import.tokens";
 import {
   normalizeTitle,
-  type IHltbClient,
   type IIgdbClient,
   type ImportedGame,
   type ImportedLookup,
-  type ImportedTimes,
 } from "./import.types";
 
 export type ImportOptions = {
   dryRun?: boolean;
-  skipHltb?: boolean;
-  /** Pause between HLTB lookups within a page, to keep the scraper polite. */
-  hltbDelayMs?: number;
 };
 
 export type ImportStatus = "created" | "updated" | "skipped" | "not_found" | "failed";
@@ -36,7 +31,7 @@ export type ImportResult = {
   status: ImportStatus;
   title?: string;
   slug?: string;
-  /** Human-readable notes: filled fields, HLTB misses, errors. */
+  /** Human-readable notes: filled fields, skips, errors. */
   notes: string[];
 };
 
@@ -63,10 +58,10 @@ const SLUG_MAX = 180;
 const LOOKUP_MAX = 120;
 
 /**
- * Imports games from IGDB: adds HLTB completion times, then creates each game
- * in the catalog or fills the fields an existing record is missing. Existing
- * values are never overwritten, except the IGDB rating count, which is always refreshed. A page of games is written in one transaction
- * and indexed for search in one batch.
+ * Imports games from IGDB: creates each game in the catalog or fills the
+ * fields an existing record is missing. Existing values are never overwritten,
+ * except the IGDB rating count, which is always refreshed. A page of games is
+ * written in one transaction and indexed for search in one batch.
  */
 @injectable()
 export class ImportGameHandler {
@@ -79,7 +74,6 @@ export class ImportGameHandler {
   constructor(
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(IGDB_CLIENT) private readonly igdb: IIgdbClient,
-    @inject(HLTB_CLIENT) private readonly hltb: IHltbClient,
     @inject(EVENT_BUS) private readonly eventBus: IEventBus
   ) {}
 
@@ -123,23 +117,20 @@ export class ImportGameHandler {
     // Games this page already created or filled; a second IGDB record matching one is a duplicate.
     const claimed = new Set<string>();
 
-    for (const [i, { source }] of matches.entries()) {
+    for (const { source } of matches) {
       // Matched again here: the index now also holds games created earlier in this page.
       const existingId = this.findExistingId(index, source);
-      const notes: string[] = [];
-      if (!options.skipHltb && i > 0 && options.hltbDelayMs) await sleep(options.hltbDelayMs);
-      const times = options.skipHltb ? null : await this.fetchTimes(source.title, notes);
       const base = { query: source.title, title: source.title, slug: source.slug };
 
       if (existingId && claimed.has(existingId)) {
-        results.push({ ...base, status: "skipped", notes: [...notes, "duplicate of a game earlier in this page"] });
+        results.push({ ...base, status: "skipped", notes: ["duplicate of a game earlier in this page"] });
         continue;
       }
 
       const game = existingId ? existing.get(existingId) : undefined;
       if (game) {
         claimed.add(game.id);
-        const result = this.planFill(write, game, source, times, notes);
+        const result = this.planFill(write, game, source);
         if (result.status === "updated") changedGameIds.push(game.id);
         results.push(result);
         continue;
@@ -147,7 +138,7 @@ export class ImportGameHandler {
 
       const id = randomUUID();
       claimed.add(id);
-      this.planCreate(write, id, source, times);
+      this.planCreate(write, id, source);
       this.indexGame(index, {
         id,
         slug: source.slug,
@@ -156,7 +147,7 @@ export class ImportGameHandler {
         originalTitle: null,
         releaseDate: source.releaseDate,
       });
-      const result: ImportResult = { ...base, status: "created", notes: [...notes, describe(source, times)] };
+      const result: ImportResult = { ...base, status: "created", notes: [describe(source)] };
       newGameResults.set(id, result);
       results.push(result);
     }
@@ -180,7 +171,7 @@ export class ImportGameHandler {
     return results;
   }
 
-  private planCreate(write: CatalogImportWrite, id: string, source: ImportedGame, times: ImportedTimes | null): void {
+  private planCreate(write: CatalogImportWrite, id: string, source: ImportedGame): void {
     write.newGames.push({
       id,
       igdbId: source.igdbId,
@@ -194,9 +185,9 @@ export class ImportGameHandler {
       igdbRatingCount: source.ratingCount,
       gameModeIds: source.gameModeIds,
       gameModesCheckedAt: source.gameModeIds === undefined ? undefined : new Date(),
-      hltbMainHours: toDecimal(times?.mainHours),
-      hltbMainExtraHours: toDecimal(times?.mainExtraHours),
-      hltbCompletionistHours: toDecimal(times?.completionistHours),
+      hltbMainHours: null,
+      hltbMainExtraHours: null,
+      hltbCompletionistHours: null,
     });
     for (const kind of LOOKUP_KINDS) this.planLinks(write, kind, id, source[LOOKUP_FIELDS[kind]]);
   }
@@ -204,9 +195,7 @@ export class ImportGameHandler {
   private planFill(
     write: CatalogImportWrite,
     existing: GameWithRelations,
-    source: ImportedGame,
-    times: ImportedTimes | null,
-    notes: string[]
+    source: ImportedGame
   ): ImportResult {
     const patch: Partial<NewGame> = {};
     if (!existing.description && source.description) patch.description = source.description;
@@ -215,11 +204,6 @@ export class ImportGameHandler {
     if (existing.criticScore == null && source.criticScore != null) {
       patch.criticScore = source.criticScore;
       patch.criticScoreCount = source.criticScoreCount;
-    }
-    if (!existing.hltbMainHours && times?.mainHours) patch.hltbMainHours = toDecimal(times.mainHours);
-    if (!existing.hltbMainExtraHours && times?.mainExtraHours) patch.hltbMainExtraHours = toDecimal(times.mainExtraHours);
-    if (!existing.hltbCompletionistHours && times?.completionistHours) {
-      patch.hltbCompletionistHours = toDecimal(times.completionistHours);
     }
 
     // Relations are only filled when the game has none of that kind, so a
@@ -245,8 +229,8 @@ export class ImportGameHandler {
     for (const kind of relationGaps) this.planLinks(write, kind, existing.id, source[LOOKUP_FIELDS[kind]]);
 
     const base = { query: source.title, title: existing.title, slug: existing.slug };
-    if (filled.length === 0) return { ...base, status: "skipped", notes: [...notes, "nothing missing"] };
-    return { ...base, status: "updated", notes: [...notes, `filled: ${filled.join(", ")}`] };
+    if (filled.length === 0) return { ...base, status: "skipped", notes: ["nothing missing"] };
+    return { ...base, status: "updated", notes: [`filled: ${filled.join(", ")}`] };
   }
 
   private planLinks(write: CatalogImportWrite, kind: CatalogLookupKind, gameId: string, items: ImportedLookup[]): void {
@@ -254,18 +238,6 @@ export class ImportGameHandler {
       const lookup = { name: item.name.slice(0, LOOKUP_MAX), slug: item.slug.slice(0, LOOKUP_MAX) };
       write.lookups[kind].push(lookup);
       write.links[kind].push({ gameId, slug: lookup.slug });
-    }
-  }
-
-  private async fetchTimes(title: string, notes: string[]): Promise<ImportedTimes | null> {
-    try {
-      const times = await this.hltb.findTimes(title);
-      if (!times) notes.push("no exact HLTB match");
-      return times;
-    } catch (err) {
-      // HLTB is best-effort: a broken scraper must not block the IGDB import.
-      notes.push(`HLTB error: ${message(err)}`);
-      return null;
     }
   }
 
@@ -307,20 +279,12 @@ function byLookupKind<T>(make: (kind: CatalogLookupKind) => T): Record<CatalogLo
   return Object.fromEntries(LOOKUP_KINDS.map((kind) => [kind, make(kind)])) as Record<CatalogLookupKind, T>;
 }
 
-function toDecimal(hours: number | null | undefined): string | null {
-  return hours ? String(hours) : null;
-}
-
 function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 /** One-line summary of what an import brings in, e.g. "genres: RPG; platforms: PC, Mac; ...". */
-function describe(source: ImportedGame, times: ImportedTimes | null): string {
+function describe(source: ImportedGame): string {
   const names = (items: ImportedLookup[]) => items.map((i) => i.name).join(", ") || "-";
   const parts = [
     `released: ${source.releaseDate ?? "-"}`,
@@ -332,6 +296,5 @@ function describe(source: ImportedGame, times: ImportedTimes | null): string {
     `publishers: ${names(source.publishers)}`,
     `cover: ${source.coverImageUrl ? "yes" : "no"}`,
   ];
-  if (times) parts.push(`hltb: ${times.mainHours ?? "-"}/${times.mainExtraHours ?? "-"}/${times.completionistHours ?? "-"}h`);
   return parts.join("; ");
 }

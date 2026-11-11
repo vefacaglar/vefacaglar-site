@@ -10,9 +10,7 @@ import { ImportGameHandler, type ImportOptions, type ImportResult, type ImportSt
 import { IGDB_CLIENT } from "../modules/catalog/import/import.tokens";
 import type { IIgdbClient } from "../modules/catalog/import/import.types";
 
-// Pause between HLTB lookups to keep its traffic polite; IGDB pages are
-// throttled separately to stay under its 4 req/s limit.
-const HLTB_DELAY_MS = 1500;
+// IGDB requests are throttled to stay under its 4 req/s limit.
 const IGDB_PAGE_DELAY_MS = 300;
 // Crawl progress lives next to the package so an interrupted --all run resumes.
 const STATE_FILE = path.resolve(__dirname, "../../.catalog-import-state.json");
@@ -24,8 +22,6 @@ const USAGE = `usage:
 
 options:
   --dry-run        report what would change, write nothing
-  --skip-hltb      do not fetch completion times from HowLongToBeat
-  --with-hltb      --all only: also fetch HLTB times (off by default; HLTB rate-limits scrapers)
   --all            crawl the whole IGDB catalog in id order (resumable)
   --min-ratings N  --all only: skip games with fewer than N IGDB ratings
   --max N          --all only: stop after N games
@@ -49,7 +45,6 @@ function usage(): never {
 
 function parseArgs(argv: string[]): Args {
   const args: Args = { titles: [], all: false, restart: false, options: {} };
-  let withHltb = false;
   const numberArg = (value: string | undefined): number => {
     const n = Number(value);
     if (!Number.isInteger(n) || n < 0) usage();
@@ -60,8 +55,7 @@ function parseArgs(argv: string[]): Args {
     const arg = argv[i];
     switch (arg) {
       case "--dry-run": args.options.dryRun = true; break;
-      case "--skip-hltb": args.options.skipHltb = true; break;
-      case "--with-hltb": withHltb = true; break;
+      case "--skip-hltb": break;
       case "--all": args.all = true; break;
       case "--restart": args.restart = true; break;
       case "--min-ratings": args.minRatings = numberArg(argv[++i]); break;
@@ -82,9 +76,6 @@ function parseArgs(argv: string[]): Args {
 
   args.titles = [...new Set(args.titles)];
   if (args.all === (args.titles.length > 0)) usage();
-  // A full crawl only uses IGDB, whose official API has no daily quota. HLTB is
-  // scraped and throttles bulk traffic, so it is opt-in there.
-  if (args.all && !withHltb) args.options.skipHltb = true;
   return args;
 }
 
@@ -99,7 +90,7 @@ function logResult(result: ImportResult, counts: Record<ImportStatus, number>): 
 
 async function importTitles(handler: ImportGameHandler, args: Args, counts: Record<ImportStatus, number>) {
   for (const [index, query] of args.titles.entries()) {
-    if (index > 0) await sleep(HLTB_DELAY_MS);
+    if (index > 0) await sleep(IGDB_PAGE_DELAY_MS);
     logResult(await handler.handle(query, args.options), counts);
   }
 }
@@ -132,7 +123,7 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
     // The whole page is written in one transaction. If that throws, the error
     // ends the run before progress is saved, so the next run retries this page.
     const games = args.max === undefined ? page.games : page.games.slice(0, args.max - processed);
-    const results = await handler.importPage(games, { ...args.options, hltbDelayMs: HLTB_DELAY_MS });
+    const results = await handler.importPage(games, args.options);
     for (const result of results) logResult(result, counts);
     processed += games.length;
 
@@ -153,7 +144,7 @@ async function main() {
   const counts: Record<ImportStatus, number> = { created: 0, updated: 0, skipped: 0, not_found: 0, failed: 0 };
 
   console.log(
-    `[catalog:import] mode=${args.all ? "all" : "titles"}, dryRun=${!!args.options.dryRun}, skipHltb=${!!args.options.skipHltb}`
+    `[catalog:import] mode=${args.all ? "all" : "titles"}, dryRun=${!!args.options.dryRun}`
   );
   if (args.all) await crawlCatalog(handler, args, counts);
   else await importTitles(handler, args, counts);

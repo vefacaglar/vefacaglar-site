@@ -17,7 +17,7 @@ describe("GetGameHandler", () => {
     await expect(handler.handle({ params: { slug: "nope" } } as any)).rejects.toThrow("Game not found.");
   });
 
-  it("maps hours to numbers, suppresses coverImageUrl, and strips lookup ids except platforms", async () => {
+  it("suppresses coverImageUrl and stored completion hours, and strips lookup ids except platforms", async () => {
     repo.findBySlug.mockResolvedValue({
       id: "g-1",
       slug: "doom",
@@ -26,7 +26,7 @@ describe("GetGameHandler", () => {
       coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
       releaseDate: "1993-12-10",
       hltbMainHours: "7.5",
-      hltbMainExtraHours: null,
+      hltbMainExtraHours: "11.0",
       hltbCompletionistHours: "15.0",
       developers: [{ id: "d-1", name: "id Software", slug: "id-software" }],
       publishers: [],
@@ -39,8 +39,9 @@ describe("GetGameHandler", () => {
 
     expect(result.coverImageUrl).toBeNull();
     expect(JSON.stringify(result)).not.toContain("images.igdb.com");
-    expect(result.hltbMainHours).toBe(7.5);
+    expect(result.hltbMainHours).toBeNull();
     expect(result.hltbMainExtraHours).toBeNull();
+    expect(result.hltbCompletionistHours).toBeNull();
     expect(result.developers).toEqual([{ name: "id Software", slug: "id-software" }]);
     expect(result.platforms).toEqual([{ id: "p-1", name: "PC", slug: "win" }]);
   });

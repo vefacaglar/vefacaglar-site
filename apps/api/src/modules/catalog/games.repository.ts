@@ -1,4 +1,3 @@
-import { acceptBackgroundMapping } from "./hltb/hltb-policy";
 import {
   games,
   developers,
@@ -12,7 +11,6 @@ import {
   gamePlatforms,
   gameThemes,
   gamePopularitySignals,
-  gameHltbPopularity,
 } from "@vefacaglar/db";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql } from "drizzle-orm";
 import { injectable } from "tsyringe";
@@ -463,19 +461,8 @@ export class DrizzleGamesRepository implements IGamesRepository {
         recommendationScore: games.recommendationScore,
         gameModeIds: games.gameModeIds,
         ...OWNER_METADATA,
-        title: games.title,
-        originalTitle: games.originalTitle,
-        releaseDate: games.releaseDate,
-        hltb: {
-          hltbId: gameHltbPopularity.hltbId,
-          completed: gameHltbPopularity.completed,
-          backlog: gameHltbPopularity.backlog,
-          playing: gameHltbPopularity.playing,
-          updatedAt: gameHltbPopularity.updatedAt,
-        },
       })
       .from(games)
-      .leftJoin(gameHltbPopularity, eq(gameHltbPopularity.gameId, games.id))
       .where(isNotNull(games.igdbId));
     return rows.map((r) => ({ ...r, igdbId: r.igdbId! }));
   }
@@ -539,32 +526,6 @@ export class DrizzleGamesRepository implements IGamesRepository {
       }
       for (const chunk of chunks(write.signals)) {
         await db.insert(gamePopularitySignals).values(chunk);
-      }
-
-      // Acquire the entire external-ID lock set before any game row lock. A manual
-      // remap takes external ID then game; interleaving per-row locks here can deadlock.
-      for (const id of [...new Set(write.hltbUpdates.map((row) => row.hltbId))].sort((a, b) => a - b)) {
-        await db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`hltb:mapping:${id}`}, 0))`);
-      }
-      const hltbGameIds = [...new Set(write.hltbUpdates.map((row) => row.gameId))].sort();
-      if (hltbGameIds.length) await db.select({ id: games.id }).from(games).where(inArray(games.id, hltbGameIds)).orderBy(games.id).for("update");
-      for (const update of write.hltbUpdates) {
-        const { times, ...snapshot } = update;
-        const [existing] = await db.select().from(gameHltbPopularity).where(eq(gameHltbPopularity.gameId, update.gameId));
-        const [owner] = await db.select({ gameId: gameHltbPopularity.gameId }).from(gameHltbPopularity).where(eq(gameHltbPopularity.hltbId, update.hltbId));
-        if (!acceptBackgroundMapping(update.gameId, update.hltbId, existing?.hltbId ?? null, owner?.gameId ?? null)) continue;
-        await db.insert(gameHltbPopularity).values(snapshot).onConflictDoUpdate({
-          target: gameHltbPopularity.gameId,
-          set: { completed: update.completed, backlog: update.backlog, playing: update.playing, updatedAt: update.updatedAt },
-        });
-        // Supplement existing games without replacing manually curated or previously fetched times.
-        if (Object.values(times).some((value) => value !== null)) {
-          await db.update(games).set({
-            hltbMainHours: sql`coalesce(${games.hltbMainHours}, ${times.mainHours?.toString() ?? null}::numeric)`,
-            hltbMainExtraHours: sql`coalesce(${games.hltbMainExtraHours}, ${times.mainExtraHours?.toString() ?? null}::numeric)`,
-            hltbCompletionistHours: sql`coalesce(${games.hltbCompletionistHours}, ${times.completionistHours?.toString() ?? null}::numeric)`,
-          }).where(eq(games.id, update.gameId));
-        }
       }
 
       // Interest and recommendation scores commit together, with bounded bulk statements.

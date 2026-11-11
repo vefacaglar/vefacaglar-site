@@ -60,9 +60,9 @@ describe("GetDeveloperGamesHandler", () => {
     expect(result.company).toEqual(company);
     expect(result.items.map((game) => game.slug)).toEqual(["a", "b"]);
     expect(result.items[0]).toMatchObject({ coverImageUrl: null, metacriticScore: 88, openCriticScore: 90, criticScore: null,
-      popularityScore: 0.8, hltbMainHours: "20.5", hltbMainExtraHours: null, hltbCompletionistHours: null });
+      popularityScore: 0.8, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[1]).toMatchObject({ metacriticScore: null, openCriticScore: null, criticScore: 83,
-      popularityScore: null, hltbMainExtraHours: "35", hltbCompletionistHours: "60" });
+      popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[0]).not.toHaveProperty("id");
     expect(result.items[0]).not.toHaveProperty("rawData");
   });

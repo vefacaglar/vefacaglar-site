@@ -106,24 +106,13 @@ upcoming game can trend before its release. The score blends percentile-ranked
 IGDB Visits (type 1, 70%), Playing (type 3, 20%) and Steam 24-hour peak players
 (type 5, 10%). These are our documented weights, not an implementation of IGDB's
 undocumented "Popular Right Now" homepage formula, so identical ordering is not
-promised. Lifetime Played, ratings, Steam review totals and HLTB engagement do
-not affect this trend score. Weights are renormalized over known current
-signals; missing data is unknown, while a measured zero remains zero.
-IGDB primitives live in `game_popularity_signals`. HLTB completed, backlog and
-playing counts remain independent snapshots with verified ids and timestamps
-in `game_hltb_popularity`; they cannot boost or invent a game's current interest.
-Public cards expose the nullable 0–1 score and HLTB Main, Main + Extras and
-Completionist hours. No HLTB engagement counts or administrative source data
-are included in the public list response.
-
-HLTB does not provide a supported public developer API. Its best-effort public
-website integration discovers the current search interface and reads at most
-five pages / 100 popular entries per refresh, without crawling each catalog
-game. Only stable ids or unambiguous exact normalized titles with compatible
-release years match. A provider failure retains last good snapshots and does
-not block IGDB. Existing completion hours are preserved; missing hours can be
-filled from matched entries. No HLTB credential is required. The interface may
-change; an unavailable provider is reported in the refresh summary.
+promised. Lifetime Played, ratings and Steam review totals do not affect this trend score.
+Weights are renormalized over known current signals; missing data is unknown,
+while a measured zero remains zero. IGDB primitives live in
+`game_popularity_signals`. Public cards expose the nullable 0–1 score alongside
+eligible critic scores, while stored cover URLs and completion durations remain
+suppressed (`null`) on public responses. No administrative source data is
+included in the public list response.
 
 Refresh with `pnpm --filter api catalog:popularity` or the existing admin-only
 `POST /api/catalog/popularity/refresh`. The CLI requires Typesense write access

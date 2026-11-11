@@ -60,18 +60,21 @@ describe("ListGamesHandler", () => {
     expect(reader.searchPublicGames).toHaveBeenCalledTimes(1);
   });
 
-  it("hydrates fresh SQL hours and scores while preserving search relevance and pagination", async () => {
+  it("hydrates fresh SQL scores while suppressing stored completion hours and preserving search relevance", async () => {
     reader.searchPublicGames.mockResolvedValue({ items: [
-      { id: "b", slug: "old-b", title: "Old B", hltbMainHours: "10" },
-      { id: "a", slug: "old-a", title: "Old A", hltbMainHours: null },
+      { id: "b", slug: "old-b", title: "Old B", hltbMainHours: "10", hltbMainExtraHours: "15", hltbCompletionistHours: "20" },
+      { id: "a", slug: "old-a", title: "Old A", hltbMainHours: "12" },
     ], total: 45 });
     gamesRepo.findPublicCardsByIds.mockResolvedValue([
-      { id: "a", slug: "a", title: "A", hltbMainHours: "30", criticScore: 91, criticScoreCount: 10 },
-      { id: "b", slug: "b", title: "B", hltbMainHours: "25", metacriticScore: 88 },
+      { id: "a", slug: "a", title: "A", hltbMainHours: "30", hltbMainExtraHours: "45", hltbCompletionistHours: "60", criticScore: 91, criticScoreCount: 10 },
+      { id: "b", slug: "b", title: "B", hltbMainHours: "25", hltbMainExtraHours: "35", hltbCompletionistHours: "50", metacriticScore: 88 },
     ]);
     const result = await handler.handle({ query: { q: "game", page: 2, limit: 21 } } as any);
     expect(gamesRepo.findPublicCardsByIds).toHaveBeenCalledWith(["b", "a"]);
-    expect(result.items.map((game) => [game.slug, game.hltbMainHours])).toEqual([["b", "25"], ["a", "30"]]);
+    expect(result.items.map((game) => [game.slug, game.hltbMainHours, game.hltbMainExtraHours, game.hltbCompletionistHours])).toEqual([
+      ["b", null, null, null],
+      ["a", null, null, null],
+    ]);
     expect(result.items[0].metacriticScore).toBe(88);
     expect(result.items[1].criticScore).toBe(91);
     expect(result).toMatchObject({ total: 45, page: 2, limit: 21, totalPages: 3 });
@@ -119,16 +122,16 @@ describe("ListGamesHandler", () => {
     ]);
   });
 
-  it("exposes popularity and completion hours without inventing missing values", async () => {
+  it("exposes popularity while always suppressing stored completion hours", async () => {
     gamesRepo.listPublic.mockResolvedValue({ items: [
       { slug: "known", title: "Known", popularityScore: 0.82, hltbMainHours: "20.5", hltbMainExtraHours: "35.0", hltbCompletionistHours: "60" },
       { slug: "unknown", title: "Unknown", popularityScore: -1, hltbMainHours: "0", hltbMainExtraHours: "bad", hltbCompletionistHours: null },
       { slug: "invalid", title: "Invalid", popularityScore: Number.NaN, hltbMainHours: "Infinity" },
     ], total: 3 });
     const result = await handler.handle({ query: {} } as any);
-    expect(result.items[0]).toMatchObject({ popularityScore: 0.82, hltbMainHours: "20.5", hltbMainExtraHours: "35.0", hltbCompletionistHours: "60" });
+    expect(result.items[0]).toMatchObject({ popularityScore: 0.82, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
     expect(result.items[1]).toMatchObject({ popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
-    expect(result.items[2]).toMatchObject({ popularityScore: null, hltbMainHours: null });
+    expect(result.items[2]).toMatchObject({ popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null });
   });
 
   it("preserves repository order for announced and undated games", async () => {
