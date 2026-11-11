@@ -1,6 +1,6 @@
 ---
 name: site_explorer
-description: Read-only repository exploration, behavior tracing, and codebase investigation agent.
+description: Read-only repository exploration, behavior tracing, and codebase investigation agent (runs on Gemini 3.8 Flash).
 subagent: true
 mainAgent: false
 tools: [read_file]
