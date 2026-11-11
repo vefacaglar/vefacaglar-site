@@ -10,9 +10,9 @@ export default function GameLogLoading() {
 
       <div className={styles.logLayout}>
         <div className={styles.logSidebar}>
-          <div className={styles.logSidebarCard}>
-            <div className={`${styles.block} ${styles.logSidebarBox}`} />
+          <div className={`${styles.logSidebarCard} ${styles.logGameSummaryCard}`}>
             <div className={`${styles.block} ${styles.cardTitle}`} />
+            <div className={`${styles.block} ${styles.cardMeta}`} />
           </div>
           <div className={styles.logSidebarCard}>
             <div className={`${styles.block} ${styles.cardMeta}`} />

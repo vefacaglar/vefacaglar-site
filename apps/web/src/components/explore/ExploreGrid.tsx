@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { formatHltbHours, formatReviewScore, selectReviewScores } from "../../app/explore/games/cardMetrics";
+import { scoreTier } from "../../app/explore/games/scoreTier";
 import { localizeHref } from "../../lib/localizeHref";
 import type { MovieCard } from "../../lib/movies";
-import GenericPoster from "../movies/GenericPoster";
-import PosterCredit from "../movies/PosterCredit";
 import styles from "./ExploreGrid.module.css";
 
 export interface ExploreGame {
   slug: string;
   title: string;
   releaseDate: string | null;
+  metacriticScore?: number | null;
+  openCriticScore?: number | null;
+  criticScore?: number | null;
+  hltbMainHours?: string | null;
 }
 
 export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
@@ -26,30 +30,50 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
     return <p className={styles.empty}>{emptyMessage}</p>;
   }
 
-  return <ul className={styles.grid}>
-    {items.map(({ type, item }) => {
-      const isGame = type === "game";
-      const image = isGame
-        ? null
-        : item.posterImageUrl && item.posterAttribution ? item.posterImageUrl : null;
-      const year = isGame ? item.releaseDate?.slice(0, 4) : item.releaseYear;
+  const showKind = games.length > 0 && movies.length > 0;
 
-      return <li key={`${type}:${item.slug}`}>
-        <Link href={localizeHref(`/explore/${isGame ? "games" : "movies"}/${encodeURIComponent(item.slug)}`, lang)} className={styles.card}>
-          <span className={styles.cover} data-type={type} aria-hidden="true">
-            {image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={image} alt="" loading="lazy" />
-            ) : <GenericPoster kicker={isGame ? "Game" : "Film"} title={item.title} year={year} />}
-          </span>
-          <span className={styles.caption}>
-            <span className={styles.kind}>{isGame ? "Game" : "Movie"}</span>
-            <span className={styles.title}>{item.title}</span>
-            {year && <span className={styles.year}>{year}</span>}
-          </span>
-        </Link>
-        {type === "movie" && image && <PosterCredit attribution={item.posterAttribution} />}
-      </li>;
-    })}
-  </ul>;
+  return (
+    <ul className={styles.grid}>
+      {items.map(({ type, item }) => {
+        const isGame = type === "game";
+        const year = isGame ? item.releaseDate?.slice(0, 4) ?? null : item.releaseYear;
+        const topScore = isGame ? selectReviewScores(item)[0] : undefined;
+        const mainHours = isGame ? formatHltbHours(item.hltbMainHours, lang) : null;
+        const runtime = !isGame && item.runtimeMinutes !== null ? `${item.runtimeMinutes} min` : null;
+        const hasMeta =
+          showKind || Boolean(mainHours) || Boolean(topScore) || Boolean(runtime) || (year !== null && year !== "");
+
+        return (
+          <li key={`${type}:${item.slug}`} className={styles.item}>
+            <Link
+              href={localizeHref(`/explore/${isGame ? "games" : "movies"}/${encodeURIComponent(item.slug)}`, lang)}
+              className={styles.card}
+            >
+              <span className={styles.title}>{item.title}</span>
+              {hasMeta && (
+                <span className={styles.metaGroup}>
+                  {showKind && <span className={styles.kind}>{isGame ? "Game" : "Film"}</span>}
+                  {mainHours && (
+                    <span className={styles.meta}>
+                      Main <span className={styles.metaValue}>{mainHours}h</span>
+                    </span>
+                  )}
+                  {topScore && (
+                    <span className={styles.rating}>
+                      <span className={styles.meta}>{topScore.source}</span>
+                      <span className={styles.ratingValue} data-tier={scoreTier(topScore.value)}>
+                        {formatReviewScore(topScore.value, lang)}/100
+                      </span>
+                    </span>
+                  )}
+                  {runtime && <span className={styles.meta}>{runtime}</span>}
+                  {year !== null && year !== "" && <span className={styles.year}>{year}</span>}
+                </span>
+              )}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }

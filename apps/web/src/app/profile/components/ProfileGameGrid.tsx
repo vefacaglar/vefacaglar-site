@@ -1,5 +1,4 @@
 import Link from "next/link";
-import GenericPoster from "../../../components/movies/GenericPoster";
 import shelf from "./ProfileGameGrid.module.css";
 import styles from "../profile.module.css";
 import { getDictionary } from "../../../dictionaries";
@@ -40,8 +39,8 @@ function PencilIcon() {
 }
 
 /**
- * A user's games as a cover wall, sharing the games shelf's cards. The plate on the
- * cover is the user's own rating; the caption carries their status and playtime.
+ * A user's games as a frameless editorial grid: top hairline, title + score badge,
+ * status/platform/playtime details, and a clean non-overlapping edit link for the owner.
  */
 export default function ProfileGameGrid({
   games,
@@ -62,32 +61,30 @@ export default function ProfileGameGrid({
             ? localizeHref(`/explore/games/${game.slug}/logs/${encodeURIComponent(game.latestLogId)}`, lang)
             : null;
         return (
-          <li key={game.slug} className={styles.cardItem}>
+          <li key={game.slug} className={shelf.item}>
             <Link href={href} className={shelf.card}>
-              <div className={shelf.cover}>
-                <GenericPoster kicker="Game" title={game.title} />
+              <span className={shelf.head}>
+                <span className={shelf.title}>{game.title}</span>
                 {game.rating !== null && (
                   <span
                     className={shelf.score}
                     data-tier={scoreTier(game.rating)}
                     aria-label={`${dict.rating_label}: ${game.rating}/100`}
                   >
-                    {game.rating}
+                    {game.rating}/100
                   </span>
                 )}
-              </div>
-              <span className={styles.cardCaption}>
-                <span className={shelf.title}>{game.title}</span>
-                <span className={styles.cardMeta}>
-                  {!hideStatus && <span className={styles.status}>{statusLabel(dict, game.status)}</span>}
-                  {game.playtimeHours !== null && <span>{`${game.playtimeHours}${dict.hours_short}`}</span>}
-                </span>
-                {completed && (
-                  <time className={styles.cardDate} dateTime={game.completedAt ?? undefined}>
-                    {completed}
-                  </time>
-                )}
               </span>
+              <span className={styles.cardMeta}>
+                {!hideStatus && <span className={styles.status}>{statusLabel(dict, game.status)}</span>}
+                {game.platformName && <span>{game.platformName}</span>}
+                {game.playtimeHours !== null && <span>{`${game.playtimeHours}${dict.hours_short}`}</span>}
+              </span>
+              {completed && (
+                <time className={styles.cardDate} dateTime={game.completedAt ?? undefined}>
+                  {completed}
+                </time>
+              )}
             </Link>
             {editHref && (
               <Link

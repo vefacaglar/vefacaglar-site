@@ -3,30 +3,99 @@
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px 24px;
+  grid-template-columns: minmax(0, 1fr);
 }
-.card { display: flex; align-items: flex-start; gap: 16px; text-decoration: none; color: var(--text); }
-.card:focus-visible { outline: 1px solid var(--accent); outline-offset: 6px; }
-.poster {
-  flex: 0 0 110px;
-  width: 110px;
-  aspect-ratio: 2 / 3;
+
+.item {
+  min-width: 0;
+}
+
+.item + .item {
+  border-top: 1px solid var(--border);
+}
+
+.card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  justify-content: space-between;
+  gap: 24px;
+  padding: 13px 0;
+  border-radius: 0;
+  text-decoration: none;
+  color: var(--text);
 }
-.poster img { width: 100%; height: 100%; object-fit: contain; }
-.posterMark { color: var(--faint); font-family: var(--font-display), serif; font-size: 22px; }
-.caption { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; padding-top: 4px; }
-.title { color: var(--text-heading); font-size: 15px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
-.card:hover .title { color: var(--accent); }
-.meta, .roles { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-@media (max-width: 1024px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.card:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  transition: color 0.15s ease;
+}
+
+.card:hover .title {
+  color: var(--accent);
+}
+
+.details {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.roles {
+  color: var(--text);
+}
+
+.meta {
+  color: var(--muted);
+}
+
+.year {
+  min-width: 36px;
+  text-align: right;
+  color: var(--muted);
+}
+
 @media (max-width: 640px) {
-  .grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .poster { flex-basis: 96px; width: 96px; }
+  .card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 0;
+  }
+
+  .title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+
+  .details {
+    flex-wrap: wrap;
+    white-space: normal;
+    gap: 4px 12px;
+  }
+
+  .year {
+    min-width: 0;
+    text-align: left;
+  }
 }

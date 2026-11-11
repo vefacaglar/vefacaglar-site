@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useLocale } from "../../../../../../components/LocaleProvider";
-import GenericPoster from "../../../../../../components/movies/GenericPoster";
 import { getDictionary } from "../../../../../../dictionaries";
 import { localizeHref } from "../../../../../../lib/localizeHref";
 import { deleteGameLog, updateGameLog, type GameLogInput } from "../../../actions";
@@ -247,9 +246,6 @@ export default function LogEditForm({
       <div className={styles.logLayout}>
         <aside className={styles.logSidebar}>
           <div className={styles.logGameCard}>
-            <Link href={gameHref} className={styles.logGameCover} aria-label={gameInfo.title}>
-              <GenericPoster kicker="Game" title={gameInfo.title} year={gameInfo.releaseYear} />
-            </Link>
             <div className={styles.logGameBody}>
               <Link href={gameHref} className={styles.logGameTitle}>
                 {gameInfo.title}

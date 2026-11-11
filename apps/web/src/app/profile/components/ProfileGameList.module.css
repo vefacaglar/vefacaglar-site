@@ -43,7 +43,7 @@
 }
 
 .table thead .headGame {
-  padding-left: 34px;
+  padding-left: 24px;
 }
 
 .table thead .headFigure {
@@ -73,13 +73,17 @@
 
 /* ---------- Rows ---------- */
 
+.group {
+  border-top: 1px solid var(--border);
+}
+
 .row {
   cursor: pointer;
 }
 
 .row > th,
 .row > td {
-  padding: 10px 0;
+  padding: 12px 0;
   vertical-align: middle;
   transition: background-color 0.15s ease;
 }
@@ -96,46 +100,18 @@
 }
 
 .row > .titleCell {
-  padding-left: 34px;
+  padding-left: 24px;
 }
 
 /* Status square, centred on the row. */
 .marker {
   position: absolute;
-  left: 12px;
+  left: 6px;
   top: 50%;
   transform: translateY(-50%);
   width: 6px;
   height: 6px;
   background: var(--tone);
-}
-
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.thumb {
-  width: 30px;
-  height: 42px;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.thumbFallback {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
 }
 
 .titleBlock {
@@ -292,7 +268,7 @@
 }
 
 .detailCell {
-  padding: 0 4px 0 34px;
+  padding: 0 4px 0 24px;
 }
 
 .detail {
@@ -355,7 +331,7 @@
   padding: 2px 10px 2px 8px;
   border: 0;
   border-radius: 0;
-  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  background: var(--surface-2);
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-heading);

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import GenericPoster from "../../../components/movies/GenericPoster";
 import { localizeHref } from "../../../lib/localizeHref";
 import { formatHltbHours, formatReviewScore, selectReviewScores } from "./cardMetrics";
 import { scoreTier } from "./scoreTier";
@@ -23,46 +22,46 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
   return (
     <ul className={styles.grid}>
       {games.map((game) => {
+        const year = game.releaseDate?.slice(0, 4) ?? null;
         const reviews = selectReviewScores(game);
         const durations = [
-          { label: "Main story", hours: formatHltbHours(game.hltbMainHours, lang) },
-          { label: "Main + extras", hours: formatHltbHours(game.hltbMainExtraHours, lang) },
-          { label: "Completionist", hours: formatHltbHours(game.hltbCompletionistHours, lang) },
+          { label: "Main", hours: formatHltbHours(game.hltbMainHours, lang) },
+          { label: "Extras", hours: formatHltbHours(game.hltbMainExtraHours, lang) },
+          { label: "100%", hours: formatHltbHours(game.hltbCompletionistHours, lang) },
         ].filter((duration) => duration.hours !== null);
+        const hasMeta = durations.length > 0 || reviews.length > 0 || year !== null;
 
         return (
-          <li key={game.slug}>
+          <li key={game.slug} className={styles.item}>
             <Link href={localizeHref(`/explore/games/${game.slug}`, lang)} className={styles.card}>
-              <span className={styles.cover} aria-hidden="true">
-                <GenericPoster kicker="Game" title={game.title} year={game.releaseDate?.slice(0, 4)} />
-              </span>
-              <span className={styles.caption}>
-                <span className={styles.title}>{game.title}</span>
-                {game.releaseDate && <span className={styles.year}>{game.releaseDate.slice(0, 4)}</span>}
-                {reviews.length > 0 && (
-                  <span className={styles.ratings}>
-                    {reviews.map(({ source, value }) => (
-                      <span className={styles.rating} key={source}>
-                        <span className={styles.ratingSource}>{source}</span>
-                        <span className={styles.ratingValue} data-tier={scoreTier(value)}>
-                          {formatReviewScore(value, lang)}/100
+              <span className={styles.title}>{game.title}</span>
+              {hasMeta && (
+                <span className={styles.meta}>
+                  {durations.length > 0 && (
+                    <span className={styles.durations}>
+                      {durations.map(({ label, hours }) => (
+                        <span className={styles.duration} key={label}>
+                          <span>{label}</span>
+                          <span className={styles.durationHours}>{hours}h</span>
                         </span>
-                      </span>
-                    ))}
-                  </span>
-                )}
-                {durations.length > 0 && (
-                  <span className={styles.durations}>
-                    <span className={styles.durationsSource}>HowLongToBeat</span>
-                    {durations.map(({ label, hours }) => (
-                      <span className={styles.duration} key={label}>
-                        <span>{label}</span>
-                        <span>{hours}h</span>
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </span>
+                      ))}
+                    </span>
+                  )}
+                  {reviews.length > 0 && (
+                    <span className={styles.ratings}>
+                      {reviews.map(({ source, value }) => (
+                        <span className={styles.rating} key={source}>
+                          <span className={styles.ratingSource}>{source}</span>
+                          <span className={styles.ratingValue} data-tier={scoreTier(value)}>
+                            {formatReviewScore(value, lang)}/100
+                          </span>
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  {year && <span className={styles.year}>{year}</span>}
+                </span>
+              )}
             </Link>
           </li>
         );

@@ -28,7 +28,7 @@
   }
 }
 
-/* ---------- Games shelf skeleton ---------- */
+/* ---------- Catalog & shelf frameless list skeleton ---------- */
 
 .masthead {
   display: flex;
@@ -60,30 +60,55 @@
   height: 38px;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 32px 24px;
-}
-
-.card {
+.list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-.cover {
-  width: 100%;
-  aspect-ratio: 3 / 4;
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+  border-radius: 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--border);
+}
+
+.rowTitle {
+  width: 34%;
+  min-width: 160px;
+  max-width: 320px;
+  height: 15px;
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.rowDetail {
+  width: 110px;
+  height: 13px;
+}
+
+.rowYear {
+  width: 36px;
+  height: 13px;
 }
 
 .cardTitle {
-  width: 78%;
-  height: 14px;
+  width: 68%;
+  height: 16px;
 }
 
 .cardMeta {
-  width: 42%;
+  width: 48%;
   height: 12px;
 }
 
@@ -92,26 +117,28 @@
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 44px;
+  gap: 24px;
+  margin-bottom: 48px;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 18px 20px;
-  background: var(--surface);
-}
-
-.statLabel {
-  width: 55%;
-  height: 12px;
+  gap: 8px;
 }
 
 .statValue {
-  width: 40%;
-  height: 24px;
+  width: 42%;
+  height: 26px;
+}
+
+.statLabel {
+  width: 58%;
+  height: 12px;
+}
+
+.sectionBlock + .sectionBlock {
+  margin-top: 48px;
 }
 
 .sectionHead {
@@ -133,11 +160,11 @@
 }
 
 .activityRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   background: var(--surface);
 }
 
@@ -145,18 +172,18 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.activityThumb {
-  width: 28px;
-  height: 38px;
+.activityDot {
+  width: 6px;
+  height: 6px;
   flex-shrink: 0;
 }
 
 .activityTitle {
   width: 220px;
-  max-width: 55%;
+  max-width: 65%;
   height: 15px;
 }
 
@@ -207,53 +234,49 @@
   height: 26px;
 }
 
-/* ---------- Game detail skeleton ---------- */
+/* ---------- Single-column detail hero skeleton ---------- */
 
 .hero {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  align-items: end;
-  gap: 40px;
-  padding: 8px 0 24px;
-  margin-bottom: 36px;
-}
-
-.heroBody {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding: 4px 0 28px;
+  margin-bottom: 36px;
+  border-bottom: 1px solid var(--border);
 }
 
 .heroBack {
-  width: 90px;
+  width: 96px;
   height: 13px;
 }
 
 .heroTitle {
-  width: 65%;
+  width: 55%;
+  max-width: 420px;
   height: 32px;
 }
 
 .heroByline {
-  width: 45%;
+  width: 32%;
+  max-width: 260px;
   height: 15px;
 }
 
 .heroFigures {
   display: flex;
-  gap: 16px;
-  margin-top: 8px;
+  gap: 36px;
+  margin-top: 12px;
 }
 
 .heroFigure {
-  width: 110px;
-  height: 54px;
+  width: 96px;
+  height: 44px;
 }
 
 .detailLayout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 48px;
+  gap: 64px;
 }
 
 .detailMain {
@@ -275,9 +298,7 @@
 .detailAside {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  background: var(--surface);
+  gap: 14px;
 }
 
 .asideLine {
@@ -310,9 +331,13 @@
 .logSidebarCard {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 16px;
   background: var(--surface);
+}
+
+.logGameSummaryCard {
+  border-top: 1px solid var(--border);
 }
 
 .logSidebarBox {
@@ -344,14 +369,10 @@
   height: 104px;
 }
 
-@media (max-width: 820px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 28px 18px;
-  }
-
+@media (max-width: 1024px) {
   .detailLayout {
     grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
   }
 }
 
@@ -360,9 +381,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hero {
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 20px;
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 0;
+  }
+
+  .rowTitle {
+    width: 68%;
   }
 
   .logLayout,
@@ -371,9 +398,8 @@
   }
 }
 
-@media (max-width: 560px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px 14px;
+@media (max-width: 640px) {
+  .heroTitle {
+    width: 78%;
   }
 }

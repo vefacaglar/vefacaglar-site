@@ -1,5 +1,6 @@
-.activity { margin-top: 36px; }
-.section { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 30px; }
+.activity { margin-top: 0; }
+.section { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 32px; }
+.section:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
 .sectionHeading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 22px; }
 .sectionHeading h2 { margin: 0; color: var(--text-heading); font-size: 19px; font-weight: 500; }
 .savedRating { color: var(--accent); font-size: 14px; font-variant-numeric: tabular-nums; }

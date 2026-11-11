@@ -11,7 +11,7 @@ export default function GamesLoading() {
         </div>
         <div className={`${styles.block} ${styles.searchBar}`} />
       </div>
-      <GamesGridSkeleton count={8} />
+      <GamesGridSkeleton count={10} />
     </div>
   );
 }

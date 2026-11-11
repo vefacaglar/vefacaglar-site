@@ -227,41 +227,76 @@
 
 .movieShelf {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .movieShelfItem {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   min-width: 0;
 }
 
-.movieShelfPoster {
+.movieShelfItem + .movieShelfItem {
+  border-top: 1px solid var(--border);
+}
+
+.movieShelfCard {
   display: flex;
   align-items: center;
-  justify-content: center;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
-  background: var(--surface-2);
-  color: var(--muted);
+  justify-content: space-between;
+  gap: 24px;
+  padding: 13px 0;
+  border-radius: 0;
+  color: var(--text);
   text-decoration: none;
 }
 
-.movieShelfPoster img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.movieShelfCard:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.movieShelfTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+  transition: color 0.15s ease;
+}
+
+.movieShelfCard:hover .movieShelfTitle {
+  color: var(--accent);
 }
 
 .movieShelfMeta {
-  margin: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.movieShelfRating {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.movieShelfYear {
+  min-width: 36px;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Recent activity list ---------- */
@@ -276,9 +311,9 @@
 }
 
 .activityItem {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   padding: 10px 14px;
   background: var(--surface);
@@ -323,28 +358,6 @@
   height: 6px;
   flex-shrink: 0;
   background: var(--tone, var(--muted));
-}
-
-.activityThumb {
-  width: 28px;
-  height: 40px;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 0;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-.activityThumbFallback {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
 }
 
 .activityTitle {
@@ -413,22 +426,17 @@
   outline-offset: 2px;
 }
 
-/* Game card caption (the card itself comes from the games shelf) */
-.cardItem {
-  position: relative;
-}
-
+/* Game card caption & edit control (used on the profile games shelf) */
 .cardEdit {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 2;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   color: var(--muted);
   text-decoration: none;
   transition: color 0.15s ease, background-color 0.15s ease;
@@ -436,7 +444,7 @@
 
 .cardEdit:hover {
   color: var(--text-heading);
-  background: var(--bg);
+  background: var(--surface-2);
 }
 
 .cardEdit:focus-visible {
@@ -444,18 +452,13 @@
   outline-offset: 2px;
 }
 
-.cardCaption {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .cardMeta {
   display: flex;
   flex-wrap: wrap;
   gap: 2px 12px;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .status {
@@ -920,10 +923,31 @@
 /* ---------- Small screens ---------- */
 
 @media (max-width: 720px) {
-  .movieShelf {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px 12px;
+  .movieShelfCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 0;
   }
+
+  .movieShelfTitle {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
+
+  .movieShelfMeta {
+    flex-wrap: wrap;
+    white-space: normal;
+    gap: 4px 12px;
+  }
+
+  .movieShelfYear {
+    min-width: 0;
+    text-align: left;
+  }
+
   .band {
     padding-top: 24px;
   }

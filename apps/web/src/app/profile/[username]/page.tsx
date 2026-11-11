@@ -4,6 +4,7 @@ import styles from "../profile.module.css";
 import { getActiveLanguage } from "../../../lib/lang";
 import { getDictionary } from "../../../dictionaries";
 import { localizeHref } from "../../../lib/localizeHref";
+import { formatDate } from "../../../lib/formatDate";
 import {
   decodeUsername,
   getProfileLibrary,
@@ -14,8 +15,6 @@ import ProfileEmpty from "../components/ProfileEmpty";
 import PrivateProfile from "../components/PrivateProfile";
 import { sortShelf } from "../libraryShelf";
 import { activityStatusLabel } from "../../explore/games/gameLogStatus";
-import GenericPoster from "../../../components/movies/GenericPoster";
-import PosterCredit from "../../../components/movies/PosterCredit";
 import { getProfileMovieLibrary } from "../movieLibrary";
 
 const RECENT_COUNT = 12;
@@ -130,9 +129,6 @@ export default async function ProfileOverview(props: OverviewProps) {
                 >
                   <div className={styles.activityMain}>
                     <span className={styles.activityMarker} aria-hidden="true" />
-                    <Link href={href} className={styles.activityThumb} tabIndex={-1} aria-hidden="true">
-                      <span className={styles.activityThumbFallback}>{item.title.slice(0, 1)}</span>
-                    </Link>
                     <Link href={href} className={styles.activityTitle}>
                       {item.title}
                     </Link>
@@ -188,17 +184,23 @@ export default async function ProfileOverview(props: OverviewProps) {
               <ul className={styles.movieShelf}>
                 {movieLibrary.movies.slice(0, 6).map((movie) => (
                   <li key={movie.slug} className={styles.movieShelfItem}>
-                    <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.movieShelfPoster} aria-label={movie.title}>
-                      {movie.posterImageUrl && movie.posterAttribution ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={movie.posterImageUrl} alt="" loading="lazy" />
-                      ) : <GenericPoster title={movie.title} year={movie.releaseYear} />}
+                    <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.movieShelfCard}>
+                      <span className={styles.movieShelfTitle}>{movie.title}</span>
+                      <span className={styles.movieShelfMeta}>
+                        <span className={movie.rating !== null ? styles.movieShelfRating : undefined}>
+                          {movie.rating === null ? "Not rated" : `${movie.rating}/10`}
+                        </span>
+                        <span>
+                          {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}
+                        </span>
+                        {movie.lastWatchedOn && (
+                          <time dateTime={movie.lastWatchedOn}>{formatDate(movie.lastWatchedOn, "en")}</time>
+                        )}
+                        {movie.releaseYear !== null && (
+                          <span className={styles.movieShelfYear}>{movie.releaseYear}</span>
+                        )}
+                      </span>
                     </Link>
-                    {movie.posterImageUrl && movie.posterAttribution && <PosterCredit attribution={movie.posterAttribution} />}
-                    <Link href={localizeHref(`/explore/movies/${movie.slug}`, lang)} className={styles.activityTitle}>{movie.title}</Link>
-                    <p className={styles.movieShelfMeta}>
-                      {movie.rating === null ? "Not rated" : `${movie.rating}/10`} · {movie.watchCount} {movie.watchCount === 1 ? "watch" : "watches"}
-                    </p>
                   </li>
                 ))}
               </ul>

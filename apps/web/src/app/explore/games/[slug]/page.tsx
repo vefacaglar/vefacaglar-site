@@ -18,7 +18,6 @@ import { gameCompanyHref, type GameCompanyRole } from "../../../../lib/gameCompa
 import { communityPageNumber, getCommunity, type CommunityPage } from "../../../../lib/community";
 import { getSessionUser } from "../../../../lib/session";
 import CommunitySection from "../../../../components/library/CommunitySection";
-import GenericPoster from "../../../../components/movies/GenericPoster";
 
 type Named = { name: string; slug: string };
 type GameDetail = {
@@ -117,42 +116,40 @@ export default async function Game(props: GameProps) {
   return (
     <article>
       <header className={styles.hero}>
-        <div className={styles.heroInner}>
-          <span className={styles.cover} aria-hidden="true">
-            <GenericPoster kicker="Game" title={game.title} year={year} size="large" />
-          </span>
-          <div className={styles.heading}>
-            <p className={styles.back}>
-              <Link href={localizeHref("/explore/games", lang)}>← {dict.back_to_games}</Link>
-            </p>
-            <h1 className={styles.title}>{game.title}</h1>
-            {game.developers.length > 0 && <p className={styles.byline}>{companyLinks(game.developers, "developer")}</p>}
+        <div className={styles.heading}>
+          <p className={styles.back}>
+            <Link href={localizeHref("/explore/games", lang)}>← {dict.back_to_games}</Link>
+          </p>
+          <h1 className={styles.title}>{game.title}</h1>
+          {game.developers.length > 0 && <p className={styles.byline}>{companyLinks(game.developers, "developer")}</p>}
+          {game.genres.length > 0 && (
+            <p className={styles.heroMeta}>{game.genres.map((g) => g.name).join(" · ")}</p>
+          )}
 
-            {(year || game.criticScore !== null) && (
-              <dl className={styles.figures}>
-                {year && (
-                  <div className={styles.figure}>
-                    <dt>{dict.released}</dt>
-                    <dd className={styles.figureValue}>{year}</dd>
-                  </div>
-                )}
-                {game.criticScore !== null && (
-                  <div className={styles.figure} data-tier={scoreTier(game.criticScore)}>
-                    <dt>{dict.critic_score}</dt>
-                    <dd className={styles.figureValue}>
-                      {game.criticScore}
-                      <span className={styles.figureUnit}>/100</span>
+          {(year || game.criticScore !== null) && (
+            <dl className={styles.figures}>
+              {year && (
+                <div className={styles.figure}>
+                  <dt>{dict.released}</dt>
+                  <dd className={styles.figureValue}>{year}</dd>
+                </div>
+              )}
+              {game.criticScore !== null && (
+                <div className={styles.figure} data-tier={scoreTier(game.criticScore)}>
+                  <dt>{dict.critic_score}</dt>
+                  <dd className={styles.figureValue}>
+                    {game.criticScore}
+                    <span className={styles.figureUnit}>/100</span>
+                  </dd>
+                  {game.criticScoreCount ? (
+                    <dd className={styles.figureNote}>
+                      {dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}
                     </dd>
-                    {game.criticScoreCount ? (
-                      <dd className={styles.figureNote}>
-                        {dict.critic_reviews.replace("{count}", String(game.criticScoreCount))}
-                      </dd>
-                    ) : null}
-                  </div>
-                )}
-              </dl>
-            )}
-          </div>
+                  ) : null}
+                </div>
+              )}
+            </dl>
+          )}
         </div>
       </header>
 

@@ -1,36 +1,21 @@
 /* ==========================================================================
-   Game page: a raised header with the cover and title, then notes and logs
-   beside a details column.
+   Game page: an editorial single-column header with title and figures, then
+   notes and logs beside a details column.
    ========================================================================== */
 
 .hero {
   position: relative;
-  padding: 8px 0 24px;
+  padding: 4px 0 28px;
   margin-bottom: 36px;
-}
-
-.heroInner {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  align-items: end;
-  gap: 36px;
-}
-
-.cover {
-  display: block;
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  background: var(--bg);
-  border-radius: 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .heading {
   min-width: 0;
-  padding-bottom: 4px;
 }
 
 .back {
-  margin: 0 0 16px 0;
+  margin: 0 0 18px 0;
   font-size: 13px;
 }
 
@@ -40,11 +25,11 @@
 }
 
 .back a:hover {
-  color: var(--text-heading);
+  color: var(--accent);
 }
 
 .title {
-  margin: 0 0 6px 0;
+  margin: 0 0 8px 0;
   font-size: clamp(24px, 2.8vw, 34px);
   font-weight: 600;
   line-height: 1.15;
@@ -57,7 +42,14 @@
 .byline {
   margin: 0;
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.heroMeta {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--muted);
 }
 
@@ -404,27 +396,15 @@
 }
 
 .logGameCard {
-  display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
-  gap: 14px;
   padding: 16px;
   background: var(--surface);
-}
-
-.logGameCover {
-  display: block;
-  width: 80px;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
-  background: var(--bg);
-  border-radius: 0;
-  text-decoration: none;
+  border-top: 1px solid var(--border);
 }
 
 .logGameBody {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -590,11 +570,6 @@
 /* ---------- Smaller screens ---------- */
 
 @media (max-width: 960px) {
-  .heroInner {
-    grid-template-columns: 160px minmax(0, 1fr);
-    gap: 28px;
-  }
-
   .body {
     grid-template-columns: minmax(0, 1fr);
     gap: 48px;
@@ -613,22 +588,12 @@
 
 @media (max-width: 640px) {
   .hero {
-    padding: 24px 0 28px;
+    padding: 4px 0 24px;
     margin-bottom: 32px;
   }
 
-  .heroInner {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .cover {
-    width: 44%;
-    max-width: 180px;
-  }
-
   .back {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   .byline {
@@ -637,10 +602,6 @@
 
   .figures {
     margin-top: 20px;
-  }
-
-  .figure {
-    padding: 0 20px;
   }
 
   .figureValue {

@@ -235,21 +235,16 @@ export default function ProfileGameList({
               <>
                 <th scope="row" className={styles.titleCell}>
                   <span className={styles.marker} aria-hidden="true" />
-                  <span className={styles.titleRow}>
-                    <Link href={href} className={styles.thumb} tabIndex={-1} aria-hidden="true">
-                      <span className={styles.thumbFallback}>{game.title.slice(0, 1)}</span>
+                  <span className={styles.titleBlock}>
+                    <Link href={href} className={styles.titleLink}>
+                      {game.title}
                     </Link>
-                    <span className={styles.titleBlock}>
-                      <Link href={href} className={styles.titleLink}>
-                        {game.title}
-                      </Link>
-                      {game.platformName && <span className={styles.platform}>{game.platformName}</span>}
-                      {finished && (
-                        <time className={styles.finished} dateTime={game.completedAt ?? undefined}>
-                          {dict.list_finished_on.replace("{date}", finished)}
-                        </time>
-                      )}
-                    </span>
+                    {game.platformName && <span className={styles.platform}>{game.platformName}</span>}
+                    {finished && (
+                      <time className={styles.finished} dateTime={game.completedAt ?? undefined}>
+                        {dict.list_finished_on.replace("{date}", finished)}
+                      </time>
+                    )}
                   </span>
                 </th>
                 <td className={styles.figure}>
