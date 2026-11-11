@@ -9,9 +9,6 @@ export type GameCardItem = {
   title: string;
   coverImageUrl?: string | null;
   releaseDate: string | null;
-  // Optional while an older API deployment does not expose the provider fields.
-  metacriticScore?: number | null;
-  openCriticScore?: number | null;
   criticScore?: number | null;
 };
 

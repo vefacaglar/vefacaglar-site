@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap');
-
 :root {
   --max: 960px;
 }
@@ -107,7 +105,7 @@ html {
 
 ::-webkit-scrollbar-thumb {
   background-color: var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   border: 2px solid var(--bg); /* creates padding around the thumb */
 }
 

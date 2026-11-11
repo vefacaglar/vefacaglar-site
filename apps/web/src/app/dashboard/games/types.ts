@@ -54,8 +54,6 @@ export interface Game {
   description: string | null;
   coverImageUrl: string | null;
   releaseDate: string | null;
-  metacriticScore: number | null;
-  openCriticScore: number | null;
   createdAt: string;
   updatedAt: string | null;
 

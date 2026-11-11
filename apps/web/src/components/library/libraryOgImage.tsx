@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { LIBRARY_SECTIONS, type LibrarySection } from "../../lib/librarySeo";
 import { getDictionary } from "../../dictionaries";
@@ -17,33 +19,35 @@ const ACCENT = "#8aa4c8"; // --accent
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-/** Fetch just the glyphs we draw from Google Fonts; fall back to the default font if offline. */
-async function loadGoogleFont(family: string, text: string): Promise<ArrayBuffer | null> {
-  try {
-    const css = await fetch(
-      `https://fonts.googleapis.com/css2?family=${family}&text=${encodeURIComponent(text)}`
-    ).then((res) => res.text());
-    const url = css.match(/src: url\((.+?)\) format\('(?:opentype|truetype)'\)/)?.[1];
-    if (!url) return null;
-    const res = await fetch(url);
-    return res.ok ? await res.arrayBuffer() : null;
-  } catch {
-    return null;
+async function loadBundledFont(file: string): Promise<ArrayBuffer | null> {
+  const candidates = [
+    () => readFile(new URL(`../../fonts/${file}`, import.meta.url)),
+    () => readFile(join(process.cwd(), "apps/web/src/fonts", file)),
+    () => readFile(join(process.cwd(), "src/fonts", file)),
+  ];
+
+  for (const read of candidates) {
+    try {
+      const buffer = await read();
+      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    } catch {
+      // try next candidate
+    }
   }
+
+  return null;
 }
 
 export async function renderLibraryOgImage(section?: LibrarySection) {
   // Preview cards are shared in English; labels come from the dictionary in sentence case.
   const dict = getDictionary("en");
-  const labels = LIBRARY_SECTIONS.map((key) => dict[key]);
-  const glyphs = `Vefa LibraryExplore${labels.join("")}`;
   const [regular, semibold] = await Promise.all([
-    loadGoogleFont("Geist:wght@500", glyphs),
-    loadGoogleFont("Geist:wght@600", glyphs),
+    loadBundledFont("FiraCode-Regular.ttf"),
+    loadBundledFont("FiraCode-SemiBold.ttf"),
   ]);
   const fonts = [
-    ...(regular ? [{ name: "Geist", data: regular, weight: 500 as const, style: "normal" as const }] : []),
-    ...(semibold ? [{ name: "Geist", data: semibold, weight: 600 as const, style: "normal" as const }] : []),
+    ...(regular ? [{ name: "Fira Code", data: regular, weight: 500 as const, style: "normal" as const }] : []),
+    ...(semibold ? [{ name: "Fira Code", data: semibold, weight: 600 as const, style: "normal" as const }] : []),
   ];
 
   return new ImageResponse(
@@ -56,7 +60,7 @@ export async function renderLibraryOgImage(section?: LibrarySection) {
           flexDirection: "column",
           background: BG,
           color: HEADING,
-          fontFamily: fonts.length ? "Geist" : undefined,
+          fontFamily: fonts.length ? "Fira Code" : undefined,
         }}
       >
         <div

@@ -97,8 +97,6 @@ const EMPTY_GAME_FIELDS: GameFieldsState = {
   description: "",
   coverImageUrl: "",
   releaseDate: "",
-  metacriticScore: "",
-  openCriticScore: "",
 };
 
 interface GamesDashboardClientProps {
@@ -218,8 +216,6 @@ export default function GamesDashboardClient({
       description: game.description || "",
       coverImageUrl: game.coverImageUrl || "",
       releaseDate: game.releaseDate || "",
-      metacriticScore: game.metacriticScore !== null ? game.metacriticScore : "",
-      openCriticScore: game.openCriticScore !== null ? game.openCriticScore : "",
     });
     setSelectedDevelopers(game.developers);
     setSelectedPublishers(game.publishers);
@@ -300,8 +296,6 @@ export default function GamesDashboardClient({
         description: gameFields.description.trim() || null,
         coverImageUrl: gameFields.coverImageUrl.trim() || null,
         releaseDate: gameFields.releaseDate.trim() || null,
-        metacriticScore: gameFields.metacriticScore !== "" ? Number(gameFields.metacriticScore) : null,
-        openCriticScore: gameFields.openCriticScore !== "" ? Number(gameFields.openCriticScore) : null,
       };
 
       if (editingItem) {

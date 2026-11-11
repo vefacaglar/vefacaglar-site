@@ -26,8 +26,6 @@ function gameToFields(game: Game): GameFieldsState {
     description: game.description || "",
     coverImageUrl: game.coverImageUrl || "",
     releaseDate: game.releaseDate || "",
-    metacriticScore: game.metacriticScore ?? "",
-    openCriticScore: game.openCriticScore ?? "",
   };
 }
 
@@ -111,8 +109,6 @@ export default function GameEditForm({
       description: fields.description.trim() || null,
       coverImageUrl: fields.coverImageUrl.trim() || null,
       releaseDate: fields.releaseDate.trim() || null,
-      metacriticScore: fields.metacriticScore !== "" ? Number(fields.metacriticScore) : null,
-      openCriticScore: fields.openCriticScore !== "" ? Number(fields.openCriticScore) : null,
     });
 
     if (res.error) {

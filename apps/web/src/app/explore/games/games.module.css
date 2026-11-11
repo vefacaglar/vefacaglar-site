@@ -64,3 +64,19 @@ nav.pagination > div {
   font-size: 15px;
   color: var(--muted);
 }
+
+.source {
+  margin-top: 32px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.source a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.source a:hover {
+  color: var(--accent);
+}

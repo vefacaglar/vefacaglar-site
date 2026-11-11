@@ -223,8 +223,6 @@ const dashboardStrings = {
     },
     card: {
       release: "Release:",
-      metacritic: "MC:",
-      opencrit: "OC:",
       global: "Global",
     },
     modalTitle: {
@@ -239,8 +237,6 @@ const dashboardStrings = {
       description: "Description (optional)",
       coverImageUrl: "Cover image URL (optional)",
       releaseDate: "Release date (optional)",
-      metacriticScore: "Metacritic score (optional)",
-      opencriticScore: "OpenCritic score (optional)",
       relations: "Relations",
       developers: "Developers",
       publishers: "Publishers",
@@ -256,7 +252,6 @@ const dashboardStrings = {
       originalTitle: "e.g. エルデンリング",
       description: "Enter game details/summary...",
       coverImageUrl: "https://example.com/cover.jpg",
-      metacriticScore: "0-100",
       developers: "nintendo epd, fromsoftware...",
       publishers: "nintendo, bandai namco...",
       genres: "action, rpg, platformer...",

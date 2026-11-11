@@ -10,7 +10,7 @@
   --warning: #9F8E7D; /* Soft faded sand */
   --info: #7087A3;
   --on-accent: #1a1a1a;
-  --font-body: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-body: var(--font-fira-code), 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-sans: var(--font-body);
   --font-display: var(--font-body);
 }

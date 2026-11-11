@@ -152,8 +152,6 @@ export async function createGameAction(data: {
   description?: string | null;
   coverImageUrl?: string | null;
   releaseDate?: string | null;
-  metacriticScore?: number | null;
-  openCriticScore?: number | null;
   developerIds?: string[];
   publisherIds?: string[];
   genreIds?: string[];
@@ -176,8 +174,6 @@ export async function updateGameAction(
     description?: string | null;
     coverImageUrl?: string | null;
     releaseDate?: string | null;
-    metacriticScore?: number | null;
-    openCriticScore?: number | null;
   }
 ) {
   return authedMutation("PUT", `/api/catalog/games/${id}`, {

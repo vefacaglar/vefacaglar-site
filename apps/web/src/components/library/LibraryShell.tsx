@@ -59,6 +59,9 @@ export default async function LibraryShell({
           <span className={styles.footerMark}>{dict.back_to_home}</span>
           <LanguageSwitcher />
         </div>
+        <p className={styles.attribution}>
+          Game data from <a href="https://www.igdb.com" target="_blank" rel="noopener noreferrer">IGDB</a> · Film data from <a href="https://www.wikidata.org" target="_blank" rel="noopener noreferrer">Wikidata</a>
+        </p>
         {footerContent ? (
           <div className={styles.sources}>
             <FooterContent content={footerContent} className={styles.sourcesLine} />

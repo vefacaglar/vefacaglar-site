@@ -151,6 +151,23 @@
   gap: 24px;
 }
 
+.attribution {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.attribution a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.attribution a:hover {
+  color: var(--accent);
+}
+
 .sources {
   margin: 0;
   font-size: 12px;

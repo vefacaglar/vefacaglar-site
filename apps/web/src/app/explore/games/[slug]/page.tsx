@@ -180,6 +180,16 @@ export default async function Game(props: GameProps) {
           </aside>
         )}
       </div>
+
+      <footer className={styles.source}>
+        <p>
+          {dict.source_game_detail}{" "}
+          <a href={`https://www.igdb.com/games/${encodeURIComponent(game.slug)}`} target="_blank" rel="noopener noreferrer">
+            IGDB
+          </a>
+          .
+        </p>
+      </footer>
     </article>
   );
 }

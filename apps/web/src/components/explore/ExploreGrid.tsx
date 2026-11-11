@@ -9,8 +9,6 @@ export interface ExploreGame {
   slug: string;
   title: string;
   releaseDate: string | null;
-  metacriticScore?: number | null;
-  openCriticScore?: number | null;
   criticScore?: number | null;
 }
 

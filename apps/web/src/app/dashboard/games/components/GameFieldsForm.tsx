@@ -1,10 +1,7 @@
 import React from "react";
 import styles from "./forms.module.css";
 import ds from "../../../../lib/dashboard-strings";
-import { toDigits } from "../../../../lib/numericInput";
 import DatePicker from "../../../components/DatePicker";
-
-export type ScoreField = number | "";
 
 export interface GameFieldsState {
   title: string;
@@ -13,8 +10,6 @@ export interface GameFieldsState {
   description: string;
   coverImageUrl: string;
   releaseDate: string;
-  metacriticScore: ScoreField;
-  openCriticScore: ScoreField;
 }
 
 export type GameFieldKey = keyof GameFieldsState;
@@ -112,43 +107,6 @@ export default function GameFieldsForm({
           onChange={(value) => onChange("releaseDate", value)}
           disabled={disabled}
         />
-      </div>
-
-      <div className={styles.rowFields}>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="game-metacritic">{ds.games.form.metacriticScore}</label>
-          <input
-            id="game-metacritic"
-            type="text"
-            inputMode="numeric"
-            maxLength={3}
-            className={styles.input}
-            placeholder={showPlaceholders ? ds.games.placeholders.metacriticScore : undefined}
-            value={values.metacriticScore}
-            onChange={(e) => {
-              const digits = toDigits(e.target.value);
-              onChange("metacriticScore", digits === "" ? "" : Math.min(100, Number(digits)));
-            }}
-            disabled={disabled}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label className={styles.label} htmlFor="game-opencritic">{ds.games.form.opencriticScore}</label>
-          <input
-            id="game-opencritic"
-            type="text"
-            inputMode="numeric"
-            maxLength={3}
-            className={styles.input}
-            placeholder={showPlaceholders ? ds.games.placeholders.metacriticScore : undefined}
-            value={values.openCriticScore}
-            onChange={(e) => {
-              const digits = toDigits(e.target.value);
-              onChange("openCriticScore", digits === "" ? "" : Math.min(100, Number(digits)));
-            }}
-            disabled={disabled}
-          />
-        </div>
       </div>
     </div>
   );

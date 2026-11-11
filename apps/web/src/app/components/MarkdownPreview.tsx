@@ -173,7 +173,7 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
       elements.push(
         <div key={key++} className={styles.videoWrapper}>
           <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}`}
+            src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
             title={dict.youtube_player}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen

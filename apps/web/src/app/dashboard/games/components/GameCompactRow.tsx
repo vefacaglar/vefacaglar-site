@@ -4,7 +4,6 @@ import styles from "./GameCompactRow.module.css";
 import dashboardStyles from "../../dashboard.module.css";
 import { Game } from "../types";
 import ds from "../../../../lib/dashboard-strings";
-import ScorePill from "./ScorePill";
 import RelationPills, { RelationPillSpec } from "./RelationPills";
 
 interface GameCompactRowProps {
@@ -44,14 +43,7 @@ export default function GameCompactRow({ game, editHref, onDelete }: GameCompact
         <h4 className={styles.gameCompactTitle} title={game.title}>{game.title}</h4>
         {game.originalTitle && <div className={styles.gameCompactOriginalTitle}>{game.originalTitle}</div>}
       </div>
-      <div className={styles.gameCompactScoresCol}>
-        {game.metacriticScore && (
-          <ScorePill score={game.metacriticScore} label={ds.games.card.metacritic} title={ds.games.form.metacriticScore} />
-        )}
-        {game.openCriticScore && (
-          <ScorePill score={game.openCriticScore} label={ds.games.card.opencrit} title={ds.games.form.opencriticScore} />
-        )}
-      </div>
+      <div className={styles.gameCompactScoresCol} />
       <div className={styles.gameCompactMetaCol}>
         <span>{ds.games.card.release} {game.releaseDate || "—"}</span>
       </div>

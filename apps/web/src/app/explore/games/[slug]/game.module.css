@@ -513,6 +513,28 @@
   gap: 10px;
 }
 
+.source {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.source p {
+  margin: 0;
+}
+
+.source a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.source a:hover {
+  color: var(--accent);
+}
+
 /* ---------- Smaller screens ---------- */
 
 @media (max-width: 960px) {

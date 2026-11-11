@@ -2,24 +2,18 @@ import { describe, expect, it } from "vitest";
 import { formatReviewScore, selectReviewScores } from "./cardMetrics";
 
 describe("game card metrics", () => {
-  it("keeps both real review providers without adding a duplicate IGDB aggregate", () => {
-    expect(selectReviewScores({ metacriticScore: 87, openCriticScore: 89, criticScore: 95 })).toEqual([
-      { source: "Metacritic", value: 87 },
-      { source: "OpenCritic", value: 89 },
-    ]);
+  it("returns the explicitly labelled IGDB aggregate score when valid", () => {
+    expect(selectReviewScores({ criticScore: 92 })).toEqual([{ source: "IGDB Critics", value: 92 }]);
+    expect(selectReviewScores({ criticScore: 0 })).toEqual([{ source: "IGDB Critics", value: 0 }]);
   });
 
-  it("uses the available provider and preserves a real zero", () => {
-    expect(selectReviewScores({ metacriticScore: 0, criticScore: 90 })).toEqual([{ source: "Metacritic", value: 0 }]);
-    expect(selectReviewScores({ openCriticScore: 81, criticScore: 90 })).toEqual([{ source: "OpenCritic", value: 81 }]);
-  });
-
-  it("falls back to the explicitly labelled IGDB aggregate only when neither provider is usable", () => {
-    expect(selectReviewScores({ metacriticScore: null, criticScore: 92 })).toEqual([{ source: "IGDB Critics", value: 92 }]);
-    expect(selectReviewScores({ metacriticScore: Number.NaN, openCriticScore: 101, criticScore: 0 })).toEqual([{ source: "IGDB Critics", value: 0 }]);
+  it("filters out invalid or missing critic scores", () => {
     expect(selectReviewScores({})).toEqual([]);
-    expect(selectReviewScores({ metacriticScore: -1, openCriticScore: Infinity, criticScore: 101 })).toEqual([]);
-    expect(selectReviewScores({ metacriticScore: "90" as any })).toEqual([]);
+    expect(selectReviewScores({ criticScore: null })).toEqual([]);
+    expect(selectReviewScores({ criticScore: -1 })).toEqual([]);
+    expect(selectReviewScores({ criticScore: 101 })).toEqual([]);
+    expect(selectReviewScores({ criticScore: Number.NaN })).toEqual([]);
+    expect(selectReviewScores({ criticScore: "90" as any })).toEqual([]);
   });
 
   it("formats actual review scores without rescaling or forcing trailing zeros", () => {

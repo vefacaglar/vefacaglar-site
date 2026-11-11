@@ -56,6 +56,9 @@ const nextConfig = {
   output: "standalone",
   transpilePackages: ["@vefacaglar/ui"],
   outputFileTracingRoot: require("path").join(__dirname, "../.."),
+  outputFileTracingIncludes: {
+    "/**": ["./src/fonts/**/*"],
+  },
   poweredByHeader: false,
   experimental: {
     // Editor image uploads go through a Server Action; match the API's 10MB multipart limit.

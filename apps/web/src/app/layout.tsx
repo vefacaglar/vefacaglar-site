@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { TopBar } from "../components/TopBar";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -12,6 +13,14 @@ import { getAuthMode } from "../lib/oidc";
 import "@vefacaglar/ui/styles.css";
 import "./globals.css";
 import styles from "./layout.module.css";
+
+const firaCode = localFont({
+  src: "../fonts/FiraCode-VF.woff2",
+  weight: "300 700",
+  style: "normal",
+  display: "swap",
+  variable: "--font-fira-code",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,7 +52,7 @@ export default async function RootLayout({
     getAuthMode() === "oidc" && issuer ? `${issuer}/.well-known/openid-configuration` : null;
 
   return (
-    <html lang={lang}>
+    <html lang={lang} className={firaCode.variable}>
       <body>
         <LocaleProvider locale={locale}>
           <WidthController />

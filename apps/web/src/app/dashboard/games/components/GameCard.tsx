@@ -4,7 +4,6 @@ import styles from "./GameCard.module.css";
 import dashboardStyles from "../../dashboard.module.css";
 import { Game } from "../types";
 import ds from "../../../../lib/dashboard-strings";
-import ScorePill from "./ScorePill";
 import RelationPills, { RelationPillSpec } from "./RelationPills";
 
 interface GameCardProps {
@@ -40,16 +39,6 @@ export default function GameCard({ game, editHref, onDelete }: GameCardProps) {
     <div className={styles.gameCard}>
       <div className={styles.gameCardCover}>
         <div className={styles.gameCardPlaceholder} aria-hidden="true">{initials}</div>
-        {(game.metacriticScore || game.openCriticScore) && (
-          <div className={styles.gameCardScores}>
-            {game.metacriticScore && (
-              <ScorePill score={game.metacriticScore} label={ds.games.card.metacritic} title={ds.games.form.metacriticScore} />
-            )}
-            {game.openCriticScore && (
-              <ScorePill score={game.openCriticScore} label={ds.games.card.opencrit} title={ds.games.form.opencriticScore} />
-            )}
-          </div>
-        )}
       </div>
       <div className={styles.gameCardContent}>
         <h4 className={styles.gameCardTitle} title={game.title}>{game.title}</h4>
