@@ -72,6 +72,20 @@ titles that begin with the query first. `sort` comes after the relevance rules,
 so typed queries rank by relevance and use the API's sort only to break ties,
 while a placeholder (browse) query is a pure sort.
 
+**Search-box suggestion groups.** `/api/movies/suggest` (people, movies) and
+`/api/games/search/suggest` (developers, publishers, games) return an `order`
+array, best-matching group first, and the web dropdowns render and navigate in
+that order. Raw `_rankingScore` is not compared across indexes: the ranking
+rules differ, so "megan" scores 1.0 on the film "Megan Leavey" and 0.985 on
+"Megan Fox", and "bethesda" 0.998 on "Bethesda Pinball" and 0.992 on "Bethesda
+Softworks" (local v1.56.2 with these settings). Instead
+`apps/api/src/shared/search/suggestion-group-order.ts` scores each group by its
+best suggestion's text: exact text, then every query word a whole word, then
+word prefixes, then anything else (typos, split words); then the share of the
+text's words matched; then whether the text starts with the query. Ties put
+name groups (people, companies) before title groups. The same rule applies when
+PostgreSQL answers.
+
 ## Rebuilds and swaps
 
 A rebuild never touches the live index until the replacement is complete:

@@ -34,6 +34,7 @@ describe("movie search suggestions handler", () => {
         { slug: "insomnia-q1", title: "Insomnia", releaseYear: null, director: null },
       ],
       people: [nolan],
+      order: ["movies", "people"],
     });
     expect(JSON.stringify(result)).not.toContain("wikimedia.org");
   });
@@ -44,14 +45,31 @@ describe("movie search suggestions handler", () => {
   });
   it("skips the director lookup when no titles match", async () => {
     const { repo, handler } = setup([]);
-    expect(await handler.handle({ query: { q: "nolan" } } as any)).toEqual({ movies: [], people: [nolan] });
+    expect(await handler.handle({ query: { q: "nolan" } } as any)).toEqual({ movies: [], people: [nolan], order: ["people", "movies"] });
     expect(repo.findDirectorNames).not.toHaveBeenCalled();
   });
   it.each([undefined, "", "  ", "&&!"])("ignores blank or punctuation-only input (%j)", async (q) => {
     const { catalog, people, handler } = setup();
-    expect(await handler.handle({ query: { q } } as any)).toEqual({ movies: [], people: [] });
+    expect(await handler.handle({ query: { q } } as any)).toEqual({ movies: [], people: [], order: ["people", "movies"] });
     expect(catalog.listPublic).not.toHaveBeenCalled();
     expect(people.searchPublicPeople).not.toHaveBeenCalled();
+  });
+  it("puts people first when a name only starts the matching titles", async () => {
+    const { people, handler } = setup([card("megan-leavey-q1", "Megan Leavey", 2017), card("megane-q2", "Megane", 2007)]);
+    people.searchPublicPeople.mockResolvedValue([{ ...nolan, wikidataId: "Q80069", name: "Megan Fox" }]);
+    expect((await handler.handle({ query: { q: "megan" } } as any)).order).toEqual(["people", "movies"]);
+  });
+  it("puts titles first when one matches the query exactly, even below a longer title", async () => {
+    const { people, handler } = setup([card("cargo-200-q1", "Cargo 200", 2007), card("cargo-q2", "Cargo", 2017)]);
+    people.searchPublicPeople.mockResolvedValue([{ ...nolan, wikidataId: "Q1", name: "Gretcha Cargo" }]);
+    expect((await handler.handle({ query: { q: "cargo" } } as any)).order).toEqual(["movies", "people"]);
+  });
+  it("orders by the returned names and titles, whichever source (index or SQL fallback) answered", async () => {
+    // The services hide which source answered; ordering only reads the returned names and titles.
+    const { catalog, people, handler } = setup();
+    catalog.listPublic.mockResolvedValue({ items: [card("nolan-q9", "Nolan", 2001)], total: 1, ranking });
+    people.searchPublicPeople.mockResolvedValue([nolan]);
+    expect((await handler.handle({ query: { q: "nolan" } } as any)).order).toEqual(["movies", "people"]);
   });
   it("propagates failures instead of returning partial suggestions", async () => {
     const { people, handler } = setup();
