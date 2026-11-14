@@ -10,11 +10,13 @@ dashboard (apps/web) ──HTTP──▶ api (apps/api) ──INSERT + pg_notify
                                      apps/worker (Rust) ── LISTEN / poll, claim, run, checkpoint
 ```
 
-Job types: `search.reindex` (full reindex), `search.sync` (fill in missing
-documents), and `catalog.popularity.refresh` (daily game popularity and owner
-ranking refresh). All are registered jobs and share the `search.index`
-concurrency key, so live popularity writes cannot race with search alias swaps.
-The search jobs remain manual-only; game popularity runs daily at 07:15 UTC.
+Job types: `search.reindex` (full reindex), `search.sync` (heal: rebuild when
+an index is missing or outdated, else fill in missing documents), and
+`catalog.popularity.refresh` (daily game popularity and owner ranking refresh).
+All are registered jobs and share the `search.index` concurrency key, so live
+popularity writes cannot race with search index swaps. `search.reindex` is
+manual-only; `search.sync` runs hourly at minute 17 (migration
+`0044_schedule_search_sync`); game popularity runs daily at 07:15 UTC.
 
 ## Database (owned by `packages/db`, Drizzle schema + generated migration)
 
@@ -101,21 +103,21 @@ draining and active generations share the same global two-running-job gate.
 
 ### Search jobs (`search.reindex`, `search.sync`)
 
-These generic jobs own only the seven collections below. Movies are owned exclusively by `search.movies.sync`, documented in [movie search](movie-search.md).
-Both: payload `{}` (no options; the old `drop` flag is removed), concurrency key **`search.index`** (shared → never run at the same time; the API answers `409` while one is queued/running). Both reproduce the API's Typesense collection schemas and document mappers exactly (see `apps/api/src/shared/search/`), English-only collections (`games_en`, `developers_en`, `publishers_en`, `genres_en`, `platforms_en`, `themes_en`, `posts_en`), read source rows with keyset pagination (by primary key) in batches of 500 and import via `POST /collections/{name}/documents/import?action=upsert` (JSONL); per-document import errors are logged and fail the job.
+These generic jobs own only the seven Meilisearch indexes below. Movies are owned exclusively by `search.movies.sync`, documented in [movie search](movie-search.md). The index contract (uids, settings files, swap semantics, keys) is in [search-meilisearch.md](search-meilisearch.md).
+Both: payload `{}` (no options; the old `drop` flag is removed), concurrency key **`search.index`** (shared → never run at the same time; the API answers `409` while one is queued/running). Both reproduce the API's document mappers exactly and apply the settings files in `apps/worker/src/jobs/search/meili/`, English-only indexes (`games_en`, `developers_en`, `publishers_en`, `genres_en`, `platforms_en`, `themes_en`, `posts_en`, primary key `id`), read source rows with keyset pagination (by primary key) in batches of 500 and add them with `POST /indexes/{uid}/documents`, waiting for each task; a rejected batch fails the whole task, is logged and fails the job.
 
 **`search.reindex` — full reindex, zero downtime:**
-1. For **each of the seven generic** collections create a new physical collection `{alias}__{yyyymmddhhmmss}` (one shared timestamp per run).
-2. Index **all** documents into the new physical collections.
-3. Only after **every generic** collection is fully loaded, point **all** aliases `{alias}` at their new physical collections (live search switches atomically per alias, never to a half-filled collection).
-4. Delete the previous physical collections. If a legacy *real* collection named `{alias}` exists, it must be deleted right before that alias is created (one-time brief gap, logged as `warn`).
-- Checkpoint: `{ suffix: "yyyymmddhhmmss", collectionIndex, lastId }` — resuming reuses the same physical collections; nothing is swapped until the import phase is complete. A fresh run (no checkpoint) first deletes stale `{alias}__*` collections that no alias points to (and legacy `*_tr` collections).
-- Cancel deletes this run's half-built collections and clears the checkpoint (a retry starts over); a failure keeps both so the retry resumes. Progress phases: `preparing`, `counting`, `indexing:<alias>`, `swapping aliases`, `cleanup`; `total` = sum of source row counts, known before indexing starts.
+1. For **each of the seven generic** indexes create `{uid}__build_{yyyymmddhhmmss}` (one shared timestamp per run) with its settings file.
+2. Index **all** documents into the build indexes.
+3. Only after **every generic** build is fully loaded, swap all seven with their stable uids in one `POST /swap-indexes` call (live search switches atomically, never to a half-filled index). A stable uid that does not exist yet is created by renaming the build into it.
+4. Delete the build indexes, which now hold the old documents.
+- Checkpoint: `{ suffix: "yyyymmddhhmmss", collectionIndex, lastId }` — resuming reuses the same build indexes (a build that vanished or has outdated settings is recreated and refilled); nothing is swapped until the import phase is complete. A run resumed after the swap only cleans up: the swap is found in Meilisearch's task history and never repeated. A fresh run (no checkpoint) first deletes stale `{uid}__build_*` indexes.
+- Cancel deletes this run's half-built indexes and clears the checkpoint (a retry starts over); a failure keeps both so the retry resumes. Progress phases: `preparing`, `counting`, `indexing:<uid>`, `swapping indexes`, `cleanup`; `total` = sum of source row counts, known before indexing starts.
 
-**`search.sync` — fill missing documents:**
-- For each live collection (resolve the alias), list the document ids in Typesense (e.g. export with `include_fields=id`) and the source ids in Postgres; upsert **only** the documents that exist in Postgres but are missing from the collection. Existing documents are not touched; nothing is deleted. Missing live collections are created by the API's bootstrap, not by this job.
-- A missing alias/collection fails the job immediately (permanent, no retries) with a message to run `search.reindex` first.
-- Progress: all collections are diffed first (phase `diffing:<alias>`), so `total` = total missing count before indexing (phase `indexing:<alias>`). Logs per collection: `N missing, M orphaned` and `N missing, M indexed`; orphans are only counted. Checkpoint `{ collectionIndex }` — resume skips finished collections.
+**`search.sync` — heal and fill missing documents (hourly, `17 * * * *`):**
+- First, if any of the seven indexes is missing or its settings differ from the settings file, it logs the reason and runs the full reindex above instead (same checkpoint, so it resumes like `search.reindex`). This bootstraps the indexes after the Typesense cutover (migration `0044_schedule_search_sync` makes it due immediately) and rebuilds after a settings change.
+- Otherwise, for each index, list the document ids in Meilisearch and the source ids in Postgres; add **only** the documents that exist in Postgres but are missing from the index. Existing documents are not touched; nothing is deleted.
+- Progress: all indexes are diffed first (phase `diffing:<uid>`), so `total` = total missing count before indexing (phase `indexing:<uid>`). Logs per index: `N missing, M orphaned` and `N missing, M indexed`; orphans are only counted. Checkpoint `{ collectionIndex }` — resume skips finished indexes.
 
 - Parity: shared golden fixtures (input rows → expected documents) are asserted by both a TS spec and a Rust test so mappers cannot drift.
 
@@ -126,7 +128,9 @@ The Rust handler starts `/usr/local/bin/node` with the compiled existing
 `/app/apps/api/dist/scripts/refresh-popularity.js`, without a shell or command
 arguments from a job payload. Scoring stays in TypeScript. The image includes
 Node 24, API/DB production dependencies and the compiled CLI; runtime settings
-reuse `DATABASE_URL` and Typesense, plus `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`.
+reuse `DATABASE_URL` and `MEILISEARCH_URL` / `MEILISEARCH_API_KEY` (the child
+inherits the worker's environment and needs document write access), plus
+`IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`.
 Missing configuration fails permanently with a controlled message.
 
 The worker heartbeat continues while the child runs. Bounded, sanitized CLI
@@ -210,8 +214,8 @@ containers have restart disabled before drain and are cleaned up only after exit
 Legacy images without the control protocol require a separate verified idle
 handoff; they must never be started as supposedly standby candidates.
 Image: `ghcr.io/<repo>-worker`, built and deployed by
-`.github/workflows/ci-deploy.yml`. Env: `DATABASE_URL`, `TYPESENSE_HOST`,
-`TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, optional `WORKER_ID`
-for independently managed workers, `RUST_LOG`.
+`.github/workflows/ci-deploy.yml`. Env: `DATABASE_URL`, `MEILISEARCH_URL`,
+`MEILISEARCH_API_KEY`, optional `WORKER_ID` for independently managed workers,
+`RUST_LOG`. Logs are JSON lines on stdout ([application logs](application-logs.md)).
 
 Local: `pnpm --filter worker worker:dev` (deliberately not part of `pnpm dev`, because the local `.env` points at production services).

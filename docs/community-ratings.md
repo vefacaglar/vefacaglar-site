@@ -15,7 +15,7 @@ Existing rows keep `shared_at = null`. Owner APIs expose the setting as `isPubli
 
 Game reviews use `user_games.review_text`, independently of the existing private `notes`. Movie reviews use each watch's `comment`. New text is trimmed, whitespace-only text becomes null, and requests are limited to 2,000 Unicode characters. A shared log may contain no review text. Public entries include only the author username/display name, publication date, review, rating and a small domain-specific activity projection. Emails, user UUIDs, private notes, purchases and playtime audit entries are excluded. Review text is plain text and must be escaped by renderers.
 
-Existing private `/logs` and `/activity` APIs and public profile response projections retain their purposes. Personal activity is never placed in Typesense.
+Existing private `/logs` and `/activity` APIs and public profile response projections retain their purposes. Personal activity is never placed in Meilisearch.
 
 ## Site average
 

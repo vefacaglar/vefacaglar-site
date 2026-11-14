@@ -1,6 +1,6 @@
 # Movie watches and ratings
 
-Movie activity uses the existing account/session authentication. PostgreSQL owns all personal activity; nothing is added to Typesense, catalog popularity, or provider synchronization.
+Movie activity uses the existing account/session authentication. PostgreSQL owns all personal activity; nothing is added to Meilisearch, catalog popularity, or provider synchronization.
 
 `user_movie_watches` records separate watches with an optional calendar date. Rewatching a film, including twice on the same day or without a known date, creates separate UUID entries. `watched_on` is nullable and has no default; missing dates stay unknown instead of becoming the date the record was created. A known date can be backdated, edited, or cleared. Each watch may have a comment up to 2,000 characters, private by default and shareable by explicit choice; surrounding whitespace is trimmed and empty comments are stored as null. Each user/film has at most one independent current rating in `user_movie_ratings`, enforced by its composite primary key. Its database check permits only integers from 1 to 10. Clearing a rating deletes that row. Changes to watches never change the rating, and rating changes never create or delete watches.
 

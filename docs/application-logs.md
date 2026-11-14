@@ -1,37 +1,24 @@
 # Application logs
 
-The API and worker can export events to the same Typesense
-`application_logs_v1` collection as authserver-go. In Log Tracker, select
-`vefacaglar-site-api` or `vefacaglar-site-worker` in the **Service** filter.
+The API and worker write structured JSON lines to stdout/stderr. The VPS log
+shipper collects container output into VictoriaLogs; there is no separate log
+sink or collection to provision, and no log credentials to configure.
 
-The API exports HTTP 4xx and 5xx responses and runtime failures, including
+The API (pino) logs HTTP 4xx and 5xx responses and runtime failures, including
 dependency failures and fallback paths that do not fail the request. HTTP
-events include the matched route template when available and the generated
-request ID returned in `X-Request-Id`. The worker exports lifecycle, job
-failure and infrastructure events.
+events carry the matched route template when available and the request ID
+returned in `X-Request-Id`. `LOG_ENVIRONMENT` can override the API's default
+environment label (`NODE_ENV`).
 
-The message includes the diagnostic reason.
-Expand a record for redacted exception messages, error codes such as Postgres
-SQLSTATE, code locations and application stack frames when available.
-The Docker API reports TypeScript
-line and column numbers. The worker uses Rust line tables and labels stacks
-captured at the reporting site. Status-only HTTP responses have no exception
-stack. Job progress and raw errors remain in the local logs and job dashboard.
+The worker (tracing JSON) logs lifecycle, job failure and infrastructure events.
+Events tagged with an `application_event` field (for example `worker_failed`,
+`job_claim_failed`, `worker_panicked`) also carry derived diagnostics when they
+report an error: `error_code` (such as a Postgres SQLSTATE or
+`meilisearch_task_<code>`), `response_message`, `diagnostic`, and for warnings
+and errors `error_source` and `stack` (Rust line tables; stacks captured at the
+reporting site are labelled as such). Fields set explicitly on the event win.
 
-Set `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` in the runtime environment
-of both services. For GitHub deployment, add them as GitHub secrets (both
-workflows pass them through) or put them inside `API_ENV` (`api-production`) and
-`WORKER_ENV` (also `api-production`). On the shared Docker network, use
-`http://typesense:8108`. Use HTTPS for remote endpoints. `LOG_ENVIRONMENT`
-can override the default environment label.
-
-Use a key scoped to `application_logs_v1` with `documents:create`. If the
-collection is missing, either provision it with the
-[collection schema](../apps/api/src/shared/application-logs/application_logs_v1.json)
-or give the writer `collections:create` so it can create the collection on its
-first write. Use a separate `documents:search` key for Log Tracker.
-
-Export uses a bounded background queue. During an outage or queue overflow,
-events remain in the local logs. Typesense receives safe diagnostics and selected
-metadata. Request bodies, raw URLs, credentials, job payloads and raw exception
-messages stay out of the exported collection.
+Messages are redacted before they are written: credentials in URLs, API key
+headers and the values of secrets such as `DATABASE_URL` and
+`MEILISEARCH_API_KEY` are masked. Job progress and per-job logs remain in the
+job dashboard. Request bodies, raw URLs and job payloads are not logged.

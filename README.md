@@ -17,7 +17,7 @@ For how the pieces fit together, see [docs/architecture.md](docs/architecture.md
 - **Job Queue:** PostgreSQL tables + `LISTEN/NOTIFY` (no Redis queue); live progress over Server-Sent Events
 - **Validation:** [TypeBox](https://github.com/sinclairzx81/typebox) (Runtime Validation & Schema Serialization)
 - **Testing:** [Vitest](https://vitest.dev/) (Handler-level unit tests in `apps/api`)
-- **Search & Indexing Engine:** [Typesense](https://typesense.org/) (for ultra-fast, typo-tolerant searches across games, developers, publishers, genres, platforms, and themes)
+- **Search & Indexing Engine:** [Meilisearch](https://www.meilisearch.com/) (typo-tolerant search across games, developers, publishers, genres, platforms, themes, posts, movies and movie people)
 - **API Documentation:** OpenAPI/Swagger (`@fastify/swagger` & `@fastify/swagger-ui`)
 - **Dependency Injection:** [`tsyringe`](https://github.com/microsoft/tsyringe)
 - **Image Hosting:** [ImageKit](https://imagekit.io/)
@@ -62,17 +62,17 @@ The backend (`apps/api`) strictly implements the **Feature Folder** / **Handler 
 
 ---
 
-## 🔍 Search & Indexing Architecture (Typesense)
+## 🔍 Search & Indexing Architecture (Meilisearch)
 
-Search across game-related entities (games, developers, publishers, genres, platforms, themes) is powered by a high-performance **Typesense** integration designed with resilience and strict decoupling patterns:
+Search across games, game-related entities, posts, movies and movie people is powered by **Meilisearch** (contract: [docs/search-meilisearch.md](docs/search-meilisearch.md)), designed with resilience and strict decoupling patterns:
 
-- **CQRS Search Pattern:** Search uses separate read and write contracts. Lookups and queries run via `ISearchReader` to fetch from Typesense, while index updates run via `ISearchIndexWriter`.
-- **Decoupled Event-Driven Indexing:** To avoid blocking API request pipelines, indexing is completely decoupled from core database write operations. Instead of writing to Typesense inside feature handlers, we utilize a domestic **Domain Event Bus** (`games.events.ts`). DB modifications trigger lightweight events that are subscribed to asynchronously to propagate updates to Typesense.
-- **Search Fallback:** When Typesense is unavailable or times out, the API uses PostgreSQL for searches. The API keeps a 30-second cooldown in memory before trying Typesense again.
-- **English-Only Index:** Search indexes only the default (English) content into one collection per entity (`games_en`, `posts_en`, …). Every search reads these collections regardless of the request language; translations are not indexed.
-- **Aliases:** Each collection name is an alias pointing at a timestamped physical collection, so a full rebuild can switch over without downtime.
+- **CQRS Search Pattern:** Search uses separate read and write contracts. Lookups and queries run via `ISearchReader` to fetch from Meilisearch, while index updates run via `ISearchIndexWriter`.
+- **Decoupled Event-Driven Indexing:** To avoid blocking API request pipelines, indexing is completely decoupled from core database write operations. Instead of writing to Meilisearch inside feature handlers, we utilize a domestic **Domain Event Bus** (`games.events.ts`). DB modifications trigger lightweight events that are subscribed to asynchronously to propagate updates to Meilisearch.
+- **Search Fallback:** When Meilisearch is unavailable or times out, the API uses PostgreSQL for searches. The API keeps a 30-second cooldown in memory before trying Meilisearch again.
+- **English-Only Index:** Search indexes only the default (English) content into one index per entity (`games_en`, `posts_en`, …). Every search reads these indexes regardless of the request language; translations are not indexed.
+- **Atomic Rebuilds:** Each index has a stable uid. A full rebuild loads a `<uid>__build_<suffix>` index and swaps it in, so it switches over without downtime.
 - **Popularity Ranking:** Game browse results are sorted by a popularity score built from IGDB signals, then by release date.
-- **Bulk Work in the Worker:** The API only does per-document writes and bootstraps missing collections. Full rebuilds and gap filling are background jobs (see [Search Reindexing](#search-reindexing)).
+- **Bulk Work in the Worker:** The API only does per-document writes into existing indexes and never creates one. Index creation, full rebuilds and gap filling are background jobs (see [Search Reindexing](#search-reindexing)).
 
 ---
 
@@ -123,7 +123,7 @@ Run them with `pnpm test` (all workspaces) or `pnpm --filter api test` (API only
 - **Node.js:** v20 or higher
 - **pnpm:** v11 or higher
 - **PostgreSQL Database** (e.g., Neon Postgres, Local Postgres)
-- **Typesense** (optional search index; the API falls back to Postgres)
+- **Meilisearch** (optional search index; the API falls back to Postgres)
 - **Rust toolchain** (only for working on `apps/worker`)
 - **ImageKit Account** (for image uploads)
 
@@ -195,12 +195,12 @@ pnpm --filter worker worker:dev
 Requires the Rust toolchain (`cargo`). Worker checks: `pnpm --filter worker typecheck`, `pnpm --filter worker test`, `pnpm --filter worker lint`.
 
 ### Search Reindexing
-Search indexing runs as two registered jobs in the worker. Start them from **Dashboard → Jobs → Registered jobs**:
+Search indexing runs as two registered jobs in the worker. Run them from **Dashboard → Jobs → Registered jobs**:
 
-- **`search.reindex`**: full rebuild. Loads everything into new timestamped collections, then switches all aliases at once. Search keeps serving the old data until the switch.
-- **`search.sync`**: adds documents that exist in Postgres but are missing from the live collections.
+- **`search.reindex`**: full rebuild. Loads everything into `<uid>__build_<timestamp>` indexes, then swaps all of them in at once. Search keeps serving the old data until the swap.
+- **`search.sync`**: runs hourly. Rebuilds everything when an index is missing or its settings file changed; otherwise adds documents that exist in Postgres but are missing from the live indexes.
 
-Only one search job can run at a time. Neither job runs on a schedule.
+Only one search job can run at a time. Movies and movie people are indexed by `search.movies.sync`. The index contract is in [docs/search-meilisearch.md](docs/search-meilisearch.md).
 
 ### Catalog Import & Popularity
 ```bash

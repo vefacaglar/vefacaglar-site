@@ -46,7 +46,7 @@ async function fetchJson(path: string): Promise<any> {
   return res.json();
 }
 
-// The posts list is served by Typesense, which caps a page at 250 items, so walk every page.
+// The posts list API caps a page at 250 items, so walk every page.
 const POSTS_PAGE_SIZE = 250;
 
 async function fetchAllPosts(): Promise<any[]> {

@@ -12,12 +12,12 @@ How the pieces of this monorepo fit together. Coding rules live in
                  │ site · library · dashboard   │
                  └──────────────┬───────────────┘
                                 │ HTTP (server components / actions / route handlers)
-                 ┌──────────────▼───────────────┐        ┌────────────┐
-                 │ apps/api  (Fastify, VPS)     │───────▶│ Typesense  │
-                 │ api2.vefacaglar.com          │◀── ─ ─ │ (search)   │
-                 └───┬──────────────────────────┘        └─────▲──────┘
+                 ┌──────────────▼───────────────┐        ┌─────────────┐
+                 │ apps/api  (Fastify, VPS)     │───────▶│ Meilisearch │
+                 │ api2.vefacaglar.com          │◀── ─ ─ │ (search)    │
+                 └───┬──────────────────────────┘        └─────▲───────┘
                      │ Drizzle                                 │ bulk import,
-                     ▼                                         │ alias swap
+                     ▼                                         │ index swap
                 ┌──────────┐                     ┌─────────────┴──────────┐
                 │ Postgres │                     │ apps/worker (Rust, VPS)│
                 │ data +   │                     │ background jobs        │
@@ -32,10 +32,10 @@ How the pieces of this monorepo fit together. Coding rules live in
 | `apps/worker` | Rust (tokio, sqlx, reqwest) | Docker on the same VPS as the API, single replica | Long-running jobs: full search reindex, index sync |
 | `packages/db` | Drizzle ORM + Drizzle Kit | — | Schema, generated migrations, seeds |
 | Postgres | — | managed / VPS | Source of truth and the only job queue |
-| Typesense | — | VPS | Search (English-only collections behind aliases) |
+| Meilisearch | v1.56.2 | VPS | Search (English-only indexes with stable uids; see [search-meilisearch.md](search-meilisearch.md)) |
 
 **Boundary rule:** the web app talks only to the API. It never connects to
-Postgres, Typesense or the worker. The API and the worker share one VPS.
+Postgres, Meilisearch or the worker. The API and the worker share one VPS.
 Browsers connect directly to the API for job SSE streams; the web server does
 not proxy those long-lived requests. See [web deployment](../deploy/web/README.md)
 for the initial DNS cutover and routine GitHub deployments.
@@ -115,7 +115,7 @@ suppressed (`null`) on public responses. No administrative source data is
 included in the public list response.
 
 Refresh with `pnpm --filter api catalog:popularity` or the existing admin-only
-`POST /api/catalog/popularity/refresh`. The CLI requires Typesense write access
+`POST /api/catalog/popularity/refresh`. The CLI requires Meilisearch write access
 and resynchronizes all IGDB-linked catalog games in 500-document batches, so a
 rerun repairs search after a partial failure even when scores did not change.
 Indexing failures fail the CLI; ordinary API/import event behavior is unchanged.
@@ -132,9 +132,10 @@ Daily refresh runs through the existing Jobs system as
 `catalog.popularity.refresh` at 07:15 UTC, not a separate GitHub Actions schedule.
 The Rust worker starts the same compiled TypeScript CLI inside its image, with
 Node 24, keeping the scoring implementation in one place. It shares concurrency
-key `search.index` with search reindex/sync to prevent live alias races.
+key `search.index` with search reindex/sync to prevent live index swap races.
 The worker needs `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` in addition to its
-existing database and Typesense write credentials. No public API endpoint or
+existing database and Meilisearch (`MEILISEARCH_URL`, `MEILISEARCH_API_KEY`)
+credentials, which the child process inherits. No public API endpoint or
 internal HTTP authentication is involved.
 
 Generated migrations are applied automatically by CD before deployment. Migration `0026_catalog_popularity_job.sql` seeds the recurring row
@@ -149,16 +150,17 @@ an incomplete provider scan. API and worker deployments do not run migrations.
 
 - **Read/write split**: `ISearchReader` for queries, `ISearchIndexWriter` for
   incremental per-document writes triggered by domain events
-  (`shared/events`, in-process bus). Handlers never write to Typesense directly.
-- **Resilience**: queries fall back to Postgres when Typesense times out or is
-  unavailable. The API process waits 30 seconds before trying Typesense again.
-- **Collections**: English only — `games_en`, `developers_en`, `publishers_en`,
-  `genres_en`, `platforms_en`, `themes_en`, `posts_en`. Each name is an alias
-  that points at a timestamped physical collection (`games_en__20261104120000`).
-  The API only bootstraps missing collections/aliases on startup
-  (`ensureCollections`, server entry only).
+  (`shared/events`, in-process bus). Handlers never write to Meilisearch directly.
+- **Resilience**: queries fall back to Postgres when Meilisearch times out or is
+  unavailable. The API process waits 30 seconds before trying Meilisearch again.
+- **Indexes**: English only — `games_en`, `developers_en`, `publishers_en`,
+  `genres_en`, `platforms_en`, `themes_en`, `posts_en`, plus `movies_en` and
+  `movie_people_en`. Each is a stable uid; rebuilds load `<uid>__build_<suffix>`
+  and swap it in atomically. The API never creates indexes: it writes only into
+  existing ones and otherwise serves SQL until the worker has built them.
+  Settings and the full contract: [search-meilisearch.md](search-meilisearch.md).
 - **Bulk work belongs to the worker**: full rebuilds and gap filling are jobs
-  (see below). The Rust mappers are kept identical to the TypeScript ones by
+  (see below); the hourly `search.sync` rebuilds a missing or outdated index. The Rust mappers are kept identical to the TypeScript ones by
   shared golden fixtures tested on both sides.
 
 ## Background jobs
@@ -175,12 +177,13 @@ dashboard ◀── api SSE stream ◀── LISTEN job_events ◀────�
 - **Worker**: heartbeats, a reaper that requeues jobs from dead workers,
   per-batch checkpoints (resume after crash, deploy or retry), cancel between
   batches, retries with backoff, graceful shutdown that pauses and requeues.
-- **Registered jobs** (no cron, started from the dashboard):
-  - `search.reindex`: full rebuild. Builds new timestamped physical
-    collections, loads all data, then switches every alias at once and deletes
-    the old collections. Search keeps serving the old data until the switch.
-  - `search.sync`: fills documents that exist in Postgres but are missing from
-    the live collections.
+- **Registered search jobs**:
+  - `search.reindex` (manual): full rebuild. Builds `<uid>__build_<timestamp>`
+    indexes, loads all data, then swaps every index at once and deletes the
+    builds. Search keeps serving the old data until the swap.
+  - `search.sync` (hourly): runs that full rebuild when an index is missing or
+    its settings changed; otherwise fills documents that exist in Postgres but
+    are missing from the live indexes.
   Both share one concurrency key, so only one search job runs at a time.
 - **Live view**: the dashboard (`/dashboard/jobs`) has a runs tab and a
   registered jobs tab; job pages stream progress and logs over Server-Sent

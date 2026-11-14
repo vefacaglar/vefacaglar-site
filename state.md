@@ -1,9 +1,19 @@
 # Work state
 
 Living handoff file so work can continue in a new session. Update it whenever a step finishes.
-Last updated: 2026-11-04.
+Last updated: 2026-11-14.
 
 Specs: [docs/jobs-worker.md](docs/jobs-worker.md) (background jobs, authoritative), [AGENTS.md](AGENTS.md).
+
+## 0. Typesense → Meilisearch — DONE in code (not deployed)
+
+Typesense is removed from the API and worker; the Typesense log sink is gone (logs are stdout JSON → VictoriaLogs, see [docs/application-logs.md](docs/application-logs.md)). Contract: [docs/search-meilisearch.md](docs/search-meilisearch.md) (stable uids `*_en`, settings files in `apps/worker/src/jobs/search/meili/`, build-then-swap rebuilds, key permissions).
+
+Rollout:
+1. Run `getmeili/meilisearch:v1.56.2` on the shared Docker network (`${LOGS_PROXY_NETWORK:-databases_default}`, alias `meilisearch`); create the worker and API keys.
+2. GitHub `api-production` secrets: `MEILISEARCH_URL=http://meilisearch:7700`, `MEILISEARCH_API_KEY` (API key), optional `MEILISEARCH_WORKER_API_KEY` (worker key; falls back to `MEILISEARCH_API_KEY`). Delete `TYPESENSE_*` / `LOG_TYPESENSE_*` secrets after the cutover; drop any `TYPESENSE_*` lines from `API_ENV` / `WORKER_ENV`.
+3. Deploy. Migration `0044_schedule_search_sync` makes `search.sync` hourly and due now; its first run builds all seven games-family indexes. `search.movies.sync` must be enabled to build `movies_en` / `movie_people_en`. The API serves SQL until each index is ready.
+4. `deploy/web` Caddy still has the Typesense routes (left untouched on purpose); remove them and the Typesense container once nothing uses them.
 
 ## 1. Library (`/games`, `/movies`, `/profile`) — DONE (not committed)
 
@@ -35,7 +45,7 @@ Not verified in a browser: signed-in pages (settings, log edit, private profile,
 ## 3. Popularity + search — DONE (needs data run)
 
 - IGDB popularity (Want to Play, Played, Steam reviews, IGDB rating count) → `games.popularity_score`; browse sorted by popularity. `POST /api/catalog/popularity/refresh` (admin) + `pnpm --filter api catalog:popularity`. IGDB type ids not verified live.
-- Typesense is English-only (`*_en` collections, alias-aware bootstrap `ensureCollections()` in `src/server.ts`).
+- Search is English-only (`*_en` indexes; now Meilisearch, built by the worker — see section 0).
 - Old TS `search:reindex` script removed — reindexing is now a worker job (see 4).
 - Not decided: daily popularity refresh in `.github/workflows/catalog-import.yml` (could become a registered worker job instead).
 
@@ -57,13 +67,13 @@ In progress (background agents, session IDs for follow-ups):
 Target job design (user decision):
 - Registered jobs have no cron (manual only): `search.reindex` and `search.sync`. They never run at the same time.
 - `search.reindex` (full): new physical collections `{alias}__{yyyymmddhhmmss}` for all collections → load everything → swap all aliases only after every collection is fully loaded → delete old physical collections. Resume continues into the same physical collections; cancel deletes the half-built ones.
-- `search.sync` (fill missing): per live collection, diff Typesense ids vs Postgres ids, upsert only missing documents; orphans only logged.
+- `search.sync` (fill missing): per live index, diff search ids vs Postgres ids, add only missing documents; orphans only logged. (Superseded: now hourly and escalates to a full rebuild — see section 0.)
 
 ## Production deploy checklist (CI does NOT run migrations)
 
 1. `pnpm --filter @vefacaglar/db db:migrate` against production BEFORE deploying API/worker code that needs new tables/columns (0019–0023: profile visibility, popularity, playtime entries, jobs, registered jobs).
 2. API deploy runs only if repo variable `API_DEPLOY_ENABLED=true`.
-3. Worker deploy runs only if REPOSITORY variable `WORKER_DEPLOY_ENABLED=true` (environment variables are not visible to job-level `if`). Worker deploy uses the `api-production` environment (shares VPS_*, DATABASE_URL, TYPESENSE_*, LOG_TYPESENSE_* secrets). Worker image builds amd64+arm64 under QEMU (~50 min uncached) — consider amd64-only once VPS arch is known. Adding a variable/secret does not deploy — re-run the workflow.
+3. Worker deploy runs only if REPOSITORY variable `WORKER_DEPLOY_ENABLED=true` (environment variables are not visible to job-level `if`). Worker deploy uses the `api-production` environment (shares VPS_*, DATABASE_URL, MEILISEARCH_* secrets). Worker image builds amd64+arm64 under QEMU (~50 min uncached) — consider amd64-only once VPS arch is known. Adding a variable/secret does not deploy — re-run the workflow.
 4. Web (Vercel): redeploy after env changes (`NEXT_PUBLIC_API_URL`); deploy API first.
 
 ## Next steps
@@ -79,4 +89,4 @@ Target job design (user decision):
 4. Browser-check signed-in library pages; answer the open questions in section 1.
 5. Commit in logical chunks (English messages): library UI, profile + API, popularity, typesense en-only, jobs (db/api/web), worker + CI.
 6. Later: movies feature, popularity as a registered job.
-7. Application logs (commit 3addda7, by Codex; see docs/application-logs.md): API + worker export selected events to Typesense `application_logs_v1` when `LOG_TYPESENSE_URL` + `LOG_TYPESENSE_API_KEY` are set (put them inside `API_ENV` / `WORKER_ENV` secrets). Reviewed: typecheck, api 466 tests, worker fmt/clippy/test pass. Open: no retention/cleanup for the log collection; expected 401/403 (private profiles, stream-token reconnect) are exported as warnings (noise); no unit tests for the log sink.
+7. Application logs (commit 3addda7, by Codex; superseded — the sink was removed, logs are stdout only, see docs/application-logs.md): API + worker exported selected events to Typesense `application_logs_v1` when `LOG_TYPESENSE_URL` + `LOG_TYPESENSE_API_KEY` are set (put them inside `API_ENV` / `WORKER_ENV` secrets). Reviewed: typecheck, api 466 tests, worker fmt/clippy/test pass. Open: no retention/cleanup for the log collection; expected 401/403 (private profiles, stream-token reconnect) are exported as warnings (noise); no unit tests for the log sink.
