@@ -22,13 +22,11 @@ let stateRepo: Record<keyof IMovieSearchStateRepository, any>;
 let reader: Record<keyof IMovieSearchReader, any>;
 let service: MovieCatalogService;
 const list = (query = {}) => new ListMoviesHandler(service).handle({ query } as any);
-const person = (query = {}) => new GetMoviePersonHandler(service).handle({ params: { wikidataId: "Q25191" }, query } as any);
+const person = () => new GetMoviePersonHandler(service).handle({ params: { wikidataId: "Q25191" } } as any);
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-07T12:00:00Z"));
   repo = {
-    listPublic: vi.fn().mockResolvedValue(fallback), hydratePublicIds: vi.fn().mockResolvedValue([storedCard]),
-    findPublicPersonHeader: vi.fn().mockResolvedValue({ id: "person-uuid", wikidataId: "Q25191", name: "Christopher Nolan" }),
-    findPublicPerson: vi.fn().mockResolvedValue({ ...fallback, person: { wikidataId: "Q25191", name: "Christopher Nolan" } }),
+    listPublic: vi.fn().mockResolvedValue(fallback),     findPublicPerson: vi.fn().mockResolvedValue({ items: [], total: 0, person: { wikidataId: "Q25191", name: "Christopher Nolan" } }),
   } as unknown as Record<keyof IMoviesRepository, any>;
   stateRepo = { state: vi.fn().mockResolvedValue(state) };
   repo.hydrateCatalogPage = vi.fn().mockResolvedValue({ items: [storedCard], state });
@@ -40,7 +38,7 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe("movie catalog handlers using the movie index", () => {
   it("uses Meilisearch for browse and typed search and suppresses poster fields on cards", async () => {
     const browse = await list();
-    expect(reader.search).toHaveBeenCalledWith({ page: 1, limit: 21, collection: state.activeCollection, fresh: true, personQid: undefined });
+    expect(reader.search).toHaveBeenCalledWith({ page: 1, limit: 21, collection: state.activeCollection, fresh: true });
     expect(browse.items).toEqual([card]);
     expect(JSON.stringify(browse.items)).not.toContain("wikimedia.org");
     expect(browse.total).toBe(22); expect(browse.totalPages).toBe(2);
@@ -95,23 +93,15 @@ describe("movie catalog handlers using the movie index", () => {
     expect((await list()).ranking).toMatchObject({ mode: "alphabetical", isFresh: false });
     expect(reader.search).toHaveBeenCalledWith(expect.objectContaining({ fresh: false }));
   });
-  it("uses a person QID filter, page-only role hydration, and the canonical header", async () => {
-    repo.hydratePublicIds.mockResolvedValue([{ ...storedCard, roles: ["director", "producer"] }]);
-    expect(await person()).toMatchObject({ person: { name: "Christopher Nolan" }, items: [{ ...card, roles: ["director", "producer"] }], total: 22 });
-    expect(reader.search).toHaveBeenCalledWith(expect.objectContaining({ personQid: "Q25191" }));
-    expect(repo.hydratePublicIds).toHaveBeenCalledWith([id], "person-uuid");
-    expect(repo.findPublicPerson).not.toHaveBeenCalled();
+  it("loads a person's filmography from the database without the ranked index", async () => {
+    repo.findPublicPerson.mockResolvedValue({ person: { wikidataId: "Q25191", name: "Christopher Nolan" }, items: [{ ...card, roles: ["director"] }], total: 1 });
+    expect(await person()).toMatchObject({ person: { name: "Christopher Nolan" }, items: [{ ...card, roles: ["director"] }], total: 1 });
+    expect(repo.findPublicPerson).toHaveBeenCalledWith("Q25191");
+    expect(stateRepo.state).not.toHaveBeenCalled();
+    expect(reader.search).not.toHaveBeenCalled();
   });
-  it("falls back when an indexed film no longer belongs to the person", async () => {
-    repo.hydratePublicIds.mockResolvedValue([]);
-    expect((await person()).total).toBe(91);
-    expect(repo.findPublicPerson).toHaveBeenCalledWith("Q25191", { page: 1, limit: 21 });
-  });
-  it("returns known empty filmographies, while unknown people remain 404", async () => {
-    reader.search.mockResolvedValue({ ids: [], total: 0 }); repo.hydratePublicIds.mockResolvedValue([]);
-    expect(await person()).toMatchObject({ items: [], total: 0 });
-    repo.findPublicPersonHeader.mockResolvedValue(null);
+  it("keeps unknown people as 404", async () => {
+    repo.findPublicPerson.mockResolvedValue(null);
     await expect(person()).rejects.toMatchObject({ statusCode: 404 });
-    expect(reader.search).toHaveBeenCalledTimes(1);
   });
 });

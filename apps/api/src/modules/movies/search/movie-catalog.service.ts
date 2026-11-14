@@ -2,7 +2,6 @@ import { inject, injectable } from "tsyringe";
 import type { IMoviesRepository, MoviePersonResult } from "../movies.repository.interface";
 import { MOVIES_REPOSITORY } from "../movies.tokens";
 import { movieRanking } from "../popularity/wikipedia-interest";
-import type { MoviePersonFilm } from "../people/detail/detail.schema";
 import { MOVIE_SEARCH_READER, isOwnedMovieCollection, type IMovieSearchReader } from "./movie-search-reader";
 import { MOVIE_SEARCH_SCHEMA_VERSION, MOVIE_SEARCH_STATE_REPOSITORY, type IMovieSearchStateRepository, type MovieSearchState } from "./movie-search.types";
 
@@ -29,25 +28,20 @@ export class MovieCatalogService implements IMovieCatalogService {
     const indexed = await this.indexedPage(filter);
     return indexed ?? this.repo.listPublic(filter);
   }
-  async findPublicPerson(wikidataId: string, filter: { page: number; limit: number }): Promise<MoviePersonResult | null> {
-    const person = await this.repo.findPublicPersonHeader(wikidataId);
-    if (!person) return null;
-    const indexed = await this.indexedPage(filter, person);
-    if (!indexed) return this.repo.findPublicPerson(wikidataId, filter);
-    return { ...indexed, person: { wikidataId: person.wikidataId, name: person.name }, items: indexed.items as MoviePersonFilm[] };
+  findPublicPerson(wikidataId: string): Promise<MoviePersonResult | null> {
+    // A person's whole filmography is year-ordered and unpaged, so it never uses the ranked index.
+    return this.repo.findPublicPerson(wikidataId);
   }
-  private async indexedPage(filter: { page: number; limit: number; q?: string }, person?: { id: string; wikidataId: string }) {
+  private async indexedPage(filter: { page: number; limit: number; q?: string }) {
     // Readiness belongs to the database publication, never a cached/nonzero count.
     try {
       const before = await this.stateRepo.state();
       if (!ready(before)) return null;
       const ranking = movieRanking(before.publishedSourceDate);
       const selected = await this.reader.search({ ...filter, collection: before.activeCollection,
-        fresh: ranking.isFresh, personQid: person?.wikidataId });
+        fresh: ranking.isFresh });
       if (!selected) return null;
-      const hydrated = person
-        ? { items: await this.repo.hydratePublicIds(selected.ids, person.id), state: await this.stateRepo.state() }
-        : await this.repo.hydrateCatalogPage(selected.ids);
+      const hydrated = await this.repo.hydrateCatalogPage(selected.ids);
       const items = hydrated.items.map((item) => ({
         ...item,
         posterImageUrl: null,

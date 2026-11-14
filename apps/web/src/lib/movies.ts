@@ -23,9 +23,10 @@ export interface MovieList {
 }
 export type MoviePersonRole = "cast" | "director" | "producer";
 export interface MoviePersonFilm extends MovieCard { roles: MoviePersonRole[] }
-export interface MoviePersonPage extends MovieList {
+export interface MoviePersonPage {
   person: { wikidataId: string; name: string };
   items: MoviePersonFilm[];
+  total: number;
 }
 export interface MovieRanking {
   mode: "wikipedia_interest" | "alphabetical";
@@ -101,10 +102,9 @@ export function moviePageNumber(value?: string) {
   return Number.isSafeInteger(page) && page >= 1 ? page : 1;
 }
 
-export const getMoviePerson = cache((wikidataId: string, page: number) => {
+export const getMoviePerson = cache((wikidataId: string) => {
   if (!/^Q[1-9][0-9]{0,20}$/.test(wikidataId)) return Promise.resolve(null);
-  const params = new URLSearchParams({ page: String(page), limit: "21" });
-  return movieJson<MoviePersonPage>(`/api/movies/people/${encodeURIComponent(wikidataId)}?${params}`);
+  return movieJson<MoviePersonPage>(`/api/movies/people/${encodeURIComponent(wikidataId)}`);
 });
 
 export interface MovieSuggestion {

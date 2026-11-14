@@ -9,11 +9,10 @@ function mockRepository(): Record<keyof IMoviesRepository, any> {
     hydrationCandidates: vi.fn(), refreshCandidates: vi.fn(), recognitionCandidates: vi.fn(), persistMovie: vi.fn(),
     markEntityFailure: vi.fn(),
     findLabels: vi.fn(), labelRefreshCandidates: vi.fn(), writeLabels: vi.fn(), hasPendingWork: vi.fn(),
-    listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), hydratePublicIds: vi.fn(), findPublicBySlug: vi.fn(), findPublicPerson: vi.fn(),
+    listPublic: vi.fn(), findPublicPersonHeader: vi.fn(), findPublicBySlug: vi.fn(), findPublicPerson: vi.fn(),
   };
 }
 
-const ranking = { mode: "wikipedia_interest" as const, sourceDate: "2026-11-06", sourceUrl: "https://wikimedia.org/", isFresh: true };
 const person = { wikidataId: "Q25191", name: "Christopher Nolan" };
 const storedFilm = {
   slug: "inception-q25188", title: "Inception", releaseDate: null, releaseYear: 2010, runtimeMinutes: 148,
@@ -23,51 +22,51 @@ const storedFilm = {
   roles: ["director", "producer"] as const,
 };
 
+const handle = (repo: Record<keyof IMoviesRepository, any>, wikidataId = "Q25191") =>
+  new GetMoviePersonHandler(repo).handle({ params: { wikidataId } } as any);
+
 describe("public movie person handler", () => {
-  it("returns the person's catalog films with suppressed poster fields, roles, and default pagination", async () => {
+  it("returns every film unpaged, with suppressed poster fields and roles", async () => {
     const repo = mockRepository();
-    repo.findPublicPerson.mockResolvedValue({ person, items: [storedFilm], total: 22, ranking });
-    const result = await new GetMoviePersonHandler(repo).handle({ params: { wikidataId: person.wikidataId }, query: {} } as any);
-    expect(repo.findPublicPerson).toHaveBeenCalledWith("Q25191", { page: 1, limit: 21 });
-    expect(result).toEqual({
-      person,
-      items: [{ ...storedFilm, posterImageUrl: null, posterAttribution: null }],
-      total: 22,
-      page: 1,
-      limit: 21,
-      totalPages: 2,
-      ranking,
-    });
+    repo.findPublicPerson.mockResolvedValue({ person, items: [storedFilm], total: 1 });
+    const result = await handle(repo);
+    expect(repo.findPublicPerson).toHaveBeenCalledWith("Q25191");
+    expect(result).toEqual({ person, items: [{ ...storedFilm, posterImageUrl: null, posterAttribution: null }], total: 1 });
     expect(JSON.stringify(result.items)).not.toContain("wikimedia.org");
     expect(JSON.stringify(result.items)).not.toContain("wikipedia.org");
   });
 
-  it("preserves an out-of-range page and the real total instead of treating the person as missing", async () => {
+  it("keeps the repository order (newest year first, unknown years last) for a large filmography", async () => {
     const repo = mockRepository();
-    repo.findPublicPerson.mockResolvedValue({ person, items: [], total: 25, ranking });
-    expect(await new GetMoviePersonHandler(repo).handle({ params: { wikidataId: "Q25191" }, query: { page: 8, limit: 10 } } as any))
-      .toEqual({ person, items: [], total: 25, ranking, page: 8, limit: 10, totalPages: 3 });
-    expect(repo.findPublicPerson).toHaveBeenCalledWith("Q25191", { page: 8, limit: 10 });
+    const films = [
+      ...Array.from({ length: 300 }, (_, i) => ({ ...storedFilm, slug: `film-${i}`, title: `Film ${i}`, releaseYear: 2020 - Math.floor(i / 10) })),
+      { ...storedFilm, slug: "undated", title: "Undated", releaseYear: null },
+    ];
+    repo.findPublicPerson.mockResolvedValue({ person, items: films, total: films.length });
+    const result = await handle(repo);
+    expect(result.items).toHaveLength(301);
+    expect(result.total).toBe(301);
+    expect(result.items.map((item) => item.slug)).toEqual(films.map((item) => item.slug));
+    expect(result.items.at(-1)?.releaseYear).toBeNull();
+    expect(result).not.toHaveProperty("page");
+    expect(result).not.toHaveProperty("totalPages");
   });
 
   it("returns a known person with an empty catalog and a stable name fallback", async () => {
     const repo = mockRepository();
-    repo.findPublicPerson.mockResolvedValue({ person: { wikidataId: "Q123", name: "  " }, items: [], total: 0, ranking });
-    expect(await new GetMoviePersonHandler(repo).handle({ params: { wikidataId: "Q123" }, query: {} } as any))
-      .toEqual({ person: { wikidataId: "Q123", name: "Q123" }, items: [], total: 0, ranking, page: 1, limit: 21, totalPages: 0 });
+    repo.findPublicPerson.mockResolvedValue({ person: { wikidataId: "Q123", name: "  " }, items: [], total: 0 });
+    expect(await handle(repo, "Q123")).toEqual({ person: { wikidataId: "Q123", name: "Q123" }, items: [], total: 0 });
   });
 
   it("returns a translated page-not-found error for an unknown person", async () => {
     const repo = mockRepository();
     repo.findPublicPerson.mockResolvedValue(null);
-    await expect(new GetMoviePersonHandler(repo).handle({ params: { wikidataId: "Q999" }, query: {} } as any))
-      .rejects.toMatchObject({ statusCode: 404, message: "err_page_not_found" });
+    await expect(handle(repo, "Q999")).rejects.toMatchObject({ statusCode: 404, message: "err_page_not_found" });
   });
 
   it("propagates repository failures rather than displaying an empty filmography", async () => {
     const repo = mockRepository();
     repo.findPublicPerson.mockRejectedValue(new Error("Database unavailable"));
-    await expect(new GetMoviePersonHandler(repo).handle({ params: { wikidataId: "Q25191" }, query: {} } as any))
-      .rejects.toThrow("Database unavailable");
+    await expect(handle(repo)).rejects.toThrow("Database unavailable");
   });
 });

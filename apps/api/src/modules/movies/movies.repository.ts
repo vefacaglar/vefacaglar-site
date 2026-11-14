@@ -199,17 +199,20 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin, posterBlockedAt }) }));
     return { items, movieIds: row.items.map((item) => item.movieId), total: Number(row.total), ranking };
   }
-  async findPublicPerson(wikidataId: string, filter: { page: number; limit: number }) {
+  async findPublicPerson(wikidataId: string) {
     const db = this.dbProvider.client;
-    const [person] = await db.select({ id: moviePeople.id, wikidataId: moviePeople.wikidataId, name: moviePeople.name })
-      .from(moviePeople).where(eq(moviePeople.wikidataId, wikidataId));
+    const person = await this.findPublicPersonHeader(wikidataId);
     if (!person) return null;
     const linkedCredit = exists(db.select({ value: sql`1` }).from(movieCredits).where(and(
       eq(movieCredits.movieId, movies.id), eq(movieCredits.personId, person.id), ne(movieCredits.rank, "deprecated"),
     )));
-    const { items, movieIds, total, ranking } = await this.listPublicMatching(filter, linkedCredit);
-    return { person: { wikidataId: person.wikidataId, name: person.name }, total, ranking,
-      items: await this.personFilms(person.id, movieIds, items) };
+    // The whole filmography in one unpaged query: newest release year first, unknown years last.
+    const rows = await db.select().from(movies).where(and(publicMovie(), linkedCredit))
+      .orderBy(sql`${movies.releaseYear} desc nulls last`, asc(movies.title), asc(movies.id));
+    const cards = rows.map((movie) => ({ slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate,
+      releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes, ...publicMoviePoster(movie) }));
+    return { person: { wikidataId: person.wikidataId, name: person.name }, total: cards.length,
+      items: await this.personFilms(person.id, rows.map((row) => row.id), cards) };
   }
   async searchPublicPeople(q: string, limit: number): Promise<MoviePersonSummary[]> {
     const match = moviePersonNameMatch(q);
@@ -298,19 +301,6 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes, posterImageUrl: null, posterAttribution: null }] : [];
     });
     return { items, state: rows[0]?.state ?? null };
-  }
-  async hydratePublicIds(ids: string[], personId?: string) {
-    if (!ids.length) return [];
-    const db = this.dbProvider.client;
-    const linkedCredit = personId ? exists(db.select({ value: sql`1` }).from(movieCredits).where(and(
-      eq(movieCredits.movieId, movies.id), eq(movieCredits.personId, personId), ne(movieCredits.rank, "deprecated")))) : undefined;
-    const rows = await db.select().from(movies).where(and(publicMovie(), inArray(movies.id, ids), linkedCredit));
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    // Fail closed: the service falls back if a selected film is no longer public/linked.
-    const selected = ids.flatMap((id) => { const row = byId.get(id); return row ? [row] : []; });
-    const cards = selected.map((movie) => ({ slug: movie.slug, title: movie.title!, releaseDate: movie.releaseDate,
-      releaseYear: movie.releaseYear, runtimeMinutes: movie.runtimeMinutes, ...publicMoviePoster(movie) }));
-    return personId ? this.personFilms(personId, selected.map((row) => row.id), cards) : cards;
   }
   private async personFilms(personId: string, movieIds: string[], items: MovieCard[]) {
     const db = this.dbProvider.client;

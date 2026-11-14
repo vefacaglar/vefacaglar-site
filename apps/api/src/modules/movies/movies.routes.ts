@@ -6,8 +6,8 @@ import { ListMoviesQuerySchema, ListMoviesResponseSchema, type ListMoviesQuery }
 import { GetMovieHandler } from "./detail/detail.handler";
 import { GetMovieParamsSchema, MovieDetailSchema, type GetMovieParams } from "./detail/detail.schema";
 import { GetMoviePersonHandler } from "./people/detail/detail.handler";
-import { GetMoviePersonParamsSchema, GetMoviePersonQuerySchema, MoviePersonPageSchema,
-  type GetMoviePersonParams, type GetMoviePersonQuery } from "./people/detail/detail.schema";
+import { GetMoviePersonParamsSchema, MoviePersonPageSchema,
+  type GetMoviePersonParams } from "./people/detail/detail.schema";
 import { SuggestMoviesHandler } from "./suggest/suggest.handler";
 import { MovieSuggestQuerySchema, MovieSuggestResponseSchema, type MovieSuggestQuery } from "./suggest/suggest.schema";
 import { SearchMoviePeopleHandler } from "./people/search/search.handler";
@@ -31,9 +31,9 @@ export async function moviesRoutes(app: FastifyInstance) {
     querystring: MovieSuggestQuerySchema, response: { 200: MovieSuggestResponseSchema } } }, (request) => suggest.handle(request));
   app.get<{ Querystring: SearchMoviePeopleQuery }>("/people", { schema: { tags: ["Movies"], description: "Credited people matching a catalog search",
     querystring: SearchMoviePeopleQuerySchema, response: { 200: SearchMoviePeopleResponseSchema } } }, (request) => peopleSearch.handle(request));
-  app.get<{ Params: GetMoviePersonParams; Querystring: GetMoviePersonQuery }>("/people/:wikidataId", {
-    schema: { tags: ["Movies"], description: "A credited person's films available in this catalog", params: GetMoviePersonParamsSchema,
-      querystring: GetMoviePersonQuerySchema, response: { 200: MoviePersonPageSchema, 404: ErrorResponseSchema } },
+  app.get<{ Params: GetMoviePersonParams }>("/people/:wikidataId", {
+    schema: { tags: ["Movies"], description: "A credited person's films in this catalog, newest release year first", params: GetMoviePersonParamsSchema,
+      response: { 200: MoviePersonPageSchema, 404: ErrorResponseSchema } },
   }, (request) => person.handle(request));
   app.get<{ Params: MovieCommunityParams; Querystring: MovieCommunityQuery }>("/:slug/community", {
     schema: { tags: ["Movies"], description: "Site ratings and explicitly shared watches from active public profiles", params: MovieCommunityParamsSchema, querystring: MovieCommunityQuerySchema,

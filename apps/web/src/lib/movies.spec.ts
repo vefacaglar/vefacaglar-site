@@ -44,20 +44,20 @@ describe("movie data requests", () => {
     await getMovie("a/b?c");
     expect(httpClient.get).toHaveBeenCalledWith("/api/movies/a%2Fb%3Fc");
   });
-  it("loads a stable person identity and keeps the requested filmography page", async () => {
+  it("loads a stable person identity and loads the whole filmography without paging params", async () => {
     vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify({ person: { wikidataId: "Q25191", name: "Christopher Nolan" }, items: [] }), { status: 200 }));
-    expect(await getMoviePerson("Q25191", 2)).toMatchObject({ person: { wikidataId: "Q25191" }, items: [] });
-    expect(httpClient.get).toHaveBeenCalledWith("/api/movies/people/Q25191?page=2&limit=21");
+    expect(await getMoviePerson("Q25191")).toMatchObject({ person: { wikidataId: "Q25191" }, items: [] });
+    expect(httpClient.get).toHaveBeenCalledWith("/api/movies/people/Q25191");
   });
   it("keeps missing people separate from upstream failures", async () => {
     vi.mocked(httpClient.get).mockResolvedValueOnce(new Response(null, { status: 404 }));
-    expect(await getMoviePerson("Q999", 1)).toBeNull();
+    expect(await getMoviePerson("Q999")).toBeNull();
     vi.mocked(httpClient.get).mockResolvedValueOnce(new Response(null, { status: 502 }));
-    await expect(getMoviePerson("Q25191", 1)).rejects.toThrow("502");
+    await expect(getMoviePerson("Q25191")).rejects.toThrow("502");
   });
   it("rejects malformed person identities without a network request", async () => {
     for (const id of ["Q0", "q123", "person-name", "Q123/other", "Q123?admin=true"]) {
-      expect(await getMoviePerson(id, 1)).toBeNull();
+      expect(await getMoviePerson(id)).toBeNull();
     }
     expect(httpClient.get).not.toHaveBeenCalled();
   });

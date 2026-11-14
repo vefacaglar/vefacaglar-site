@@ -49,7 +49,6 @@ beforeEach(() => {
     hasPendingWork: vi.fn().mockResolvedValue(false),
     listPublic: vi.fn(),
     findPublicPersonHeader: vi.fn(),
-    hydratePublicIds: vi.fn(),
     findPublicPerson: vi.fn(),
     findPublicBySlug: vi.fn(),
   };

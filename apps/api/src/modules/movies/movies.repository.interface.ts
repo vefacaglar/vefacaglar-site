@@ -7,9 +7,9 @@ import type { MovieSearchState } from "./search/movie-search.types";
 import type { MoviePersonSummary } from "./people/search/search.schema";
 export type MoviePersonResult = {
   person: { wikidataId: string; name: string | null };
+  /** Every public film of the person, newest release year first, unknown years last, then by title. */
   items: MoviePersonFilm[];
   total: number;
-  ranking: MovieRanking;
 };
 export type MovieCandidate = { id: string; wikidataId: string; sourceRevision: number | null };
 export type MovieSourceState = { discoveryComplete: boolean; discoveryCycle: number; discoveryStrategy: string | null;
@@ -30,10 +30,9 @@ export interface IMoviesRepository {
   hasPendingWork(now: Date): Promise<boolean>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: MovieCard[]; total: number; ranking: MovieRanking }>;
   findPublicPersonHeader(wikidataId: string): Promise<{ id: string; wikidataId: string; name: string | null } | null>;
-  hydratePublicIds(ids: string[], personId?: string): Promise<(MovieCard | MoviePersonFilm)[]>;
   hydrateCatalogPage(ids: string[]): Promise<{ items: MovieCard[]; state: MovieSearchState | null }>;
   findPublicBySlug(slug: string): Promise<MovieDetail | null>;
-  findPublicPerson(wikidataId: string, filter: { page: number; limit: number }): Promise<MoviePersonResult | null>;
+  findPublicPerson(wikidataId: string): Promise<MoviePersonResult | null>;
   /** Named people with at least one non-deprecated credit on a public film, most credited first. */
   searchPublicPeople(q: string, limit: number): Promise<MoviePersonSummary[]>;
   /** Summaries for indexed person UUIDs, in the given order; people no longer public are omitted. */
