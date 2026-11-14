@@ -636,12 +636,12 @@ jobs:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
         run: bash deploy/web/ssh-deploy.sh
+      # Probe the origin directly: Cloudflare blocks GitHub-hosted runner IPs (403), so the proxied path cannot be checked from CI.
       # www.vefacaglar.com is redirected by Cloudflare outside the app; only the apex is probed.
       - name: Verify public HTTPS
         if: env.VERIFY_HTTPS == 'true'
         run: |
           curl --connect-to "vefacaglar.com:443:$VPS_HOST:443" --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --max-time 15 https://vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --max-time 15 https://vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
       - name: Remove temporary credentials
         if: always()
         run: |
