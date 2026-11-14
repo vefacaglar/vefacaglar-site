@@ -246,7 +246,9 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         select ${movies.slug} as slug, ${movies.title} as title, ${movies.releaseYear} as release_year
         from ${movieCredits} join ${movies} on ${movies.id} = ${movieCredits.movieId}
         where ${movieCredits.personId} = matched.id and ${credited}
-        order by ${movies.wikipediaLanguageCount} desc nulls last, ${movies.wikipediaViews} desc nulls last, ${movies.title}, ${movies.id}
+        order by (${movieCredits.roleProperty} = case when matched.director_count > 0 then 'P57'
+            when matched.cast_count >= matched.producer_count then 'P161' else 'P162' end) desc,
+          ${movies.wikipediaLanguageCount} desc nulls last, ${movies.wikipediaViews} desc nulls last, ${movies.title}, ${movies.id}
         limit 1
       ) known on true
       order by matched.credit_count desc, matched.name, matched.id
@@ -255,8 +257,10 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       known_slug: string | null; known_title: string | null; known_year: number | null };
     return (rows as unknown as Row[]).map((row) => {
       const counts: [MoviePersonRole, number][] = [["cast", Number(row.cast_count)], ["director", Number(row.director_count)], ["producer", Number(row.producer_count)]];
-      // Most frequent role; ties keep the cast/director/producer order used elsewhere.
-      const role = counts.reduce((best, next) => next[1] > best[1] ? next : best)[0];
+      // Any director credit wins; otherwise the most frequent of cast/producer (ties favour cast).
+      // Keep in sync with the role_property CASE in the known-for ordering above.
+      const role = Number(row.director_count) > 0 ? "director"
+        : counts.filter(([name]) => name !== "director").reduce((best, next) => next[1] > best[1] ? next : best)[0];
       return { id: row.id, wikidataId: row.wikidata_id, name: row.name.trim(), role,
         knownFor: row.known_slug && row.known_title ? { slug: row.known_slug, title: row.known_title, releaseYear: row.known_year } : null };
     });
