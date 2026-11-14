@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { httpClient } from "../../lib/httpClient";
 import { SITE_URL } from "../../lib/seo";
+import { SESSION_COOKIE_MAX_AGE } from "../../lib/session";
 import {
   getAuthMode,
   getOidcConfig,
@@ -12,8 +13,6 @@ import {
 } from "../../lib/oidc";
 
 export const dynamic = "force-dynamic";
-
-const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
 export async function GET(request: NextRequest) {
   if (getAuthMode() !== "oidc") {
@@ -97,7 +96,7 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       secure: siteUrl.startsWith("https://"),
       sameSite: "lax" as const,
-      maxAge: SESSION_MAX_AGE,
+      maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     };
     response.cookies.set("session_token", token, cookieOptions);

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { httpClient } from "../../lib/httpClient";
 import { authedRequest, authedMutation } from "../../lib/apiAction";
 import { endSession } from "../../lib/logout";
+import { SESSION_COOKIE_MAX_AGE } from "../../lib/session";
 import { buildLocalizationQueryPath } from "./components/LocalizationButton.helpers";
 
 export async function loginAction(prevState: any, formData: FormData) {
@@ -34,7 +35,7 @@ export async function loginAction(prevState: any, formData: FormData) {
       httpOnly: true,
       secure: isSecure,
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: SESSION_COOKIE_MAX_AGE,
       path: "/",
     });
 
