@@ -6,8 +6,10 @@ import { libraryMetadata } from "../../../lib/librarySeo";
 import { getPublicGames } from "../../../lib/data";
 import Pagination from "../../components/Pagination";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
-import CatalogSearch from "../../../components/library/CatalogSearch";
+import GameSearchAutocomplete from "../../../components/library/GameSearchAutocomplete";
+import { getGameSearchCompanies } from "../../../lib/gameSearchApi";
 import GameGrid, { type GameCardItem } from "./GameGrid";
+import GameSearchCompanies from "./GameSearchCompanies";
 
 export async function generateMetadata() {
   const lang = await getActiveLanguage();
@@ -31,17 +33,24 @@ export default async function Games(props: GamesProps) {
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
 
-  const data = await getPublicGames(page, query || undefined);
+  // Company matches only lead the first results page of a search.
+  const [data, companies] = await Promise.all([
+    getPublicGames(page, query || undefined),
+    query && page === 1 ? getGameSearchCompanies(query) : null,
+  ]);
   const games = (data?.items ?? []) as GameCardItem[];
+  const hasCompanies = !!companies && (companies.developers.length > 0 || companies.publishers.length > 0);
 
   return (
     <div>
       <LibraryMasthead title={dict.games} subtitle={dict.games_subtitle}>
-        <CatalogSearch basePath="/explore/games" initialQuery={query} placeholder={dict.games_search_placeholder} />
+        <GameSearchAutocomplete initialQuery={query} placeholder={dict.games_search_placeholder} />
       </LibraryMasthead>
 
+      {companies && <GameSearchCompanies companies={companies} lang={lang} />}
+
       {games.length === 0 ? (
-        <p className={styles.noResults}>{dict.no_games}</p>
+        <p className={styles.noResults}>{query && page === 1 && !hasCompanies ? dict.games_search_no_results : dict.no_games}</p>
       ) : (
         <>
           <GameGrid games={games} lang={lang} />

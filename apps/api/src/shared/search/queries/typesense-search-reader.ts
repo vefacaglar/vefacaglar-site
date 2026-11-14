@@ -6,7 +6,12 @@ import type { Publisher } from "../../../modules/catalog/publishers.repository.i
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
 import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../../modules/catalog/themes.repository.interface";
-import type { GameCard, GameWithRelations } from "../../../modules/catalog/games.repository.interface";
+import type {
+  GameCard,
+  GameCompanyRole,
+  GameWithRelations,
+  PublicCompanyMatch,
+} from "../../../modules/catalog/games.repository.interface";
 import {
   DEVELOPERS_REPOSITORY,
   PUBLISHERS_REPOSITORY,
@@ -45,6 +50,20 @@ import {
 
 const SEARCH_TIMEOUT_MS = 3000;
 const SEARCH_COOLDOWN_MS = 30_000;
+// Company candidates per requested result: a few matches may have no games and are dropped.
+const COMPANY_CANDIDATE_FACTOR = 3;
+const COMPANY_CANDIDATES_MAX = 72;
+// Typesense pages read at most while companies without games leave a group under-filled.
+const COMPANY_MAX_PAGES = 3;
+
+type ScoredHit = { text_match?: number; text_match_info?: { score?: string } };
+
+/** Typesense's text match score; the string form keeps all 64 bits. */
+function textMatchScore(hit: ScoredHit): bigint {
+  const raw = hit.text_match_info?.score;
+  if (raw && /^\d+$/.test(raw)) return BigInt(raw);
+  return BigInt(Math.max(0, Math.trunc(Number(hit.text_match) || 0)));
+}
 
 @injectable()
 export class TypesenseSearchReader implements ISearchReader {
@@ -81,6 +100,49 @@ export class TypesenseSearchReader implements ISearchReader {
       () => this.fallbackPublicGamesSearch(query),
       "public games"
     );
+  }
+
+  async searchPublicCompanies(role: GameCompanyRole, query: { q: string; limit: number }): Promise<PublicCompanyMatch[]> {
+    const q = query.q.trim();
+    const limit = query.limit;
+    if (!q || limit < 1) return [];
+    const perPage = Math.min(limit * COMPANY_CANDIDATE_FACTOR, COMPANY_CANDIDATES_MAX);
+    const ranked: Array<{ company: PublicCompanyMatch; order: number; score: bigint }> = [];
+    let order = 0;
+
+    for (let page = 1; page <= COMPANY_MAX_PAGES; page++) {
+      // Only the Typesense call runs under the timeout and cooldown; null means it was skipped or failed.
+      const hits = await this.runSearch(
+        () => this.runCompanyHitsSearch(role, q, page, perPage),
+        async () => null,
+        `public ${role}s`
+      );
+      if (hits === null) {
+        // Postgres answers in full when Typesense never did; otherwise keep the matches already found.
+        if (page === 1) return this.gamesRepo.searchPublicCompanies(role, q, limit);
+        break;
+      }
+      if (!hits.length) break;
+
+      // Search owns relevance; Postgres owns names, slugs, game counts and the "has games" rule.
+      const current = await this.gamesRepo.findPublicCompaniesByIds(role, hits.map((hit) => hit.document.id));
+      const byId = new Map(current.map((company) => [company.id, company]));
+      for (const hit of hits) {
+        const company = byId.get(hit.document.id);
+        if (company) ranked.push({ company, order: order++, score: textMatchScore(hit) });
+      }
+      // Companies without games are dropped; read further pages only while the group is under-filled.
+      if (ranked.length >= limit || hits.length < perPage) break;
+    }
+
+    return ranked
+      .sort((a, b) =>
+        a.score !== b.score
+          ? (a.score > b.score ? -1 : 1)
+          : b.company.gameCount - a.company.gameCount || a.order - b.order
+      )
+      .slice(0, limit)
+      .map(({ company }) => company);
   }
 
   searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
@@ -191,6 +253,23 @@ export class TypesenseSearchReader implements ISearchReader {
       items: hits.map((h) => gameCardFromDoc(h.document)),
       total: (res.found as number) ?? 0,
     };
+  }
+
+  private async runCompanyHitsSearch(
+    role: GameCompanyRole,
+    q: string,
+    page: number,
+    perPage: number
+  ): Promise<Array<ScoredHit & { document: { id: string } }>> {
+    const collection = role === "developer" ? SEARCH_COLLECTIONS.developers : SEARCH_COLLECTIONS.publishers;
+    const res = await this.typesense.collections(collection).documents().search({
+      q,
+      query_by: "name",
+      include_fields: "id",
+      page,
+      per_page: perPage,
+    });
+    return (res.hits ?? []) as Array<ScoredHit & { document: { id: string } }>;
   }
 
   private async runPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {

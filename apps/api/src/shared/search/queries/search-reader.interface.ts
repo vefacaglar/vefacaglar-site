@@ -1,4 +1,4 @@
-import type { GameCard } from "../../../modules/catalog/games.repository.interface";
+import type { GameCard, GameCompanyRole, PublicCompanyMatch } from "../../../modules/catalog/games.repository.interface";
 import type {
   SearchQuery,
   SearchResult,
@@ -22,6 +22,13 @@ export interface ISearchReader {
    * first; with `q`, best title matches first, then current interest. Falls back to Postgres when Typesense is down.
    */
   searchPublicGames(query: SearchQuery): Promise<SearchResult<GameCard>>;
+  /**
+   * Public developer or publisher search: Typesense text relevance, ties broken by game count,
+   * with current fields and game counts from Postgres. Only companies with at least one game.
+   * Typesense pages are read (at most three) until the limit is filled after dropping companies without games.
+   * Falls back to a ranked Postgres word-prefix name search when Typesense is disabled or fails before any result.
+   */
+  searchPublicCompanies(role: GameCompanyRole, query: { q: string; limit: number }): Promise<PublicCompanyMatch[]>;
   searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>>;
   searchDevelopers(query: SearchQuery): Promise<SearchResult<Developer>>;
   searchPublishers(query: SearchQuery): Promise<SearchResult<Publisher>>;

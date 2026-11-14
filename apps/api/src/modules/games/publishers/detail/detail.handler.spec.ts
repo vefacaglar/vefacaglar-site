@@ -11,7 +11,7 @@ describe("GetPublisherGamesHandler", () => {
   beforeEach(() => {
     repo = {
       create: vi.fn(), findById: vi.fn(), findBySlug: vi.fn(), list: vi.fn(), update: vi.fn(), delete: vi.fn(),
-      findGameIdsByRelation: vi.fn(), findPublicCardsByIds: vi.fn(), listPublic: vi.fn(), findPublicCompanyPage: vi.fn(),
+      findGameIdsByRelation: vi.fn(), findPublicCardsByIds: vi.fn(), listPublic: vi.fn(), findPublicCompanyPage: vi.fn(), searchPublicCompanies: vi.fn(), findPublicCompaniesByIds: vi.fn(), findPublicSuggestionsByIds: vi.fn(),
       loadCatalogIndex: vi.fn(), findByIds: vi.fn(), findLookupsByIds: vi.fn(), listPopularitySources: vi.fn(),
       findOwnerRankingSource: vi.fn(), listGameModeCandidates: vi.fn(), writeGameModes: vi.fn(),
       writePopularity: vi.fn(), writeImportPage: vi.fn(),

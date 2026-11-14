@@ -29,7 +29,7 @@ describe("UpdateGameLogHandler", () => {
       findGameIdsByRelation: vi.fn(),
       findPublicCardsByIds: vi.fn(),
       listPublic: vi.fn(),
-      findPublicCompanyPage: vi.fn(),
+      findPublicCompanyPage: vi.fn(), searchPublicCompanies: vi.fn(), findPublicCompaniesByIds: vi.fn(), findPublicSuggestionsByIds: vi.fn(),
       loadCatalogIndex: vi.fn(),
       findByIds: vi.fn(),
       findLookupsByIds: vi.fn(),
