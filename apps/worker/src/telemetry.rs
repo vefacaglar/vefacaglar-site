@@ -7,7 +7,7 @@ mod error_message;
 mod structured;
 
 pub use error_details::{application_stack, database_error};
-pub use error_message::error_messages;
+pub use error_message::{error_messages, log_safe};
 
 /// Initializes tracing. Output is JSON unless stdout is a terminal, or as forced
 /// by `WORKER_LOG_FORMAT=json|pretty`. Filtering follows `RUST_LOG` (default `info`).

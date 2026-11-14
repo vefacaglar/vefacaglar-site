@@ -25,6 +25,7 @@ use super::super::search::{import_batch, settings};
 use super::{Limits, current_index, delete_stale_builds, owned_with};
 use crate::context::JobIo;
 use crate::queue::LogLevel;
+use crate::telemetry::log_safe;
 
 /// Stable index uid the API queries; also the state row id.
 pub const PEOPLE_ALIAS: &str = "movie_people_en";
@@ -94,7 +95,10 @@ async fn publish(
     if let Err(error) = backend.delete_index(build).await {
         io.log(
             LogLevel::Warn,
-            &format!("movie people search: could not delete {build}: {error:#}"),
+            &format!(
+                "movie people search: could not delete {build}: {}",
+                log_safe(&error)
+            ),
         )
         .await;
     }

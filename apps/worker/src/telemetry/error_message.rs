@@ -100,3 +100,26 @@ pub fn error_messages(mut error: &(dyn Error + 'static)) -> Option<String> {
     }
     (!messages.is_empty()).then(|| messages.join("\nCaused by "))
 }
+
+/// Redacted, bounded one-line text of an error chain for job log lines.
+pub fn log_safe(error: &anyhow::Error) -> String {
+    let cause: &(dyn Error + 'static) = error.as_ref();
+    error_messages(cause).map_or_else(
+        || "no error details".to_owned(),
+        |messages| messages.replace("\nCaused by ", ": "),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_safe_redacts_and_keeps_the_chain_on_one_line() {
+        let error =
+            anyhow::anyhow!("GET http://user:pw@meili:7700/indexes failed").context("list indexes");
+        let text = log_safe(&error);
+        assert!(text.starts_with("list indexes: GET [redacted"), "{text}");
+        assert!(!text.contains("pw") && !text.contains('\n'), "{text}");
+    }
+}

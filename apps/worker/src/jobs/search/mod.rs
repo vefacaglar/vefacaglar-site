@@ -31,6 +31,7 @@ use crate::config::MeilisearchConfig;
 use crate::context::{JobContext, JobIo};
 use crate::handler::{JobHandler, JobOutcome, PermanentError};
 use crate::queue::LogLevel;
+use crate::telemetry::log_safe;
 
 /// Documents per source query and Meilisearch write.
 pub const BATCH_SIZE: usize = 500;
@@ -53,8 +54,9 @@ pub(crate) async fn import_batch(
         io.log(
             LogLevel::Error,
             &format!(
-                "{label}: batch of {} documents rejected: {error:#}",
-                docs.len()
+                "{label}: batch of {} documents rejected: {}",
+                docs.len(),
+                log_safe(&error)
             ),
         )
         .await;

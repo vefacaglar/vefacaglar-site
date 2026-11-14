@@ -30,6 +30,7 @@ use crate::config::MeilisearchConfig;
 use crate::context::{JobContext, JobIo, Progress};
 use crate::handler::{JobHandler, JobOutcome, PermanentError};
 use crate::queue::LogLevel;
+use crate::telemetry::log_safe;
 use people::PeopleOutcome;
 use source::{Batch, MovieSource, PgMovieSource, Publication, State};
 
@@ -82,7 +83,10 @@ pub(crate) async fn delete_stale_builds(
         {
             io.log(
                 LogLevel::Warn,
-                &format!("could not delete stale build index {name}: {error:#}"),
+                &format!(
+                    "could not delete stale build index {name}: {}",
+                    log_safe(&error)
+                ),
             )
             .await;
         }
@@ -142,9 +146,21 @@ impl JobHandler for MovieSearchHandler {
         {
             Ok(outcome) => outcome,
             Err(error) => {
+                // Scoped: the borrowed `dyn Error` must not live across an await.
+                {
+                    let cause: &(dyn std::error::Error + 'static) = error.as_ref();
+                    let stack = crate::telemetry::application_stack(error.backtrace());
+                    tracing::error!(
+                        application_event = "movie_people_search_failed",
+                        job_id = %ctx.job_id(),
+                        error = cause,
+                        origin_stack = stack.as_deref(),
+                        "movie people search failed"
+                    );
+                }
                 ctx.log(
                     LogLevel::Error,
-                    &format!("movie people search failed: {error:#}"),
+                    &format!("movie people search failed: {}", log_safe(&error)),
                 )
                 .await;
                 PeopleOutcome::Idle
@@ -261,7 +277,10 @@ async fn finish_swap(
     if let Err(error) = backend.delete_index(build).await {
         io.log(
             LogLevel::Warn,
-            &format!("movie search: could not delete swapped-out {build}: {error:#}"),
+            &format!(
+                "movie search: could not delete swapped-out {build}: {}",
+                log_safe(&error)
+            ),
         )
         .await;
     }
