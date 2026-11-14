@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 /// Meilisearch connection settings (`MEILISEARCH_URL`, `MEILISEARCH_API_KEY`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MeilisearchConfig {
     /// Base URL without a trailing slash, e.g. `http://meilisearch:7700`.
     pub url: String,
@@ -9,14 +9,35 @@ pub struct MeilisearchConfig {
     pub api_key: String,
 }
 
+/// Never prints the API key.
+impl std::fmt::Debug for MeilisearchConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MeilisearchConfig")
+            .field("url", &self.url)
+            .field(
+                "api_key",
+                &if self.api_key.is_empty() {
+                    "<empty>"
+                } else {
+                    "<redacted>"
+                },
+            )
+            .finish()
+    }
+}
+
 impl MeilisearchConfig {
     /// Builds the config from raw env values. Returns `None` when the URL is
-    /// missing or is not an absolute http(s) URL (search is then disabled).
+    /// missing or is not an absolute http(s) URL, or carries credentials
+    /// (userinfo would leak into logs; the key belongs in
+    /// `MEILISEARCH_API_KEY`). Search is then disabled.
     pub fn from_values(url: Option<String>, api_key: Option<String>) -> Option<Self> {
         let url = url?.trim().trim_end_matches('/').to_string();
         let parsed = reqwest::Url::parse(&url).ok()?;
         if !matches!(parsed.scheme(), "http" | "https")
             || parsed.host_str().is_none()
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
             || parsed.query().is_some()
             || parsed.fragment().is_some()
         {
@@ -112,6 +133,22 @@ mod tests {
             None
         );
         assert_eq!(MeilisearchConfig::from_values(s("ftp://m"), s("k")), None);
+        assert_eq!(
+            MeilisearchConfig::from_values(s("http://user:secret@meilisearch:7700"), s("k")),
+            None
+        );
+        assert_eq!(
+            MeilisearchConfig::from_values(s("http://user@meilisearch:7700"), s("k")),
+            None
+        );
+    }
+
+    #[test]
+    fn meilisearch_debug_never_prints_the_key() {
+        let config = MeilisearchConfig::from_values(s("http://m:7700"), s("sekrit")).unwrap();
+        let debug = format!("{config:?}");
+        assert!(!debug.contains("sekrit"), "{debug}");
+        assert!(debug.contains("http://m:7700") && debug.contains("<redacted>"));
     }
 
     #[test]

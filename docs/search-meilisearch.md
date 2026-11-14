@@ -17,6 +17,8 @@ Both are GitHub secrets in the `api-production` environment (the one that holds
 the worker job prefers an optional `MEILISEARCH_WORKER_API_KEY` secret and falls
 back to `MEILISEARCH_API_KEY`. Without a URL the API serves search from
 PostgreSQL and the worker's search jobs fail permanently with a clear error.
+The worker treats a URL with credentials (`http://user:pass@host`) as missing:
+the key belongs in `MEILISEARCH_API_KEY`.
 
 ## Indexes
 
