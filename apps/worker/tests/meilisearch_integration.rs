@@ -22,7 +22,7 @@ use worker::context::{JobIo, Progress};
 use worker::handler::JobOutcome;
 use worker::jobs::movie_search::{self, Limits};
 use worker::jobs::search::backend::{MeilisearchClient, SearchBackend, settings_match};
-use worker::jobs::search::indexes::{INDEXES, Source};
+use worker::jobs::search::indexes::{INDEXES, Source, build_name, run_suffix};
 use worker::jobs::search::source::{DocPage, SourceData};
 use worker::jobs::search::{full, rebuild_reason, sync};
 use worker::queue::LogLevel;
@@ -212,6 +212,36 @@ async fn games_family_build_swap_and_sync_against_meilisearch() {
     assert_eq!(backend.document_ids("games_en").await.unwrap().len(), 10);
     let all = backend.list_indexes().await.unwrap();
     assert!(all.iter().all(|n| !is_games_build(n)), "{all:?}");
+
+    // One stable index lost: a single swap task renames its build into place
+    // and swaps every other pair, and the history records both kinds.
+    assert!(backend.delete_index("themes_en").await.unwrap());
+    let at = Utc::now() + chrono::Duration::seconds(4);
+    let outcome = full::run(&Io::default(), &backend, &second, None, at)
+        .await
+        .unwrap();
+    assert_eq!(outcome, JobOutcome::Completed);
+    assert_eq!(rebuild_reason(&backend).await.unwrap(), None);
+    for spec in INDEXES.iter() {
+        assert_eq!(
+            backend.document_ids(spec.name).await.unwrap().len(),
+            10,
+            "{}",
+            spec.name
+        );
+    }
+    let all = backend.list_indexes().await.unwrap();
+    assert!(all.iter().all(|n| !is_games_build(n)), "{all:?}");
+    let suffix = run_suffix(at);
+    for name in ["themes_en", "games_en"] {
+        assert!(
+            backend
+                .was_swapped(&build_name(name, &suffix))
+                .await
+                .unwrap(),
+            "{name}"
+        );
+    }
 
     // Sync re-adds deleted documents and deletes orphans.
     let missing: Vec<String> = second

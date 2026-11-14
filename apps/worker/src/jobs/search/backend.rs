@@ -31,7 +31,8 @@ pub trait SearchBackend: Send + Sync {
     /// Deletes an index; returns false when it did not exist.
     async fn delete_index(&self, uid: &str) -> Result<bool>;
     /// Atomically swaps every `(stable, build)` pair in one task. A missing
-    /// stable index is created by renaming its build index.
+    /// stable index is created by renaming its build index; renames and swaps
+    /// share that task (covered by `tests/meilisearch_integration.rs`).
     async fn swap_indexes(&self, pairs: &[(&str, &str)]) -> Result<()>;
     /// Whether `uid` took part in a succeeded swap (waits for an in-flight
     /// one). Build uids are unique and swapped at most once, so this tells a
