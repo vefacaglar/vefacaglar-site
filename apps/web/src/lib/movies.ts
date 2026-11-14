@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { httpClient } from "./httpClient";
 import { formatDate, parseDateKey } from "./formatDate";
+import { moviePersonPath } from "./movieSearch";
 
 export interface MovieCard {
   slug: string;
@@ -74,8 +75,8 @@ export interface MovieDetail extends MovieCard {
   sourceUpdatedAt: string | null;
 }
 
-async function movieJson<T>(path: string): Promise<T | null> {
-  const response = await httpClient.get(path);
+async function movieJson<T>(path: string, init?: { signal?: AbortSignal }): Promise<T | null> {
+  const response = await (init ? httpClient.get(path, init) : httpClient.get(path));
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Movie data fetch failed: ${response.status}`);
   return response.json() as Promise<T>;
@@ -92,7 +93,7 @@ export const getMovie = cache((slug: string) =>
 );
 
 export function moviePersonHref(wikidataId: string) {
-  return `/explore/movies/people/${encodeURIComponent(wikidataId)}`;
+  return moviePersonPath(wikidataId);
 }
 
 export function moviePageNumber(value?: string) {
@@ -104,4 +105,32 @@ export const getMoviePerson = cache((wikidataId: string, page: number) => {
   if (!/^Q[1-9][0-9]{0,20}$/.test(wikidataId)) return Promise.resolve(null);
   const params = new URLSearchParams({ page: String(page), limit: "21" });
   return movieJson<MoviePersonPage>(`/api/movies/people/${encodeURIComponent(wikidataId)}?${params}`);
+});
+
+export interface MovieSuggestion {
+  slug: string;
+  title: string;
+  releaseYear: number | null;
+  director: string | null;
+}
+export interface MoviePersonSummary {
+  wikidataId: string;
+  name: string;
+  role: MoviePersonRole;
+  knownFor: { slug: string; title: string; releaseYear: number | null } | null;
+}
+export interface MovieSuggestions {
+  movies: MovieSuggestion[];
+  people: MoviePersonSummary[];
+}
+
+export function getMovieSuggestions(query: string, init?: { signal?: AbortSignal }) {
+  const params = new URLSearchParams({ q: query });
+  return movieJson<MovieSuggestions>(`/api/movies/suggest?${params}`, init);
+}
+
+/** People section of the search results page. */
+export const searchMoviePeople = cache((query: string) => {
+  const params = new URLSearchParams({ q: query, limit: "12" });
+  return movieJson<{ items: MoviePersonSummary[] }>(`/api/movies/people?${params}`);
 });

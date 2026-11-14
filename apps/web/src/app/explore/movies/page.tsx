@@ -1,13 +1,15 @@
+import { unstable_rethrow } from "next/navigation";
 import styles from "./movies.module.css";
 import { getDictionary } from "../../../dictionaries";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import { libraryMetadata } from "../../../lib/librarySeo";
-import { getPublicMovies } from "../../../lib/movies";
+import { getPublicMovies, searchMoviePeople } from "../../../lib/movies";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
-import CatalogSearch from "../../../components/library/CatalogSearch";
+import MovieSearch from "../../../components/movies/MovieSearch";
 import Pagination from "../../components/Pagination";
 import MovieCards from "../../../components/movies/MovieCards";
+import MoviePeopleList from "../../../components/movies/MoviePeopleList";
 
 export async function generateMetadata() {
   const lang = await getActiveLanguage();
@@ -18,6 +20,16 @@ export async function generateMetadata() {
   });
 }
 
+/** The people section is auxiliary: if it fails, the film results still render. */
+async function matchingPeople(query: string) {
+  try {
+    return (await searchMoviePeople(query))?.items ?? [];
+  } catch (error) {
+    unstable_rethrow(error);
+    return [];
+  }
+}
+
 export default async function Movies({ searchParams }: {
   searchParams: Promise<{ page?: string; q?: string }>;
 }) {
@@ -26,19 +38,29 @@ export default async function Movies({ searchParams }: {
   const query = params.q?.trim() || "";
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
-  const data = await getPublicMovies(page, query || undefined);
+  const [data, people] = await Promise.all([
+    getPublicMovies(page, query || undefined),
+    query && page === 1 ? matchingPeople(query) : Promise.resolve([]),
+  ]);
   return (
     <div>
       <LibraryMasthead title={dict.movies} subtitle={dict.movies_catalog_subtitle}>
-        <CatalogSearch basePath="/explore/movies" initialQuery={query} placeholder={dict.movies_search_placeholder} maxLength={140} />
+        <MovieSearch initialQuery={query} placeholder={dict.movies_search_placeholder} />
       </LibraryMasthead>
+      {people.length > 0 && (
+        <section className={styles.section} aria-labelledby="movie-search-people">
+          <h2 id="movie-search-people" className={styles.sectionTitle}>{dict.movies_search_people}</h2>
+          <MoviePeopleList people={people} lang={lang} />
+        </section>
+      )}
       {data?.items.length ? (
-        <>
+        <section className={styles.section} aria-labelledby={people.length ? "movie-search-titles" : undefined}>
+          {people.length > 0 && <h2 id="movie-search-titles" className={styles.sectionTitle}>{dict.movies_search_titles}</h2>}
           <MovieCards movies={data.items} lang={lang} />
           <Pagination currentPage={page} totalPages={data.totalPages} className={styles.pagination}
             labels={{ previous: dict.library_previous, next: dict.library_next, pageOf: dict.library_page_of }} />
-        </>
-      ) : <p className={styles.empty}>{query ? dict.movies_no_results : dict.movies_catalog_empty}</p>}
+        </section>
+      ) : !people.length && <p className={styles.empty}>{query ? dict.movies_no_results : dict.movies_catalog_empty}</p>}
     </div>
   );
 }

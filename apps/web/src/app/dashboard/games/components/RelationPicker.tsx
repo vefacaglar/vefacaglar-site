@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./RelationPicker.module.css";
 import { GameRelationItem } from "../types";
-import { useDebounced } from "../hooks/useDebounced";
+import { useDebounced } from "../../../../hooks/useDebounced";
 import { RELATION_PICKER_LIMIT } from "../constants";
 import ds from "../../../../lib/dashboard-strings";
 

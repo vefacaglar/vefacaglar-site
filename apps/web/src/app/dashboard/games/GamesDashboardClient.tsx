@@ -15,7 +15,7 @@ import {
 } from "./types";
 import { useGamesNavigation } from "./hooks/useGamesNavigation";
 import { useGamesViewMode } from "./hooks/useGamesViewMode";
-import { useDebounced } from "./hooks/useDebounced";
+import { useDebounced } from "../../../hooks/useDebounced";
 import { slugify } from "./utils/slugify";
 import { toggleRelation } from "./relations";
 import { listRelationsOptionsAction } from "./actions";

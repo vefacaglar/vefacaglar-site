@@ -4,11 +4,28 @@ vi.mock("react", () => ({ cache: (fn: unknown) => fn }));
 vi.mock("./httpClient", () => ({ httpClient: { get: vi.fn() } }));
 
 import { httpClient } from "./httpClient";
-import { getMovie, getMoviePerson, getMovieRankingNotice, getPublicMovies, moviePageNumber, moviePersonHref } from "./movies";
+import { getMovie, getMovieSuggestions, getMoviePerson, getMovieRankingNotice, getPublicMovies, moviePageNumber, moviePersonHref, searchMoviePeople } from "./movies";
 
 beforeEach(() => vi.resetAllMocks());
 
 describe("movie data requests", () => {
+  it("requests typeahead suggestions with an encoded term and forwards the abort signal", async () => {
+    const data = { movies: [], people: [] };
+    vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify(data), { status: 200 }));
+    const signal = new AbortController().signal;
+    expect(await getMovieSuggestions("Love & War", { signal })).toEqual(data);
+    expect(httpClient.get).toHaveBeenCalledWith("/api/movies/suggest?q=Love+%26+War", { signal });
+  });
+  it("requests the people results section with a fixed limit", async () => {
+    vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    expect(await searchMoviePeople("Chris Nolan")).toEqual({ items: [] });
+    expect(httpClient.get).toHaveBeenCalledWith("/api/movies/people?q=Chris+Nolan&limit=12");
+  });
+  it("surfaces upstream failures for people and suggestions", async () => {
+    vi.mocked(httpClient.get).mockResolvedValue(new Response(null, { status: 503 }));
+    await expect(searchMoviePeople("nolan")).rejects.toThrow("503");
+    await expect(getMovieSuggestions("nolan")).rejects.toThrow("503");
+  });
   it("requests 21 results and safely encodes the search term", async () => {
     vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
     await getPublicMovies(2, "Love & War");
