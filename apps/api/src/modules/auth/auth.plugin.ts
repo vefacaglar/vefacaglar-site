@@ -21,20 +21,23 @@ declare module "fastify" {
 export function registerAuthDecorators(app: FastifyInstance): void {
   const auth = container.resolve(AuthService);
 
+  // Only a rejected credential is a 401. Anything else (e.g. the database being
+  // unreachable) stays a 5xx so clients do not mistake an outage for a logout.
+  const asUnauthorized = (message: string) => (cause: unknown): never => {
+    if (cause instanceof UnauthorizedError) throw new UnauthorizedError(message, undefined, { cause });
+    throw cause;
+  };
+
   const requireAuth = async (request: FastifyRequest) => {
-    try {
-      const { user, session } = await auth.authenticate(request);
-      request.user = user;
-      request.session = session;
-    } catch (cause) {
-      throw new UnauthorizedError("Unauthorized. Please log in.", undefined, { cause });
-    }
+    const { user, session } = await auth.authenticate(request).catch(asUnauthorized("Unauthorized. Please log in."));
+    request.user = user;
+    request.session = session;
   };
 
   const requireAdmin = async (request: FastifyRequest) => {
-    const { user, session } = await auth.authenticate(request).catch((cause: unknown) => {
-      throw new UnauthorizedError("Unauthorized action. You must log in as admin.", undefined, { cause });
-    });
+    const { user, session } = await auth
+      .authenticate(request)
+      .catch(asUnauthorized("Unauthorized action. You must log in as admin."));
     if (user.role !== "admin") {
       throw new UnauthorizedError("Unauthorized action. You must log in as admin.", "The account does not have the admin role");
     }
