@@ -40,7 +40,7 @@ quotes. Add optional integrations using their existing values:
 
 | Feature | Secrets |
 | --- | --- |
-| Typesense search | `TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`; `TYPESENSE_PUBLIC_URL` can replace explicit host/port/protocol |
+| Meilisearch search | `MEILISEARCH_URL` (`http://meilisearch:7700` on the API's Docker network), `MEILISEARCH_API_KEY` ([permissions](../../docs/search-meilisearch.md#api-keys)); without them search uses PostgreSQL |
 | Image uploads | `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_PUBLIC_KEY`, optionally `IMAGEKIT_FOLDER` |
 | IGDB imports | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
 | Live job stream (browser connects directly) | `JOB_STREAM_TOKEN_SECRET` (random, ≥ 32 bytes, e.g. `openssl rand -base64 48`; unset = random per-process key, single instance only), `WEB_ORIGINS` (origins allowed to open `/api/jobs/dashboard/:id/stream`; defaults to `https://vefacaglar.com,https://www.vefacaglar.com`) |
@@ -54,9 +54,8 @@ their contents. `DATABASE_URL`, `WEB_URL` and `AUTH_MODE` are required; OIDC mod
 also requires its issuer and client ID. The Compose file enforces production mode,
 the container's listening address and port.
 
-For [application logs](../../docs/application-logs.md), set
-`LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` (optionally `LOG_ENVIRONMENT`)
-as GitHub secrets or include them in `API_ENV`.
+[Application logs](../../docs/application-logs.md) are JSON lines on stdout;
+`LOG_ENVIRONMENT` optionally overrides their environment label.
 
 Every deploy replaces the full env file. To remove a setting, remove it from both
 its individual secret and `API_ENV`. Changing secrets alone does not trigger a

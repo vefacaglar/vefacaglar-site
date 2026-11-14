@@ -11,11 +11,10 @@ import sys
 INDIVIDUAL_SECRETS = (
     "DATABASE_URL",
     "IGDB_CLIENT_ID", "IGDB_CLIENT_SECRET",
-    "TYPESENSE_HOST", "TYPESENSE_PORT", "TYPESENSE_PROTOCOL", "TYPESENSE_API_KEY",
+    "MEILISEARCH_URL", "MEILISEARCH_API_KEY",
     "WORKER_ID", "WORKER_DB_POOL_MAX", "RUST_LOG",
-    "LOG_TYPESENSE_URL", "LOG_TYPESENSE_API_KEY", "LOG_ENVIRONMENT",
 )
-REQUIRED = ("DATABASE_URL", "TYPESENSE_HOST", "TYPESENSE_API_KEY")
+REQUIRED = ("DATABASE_URL", "MEILISEARCH_URL", "MEILISEARCH_API_KEY")
 BUNDLE_FILES = ("compose.yml", "deploy.sh", "receive.sh", "blue-green.py", "legacy-bootstrap.py")
 
 
@@ -44,9 +43,8 @@ def collect(environ):
     for key in REQUIRED:
         if not values.get(key, "").strip():
             raise ValueError(f"Set {key} as a GitHub secret or include it in WORKER_ENV")
-    protocol = values.get("TYPESENSE_PROTOCOL", "")
-    if protocol and protocol not in ("http", "https"):
-        raise ValueError("TYPESENSE_PROTOCOL must be http or https")
+    if not re.fullmatch(r"https?://[^\s?#]+", values["MEILISEARCH_URL"]):
+        raise ValueError("MEILISEARCH_URL must be an http(s) URL such as http://meilisearch:7700")
     return values
 
 

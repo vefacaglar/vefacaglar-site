@@ -90,9 +90,10 @@ database network exist. Additionally:
 
 1. Make sure Python 3, `flock` and `nsenter` (`util-linux`), and `ss` (`iproute2`) are installed (present on Debian/Ubuntu).
 2. The worker joins the external Docker network that reaches Postgres and
-   Typesense (`databases_default` by default, the same as the API). Inside the
+   Meilisearch (`databases_default` by default, the same as the API and the
+   Meilisearch container's `${LOGS_PROXY_NETWORK:-databases_default}`). Inside the
    container `localhost` is the worker itself, so use the service hostnames
-   (e.g. `postgres`, `typesense`) in `DATABASE_URL` / `TYPESENSE_HOST`.
+   (e.g. `postgres`, `meilisearch`) in `DATABASE_URL` / `MEILISEARCH_URL`.
 3. CD creates `~/vefacaglar-worker` (mode 700), stores each generation below
    `generations/`, logs in to GHCR with the job's temporary token and starts the
    new standby pair. `.active-generation` records the successful handover.
@@ -116,7 +117,7 @@ worker's own database heartbeat (written every 10 s) is less than 30 s old.
 ## GitHub configuration
 
 The deploy job uses the same **`api-production`** environment as the API, so the
-VPS, database and Typesense secrets are shared; repository secrets work too.
+VPS, database and Meilisearch secrets are shared; repository secrets work too.
 `WORKER_DEPLOY_ENABLED` must be a **repository** variable (the job-level `if` is
 evaluated before the environment is entered).
 
@@ -126,8 +127,8 @@ evaluated before the environment is entered).
 | `VPS_SSH_KEY` or `VPS_PASSWORD` | Same as the API deployment (key takes precedence) |
 | `VPS_PORT` | Optional, defaults to `22` |
 | `DATABASE_URL` | API database, reachable from the Docker network (required) |
-| `TYPESENSE_HOST`, `TYPESENSE_API_KEY` | Typesense host and admin key (required) |
-| `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL` | Optional; protocol `http`/`https` (default `https`, port 443/80) |
+| `MEILISEARCH_URL` | `http://meilisearch:7700` (required) |
+| `MEILISEARCH_WORKER_API_KEY` or `MEILISEARCH_API_KEY` | Worker key with index management rights; the worker key takes precedence ([permissions](../../docs/search-meilisearch.md#api-keys)) (required) |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Required by `catalog.popularity.refresh`; not used by search-only jobs |
 | `WORKER_ENV` | Optional raw `NAME=value` env file; non-empty individual secrets override it |
 
@@ -147,14 +148,13 @@ Every deploy creates a new environment snapshot. Existing draining generations
 keep their original snapshot until they finish. Changing secrets alone does not deploy; use
 **Actions → CI and deploy → Run workflow → main** afterwards.
 
-For [application logs](../../docs/application-logs.md), set
-`LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` (optionally `LOG_ENVIRONMENT`)
-as GitHub secrets or include them in `WORKER_ENV`.
+Logs are JSON lines on stdout, collected by the VPS log shipper
+([application logs](../../docs/application-logs.md)); no log settings are needed.
 
 The daily popularity refresh is a registered job in the site's Jobs dashboard,
 not a GitHub schedule. Configure the two IGDB secrets before enabling its
-recurring schedule. Typesense is reached through the worker's existing
-`TYPESENSE_HOST` configuration; a separate public URL is not needed.
+recurring schedule. Its Node child inherits the worker's `MEILISEARCH_URL` and
+`MEILISEARCH_API_KEY`.
 The maintenance process has a 2 GiB JavaScript heap budget by default
 (`NODE_OPTIONS=--max-old-space-size=2048`). This is not a container RSS limit;
 allow room for Node's other allocations and the Rust worker. The Compose
@@ -166,4 +166,4 @@ through `WORKER_ENV` and checking available VPS memory first.
 `pnpm --filter worker worker:dev` runs the worker with `cargo run`, loading the
 repository's `.env`. It is deliberately not part of `pnpm dev`: that `.env`
 points at production services, so a local worker would claim production jobs.
-Point `DATABASE_URL`/`TYPESENSE_*` at local services before running it.
+Point `DATABASE_URL`/`MEILISEARCH_*` at local services before running it.
