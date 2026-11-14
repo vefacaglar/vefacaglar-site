@@ -23,6 +23,10 @@ import { GetDeveloperGamesHandler } from "./developers/detail/detail.handler";
 import { DeveloperParams, DeveloperParamsSchema, DeveloperQuery, DeveloperQuerySchema, DeveloperResponseSchema } from "./developers/detail/detail.schema";
 import { GetPublisherGamesHandler } from "./publishers/detail/detail.handler";
 import { PublisherParams, PublisherParamsSchema, PublisherQuery, PublisherQuerySchema, PublisherResponseSchema } from "./publishers/detail/detail.schema";
+import { SuggestGamesHandler } from "./search/suggest/suggest.handler";
+import { SuggestQuery, SuggestQuerySchema, SuggestResponseSchema } from "./search/suggest/suggest.schema";
+import { SearchGameCompaniesHandler } from "./search/companies/companies.handler";
+import { SearchCompaniesQuery, SearchCompaniesQuerySchema, SearchCompaniesResponseSchema } from "./search/companies/companies.schema";
 import { GetGameCommunityHandler } from "./community/community.handler";
 import { GameCommunityParamsSchema, GameCommunityQuerySchema, GameCommunitySchema, type GameCommunityParams, type GameCommunityQuery } from "./community/community.schema";
 
@@ -40,6 +44,8 @@ export async function publicGamesRoutes(app: FastifyInstance) {
   const developerHandler = container.resolve(GetDeveloperGamesHandler);
   const publisherHandler = container.resolve(GetPublisherGamesHandler);
   const communityHandler = container.resolve(GetGameCommunityHandler);
+  const suggestHandler = container.resolve(SuggestGamesHandler);
+  const companiesSearchHandler = container.resolve(SearchGameCompaniesHandler);
 
   app.get<{ Querystring: ListGamesQuery }>("/", {
     schema: {
@@ -49,6 +55,25 @@ export async function publicGamesRoutes(app: FastifyInstance) {
       response: { 200: ListGamesResponseSchema },
     },
   }, (request) => listHandler.handle(request));
+
+  // Two-segment paths, so no game slug (served by "/:slug") can shadow or be shadowed by them.
+  app.get<{ Querystring: SuggestQuery }>("/search/suggest", {
+    schema: {
+      description: "Text-only search box suggestions: up to five developers, publishers and games",
+      tags: ["Games"],
+      querystring: SuggestQuerySchema,
+      response: { 200: SuggestResponseSchema },
+    },
+  }, (request) => suggestHandler.handle(request));
+
+  app.get<{ Querystring: SearchCompaniesQuery }>("/search/companies", {
+    schema: {
+      description: "Developers and publishers with at least one game whose name matches a search",
+      tags: ["Games"],
+      querystring: SearchCompaniesQuerySchema,
+      response: { 200: SearchCompaniesResponseSchema },
+    },
+  }, (request) => companiesSearchHandler.handle(request));
 
   app.get<{ Params: DeveloperParams; Querystring: DeveloperQuery }>("/developers/:slug", {
     schema: {

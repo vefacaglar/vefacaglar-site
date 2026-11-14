@@ -24,6 +24,8 @@ import type {
   GameCard,
   GameCompanyRole,
   PublicGameCompanyPage,
+  PublicCompanyMatch,
+  PublicGameSuggestion,
   IGamesRepository,
   Game,
   NewGame,
@@ -413,6 +415,56 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))].slice(0, 48);
     if (!validIds.length) return [];
     return this.dbProvider.client.select(PUBLIC_CARD_FIELDS).from(games).where(inArray(games.id, validIds));
+  }
+
+  async searchPublicCompanies(role: GameCompanyRole, q: string, limit: number): Promise<PublicCompanyMatch[]> {
+    const term = q.trim();
+    if (!term || limit < 1) return [];
+    const pattern = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const table = role === "developer" ? developers : publishers;
+    const link = role === "developer"
+      ? { table: gameDevelopers, companyId: gameDevelopers.developerId, gameId: gameDevelopers.gameId }
+      : { table: gamePublishers, companyId: gamePublishers.publisherId, gameId: gamePublishers.gameId };
+    // The inner join keeps only companies with at least one game; the link index serves the count.
+    const gameCount = sql<number>`count(${link.gameId})::int`;
+    const rows = await this.dbProvider.client
+      .select({ id: table.id, name: table.name, slug: table.slug, gameCount })
+      .from(table)
+      .innerJoin(link.table, eq(link.companyId, table.id))
+      .where(ilike(table.name, `%${pattern}%`))
+      .groupBy(table.id, table.name, table.slug)
+      .orderBy(
+        asc(sql`case when lower(${table.name}) = lower(${term}) then 0 when ${table.name} ilike ${`${pattern}%`} then 1 else 2 end`),
+        desc(gameCount),
+        asc(table.name),
+        asc(table.id),
+      )
+      .limit(limit);
+    return rows.map((row) => ({ ...row, gameCount: Number(row.gameCount) }));
+  }
+
+  async findPublicSuggestionsByIds(ids: string[]): Promise<PublicGameSuggestion[]> {
+    const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))].slice(0, 48);
+    if (!validIds.length) return [];
+    const db = this.dbProvider.client;
+    // A join query renders qualified column names, so the correlation to the outer games row stays unambiguous.
+    const firstDeveloper = db
+      .select({ name: developers.name })
+      .from(gameDevelopers)
+      .innerJoin(developers, eq(gameDevelopers.developerId, developers.id))
+      .where(eq(gameDevelopers.gameId, games.id))
+      .orderBy(asc(developers.name))
+      .limit(1);
+    return db
+      .select({
+        id: games.id,
+        slug: games.slug,
+        title: games.title,
+        releaseDate: games.releaseDate,
+        developerName: sql<string | null>`(${firstDeveloper})`,
+      })
+      .from(games)
+      .where(inArray(games.id, validIds));
   }
 
   async loadCatalogIndex(): Promise<CatalogIndex> {

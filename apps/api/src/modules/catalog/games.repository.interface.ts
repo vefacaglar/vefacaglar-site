@@ -88,6 +88,10 @@ export type GameCompanyRole = "developer" | "publisher";
 export type PublicGameCompany = Pick<Developer, "id" | "name" | "slug" | "countryCode"> & {
   role: GameCompanyRole;
 };
+/** A company search match for public search; only companies linked to at least one game. */
+export type PublicCompanyMatch = Pick<Developer, "id" | "name" | "slug"> & { gameCount: number };
+/** The fields a public search suggestion row needs. */
+export type PublicGameSuggestion = Pick<Game, "id" | "slug" | "title" | "releaseDate"> & { developerName: string | null };
 export type PublicGameCompanyPage = {
   company: PublicGameCompany;
   items: GameCard[];
@@ -127,6 +131,13 @@ export interface IGamesRepository {
   /** Fresh public card fields for at most one search page; no relations or administrative data. */
   findPublicCardsByIds(ids: string[]): Promise<GameCard[]>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
+  /**
+   * Developers or publishers whose name contains `q`, linked to at least one game.
+   * Ranked exact > prefix > substring, then by game count.
+   */
+  searchPublicCompanies(role: GameCompanyRole, q: string, limit: number): Promise<PublicCompanyMatch[]>;
+  /** Suggestion rows (title, release date, first developer) for at most one search page. */
+  findPublicSuggestionsByIds(ids: string[]): Promise<PublicGameSuggestion[]>;
   findPublicCompanyPage(
     role: GameCompanyRole,
     slug: string,
