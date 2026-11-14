@@ -135,6 +135,18 @@ impl SourceData for Rows {
             .map(|(_, d)| d)
             .collect())
     }
+    async fn changed_page(
+        &self,
+        _: Source,
+        _: chrono::DateTime<Utc>,
+        _: Option<Uuid>,
+        _: usize,
+    ) -> Result<DocPage> {
+        Ok(DocPage {
+            docs: Vec::new(),
+            last_id: None,
+        })
+    }
 }
 
 /// Tests run in parallel against one server, so each only checks its own builds.
@@ -201,7 +213,7 @@ async fn games_family_build_swap_and_sync_against_meilisearch() {
     let all = backend.list_indexes().await.unwrap();
     assert!(all.iter().all(|n| !is_games_build(n)), "{all:?}");
 
-    // Sync re-adds deleted documents; orphans are left alone.
+    // Sync re-adds deleted documents and deletes orphans.
     let missing: Vec<String> = second
         .rows(Source::Games)
         .into_iter()
@@ -225,7 +237,7 @@ async fn games_family_build_swap_and_sync_against_meilisearch() {
         JobOutcome::Completed
     );
     assert_eq!(backend.document_ids("games_en").await.unwrap().len(), 10);
-    assert_eq!(backend.document_ids("posts_en").await.unwrap().len(), 11);
+    assert_eq!(backend.document_ids("posts_en").await.unwrap().len(), 10);
     assert!(
         io.logs
             .lock()

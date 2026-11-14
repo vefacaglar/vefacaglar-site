@@ -82,6 +82,8 @@ impl JobIo for FakeIo {
 /// Source rows per collection name, sorted by id.
 struct FakeSource {
     rows: HashMap<Source, Vec<(Uuid, Value)>>,
+    /// Change time per row; rows without one changed long ago.
+    changed_at: HashMap<Uuid, DateTime<Utc>>,
 }
 
 fn uuid(n: u128) -> Uuid {
@@ -101,7 +103,17 @@ impl FakeSource {
                 .collect();
             rows.insert(spec.source, list);
         }
-        Self { rows }
+        Self {
+            rows,
+            changed_at: HashMap::new(),
+        }
+    }
+    /// Changes one row's document at `at`.
+    fn touch(&mut self, collection: usize, nth: usize, at: DateTime<Utc>) {
+        let list = self.rows.get_mut(&INDEXES[collection].source).unwrap();
+        list[nth].1["n"] = json!("changed");
+        let id = list[nth].0;
+        self.changed_at.insert(id, at);
     }
     fn mark_failing(&mut self, collection: usize, nth: usize) {
         let list = self.rows.get_mut(&INDEXES[collection].source).unwrap();
@@ -156,6 +168,24 @@ impl SourceData for FakeSource {
             .filter(|(id, _)| wanted.contains(id))
             .map(|(_, d)| d.clone())
             .collect())
+    }
+    async fn changed_page(
+        &self,
+        source: Source,
+        since: DateTime<Utc>,
+        after: Option<Uuid>,
+        limit: usize,
+    ) -> Result<DocPage> {
+        let page: Vec<&(Uuid, Value)> = self.rows[&source]
+            .iter()
+            .filter(|(id, _)| after.is_none_or(|a| *id > a))
+            .filter(|(id, _)| self.changed_at.get(id).is_some_and(|at| *at >= since))
+            .take(limit)
+            .collect();
+        Ok(DocPage {
+            last_id: page.last().map(|(id, _)| *id),
+            docs: page.into_iter().map(|(_, d)| d.clone()).collect(),
+        })
     }
 }
 
@@ -293,12 +323,14 @@ async fn full_reindex_resumes_into_the_same_build_indexes() {
         FullCheckpoint {
             suffix: SUFFIX.into(),
             collection_index: 0,
-            last_id: Some(source.id(0, 499))
+            last_id: Some(source.id(0, 499)),
+            started_at: Some(t(3, 0, 7)),
         }
     );
     assert_eq!(
         first.last_checkpoint(),
-        json!({ "suffix": SUFFIX, "collectionIndex": 0, "lastId": source.id(0, 499).to_string() })
+        json!({ "suffix": SUFFIX, "collectionIndex": 0, "lastId": source.id(0, 499).to_string(),
+            "startedAt": "2026-11-04T03:00:07Z" })
     );
 
     // Resume an hour later: still the original suffix, nothing re-imported.
@@ -332,6 +364,46 @@ async fn full_reindex_resumes_into_the_same_build_indexes() {
         .cloned()
         .unwrap();
     assert_eq!(first_progress.processed, Some(500));
+}
+
+#[tokio::test]
+async fn full_reindex_re_indexes_rows_changed_during_the_rebuild() {
+    let backend = FakeMeili::default();
+    let mut source = FakeSource::new(COUNTS);
+    // Interrupted after the first games batch (rows 0..500 loaded).
+    let first = FakeIo::stopping_after(2, false);
+    full::run(&first, &backend, &source, None, t(3, 0, 7))
+        .await
+        .unwrap();
+    let cp: FullCheckpoint = serde_json::from_value(first.last_checkpoint()).unwrap();
+
+    // Changed after being loaded into the build (its API write went to the
+    // old index), plus a row changed long before the run.
+    source.touch(0, 3, t(3, 30, 0));
+    source.touch(1, 0, t(1, 0, 0));
+    let second = FakeIo::default();
+    let outcome = full::run(&second, &backend, &source, Some(cp), t(4, 0, 0))
+        .await
+        .unwrap();
+    assert_eq!(outcome, JobOutcome::Completed);
+    let changed = source.id(0, 3).to_string();
+    assert_eq!(backend.doc("games_en", &changed).unwrap()["n"], "changed");
+
+    let ops = backend.ops();
+    let swap = op_index(&ops, |o| o.starts_with("swap "))[0];
+    let catch_up = ops.iter().position(|o| o == "add games_en 1").unwrap();
+    assert!(catch_up > swap, "{ops:?}");
+    // Only rows changed since the run start (minus the margin) are repeated.
+    assert_eq!(
+        ops[swap..].iter().filter(|o| o.starts_with("add ")).count(),
+        1
+    );
+    assert!(
+        second
+            .logs()
+            .iter()
+            .any(|l| l == "games_en: 1 documents changed during the rebuild re-indexed")
+    );
 }
 
 #[tokio::test]
@@ -439,13 +511,20 @@ fn full_checkpoint_serde() {
         suffix: SUFFIX.into(),
         collection_index: 3,
         last_id: None,
+        started_at: Some(t(3, 0, 7)),
     };
     let value = serde_json::to_value(&cp).unwrap();
     assert_eq!(
         value,
-        json!({ "suffix": SUFFIX, "collectionIndex": 3, "lastId": null })
+        json!({ "suffix": SUFFIX, "collectionIndex": 3, "lastId": null,
+            "startedAt": "2026-11-04T03:00:07Z" })
     );
     assert_eq!(serde_json::from_value::<FullCheckpoint>(value).unwrap(), cp);
+    // Checkpoints written before `startedAt` existed still decode.
+    let legacy: FullCheckpoint =
+        serde_json::from_value(json!({ "suffix": SUFFIX, "collectionIndex": 3, "lastId": null }))
+            .unwrap();
+    assert_eq!(legacy.started_at, None);
     // A sync checkpoint is never mistaken for a full one.
     assert!(serde_json::from_value::<FullCheckpoint>(json!({ "collectionIndex": 2 })).is_err());
 }
@@ -486,16 +565,22 @@ fn diff_finds_missing_and_orphans() {
         diff([a, b, c], &indexed),
         sync::Diff {
             missing: vec![a, c],
-            orphans: 1
+            orphans: vec!["gone".to_string()]
         }
     );
     assert_eq!(diff(Vec::new(), &HashSet::new()), sync::Diff::default());
 }
 
 #[tokio::test]
-async fn sync_indexes_only_missing_documents() {
+async fn sync_indexes_missing_and_deletes_orphaned_documents() {
     // One orphan document in games; indexed: games 0..700 of 1200, themes 2 of 4.
     let backend = live(&[1, 0, 0, 0, 0, 0, 0]);
+    backend
+        .state
+        .lock()
+        .unwrap()
+        .indexes
+        .insert(build("posts_en"), Default::default());
     let source = FakeSource::new(COUNTS);
     for n in 0..700 {
         backend.insert_doc("games_en", &source.id(0, n).to_string());
@@ -509,7 +594,13 @@ async fn sync_indexes_only_missing_documents() {
     let outcome = sync::run(&io, &backend, &source, None).await.unwrap();
     assert_eq!(outcome, JobOutcome::Completed);
 
-    assert_eq!(backend.doc_count("games_en"), 1201); // 1200 + the untouched orphan
+    assert_eq!(backend.doc_count("games_en"), 1200); // the orphan is gone
+    assert!(backend.doc("games_en", "orphan-0").is_none());
+    assert_eq!(backend.state.lock().unwrap().document_deletions, 1);
+    assert!(
+        !backend.exists(&build("posts_en")),
+        "leftover build deleted"
+    );
     assert_eq!(backend.doc_count("themes_en"), 4);
     let adds: Vec<String> = backend
         .ops()
@@ -526,9 +617,12 @@ async fn sync_indexes_only_missing_documents() {
     );
     assert!(
         logs.iter()
-            .any(|l| l == "games_en: 500 missing, 500 indexed")
+            .any(|l| l == "games_en: 500 missing, 500 indexed, 1 orphans deleted")
     );
-    assert!(logs.iter().any(|l| l == "genres_en: 1 missing, 1 indexed"));
+    assert!(
+        logs.iter()
+            .any(|l| l == "genres_en: 1 missing, 1 indexed, 0 orphans deleted")
+    );
 
     let last = io.last_progress();
     assert_eq!(last.total, Some(expected_missing));

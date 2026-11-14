@@ -86,7 +86,18 @@ checkpoint resumes into the same build indexes; a build whose settings no longer
 match is recreated. A run resumed after the swap only cleans up: the swap is
 detected from Meilisearch's task history (`GET /tasks?types=indexSwap`), never
 repeated. Cancelling deletes the half-built indexes; a failure keeps them for the
-retry.
+retry (until the next plain `search.sync`, which deletes leftover build indexes;
+a retry then recreates them).
+
+API writes made during a games-family rebuild go to the old index and are
+swapped out. Right after the swap (and again when a run resumes after it),
+`search.reindex` re-upserts every row changed since the run started, minus a
+five-minute margin, into the stable indexes. "Changed" means `created_at`,
+`updated_at` (games also `popularity_updated_at`, or a linked lookup's
+`updated_at`; posts also `published_at`) at or after that time. The run start
+is stored in the checkpoint (`startedAt`; older checkpoints fall back to the
+run suffix). Rows deleted or unpublished during the rebuild are left as
+orphans until the next `search.sync` deletes them.
 
 `search.movies.sync` builds `movies_en__build_<id>` and
 `movie_people_en__build_<id>`. Before swapping movies it commits phase `swap`
@@ -119,13 +130,13 @@ Migration `0044_schedule_search_sync` schedules `search.sync` hourly
 (`17 * * * *`) and makes it due immediately. `search.sync` first checks every
 games-family index: when one is missing or its settings differ from the file,
 it logs the reason and runs a full rebuild instead (resumable with the
-`search.reindex` checkpoint). Otherwise it restores missing documents and leaves
-orphans alone. So the first sync after the cutover builds everything, and later
-syncs heal drift. `search.movies.sync` builds `movies_en` and `movie_people_en`
+`search.reindex` checkpoint). Otherwise it deletes leftover build indexes,
+restores missing documents and deletes orphans (documents without a source
+row). The indexed ids are read before the source ids, so a document created
+while the sync runs is never taken for an orphan. So the first sync after the
+cutover builds everything, and later syncs heal drift. `search.movies.sync` builds `movies_en` and `movie_people_en`
 on its own schedule (`*/5 * * * *`); the registration must be enabled.
 
-API writes made during a games-family rebuild go to the old index and are lost
-at the swap; the next hourly sync restores them.
 
 ## API keys
 

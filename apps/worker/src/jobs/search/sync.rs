@@ -1,9 +1,15 @@
-//! `search.sync`: fill in documents missing from the live indexes.
+//! `search.sync`: heal drift in the live indexes.
 //!
-//! For every stable index uid (missing = fail; the job handler escalates to a
-//! full rebuild before calling this), fetch the existing ids, diff them
-//! against Postgres and upsert only the missing documents in batches. Orphans
-//! (documents without a source row) are counted and logged, never deleted.
+//! First deletes leftover `{uid}__build_*` indexes (a failed or abandoned
+//! rebuild). Then, for every stable index uid (missing = fail; the job handler
+//! escalates to a full rebuild before calling this), fetch the existing ids,
+//! diff them against Postgres, delete orphans (documents without a source row,
+//! e.g. a row deleted during a rebuild) and upsert the missing documents.
+//!
+//! Orphan deletion relies on the read order: the indexed ids are read BEFORE
+//! the source ids. A document can only be an orphan if it was indexed before
+//! the source read started, so a row that still exists is always seen by the
+//! source read; rows created after the index read are never in `indexed`.
 
 use std::collections::HashSet;
 
@@ -12,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::backend::SearchBackend;
+use super::full::delete_builds;
 use super::indexes::INDEXES;
 use super::source::SourceData;
 use super::{BATCH_SIZE, LOG_EVERY_BATCHES, import_batch};
@@ -21,6 +28,8 @@ use crate::queue::LogLevel;
 
 /// Ids read per query while diffing.
 const ID_PAGE: usize = 5_000;
+/// Orphan ids per delete request.
+const ORPHAN_BATCH: usize = 1_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,25 +43,25 @@ pub struct SyncCheckpoint {
 pub struct Diff {
     /// Source ids without a document, in source (id) order.
     pub missing: Vec<Uuid>,
-    /// Indexed documents without a source row.
-    pub orphans: usize,
+    /// Indexed document ids without a source row, sorted.
+    pub orphans: Vec<String>,
 }
 
 /// Pure diff: `source_ids` must not contain duplicates.
 pub fn diff(source_ids: impl IntoIterator<Item = Uuid>, indexed: &HashSet<String>) -> Diff {
     let mut missing = Vec::new();
-    let mut present = 0usize;
+    let mut present = HashSet::new();
     for id in source_ids {
-        if indexed.contains(&id.to_string()) {
-            present += 1;
+        let id_string = id.to_string();
+        if indexed.contains(&id_string) {
+            present.insert(id_string);
         } else {
             missing.push(id);
         }
     }
-    Diff {
-        missing,
-        orphans: indexed.len().saturating_sub(present),
-    }
+    let mut orphans: Vec<String> = indexed.difference(&present).cloned().collect();
+    orphans.sort();
+    Diff { missing, orphans }
 }
 
 /// The live target of a stable uid: the index itself, which must exist.
@@ -83,6 +92,9 @@ pub async fn run(
         ..Default::default()
     };
     io.progress(&progress).await?;
+    if start == 0 {
+        delete_builds(io, backend, None).await?;
+    }
 
     // Resolve everything first, so a missing index fails before any work.
     let mut targets = Vec::new();
@@ -109,6 +121,7 @@ pub async fn run(
         progress.phase = Some(format!("diffing:{}", spec.name));
         progress.message = Some(format!("{}: comparing ids", spec.name));
         io.progress(&progress).await?;
+        // Indexed ids first, then source ids: see the module docs.
         let indexed = backend.document_ids(target).await?;
         let mut source_ids = Vec::new();
         let mut after = None;
@@ -128,7 +141,7 @@ pub async fn run(
                 "{}: {} missing, {} orphaned (indexed {}, target {target})",
                 spec.name,
                 d.missing.len(),
-                d.orphans,
+                d.orphans.len(),
                 indexed.len()
             ),
         )
@@ -148,6 +161,9 @@ pub async fn run(
         let spec = &INDEXES[index];
         if io.should_stop() {
             return Ok(JobOutcome::Interrupted);
+        }
+        for ids in diff.orphans.chunks(ORPHAN_BATCH) {
+            backend.delete_documents(target, ids).await?;
         }
         let mut indexed = 0u64;
         progress.phase = Some(format!("indexing:{}", spec.name));
@@ -177,9 +193,10 @@ pub async fn run(
         io.log(
             LogLevel::Info,
             &format!(
-                "{}: {} missing, {indexed} indexed",
+                "{}: {} missing, {indexed} indexed, {} orphans deleted",
                 spec.name,
-                diff.missing.len()
+                diff.missing.len(),
+                diff.orphans.len()
             ),
         )
         .await;

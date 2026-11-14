@@ -9,16 +9,21 @@
 //! 3. Only after ALL indexes are loaded, swap every build index with its
 //!    stable uid in one atomic Meilisearch task (a missing stable uid is
 //!    created by renaming its build index).
-//! 4. Delete the build indexes, which now hold the previous contents.
+//! 4. Catch up: API writes made during the rebuild went to the old indexes and
+//!    were swapped out, so re-upsert every row changed since the run started
+//!    (minus [`CATCH_UP_MARGIN`]) into the stable indexes. Rows deleted during
+//!    the rebuild become orphans that the next `search.sync` deletes.
+//! 5. Delete the build indexes, which now hold the previous contents.
 //!
 //! A run resumed after the swap (crash between swap and cleanup) detects the
-//! finished swap from Meilisearch's task history and only cleans up.
+//! finished swap from Meilisearch's task history and only catches up and
+//! cleans up.
 //! Cancel deletes the half-built indexes; failures keep them for retry.
 
 use std::collections::HashSet;
 
 use anyhow::{Result, bail};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -40,7 +45,26 @@ pub struct FullCheckpoint {
     pub collection_index: usize,
     /// Last indexed primary key within the current index.
     pub last_id: Option<Uuid>,
+    /// When the run started; rows changed since then are re-upserted after
+    /// the swap. Absent in checkpoints written before it existed (the suffix
+    /// encodes the same time, to the second).
+    #[serde(default)]
+    pub started_at: Option<DateTime<Utc>>,
 }
+
+impl FullCheckpoint {
+    fn started_at(&self) -> Option<DateTime<Utc>> {
+        self.started_at.or_else(|| {
+            NaiveDateTime::parse_from_str(&self.suffix, "%Y%m%d%H%M%S")
+                .ok()
+                .map(|at| at.and_utc())
+        })
+    }
+}
+
+/// Clock skew and in-flight transactions: rows stamped slightly before the
+/// run start may still have been committed after their source page was read.
+pub const CATCH_UP_MARGIN: Duration = Duration::minutes(5);
 
 fn is_valid_suffix(s: &str) -> bool {
     s.len() == 14 && s.bytes().all(|b| b.is_ascii_digit())
@@ -70,6 +94,7 @@ pub async fn run(
         suffix: run_suffix(now),
         collection_index: 0,
         last_id: None,
+        started_at: Some(now),
     });
 
     // All indexes were loaded before the interruption: the swap may already
@@ -88,6 +113,7 @@ pub async fn run(
             ),
         )
         .await;
+        catch_up(io, backend, source, &cp, &mut progress).await?;
         progress.message = Some("index swap finished".into());
         return finish(io, backend, &mut progress).await;
     }
@@ -275,8 +301,61 @@ pub async fn run(
     )
     .await;
 
+    catch_up(io, backend, source, &cp, &mut progress).await?;
     progress.message = Some(format!("{processed} documents indexed"));
     finish(io, backend, &mut progress).await
+}
+
+/// Re-upserts every row changed since the run started into the stable
+/// indexes. Idempotent, so a resumed run simply repeats it.
+async fn catch_up(
+    io: &dyn JobIo,
+    backend: &dyn SearchBackend,
+    source: &dyn SourceData,
+    cp: &FullCheckpoint,
+    progress: &mut Progress,
+) -> Result<()> {
+    let Some(started_at) = cp.started_at() else {
+        io.log(
+            LogLevel::Warn,
+            &format!(
+                "run suffix {} has no start time; skipping the post-swap catch-up",
+                cp.suffix
+            ),
+        )
+        .await;
+        return Ok(());
+    };
+    let since = started_at - CATCH_UP_MARGIN;
+    progress.phase = Some("catching up".into());
+    progress.message = Some("re-indexing rows changed during the rebuild".into());
+    io.progress(progress).await?;
+    for spec in INDEXES.iter() {
+        let mut after = None;
+        let mut upserted = 0usize;
+        loop {
+            let page = source
+                .changed_page(spec.source, since, after, BATCH_SIZE)
+                .await?;
+            import_batch(io, backend, spec.name, spec.name, &page.docs).await?;
+            upserted += page.docs.len();
+            after = page.last_id;
+            if page.docs.len() < BATCH_SIZE {
+                break;
+            }
+        }
+        if upserted > 0 {
+            io.log(
+                LogLevel::Info,
+                &format!(
+                    "{}: {upserted} documents changed during the rebuild re-indexed",
+                    spec.name
+                ),
+            )
+            .await;
+        }
+    }
+    Ok(())
 }
 
 /// Deletes the build indexes, which hold the previous contents after a swap.
@@ -299,7 +378,7 @@ async fn finish(
 /// Deletes `{uid}__build_*` indexes. The API only queries stable uids, so
 /// no build index is ever live. With `only_suffix`, restricts deletion to
 /// that run's build indexes.
-async fn delete_builds(
+pub(crate) async fn delete_builds(
     io: &dyn JobIo,
     backend: &dyn SearchBackend,
     only_suffix: Option<&str>,

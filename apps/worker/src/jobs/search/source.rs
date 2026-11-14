@@ -78,14 +78,21 @@ pub enum Select<'a> {
     After(Option<Uuid>, i64),
     /// Exactly these ids (order by id).
     Ids(&'a [Uuid]),
+    /// Keyset page of rows whose document may have changed at or after
+    /// `since` (see [`changed_condition`]).
+    ChangedSince(DateTime<Utc>, Option<Uuid>, i64),
 }
 
 impl Select<'_> {
-    /// SQL condition using `$1`/`$2`, given the id column expression.
-    fn condition(&self, id: &str) -> String {
+    /// SQL condition using `$1`.., given the id column expression and the
+    /// "changed since `$1`" predicate of the source.
+    fn condition(&self, id: &str, changed: &str) -> String {
         match self {
             Select::After(..) => format!("({id} > $1 OR $1::uuid IS NULL) ORDER BY {id} LIMIT $2"),
             Select::Ids(_) => format!("{id} = ANY($1) ORDER BY {id}"),
+            Select::ChangedSince(..) => {
+                format!("{changed} AND ({id} > $2 OR $2::uuid IS NULL) ORDER BY {id} LIMIT $3")
+            }
         }
     }
 
@@ -96,7 +103,40 @@ impl Select<'_> {
         match *self {
             Select::After(after, limit) => query.bind(after).bind(limit),
             Select::Ids(ids) => query.bind(ids.to_vec()),
+            Select::ChangedSince(since, after, limit) => query.bind(since).bind(after).bind(limit),
         }
+    }
+}
+
+/// SQL predicate (`$1` = since) for rows whose search document may have
+/// changed at or after `$1`. `greatest` ignores NULL timestamps. A game also
+/// counts as changed when one of its lookups was (its document denormalizes
+/// lookup names).
+pub fn changed_condition(source: Source) -> String {
+    match source {
+        Source::Games => {
+            let lookups = [
+                LookupKind::Developer,
+                LookupKind::Publisher,
+                LookupKind::Genre,
+                LookupKind::Platform,
+                LookupKind::Theme,
+            ]
+            .into_iter()
+            .map(|kind| {
+                let (table, join, column) = lookup_table(kind);
+                format!(
+                    " OR EXISTS (SELECT 1 FROM {join} j INNER JOIN {table} l ON j.{column} = l.id \
+                     WHERE j.game_id = games.id AND l.updated_at >= $1)"
+                )
+            })
+            .collect::<String>();
+            format!(
+                "(greatest(games.created_at, games.updated_at, games.popularity_updated_at) >= $1{lookups})"
+            )
+        }
+        Source::Lookup(_) => "greatest(created_at, updated_at) >= $1".to_string(),
+        Source::Posts => "greatest(p.created_at, p.updated_at, p.published_at) >= $1".to_string(),
     }
 }
 
@@ -109,7 +149,7 @@ pub async fn games_page(pool: &PgPool, select: Select<'_>) -> sqlx::Result<Page<
              hltb_completionist_hours::text AS hltb_completionist_hours, \
              created_at, updated_at \
          FROM games WHERE {}",
-        select.condition("id")
+        select.condition("id", &changed_condition(Source::Games))
     );
     let rows = select.bind(sqlx::query(&sql)).fetch_all(pool).await?;
 
@@ -205,7 +245,7 @@ pub async fn lookups_page(
     };
     let sql = format!(
         "SELECT id, name, slug, {country}, created_at, updated_at FROM {table} WHERE {}",
-        select.condition("id")
+        select.condition("id", &changed_condition(Source::Lookup(kind)))
     );
     let rows = select.bind(sqlx::query(&sql)).fetch_all(pool).await?;
     let mut last_id = None;
@@ -232,7 +272,7 @@ pub async fn posts_page(pool: &PgPool, select: Select<'_>) -> sqlx::Result<Page<
              u.username AS author_username, u.display_name AS author_display_name \
          FROM posts p LEFT JOIN users u ON p.author_id = u.id \
          WHERE p.status = 'published' AND {}",
-        select.condition("p.id")
+        select.condition("p.id", &changed_condition(Source::Posts))
     );
     let rows = select.bind(sqlx::query(&sql)).fetch_all(pool).await?;
     let mut last_id = None;
@@ -285,6 +325,15 @@ pub trait SourceData: Send + Sync {
     ) -> Result<Vec<Uuid>>;
     /// Mapped documents for exactly these ids (missing ones are skipped).
     async fn docs_by_ids(&self, source: Source, ids: &[Uuid]) -> Result<Vec<Value>>;
+    /// Keyset page of mapped documents whose rows may have changed at or
+    /// after `since` (`id > after`, ordered by id).
+    async fn changed_page(
+        &self,
+        source: Source,
+        since: DateTime<Utc>,
+        after: Option<Uuid>,
+        limit: usize,
+    ) -> Result<DocPage>;
 }
 
 pub struct PgSource {
@@ -359,5 +408,20 @@ impl SourceData for PgSource {
             return Ok(Vec::new());
         }
         Ok(load(&self.pool, source, Select::Ids(ids)).await?.docs)
+    }
+
+    async fn changed_page(
+        &self,
+        source: Source,
+        since: DateTime<Utc>,
+        after: Option<Uuid>,
+        limit: usize,
+    ) -> Result<DocPage> {
+        load(
+            &self.pool,
+            source,
+            Select::ChangedSince(since, after, limit as i64),
+        )
+        .await
     }
 }
