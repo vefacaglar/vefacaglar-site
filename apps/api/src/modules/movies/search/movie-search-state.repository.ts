@@ -1,9 +1,9 @@
 import { injectable } from "tsyringe";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { movieSearchState, movieSearchSync, recurringJobs } from "@vefacaglar/db";
+import { moviePeopleSearchState, movieSearchState, movieSearchSync, recurringJobs } from "@vefacaglar/db";
 import { DbProvider } from "../../../db.provider";
 
-import { MOVIE_SEARCH_ID, type IMovieSearchStateRepository } from "./movie-search.types";
+import { MOVIE_PEOPLE_SEARCH_ID, MOVIE_SEARCH_ID, type IMoviePeopleSearchStateRepository, type IMovieSearchStateRepository } from "./movie-search.types";
 
 /** The recurring due time is a durable, coalesced request, consumed by the worker. */
 export async function requestMovieSearchSync(db: DbProvider["client"]) {
@@ -34,6 +34,15 @@ export class DrizzleMovieSearchStateRepository implements IMovieSearchStateRepos
   constructor(private readonly dbProvider: DbProvider) {}
   async state() {
     const [state] = await this.dbProvider.client.select().from(movieSearchState).where(eq(movieSearchState.id, MOVIE_SEARCH_ID));
+    return state ?? null;
+  }
+}
+
+@injectable()
+export class DrizzleMoviePeopleSearchStateRepository implements IMoviePeopleSearchStateRepository {
+  constructor(private readonly dbProvider: DbProvider) {}
+  async state() {
+    const [state] = await this.dbProvider.client.select().from(moviePeopleSearchState).where(eq(moviePeopleSearchState.id, MOVIE_PEOPLE_SEARCH_ID));
     return state ?? null;
   }
 }

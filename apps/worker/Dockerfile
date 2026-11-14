@@ -24,6 +24,7 @@ RUN cargo chef cook --release --locked --recipe-path recipe.json --bin worker
 COPY apps/worker/ .
 # Compile the dedicated movie schema directly from its canonical API contract.
 COPY apps/api/src/modules/movies/search/movie-search.schema.json /api/src/modules/movies/search/movie-search.schema.json
+COPY apps/api/src/modules/movies/search/movie-people-search.schema.json /api/src/modules/movies/search/movie-people-search.schema.json
 ARG WORKER_GIT_SHA=""
 ENV WORKER_GIT_SHA=${WORKER_GIT_SHA}
 RUN cargo build --release --locked --bin worker \

@@ -9,8 +9,9 @@ import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
 import type { MoviePersonRole } from "./people/detail/detail.schema";
+import type { MoviePersonSummary } from "./people/search/search.schema";
 import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
-import { movieTitleMatch } from "./movie-title-search";
+import { moviePersonNameMatch, movieTitleMatch } from "./movie-title-search";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
 
@@ -207,6 +208,67 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     const { items, movieIds, total, ranking } = await this.listPublicMatching(filter, linkedCredit);
     return { person: { wikidataId: person.wikidataId, name: person.name }, total, ranking,
       items: await this.personFilms(person.id, movieIds, items) };
+  }
+  async searchPublicPeople(q: string, limit: number): Promise<MoviePersonSummary[]> {
+    const match = moviePersonNameMatch(q);
+    if (!match) return [];
+    return (await this.publicPeopleSummaries(match, limit)).map(({ id: _id, ...person }) => person);
+  }
+  async hydratePublicPeople(ids: string[]): Promise<MoviePersonSummary[]> {
+    if (!ids.length) return [];
+    const rows = await this.publicPeopleSummaries(inArray(moviePeople.id, ids), ids.length);
+    const byId = new Map(rows.map(({ id, ...person }) => [id, person]));
+    // Index order wins; people who are no longer public are dropped (the caller fails closed).
+    return ids.flatMap((id) => { const person = byId.get(id); return person ? [person] : []; });
+  }
+  private async publicPeopleSummaries(filter: SQL, limit: number): Promise<(MoviePersonSummary & { id: string })[]> {
+    const credited = and(ne(movieCredits.rank, "deprecated"), publicMovie())!;
+    // Rank by public credits; the "known for" film is the person's most widely
+    // covered public film (Wikipedia language editions, then page views).
+    const rows = await this.dbProvider.client.execute(sql`
+      with matched as (
+        select ${moviePeople.id} as id, ${moviePeople.wikidataId} as wikidata_id, ${moviePeople.name} as name,
+          count(distinct ${movieCredits.movieId}) as credit_count,
+          count(distinct ${movieCredits.movieId}) filter (where ${movieCredits.roleProperty} = 'P161') as cast_count,
+          count(distinct ${movieCredits.movieId}) filter (where ${movieCredits.roleProperty} = 'P57') as director_count,
+          count(distinct ${movieCredits.movieId}) filter (where ${movieCredits.roleProperty} = 'P162') as producer_count
+        from ${moviePeople}
+        join ${movieCredits} on ${movieCredits.personId} = ${moviePeople.id}
+        join ${movies} on ${movies.id} = ${movieCredits.movieId}
+        where ${moviePeople.name} is not null and btrim(${moviePeople.name}) <> '' and ${filter} and ${credited}
+        group by ${moviePeople.id}
+        order by credit_count desc, ${moviePeople.name}, ${moviePeople.id}
+        limit ${limit}
+      )
+      select matched.id, matched.wikidata_id, matched.name, matched.cast_count, matched.director_count, matched.producer_count,
+        known.slug as known_slug, known.title as known_title, known.release_year as known_year
+      from matched left join lateral (
+        select ${movies.slug} as slug, ${movies.title} as title, ${movies.releaseYear} as release_year
+        from ${movieCredits} join ${movies} on ${movies.id} = ${movieCredits.movieId}
+        where ${movieCredits.personId} = matched.id and ${credited}
+        order by ${movies.wikipediaLanguageCount} desc nulls last, ${movies.wikipediaViews} desc nulls last, ${movies.title}, ${movies.id}
+        limit 1
+      ) known on true
+      order by matched.credit_count desc, matched.name, matched.id
+    `);
+    type Row = { id: string; wikidata_id: string; name: string; cast_count: string | number; director_count: string | number; producer_count: string | number;
+      known_slug: string | null; known_title: string | null; known_year: number | null };
+    return (rows as unknown as Row[]).map((row) => {
+      const counts: [MoviePersonRole, number][] = [["cast", Number(row.cast_count)], ["director", Number(row.director_count)], ["producer", Number(row.producer_count)]];
+      // Most frequent role; ties keep the cast/director/producer order used elsewhere.
+      const role = counts.reduce((best, next) => next[1] > best[1] ? next : best)[0];
+      return { id: row.id, wikidataId: row.wikidata_id, name: row.name.trim(), role,
+        knownFor: row.known_slug && row.known_title ? { slug: row.known_slug, title: row.known_title, releaseYear: row.known_year } : null };
+    });
+  }
+  async findDirectorNames(slugs: string[]) {
+    if (!slugs.length) return {};
+    const rows = await this.dbProvider.client.selectDistinctOn([movies.slug], { slug: movies.slug, name: moviePeople.name }).from(movies)
+      .innerJoin(movieCredits, and(eq(movieCredits.movieId, movies.id), eq(movieCredits.roleProperty, "P57"), ne(movieCredits.rank, "deprecated")))
+      .innerJoin(moviePeople, eq(moviePeople.id, movieCredits.personId))
+      .where(and(publicMovie(), inArray(movies.slug, slugs), isNotNull(moviePeople.name), sql`btrim(${moviePeople.name}) <> ''`))
+      .orderBy(movies.slug, sql`(${movieCredits.rank} = 'preferred') desc`, asc(moviePeople.name), asc(movieCredits.statementId));
+    return Object.fromEntries(rows.flatMap((row) => row.name?.trim() ? [[row.slug, row.name.trim()]] : []));
   }
   async findPublicPersonHeader(wikidataId: string) {
     const [person] = await this.dbProvider.client.select({ id: moviePeople.id, wikidataId: moviePeople.wikidataId, name: moviePeople.name })

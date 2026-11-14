@@ -4,6 +4,7 @@ import type { MovieDetail } from "./detail/detail.schema";
 import type { EntityLabels, NormalizedMovie } from "./import/movie-source.types";
 import type { MoviePersonFilm } from "./people/detail/detail.schema";
 import type { MovieSearchState } from "./search/movie-search.types";
+import type { MoviePersonSummary } from "./people/search/search.schema";
 export type MoviePersonResult = {
   person: { wikidataId: string; name: string | null };
   items: MoviePersonFilm[];
@@ -33,4 +34,10 @@ export interface IMoviesRepository {
   hydrateCatalogPage(ids: string[]): Promise<{ items: MovieCard[]; state: MovieSearchState | null }>;
   findPublicBySlug(slug: string): Promise<MovieDetail | null>;
   findPublicPerson(wikidataId: string, filter: { page: number; limit: number }): Promise<MoviePersonResult | null>;
+  /** Named people with at least one non-deprecated credit on a public film, most credited first. */
+  searchPublicPeople(q: string, limit: number): Promise<MoviePersonSummary[]>;
+  /** Summaries for indexed person UUIDs, in the given order; people no longer public are omitted. */
+  hydratePublicPeople(ids: string[]): Promise<MoviePersonSummary[]>;
+  /** One non-deprecated director name per public film slug, preferred rank first. */
+  findDirectorNames(slugs: string[]): Promise<Record<string, string>>;
 }

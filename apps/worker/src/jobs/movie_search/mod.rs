@@ -1,6 +1,9 @@
 //! Dedicated movie index owner. Durable progress belongs to movie_search_state,
 //! rather than a job ID; no generic search job touches these collections.
 
+pub mod people;
+#[cfg(test)]
+mod people_tests;
 pub mod source;
 #[cfg(test)]
 mod tests;
@@ -20,6 +23,7 @@ use crate::config::TypesenseConfig;
 use crate::context::{JobContext, JobIo, Progress};
 use crate::handler::{JobHandler, JobOutcome, PermanentError};
 use crate::queue::LogLevel;
+use people::PeopleOutcome;
 use source::{Batch, MovieSource, PgMovieSource, Publication, State};
 
 pub const ALIAS: &str = "movies_en";
@@ -47,7 +51,11 @@ pub fn owned(target: &str) -> bool {
 /// Typesense adds defaults to returned schemas. Compare all contract properties
 /// and their relevant defaults, while accepting those server-added properties.
 pub fn compatible(actual: &Value, target: &str) -> bool {
-    let expected = schema(target);
+    compatible_with(actual, &schema(target))
+}
+
+/// Contract comparison shared by the movie and people collections.
+pub fn compatible_with(actual: &Value, expected: &Value) -> bool {
     if actual["name"] != expected["name"]
         || actual["default_sorting_field"] != expected["default_sorting_field"]
     {
@@ -99,7 +107,7 @@ impl JobHandler for MovieSearchHandler {
             )
         })?;
         let backend = TypesenseClient::with_timeout(config, Duration::from_secs(20))?;
-        run(
+        let movies = run(
             ctx,
             &backend,
             &PgMovieSource {
@@ -107,7 +115,47 @@ impl JobHandler for MovieSearchHandler {
             },
             Limits::default(),
         )
+        .await?;
+        if movies == JobOutcome::Interrupted {
+            return Ok(movies);
+        }
+        // The people index is auxiliary (the API falls back to SQL), so its
+        // failure is logged and never fails or delays the movie index.
+        let people = match people::run_people(
+            ctx,
+            &backend,
+            &people::PgPeopleSource {
+                pool: ctx.pool().clone(),
+            },
+            Limits::people(),
+            Utc::now(),
+        )
         .await
+        {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                ctx.log(
+                    LogLevel::Error,
+                    &format!("movie people search failed: {error:#}"),
+                )
+                .await;
+                PeopleOutcome::Idle
+            }
+        };
+        Ok(combine(movies, people))
+    }
+}
+
+/// One job outcome for the movie step followed by the people step.
+pub fn combine(movies: JobOutcome, people: PeopleOutcome) -> JobOutcome {
+    match (movies, people) {
+        (JobOutcome::Interrupted, _) | (_, PeopleOutcome::Interrupted) => JobOutcome::Interrupted,
+        (JobOutcome::Completed, PeopleOutcome::Remaining) => {
+            JobOutcome::CompletedWithContinuation {
+                run_at: Utc::now() + ChronoDuration::seconds(30),
+            }
+        }
+        (movies, _) => movies,
     }
 }
 
@@ -115,6 +163,15 @@ impl JobHandler for MovieSearchHandler {
 pub struct Limits {
     pub documents: usize,
     pub duration: Duration,
+}
+impl Limits {
+    /// Budget for the people step that follows the movie step in the same run.
+    pub fn people() -> Self {
+        Self {
+            documents: 100_000,
+            duration: Duration::from_secs(60),
+        }
+    }
 }
 impl Default for Limits {
     fn default() -> Self {
