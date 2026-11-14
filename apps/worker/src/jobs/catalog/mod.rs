@@ -88,21 +88,14 @@ impl JobHandler for CatalogPopularityHandler {
             "DATABASE_URL",
             "IGDB_CLIENT_ID",
             "IGDB_CLIENT_SECRET",
-            "TYPESENSE_API_KEY",
+            "MEILISEARCH_URL",
+            "MEILISEARCH_API_KEY",
         ] {
             if std::env::var(key).unwrap_or_default().trim().is_empty() {
                 return Err(PermanentError::err(format!(
                     "{key} is required for game popularity refresh"
                 )));
             }
-        }
-        if ["TYPESENSE_HOST", "TYPESENSE_PUBLIC_URL"]
-            .iter()
-            .all(|key| std::env::var(key).unwrap_or_default().trim().is_empty())
-        {
-            return Err(PermanentError::err(
-                "Configure TYPESENSE_HOST or TYPESENSE_PUBLIC_URL for game popularity refresh",
-            ));
         }
         let binary =
             std::env::var("CATALOG_NODE_BINARY").unwrap_or_else(|_| "/usr/local/bin/node".into());
@@ -116,8 +109,7 @@ impl JobHandler for CatalogPopularityHandler {
             "DATABASE_URL",
             "IGDB_CLIENT_ID",
             "IGDB_CLIENT_SECRET",
-            "TYPESENSE_API_KEY",
-            "LOG_TYPESENSE_API_KEY",
+            "MEILISEARCH_API_KEY",
         ]
         .into_iter()
         .filter_map(|key| std::env::var(key).ok())

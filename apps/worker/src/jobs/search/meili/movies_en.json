@@ -1,0 +1,13 @@
+{
+  "searchableAttributes": ["title", "originalTitle"],
+  "filterableAttributes": ["personQids"],
+  "sortableAttributes": [
+    "interestRecognitionRank",
+    "interestScore",
+    "recognitionCount",
+    "titleSort",
+    "tieBreakId"
+  ],
+  "rankingRules": ["words", "typo", "proximity", "wordPosition", "sort"],
+  "pagination": { "maxTotalHits": 1000000 }
+}

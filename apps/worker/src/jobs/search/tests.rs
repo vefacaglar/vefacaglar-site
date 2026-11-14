@@ -1,7 +1,7 @@
 //! Job-logic tests for `search.reindex` and `search.sync` against in-memory
-//! fakes of Typesense, the source database and the job context.
+//! fakes of Meilisearch, the source database and the job context.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
 use anyhow::Result;
@@ -10,9 +10,10 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
-use super::backend::{ImportFailure, SearchBackend};
-use super::collections::{COLLECTIONS, Source};
+use super::fake::FakeMeili;
 use super::full::{self, FullCheckpoint};
+use super::indexes::{INDEXES, Source};
+use super::rebuild_reason;
 use super::source::{DocPage, SourceData};
 use super::sync::{self, SyncCheckpoint, diff};
 use crate::context::{JobIo, Progress};
@@ -78,148 +79,6 @@ impl JobIo for FakeIo {
     }
 }
 
-#[derive(Default)]
-struct BackendState {
-    collections: BTreeMap<String, BTreeMap<String, Value>>,
-    aliases: BTreeMap<String, String>,
-    ops: Vec<String>,
-}
-
-#[derive(Default)]
-struct FakeBackend {
-    state: Mutex<BackendState>,
-}
-
-impl FakeBackend {
-    fn with(collections: &[(&str, usize)], aliases: &[(&str, &str)]) -> Self {
-        let backend = Self::default();
-        {
-            let mut s = backend.state.lock().unwrap();
-            for (name, docs) in collections {
-                let mut map = BTreeMap::new();
-                for i in 0..*docs {
-                    let id = format!("orphan-{i}");
-                    map.insert(id.clone(), json!({ "id": id }));
-                }
-                s.collections.insert(name.to_string(), map);
-            }
-            for (alias, target) in aliases {
-                s.aliases.insert(alias.to_string(), target.to_string());
-            }
-        }
-        backend
-    }
-    fn ops(&self) -> Vec<String> {
-        self.state.lock().unwrap().ops.clone()
-    }
-    fn alias(&self, name: &str) -> Option<String> {
-        self.state.lock().unwrap().aliases.get(name).cloned()
-    }
-    fn collection_names(&self) -> Vec<String> {
-        self.state
-            .lock()
-            .unwrap()
-            .collections
-            .keys()
-            .cloned()
-            .collect()
-    }
-    fn doc_count(&self, name: &str) -> usize {
-        self.state
-            .lock()
-            .unwrap()
-            .collections
-            .get(name)
-            .map_or(0, |c| c.len())
-    }
-    fn insert_doc(&self, collection: &str, id: &str) {
-        self.state
-            .lock()
-            .unwrap()
-            .collections
-            .get_mut(collection)
-            .unwrap()
-            .insert(id.to_string(), json!({ "id": id }));
-    }
-}
-
-#[async_trait]
-impl SearchBackend for FakeBackend {
-    async fn get_alias(&self, name: &str) -> Result<Option<String>> {
-        Ok(self.alias(name))
-    }
-    async fn collection_exists(&self, name: &str) -> Result<bool> {
-        Ok(self.state.lock().unwrap().collections.contains_key(name))
-    }
-    async fn list_collections(&self) -> Result<Vec<String>> {
-        Ok(self.collection_names())
-    }
-    async fn create_collection(&self, schema: &Value) -> Result<()> {
-        let name = schema["name"].as_str().unwrap().to_string();
-        let mut s = self.state.lock().unwrap();
-        s.ops.push(format!("create {name}"));
-        s.collections.entry(name).or_default();
-        Ok(())
-    }
-    async fn delete_collection(&self, name: &str) -> Result<bool> {
-        let mut s = self.state.lock().unwrap();
-        assert!(
-            !s.aliases.values().any(|t| t == name),
-            "deleted {name} while an alias points to it"
-        );
-        let existed = s.collections.remove(name).is_some();
-        if existed {
-            s.ops.push(format!("delete {name}"));
-        }
-        Ok(existed)
-    }
-    async fn upsert_alias(&self, name: &str, collection: &str) -> Result<()> {
-        let mut s = self.state.lock().unwrap();
-        assert!(
-            !s.collections.contains_key(name),
-            "alias {name} shadows a real collection"
-        );
-        assert!(
-            s.collections.contains_key(collection),
-            "alias target {collection} missing"
-        );
-        s.ops.push(format!("alias {name} {collection}"));
-        s.aliases.insert(name.to_string(), collection.to_string());
-        Ok(())
-    }
-    async fn import(&self, collection: &str, docs: &[Value]) -> Result<Vec<ImportFailure>> {
-        let mut s = self.state.lock().unwrap();
-        let target = s
-            .aliases
-            .get(collection)
-            .cloned()
-            .unwrap_or_else(|| collection.to_string());
-        s.ops.push(format!("import {target} {}", docs.len()));
-        let mut failures = Vec::new();
-        let coll = s
-            .collections
-            .get_mut(&target)
-            .expect("import into missing collection");
-        for doc in docs {
-            let id = doc["id"].as_str().unwrap().to_string();
-            if doc.get("fail").is_some() {
-                failures.push(ImportFailure {
-                    id: Some(id),
-                    error: "Bad document".into(),
-                });
-            } else {
-                coll.insert(id, doc.clone());
-            }
-        }
-        Ok(failures)
-    }
-    async fn export_ids(&self, collection: &str) -> Result<HashSet<String>> {
-        let mut s = self.state.lock().unwrap();
-        s.ops.push(format!("export {collection}"));
-        Ok(s.collections[collection].keys().cloned().collect())
-    }
-}
-
 /// Source rows per collection name, sorted by id.
 struct FakeSource {
     rows: HashMap<Source, Vec<(Uuid, Value)>>,
@@ -230,10 +89,10 @@ fn uuid(n: u128) -> Uuid {
 }
 
 impl FakeSource {
-    /// `counts[i]` rows for `COLLECTIONS[i]`, ids `i*1_000_000 + 1..`.
+    /// `counts[i]` rows for `INDEXES[i]`, ids `i*1_000_000 + 1..`.
     fn new(counts: [usize; 7]) -> Self {
         let mut rows = HashMap::new();
-        for (index, spec) in COLLECTIONS.iter().enumerate() {
+        for (index, spec) in INDEXES.iter().enumerate() {
             let list = (1..=counts[index])
                 .map(|n| {
                     let id = uuid(index as u128 * 1_000_000 + n as u128);
@@ -245,11 +104,11 @@ impl FakeSource {
         Self { rows }
     }
     fn mark_failing(&mut self, collection: usize, nth: usize) {
-        let list = self.rows.get_mut(&COLLECTIONS[collection].source).unwrap();
+        let list = self.rows.get_mut(&INDEXES[collection].source).unwrap();
         list[nth].1["fail"] = json!(true);
     }
     fn id(&self, collection: usize, nth: usize) -> Uuid {
-        self.rows[&COLLECTIONS[collection].source][nth].0
+        self.rows[&INDEXES[collection].source][nth].0
     }
 }
 
@@ -307,6 +166,10 @@ fn t(h: u32, m: u32, s: u32) -> DateTime<Utc> {
 const SUFFIX: &str = "20261104030007";
 const COUNTS: [usize; 7] = [1200, 3, 2, 1, 0, 4, 2];
 
+fn build(name: &str) -> String {
+    format!("{name}__build_{SUFFIX}")
+}
+
 fn op_index(ops: &[String], pred: impl Fn(&str) -> bool) -> Vec<usize> {
     ops.iter()
         .enumerate()
@@ -315,19 +178,25 @@ fn op_index(ops: &[String], pred: impl Fn(&str) -> bool) -> Vec<usize> {
         .collect()
 }
 
+/// Every stable index present with current settings and `docs[i]` orphans.
+fn live(docs: &[usize; 7]) -> FakeMeili {
+    let indexes: Vec<(&str, usize, Value)> = INDEXES
+        .iter()
+        .zip(docs)
+        .map(|(spec, n)| (spec.name, *n, spec.settings()))
+        .collect();
+    FakeMeili::with(&indexes)
+}
+
 // --- search.reindex ---
 
 #[tokio::test]
-async fn full_reindex_swaps_aliases_only_after_every_collection_is_loaded() {
-    let backend = FakeBackend::with(
-        &[
-            ("games_en", 5),                      // legacy real collection
-            ("developers_en__20250101000000", 2), // currently aliased
-            ("publishers_en__20240101000000", 1), // stale, unaliased
-            ("games_tr", 1),                      // legacy Turkish index
-        ],
-        &[("developers_en", "developers_en__20250101000000")],
-    );
+async fn full_reindex_swaps_only_after_every_index_is_loaded() {
+    let backend = FakeMeili::with(&[
+        ("games_en", 5, json!({})), // outdated live index
+        ("publishers_en__build_20240101000000", 1, json!({})), // stale build
+        ("unrelated", 1, json!({})), // not ours
+    ]);
     let source = FakeSource::new(COUNTS);
     let io = FakeIo::default();
 
@@ -337,69 +206,48 @@ async fn full_reindex_swaps_aliases_only_after_every_collection_is_loaded() {
     assert_eq!(outcome, JobOutcome::Completed);
 
     let ops = backend.ops();
-    let imports = op_index(&ops, |o| o.starts_with("import "));
-    let aliases = op_index(&ops, |o| o.starts_with("alias "));
+    let adds = op_index(&ops, |o| o.starts_with("add "));
+    let swaps = op_index(&ops, |o| o.starts_with("swap "));
     let creates = op_index(&ops, |o| o.starts_with("create "));
-    assert_eq!(aliases.len(), 7);
-    assert!(
-        imports.iter().max() < aliases.iter().min(),
-        "an alias was swapped before all imports: {ops:?}"
-    );
-    assert!(
-        creates.iter().max() < imports.iter().min(),
-        "all physical collections exist before indexing"
-    );
+    assert_eq!(swaps.len(), 1, "one atomic swap: {ops:?}");
+    assert!(adds.iter().max() < swaps.iter().min());
+    assert!(creates.iter().max() < adds.iter().min());
+    assert_eq!(creates.len(), 7);
 
-    // Stale and legacy collections are removed before the new run starts.
+    // The stale build is removed before the new run starts.
     let stale = ops
         .iter()
-        .position(|o| o == "delete publishers_en__20240101000000")
+        .position(|o| o == "delete publishers_en__build_20240101000000")
         .unwrap();
     assert!(stale < creates[0]);
-    assert!(ops.contains(&"delete games_tr".to_string()));
 
-    // The legacy real collection is deleted right before its alias is created.
-    let legacy = ops.iter().position(|o| o == "delete games_en").unwrap();
-    assert_eq!(
-        ops[legacy + 1],
-        format!("alias games_en games_en__{SUFFIX}")
-    );
-
-    // Previous physical collection is deleted after the swap.
+    // The swapped-out build (old games_en contents) is deleted afterwards;
+    // the other builds were renamed into place.
     let previous = ops
         .iter()
-        .position(|o| o == "delete developers_en__20250101000000")
+        .position(|o| *o == format!("delete {}", build("games_en")))
         .unwrap();
-    assert!(previous > *aliases.iter().max().unwrap());
+    assert!(previous > swaps[0]);
 
-    for (index, spec) in COLLECTIONS.iter().enumerate() {
-        let physical = format!("{}__{SUFFIX}", spec.name);
-        assert_eq!(backend.alias(spec.name), Some(physical.clone()));
-        assert_eq!(backend.doc_count(&physical), COUNTS[index], "{physical}");
+    for (index, spec) in INDEXES.iter().enumerate() {
+        assert_eq!(backend.doc_count(spec.name), COUNTS[index], "{}", spec.name);
+        assert_eq!(
+            backend.state.lock().unwrap().indexes[spec.name].settings,
+            spec.settings()
+        );
     }
-    let mut remaining = backend.collection_names();
+    let mut remaining = backend.names();
     remaining.sort();
-    assert!(
-        remaining.iter().all(|c| c.ends_with(SUFFIX)),
-        "{remaining:?}"
-    );
+    let mut expected: Vec<String> = INDEXES.iter().map(|s| s.name.to_string()).collect();
+    expected.push("unrelated".into());
+    expected.sort();
+    assert_eq!(remaining, expected);
 
     // Determinate progress: total known up front, reached at the end.
     let total: u64 = COUNTS.iter().sum::<usize>() as u64;
     let last = io.last_progress();
     assert_eq!(last.total, Some(total));
     assert_eq!(last.processed, Some(total));
-    assert!(
-        io.progress
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(|p| p
-                .phase
-                .as_deref()
-                .is_some_and(|ph| ph.starts_with("indexing:")))
-            .all(|p| p.total == Some(total))
-    );
     let phases: Vec<String> = io
         .progress
         .lock()
@@ -411,7 +259,7 @@ async fn full_reindex_swaps_aliases_only_after_every_collection_is_loaded() {
         "counting",
         "indexing:games_en",
         "indexing:posts_en",
-        "swapping aliases",
+        "swapping indexes",
         "cleanup",
     ] {
         assert!(
@@ -427,8 +275,8 @@ async fn full_reindex_swaps_aliases_only_after_every_collection_is_loaded() {
 }
 
 #[tokio::test]
-async fn full_reindex_resumes_into_the_same_physical_collections() {
-    let backend = FakeBackend::with(&[], &[]);
+async fn full_reindex_resumes_into_the_same_build_indexes() {
+    let backend = FakeMeili::default();
     let source = FakeSource::new(COUNTS);
 
     // Checkpoint 1 = after counting, 2 = after the first games batch.
@@ -437,10 +285,7 @@ async fn full_reindex_resumes_into_the_same_physical_collections() {
         .await
         .unwrap();
     assert_eq!(outcome, JobOutcome::Interrupted);
-    assert!(
-        backend.ops().iter().all(|o| !o.starts_with("alias ")),
-        "no alias before everything is loaded"
-    );
+    assert!(backend.ops().iter().all(|o| !o.starts_with("swap ")));
 
     let cp: FullCheckpoint = serde_json::from_value(first.last_checkpoint()).unwrap();
     assert_eq!(
@@ -471,23 +316,13 @@ async fn full_reindex_resumes_into_the_same_physical_collections() {
     assert_eq!(
         resumed_ops
             .iter()
-            .filter(|o| o.starts_with(&format!("import games_en__{SUFFIX}")))
+            .filter(|o| o.starts_with(&format!("add {}", build("games_en"))))
             .count(),
         2
     );
-    assert!(
-        backend
-            .collection_names()
-            .iter()
-            .all(|c| !c.contains("20261104040000"))
-    );
-    assert_eq!(
-        backend.alias("games_en"),
-        Some(format!("games_en__{SUFFIX}"))
-    );
-    assert_eq!(backend.doc_count(&format!("games_en__{SUFFIX}")), 1200);
+    assert_eq!(backend.doc_count("games_en"), 1200);
+    assert!(backend.names().iter().all(|n| !n.contains("__build_")));
 
-    // Resumed progress continues from the processed count.
     let first_progress = second
         .progress
         .lock()
@@ -500,31 +335,54 @@ async fn full_reindex_resumes_into_the_same_physical_collections() {
 }
 
 #[tokio::test]
-async fn full_reindex_cancel_deletes_half_built_collections() {
-    let backend = FakeBackend::with(
-        &[("games_en__20250101000000", 3)],
-        &[("games_en", "games_en__20250101000000")],
+async fn full_reindex_resumed_after_the_swap_only_cleans_up() {
+    let backend = live(&[0; 7]);
+    let source = FakeSource::new(COUNTS);
+    backend.state.lock().unwrap().crash_after_swap = true;
+    let first = FakeIo::default();
+    assert!(
+        full::run(&first, &backend, &source, None, t(3, 0, 7))
+            .await
+            .is_err()
     );
+    let cp: FullCheckpoint = serde_json::from_value(first.last_checkpoint()).unwrap();
+    assert_eq!(cp.collection_index, INDEXES.len());
+    // The builds now hold the previous (empty) contents.
+    assert!(backend.exists(&build("games_en")));
+    assert_eq!(backend.doc_count("games_en"), 1200);
+
+    let ops_before = backend.ops().len();
+    let second = FakeIo::default();
+    let outcome = full::run(&second, &backend, &source, Some(cp), t(4, 0, 0))
+        .await
+        .unwrap();
+    assert_eq!(outcome, JobOutcome::Completed);
+    let resumed = &backend.ops()[ops_before..];
+    assert!(
+        resumed.iter().all(|o| o.starts_with("delete ")),
+        "no second swap or reindex: {resumed:?}"
+    );
+    assert_eq!(backend.doc_count("games_en"), 1200);
+    assert!(backend.names().iter().all(|n| !n.contains("__build_")));
+}
+
+#[tokio::test]
+async fn full_reindex_cancel_deletes_half_built_indexes() {
+    let backend = live(&[3, 0, 0, 0, 0, 0, 0]);
     let source = FakeSource::new(COUNTS);
     let io = FakeIo::stopping_after(2, true);
     let outcome = full::run(&io, &backend, &source, None, t(3, 0, 7))
         .await
         .unwrap();
     assert_eq!(outcome, JobOutcome::Interrupted);
-    assert_eq!(
-        backend.collection_names(),
-        vec!["games_en__20250101000000".to_string()]
-    );
-    assert_eq!(
-        backend.alias("games_en"),
-        Some("games_en__20250101000000".into())
-    );
+    assert!(backend.names().iter().all(|n| !n.contains("__build_")));
+    assert_eq!(backend.doc_count("games_en"), 3);
     assert_eq!(io.last_checkpoint(), Value::Null);
 }
 
 #[tokio::test]
-async fn full_reindex_failure_keeps_collections_for_retry() {
-    let backend = FakeBackend::with(&[], &[]);
+async fn full_reindex_failure_keeps_build_indexes_for_retry() {
+    let backend = FakeMeili::default();
     let mut source = FakeSource::new(COUNTS);
     source.mark_failing(1, 1);
     let io = FakeIo::default();
@@ -533,24 +391,20 @@ async fn full_reindex_failure_keeps_collections_for_retry() {
         .unwrap_err();
     assert!(
         err.to_string()
-            .contains("developers_en: 1/3 documents failed"),
+            .contains("developers_en: 3 documents failed to import"),
         "{err}"
     );
-    assert!(
-        io.logs()
-            .iter()
-            .any(|l| l.contains("rejected: Bad document"))
-    );
-    assert_eq!(backend.collection_names().len(), 7);
-    assert!(backend.ops().iter().all(|o| !o.starts_with("alias ")));
+    assert!(io.logs().iter().any(|l| l.contains("Bad document")));
+    assert_eq!(backend.names().len(), 7);
+    assert!(backend.ops().iter().all(|o| !o.starts_with("swap ")));
     let cp: FullCheckpoint = serde_json::from_value(io.last_checkpoint()).unwrap();
     assert_eq!(cp.collection_index, 1);
     assert_eq!(cp.suffix, SUFFIX);
 }
 
 #[tokio::test]
-async fn full_reindex_rebuilds_a_vanished_collection_on_resume() {
-    let backend = FakeBackend::with(&[], &[]);
+async fn full_reindex_rebuilds_a_vanished_or_outdated_build_on_resume() {
+    let backend = FakeMeili::default();
     let source = FakeSource::new(COUNTS);
     let first = FakeIo::stopping_after(5, false);
     full::run(&first, &backend, &source, None, t(3, 0, 7))
@@ -558,19 +412,25 @@ async fn full_reindex_rebuilds_a_vanished_collection_on_resume() {
         .unwrap();
     let cp: FullCheckpoint = serde_json::from_value(first.last_checkpoint()).unwrap();
     assert!(cp.collection_index >= 1);
-    backend
-        .state
-        .lock()
-        .unwrap()
-        .collections
-        .remove(&format!("games_en__{SUFFIX}"));
+    {
+        let mut s = backend.state.lock().unwrap();
+        s.indexes.remove(&build("games_en"));
+        // Settings changed by a new release between attempts.
+        s.indexes.get_mut(&build("developers_en")).unwrap().settings =
+            json!({ "searchableAttributes": ["name"] });
+    }
 
     let second = FakeIo::default();
     let outcome = full::run(&second, &backend, &source, Some(cp), t(4, 0, 0))
         .await
         .unwrap();
     assert_eq!(outcome, JobOutcome::Completed);
-    assert_eq!(backend.doc_count(&format!("games_en__{SUFFIX}")), 1200);
+    assert_eq!(backend.doc_count("games_en"), 1200);
+    assert_eq!(backend.doc_count("developers_en"), 3);
+    assert_eq!(
+        backend.state.lock().unwrap().indexes["developers_en"].settings,
+        INDEXES[1].settings()
+    );
 }
 
 #[test]
@@ -586,26 +446,34 @@ fn full_checkpoint_serde() {
         json!({ "suffix": SUFFIX, "collectionIndex": 3, "lastId": null })
     );
     assert_eq!(serde_json::from_value::<FullCheckpoint>(value).unwrap(), cp);
+    // A sync checkpoint is never mistaken for a full one.
+    assert!(serde_json::from_value::<FullCheckpoint>(json!({ "collectionIndex": 2 })).is_err());
 }
 
 // --- search.sync ---
 
-fn all_aliased(backend_docs: &[usize; 7]) -> FakeBackend {
-    let physical: Vec<String> = COLLECTIONS
-        .iter()
-        .map(|c| format!("{}__{SUFFIX}", c.name))
-        .collect();
-    let collections: Vec<(&str, usize)> = physical
-        .iter()
-        .zip(backend_docs)
-        .map(|(p, n)| (p.as_str(), *n))
-        .collect();
-    let aliases: Vec<(&str, &str)> = COLLECTIONS
-        .iter()
-        .zip(&physical)
-        .map(|(c, p)| (c.name, p.as_str()))
-        .collect();
-    FakeBackend::with(&collections, &aliases)
+#[tokio::test]
+async fn rebuild_reason_detects_missing_and_outdated_indexes() {
+    assert_eq!(rebuild_reason(&live(&[0; 7])).await.unwrap(), None);
+    let missing = live(&[0; 7]);
+    missing.state.lock().unwrap().indexes.remove("posts_en");
+    assert_eq!(
+        rebuild_reason(&missing).await.unwrap().as_deref(),
+        Some("index posts_en does not exist")
+    );
+    let outdated = live(&[0; 7]);
+    outdated
+        .state
+        .lock()
+        .unwrap()
+        .indexes
+        .get_mut("games_en")
+        .unwrap()
+        .settings["pagination"] = json!({ "maxTotalHits": 1000 });
+    assert_eq!(
+        rebuild_reason(&outdated).await.unwrap().as_deref(),
+        Some("index games_en has outdated settings")
+    );
 }
 
 #[test]
@@ -627,15 +495,13 @@ fn diff_finds_missing_and_orphans() {
 #[tokio::test]
 async fn sync_indexes_only_missing_documents() {
     // One orphan document in games; indexed: games 0..700 of 1200, themes 2 of 4.
-    let backend = all_aliased(&[1, 0, 0, 0, 0, 0, 0]);
+    let backend = live(&[1, 0, 0, 0, 0, 0, 0]);
     let source = FakeSource::new(COUNTS);
-    let games = format!("games_en__{SUFFIX}");
-    let themes = format!("themes_en__{SUFFIX}");
     for n in 0..700 {
-        backend.insert_doc(&games, &source.id(0, n).to_string());
+        backend.insert_doc("games_en", &source.id(0, n).to_string());
     }
     for n in 0..2 {
-        backend.insert_doc(&themes, &source.id(5, n).to_string());
+        backend.insert_doc("themes_en", &source.id(5, n).to_string());
     }
     let expected_missing: u64 = [500, 3, 2, 1, 0, 2, 2].iter().sum();
 
@@ -643,14 +509,14 @@ async fn sync_indexes_only_missing_documents() {
     let outcome = sync::run(&io, &backend, &source, None).await.unwrap();
     assert_eq!(outcome, JobOutcome::Completed);
 
-    assert_eq!(backend.doc_count(&games), 1201); // 1200 + the untouched orphan
-    assert_eq!(backend.doc_count(&themes), 4);
-    let imports: Vec<String> = backend
+    assert_eq!(backend.doc_count("games_en"), 1201); // 1200 + the untouched orphan
+    assert_eq!(backend.doc_count("themes_en"), 4);
+    let adds: Vec<String> = backend
         .ops()
         .into_iter()
-        .filter(|o| o.starts_with("import "))
+        .filter(|o| o.starts_with("add "))
         .collect();
-    assert_eq!(imports[0], format!("import {games} 500"));
+    assert_eq!(adds[0], "add games_en 500");
 
     let logs = io.logs();
     assert!(
@@ -669,10 +535,10 @@ async fn sync_indexes_only_missing_documents() {
     assert_eq!(last.processed, Some(expected_missing));
     // Diffing happens (and the total is known) before any indexing.
     let ops = backend.ops();
-    let exports = op_index(&ops, |o| o.starts_with("export "));
-    let first_import = op_index(&ops, |o| o.starts_with("import "))[0];
-    assert_eq!(exports.len(), 7);
-    assert!(exports.iter().all(|e| *e < first_import));
+    let fetches = op_index(&ops, |o| o.starts_with("ids "));
+    let first_add = op_index(&ops, |o| o.starts_with("add "))[0];
+    assert_eq!(fetches.len(), 7);
+    assert!(fetches.iter().all(|e| *e < first_add));
     assert_eq!(
         serde_json::from_value::<SyncCheckpoint>(io.last_checkpoint())
             .unwrap()
@@ -682,8 +548,8 @@ async fn sync_indexes_only_missing_documents() {
 }
 
 #[tokio::test]
-async fn sync_resume_skips_finished_collections() {
-    let backend = all_aliased(&[0; 7]);
+async fn sync_resume_skips_finished_indexes() {
+    let backend = live(&[0; 7]);
     let source = FakeSource::new(COUNTS);
     let io = FakeIo::default();
     let outcome = sync::run(
@@ -698,25 +564,15 @@ async fn sync_resume_skips_finished_collections() {
     .unwrap();
     assert_eq!(outcome, JobOutcome::Completed);
     assert!(!backend.ops().iter().any(|o| o.contains("games_en")));
-    assert_eq!(backend.doc_count(&format!("games_en__{SUFFIX}")), 0);
-    assert_eq!(backend.doc_count(&format!("themes_en__{SUFFIX}")), 4);
+    assert_eq!(backend.doc_count("games_en"), 0);
+    assert_eq!(backend.doc_count("themes_en"), 4);
 }
 
 #[tokio::test]
-async fn sync_accepts_real_collections_and_fails_clearly_when_missing() {
-    // Real (non-alias) collections are valid targets.
-    let names: Vec<(&str, usize)> = COLLECTIONS.iter().map(|c| (c.name, 0)).collect();
-    let backend = FakeBackend::with(&names, &[]);
+async fn sync_fails_clearly_when_an_index_is_missing() {
+    let backend = live(&[0; 7]);
+    backend.state.lock().unwrap().indexes.remove("posts_en");
     let source = FakeSource::new([1, 0, 0, 0, 0, 0, 0]);
-    let io = FakeIo::default();
-    assert_eq!(
-        sync::run(&io, &backend, &source, None).await.unwrap(),
-        JobOutcome::Completed
-    );
-    assert_eq!(backend.doc_count("games_en"), 1);
-
-    // A missing collection fails permanently before any work.
-    let backend = FakeBackend::with(&names[..6], &[]);
     let err = sync::run(&FakeIo::default(), &backend, &source, None)
         .await
         .unwrap_err();

@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use fancy_regex::Regex;
 use reqwest::Url;
 
-use crate::jobs::search::backend::TypesenseReplyError;
+use crate::jobs::search::backend::{MeilisearchReplyError, MeilisearchTaskError};
 
 static REDACTIONS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
     [
@@ -13,7 +13,7 @@ static REDACTIONS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
         (r#"(?i)\b[a-z][a-z\d+.-]*://[^\s"'<>]+"#, "[redacted URL]"),
         (r"\b(?:Bearer|Basic)\s+[\w.+/=-]{8,}", "[redacted authorization]"),
         (r"(?i)\b(?:authorization|(?:set-)?cookie)\s*[:=].*$", "[redacted authorization]"),
-        (r#"(?i)\b(?:password|passwd|secret|(?:access[_-]?)?token|(?:x-typesense-)?api[_-]?key)\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;]+)"#, "[redacted credential]"),
+        (r#"(?i)\b(?:password|passwd|secret|(?:access[_-]?)?token|(?:x-meili-)?(?:master[_-]?|api[_-]?)key)\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;]+)"#, "[redacted credential]"),
         (r"\beyJ[\w-]+\.[\w-]+\.[\w-]+\b", "[redacted token]"),
         (r#""(?:\\.|[^"\\])*"|\x60[^\x60]*\x60|(?<!\w)'(?:\\.|[^'\\])*'"#, "[redacted]"),
         (r"(?:\[(?!redacted(?: [a-z]+)?\])|[{<]).*$", "[redacted]"),
@@ -33,7 +33,7 @@ fn excerpt(message: &str) -> Option<String> {
     }
 
     let mut safe = line.to_owned();
-    for key in ["LOG_TYPESENSE_API_KEY", "TYPESENSE_API_KEY"] {
+    for key in ["MEILISEARCH_API_KEY", "MEILI_MASTER_KEY"] {
         if let Ok(value) = std::env::var(key)
             && !value.is_empty()
         {
@@ -66,7 +66,9 @@ fn excerpt(message: &str) -> Option<String> {
 pub fn error_messages(mut error: &(dyn Error + 'static)) -> Option<String> {
     let mut messages = Vec::new();
     for _ in 0..8 {
-        let message = if let Some(reply) = error.downcast_ref::<TypesenseReplyError>() {
+        let message = if let Some(reply) = error.downcast_ref::<MeilisearchReplyError>() {
+            reply.diagnostic()
+        } else if let Some(reply) = error.downcast_ref::<MeilisearchTaskError>() {
             reply.diagnostic()
         } else if let Some(sqlx::Error::Database(database)) = error.downcast_ref::<sqlx::Error>() {
             database.message().to_owned()

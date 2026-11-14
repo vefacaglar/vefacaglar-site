@@ -1,7 +1,7 @@
-//! `search.sync`: fill in documents missing from the live collections.
+//! `search.sync`: fill in documents missing from the live indexes.
 //!
-//! For every collection: resolve the live target (alias or real collection;
-//! missing = fail, run the full reindex), export the existing ids, diff them
+//! For every stable index uid (missing = fail; the job handler escalates to a
+//! full rebuild before calling this), fetch the existing ids, diff them
 //! against Postgres and upsert only the missing documents in batches. Orphans
 //! (documents without a source row) are counted and logged, never deleted.
 
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::backend::SearchBackend;
-use super::collections::COLLECTIONS;
+use super::indexes::INDEXES;
 use super::source::SourceData;
 use super::{BATCH_SIZE, LOG_EVERY_BATCHES, import_batch};
 use crate::context::{JobIo, Progress};
@@ -25,7 +25,7 @@ const ID_PAGE: usize = 5_000;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncCheckpoint {
-    /// Collections before this index are done.
+    /// Indexes before this position in `INDEXES` are done.
     pub collection_index: usize,
 }
 
@@ -55,16 +55,13 @@ pub fn diff(source_ids: impl IntoIterator<Item = Uuid>, indexed: &HashSet<String
     }
 }
 
-/// Resolves the collection a live name points to.
+/// The live target of a stable uid: the index itself, which must exist.
 async fn resolve(backend: &dyn SearchBackend, name: &str) -> Result<String> {
-    if let Some(target) = backend.get_alias(name).await? {
-        return Ok(target);
-    }
-    if backend.collection_exists(name).await? {
+    if backend.index_exists(name).await? {
         return Ok(name.to_string());
     }
     Err(PermanentError::err(format!(
-        "search collection {name} does not exist; run the full reindex (search.reindex) first"
+        "search index {name} does not exist; run the full reindex (search.reindex) first"
     )))
 }
 
@@ -78,18 +75,18 @@ pub async fn run(
         return Ok(JobOutcome::Interrupted);
     }
     let start = checkpoint
-        .map(|c| c.collection_index.min(COLLECTIONS.len()))
+        .map(|c| c.collection_index.min(INDEXES.len()))
         .unwrap_or(0);
     let mut progress = Progress {
         phase: Some("resolving".into()),
-        message: Some("resolving collections".into()),
+        message: Some("resolving indexes".into()),
         ..Default::default()
     };
     io.progress(&progress).await?;
 
-    // Resolve everything first, so a missing collection fails before any work.
+    // Resolve everything first, so a missing index fails before any work.
     let mut targets = Vec::new();
-    for spec in &COLLECTIONS[start..] {
+    for spec in &INDEXES[start..] {
         targets.push(resolve(backend, spec.name).await?);
     }
     if start > 0 {
@@ -97,22 +94,22 @@ pub async fn run(
             LogLevel::Info,
             &format!(
                 "resuming sync at {}",
-                COLLECTIONS.get(start).map_or("end", |c| c.name)
+                INDEXES.get(start).map_or("end", |c| c.name)
             ),
         )
         .await;
     }
 
-    // Diff all remaining collections up front for a determinate total.
+    // Diff all remaining indexes up front for a determinate total.
     let mut diffs = Vec::new();
-    for (spec, target) in COLLECTIONS[start..].iter().zip(&targets) {
+    for (spec, target) in INDEXES[start..].iter().zip(&targets) {
         if io.should_stop() {
             return Ok(JobOutcome::Interrupted);
         }
         progress.phase = Some(format!("diffing:{}", spec.name));
         progress.message = Some(format!("{}: comparing ids", spec.name));
         io.progress(&progress).await?;
-        let indexed = backend.export_ids(target).await?;
+        let indexed = backend.document_ids(target).await?;
         let mut source_ids = Vec::new();
         let mut after = None;
         loop {
@@ -148,7 +145,7 @@ pub async fn run(
 
     for (offset, (diff, target)) in diffs.iter().zip(&targets).enumerate() {
         let index = start + offset;
-        let spec = &COLLECTIONS[index];
+        let spec = &INDEXES[index];
         if io.should_stop() {
             return Ok(JobOutcome::Interrupted);
         }

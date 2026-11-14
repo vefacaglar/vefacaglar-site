@@ -12,7 +12,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use super::collections::Source;
+use super::indexes::Source;
 use super::mappers::{
     GameRow, LookupKind, LookupRow, PostRow, RelationRef, to_game_doc, to_lookup_doc, to_post_doc,
 };
@@ -34,7 +34,7 @@ fn lookup_table(kind: LookupKind) -> (&'static str, &'static str, &'static str) 
     }
 }
 
-/// `(table, base filter)` of the rows a collection is built from.
+/// `(table, base filter)` of the rows an index is built from.
 fn source_table(source: Source) -> (&'static str, &'static str) {
     match source {
         Source::Games => ("games", "true"),

@@ -48,7 +48,7 @@ fn config(directory: &Path, id: &str) -> Config {
         health_file: directory.join(format!("{id}.health")),
         control_file: Some(directory.join(format!("{id}.mode"))),
         control_status_file: directory.join(format!("{id}.state")),
-        typesense: None,
+        meilisearch: None,
     }
 }
 

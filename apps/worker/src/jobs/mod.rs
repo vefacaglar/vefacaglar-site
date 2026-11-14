@@ -12,15 +12,15 @@ use crate::config::Config;
 use crate::handler::Registry;
 
 pub fn registry(config: &Config) -> Registry {
-    let typesense = Arc::new(config.typesense.clone());
+    let meilisearch = Arc::new(config.meilisearch.clone());
     let mut registry = Registry::new();
     registry.register(search::SearchReindexHandler {
-        typesense: typesense.clone(),
+        meilisearch: meilisearch.clone(),
     });
     registry.register(search::SearchSyncHandler {
-        typesense: typesense.clone(),
+        meilisearch: meilisearch.clone(),
     });
-    registry.register(movie_search::MovieSearchHandler { typesense });
+    registry.register(movie_search::MovieSearchHandler { meilisearch });
     registry.register(catalog::CatalogPopularityHandler);
     registry.register(catalog::movies::CatalogMoviesHandler);
     registry.register(catalog::movie_popularity::MoviePopularityHandler);

@@ -1,9 +1,0 @@
-{
-  "name": "movie_people_en",
-  "fields": [
-    { "name": "name", "type": "string" },
-    { "name": "publicCreditCount", "type": "int32" },
-    { "name": "nameSort", "type": "string", "sort": true }
-  ],
-  "default_sorting_field": "publicCreditCount"
-}

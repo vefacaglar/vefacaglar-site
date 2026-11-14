@@ -1,4 +1,4 @@
-//! PostgreSQL source/ledger operations. All Typesense I/O happens after these
+//! PostgreSQL source/ledger operations. All Meilisearch I/O happens after these
 //! statements/short transactions finish. Publication locks state before any
 //! ledger operation, matching the ranking producer's lock order.
 use anyhow::{Result, ensure};
@@ -54,7 +54,13 @@ pub trait MovieSource: Send + Sync {
     async fn dirty(&self, target: &str, replay: bool, limit: usize) -> Result<Batch>;
     async fn ack(&self, target: &str, rows: &[Document]) -> Result<()>;
     async fn advance_scan(&self, target: &str, cursor: Option<Uuid>, done: bool) -> Result<()>;
-    async fn can_publish(&self, target: &str, publication: Publication) -> Result<bool>;
+    /// Commits the decision to swap the fully replayed `build` in (phase
+    /// 'swap'), under the same checks as [`MovieSource::publish`].
+    async fn begin_swap(&self, build: &str, publication: Publication) -> Result<bool>;
+    /// After the Meilisearch swap: `movies_en` is active and ready, with
+    /// `ranking_ready` false until the next steady-state publish.
+    async fn finish_swap(&self, build: &str) -> Result<()>;
+    /// Steady-state publication of the already active index.
     async fn publish(&self, target: &str, publication: Publication) -> Result<bool>;
     async fn repair_due(&self) -> Result<bool>;
     /// Advances the durable daily reconciliation cursor, returning examined rows.
@@ -242,14 +248,35 @@ impl MovieSource for PgMovieSource {
         );
         Ok(())
     }
-    async fn can_publish(&self, target: &str, publication: Publication) -> Result<bool> {
+    async fn begin_swap(&self, build: &str, publication: Publication) -> Result<bool> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SELECT id FROM movie_search_state WHERE id='movies_en' FOR UPDATE")
             .fetch_one(&mut *tx)
             .await?;
-        let valid = publishable(&mut tx, target, publication).await?;
+        if !publishable(&mut tx, build, publication).await? {
+            tx.rollback().await?;
+            return Ok(false);
+        }
+        let result = sqlx::query("UPDATE movie_search_state SET bootstrap_phase='swap', updated_at=now() WHERE id='movies_en' AND building_collection=$1")
+            .bind(build).execute(&mut *tx).await?;
+        ensure!(
+            result.rows_affected() == 1,
+            "movie bootstrap target changed"
+        );
         tx.commit().await?;
-        Ok(valid)
+        Ok(true)
+    }
+    async fn finish_swap(&self, build: &str) -> Result<()> {
+        // The generation bump tells in-flight API requests (which compare
+        // ranking_generation before and after reading the index) that the
+        // index contents changed underneath them.
+        let result = sqlx::query("UPDATE movie_search_state SET active_collection=$1, building_collection=NULL, bootstrap_phase='ready', ranking_ready=false, ranking_generation=ranking_generation+1, updated_at=now() WHERE id='movies_en' AND building_collection=$2 AND bootstrap_phase='swap'")
+            .bind(ALIAS).bind(build).execute(&self.pool).await?;
+        ensure!(
+            result.rows_affected() == 1,
+            "movie bootstrap target changed"
+        );
+        Ok(())
     }
     async fn publish(&self, target: &str, publication: Publication) -> Result<bool> {
         let mut tx = self.pool.begin().await?;

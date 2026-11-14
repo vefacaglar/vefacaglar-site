@@ -108,10 +108,10 @@ impl StartupFailure {
 async fn run() -> Result<(), StartupFailure> {
     let config =
         Config::from_env().map_err(|error| StartupFailure::new(StartupError::Config(error)))?;
-    if config.typesense.is_none() {
+    if config.meilisearch.is_none() {
         tracing::warn!(
             application_event = "search_not_configured",
-            "Typesense is not configured; search jobs will fail"
+            "Meilisearch is not configured; search jobs will fail"
         );
     }
     let pool = PgPoolOptions::new()
@@ -162,8 +162,8 @@ async fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     load_dotenv();
-    let logs = telemetry::init();
-    let status = match run().await {
+    telemetry::init();
+    match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(failure) => {
             let (code, reason) = failure.error.log_reason();
@@ -182,9 +182,5 @@ async fn main() -> ExitCode {
             );
             ExitCode::FAILURE
         }
-    };
-    if let Some(logs) = logs {
-        logs.close().await;
     }
-    status
 }

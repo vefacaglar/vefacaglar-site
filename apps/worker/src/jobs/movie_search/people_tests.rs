@@ -1,9 +1,10 @@
 use super::people::*;
 use super::*;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 
-use super::super::search::backend::ImportFailure;
+use super::super::search::fake::FakeMeili;
+use chrono::DateTime;
 
 #[derive(Default)]
 struct Io {
@@ -31,7 +32,7 @@ struct Model {
     /// Person ID -> document when searchable.
     people: BTreeMap<Uuid, Option<Value>>,
     starts: usize,
-    previous_collection: Option<String>,
+    publishes: usize,
 }
 struct Source {
     model: Mutex<Model>,
@@ -72,94 +73,15 @@ impl PeopleSource for Source {
         m.state.build_cursor = Some(cursor);
         Ok(())
     }
-    async fn publish(&self, target: &str) -> Result<Option<String>> {
+    async fn publish(&self, build: &str) -> Result<()> {
         let mut m = self.model.lock().unwrap();
-        anyhow::ensure!(m.state.building_collection.as_deref() == Some(target));
-        let kept = m
-            .state
-            .active_collection
-            .replace(target.into())
-            .filter(|name| name != target);
-        let retired = std::mem::replace(&mut m.previous_collection, kept.clone())
-            .filter(|name| Some(name) != kept.as_ref() && name != target);
+        anyhow::ensure!(m.state.building_collection.as_deref() == Some(build));
+        m.state.active_collection = Some(PEOPLE_ALIAS.into());
         m.state.building_collection = None;
         m.state.build_cursor = None;
         m.state.published_at = Some(now());
-        Ok(retired)
-    }
-}
-
-#[derive(Default)]
-struct Engine {
-    schemas: BTreeMap<String, Value>,
-    docs: BTreeMap<String, BTreeMap<String, Value>>,
-    alias: Option<String>,
-    fail_import: bool,
-    deleted: Vec<String>,
-}
-#[derive(Default)]
-struct Backend {
-    engine: Mutex<Engine>,
-}
-#[async_trait]
-impl SearchBackend for Backend {
-    async fn get_alias(&self, _: &str) -> Result<Option<String>> {
-        Ok(self.engine.lock().unwrap().alias.clone())
-    }
-    async fn collection_exists(&self, name: &str) -> Result<bool> {
-        Ok(self.engine.lock().unwrap().schemas.contains_key(name))
-    }
-    async fn list_collections(&self) -> Result<Vec<String>> {
-        Ok(self
-            .engine
-            .lock()
-            .unwrap()
-            .schemas
-            .keys()
-            .cloned()
-            .collect())
-    }
-    async fn collection_schema(&self, name: &str) -> Result<Option<Value>> {
-        Ok(self.engine.lock().unwrap().schemas.get(name).cloned())
-    }
-    async fn create_collection(&self, schema: &Value) -> Result<()> {
-        let name = schema["name"].as_str().unwrap().to_owned();
-        self.engine
-            .lock()
-            .unwrap()
-            .schemas
-            .insert(name, schema.clone());
+        m.publishes += 1;
         Ok(())
-    }
-    async fn delete_collection(&self, name: &str) -> Result<bool> {
-        let mut e = self.engine.lock().unwrap();
-        e.deleted.push(name.into());
-        e.docs.remove(name);
-        Ok(e.schemas.remove(name).is_some())
-    }
-    async fn upsert_alias(&self, _: &str, target: &str) -> Result<()> {
-        self.engine.lock().unwrap().alias = Some(target.into());
-        Ok(())
-    }
-    async fn import(&self, target: &str, docs: &[Value]) -> Result<Vec<ImportFailure>> {
-        let mut e = self.engine.lock().unwrap();
-        if e.fail_import {
-            e.fail_import = false;
-            return Ok(vec![ImportFailure {
-                id: docs[0]["id"].as_str().map(str::to_owned),
-                error: "invalid document".into(),
-            }]);
-        }
-        for doc in docs {
-            e.docs
-                .entry(target.into())
-                .or_default()
-                .insert(doc["id"].as_str().unwrap().into(), doc.clone());
-        }
-        Ok(vec![])
-    }
-    async fn export_ids(&self, _: &str) -> Result<HashSet<String>> {
-        panic!("people sync never exports IDs")
     }
 }
 
@@ -190,7 +112,7 @@ fn source(count: u128) -> Source {
             },
             people,
             starts: 0,
-            previous_collection: None,
+            publishes: 0,
         }),
     }
 }
@@ -200,61 +122,69 @@ fn limits(documents: usize) -> Limits {
         duration: Duration::from_secs(60),
     }
 }
-use chrono::DateTime;
+fn builds(backend: &FakeMeili) -> Vec<String> {
+    backend
+        .names()
+        .into_iter()
+        .filter(|name| name.contains("__build_"))
+        .collect()
+}
 
 #[test]
-fn people_schema_is_exactly_the_api_contract() {
-    let expected: Value = serde_json::from_str(include_str!(
-        "../../../../api/src/modules/movies/search/movie-people-search.schema.json"
-    ))
-    .unwrap();
-    assert_eq!(people_schema(PEOPLE_ALIAS), expected);
-    let target = "movie_people_en__v1_abc";
-    assert!(compatible_with(
-        &people_schema(target),
-        &people_schema(target)
-    ));
-    let mut changed = people_schema(target);
-    changed["fields"][2]["sort"] = json!(false);
-    assert!(!compatible_with(&changed, &people_schema(target)));
-    assert!(people_owned("movie_people_en__v1_ABC_1"));
-    assert!(!people_owned("movie_people_en__v1_"));
-    assert!(!people_owned("movie_people_en__v1_x/evil"));
-    assert!(!people_owned("movies_en__v2_abc"));
+fn people_build_names_are_owned() {
+    assert!(people_owned("movie_people_en__build_ABC1"));
+    assert!(!people_owned("movie_people_en__build_"));
+    assert!(!people_owned("movie_people_en__build_x/evil"));
+    assert!(!people_owned("movie_people_en__v1_abc"));
+    assert!(!people_owned("movies_en__build_abc"));
+    assert_eq!(
+        people_settings()["rankingRules"],
+        json!([
+            "words",
+            "typo",
+            "proximity",
+            "attribute",
+            "exactness",
+            "publicCreditCount:desc",
+            "nameSort:asc"
+        ])
+    );
 }
 
 #[tokio::test]
-async fn first_build_indexes_only_searchable_people_and_publishes() {
-    let (source, backend) = (source(2500), Backend::default());
+async fn first_build_indexes_only_searchable_people_and_publishes_the_stable_uid() {
+    let (source, backend) = (source(2500), FakeMeili::default());
     let outcome = run_people(&Io::default(), &backend, &source, limits(100_000), now())
         .await
         .unwrap();
     assert_eq!(outcome, PeopleOutcome::Published);
     let state = source.model.lock().unwrap().state.clone();
-    let active = state.active_collection.unwrap();
-    assert!(people_owned(&active));
+    assert_eq!(state.active_collection.as_deref(), Some(PEOPLE_ALIAS));
     assert!(state.building_collection.is_none());
-    let e = backend.engine.lock().unwrap();
-    assert_eq!(e.alias.as_deref(), Some(active.as_str()));
-    let docs = &e.docs[&active];
-    assert_eq!(docs.len(), 2500 - 2500 / 3);
-    assert!(!docs.contains_key(&Uuid::from_u128(3).to_string()));
+    assert_eq!(backend.doc_count(PEOPLE_ALIAS), 2500 - 2500 / 3);
+    assert!(
+        backend
+            .doc(PEOPLE_ALIAS, &Uuid::from_u128(3).to_string())
+            .is_none()
+    );
+    assert_eq!(
+        backend.state.lock().unwrap().indexes[PEOPLE_ALIAS].settings,
+        people_settings()
+    );
+    assert!(builds(&backend).is_empty());
 }
 
 #[tokio::test]
-async fn bounded_build_resumes_from_the_durable_cursor_without_touching_the_active_snapshot() {
-    let (source, backend) = (source(2500), Backend::default());
+async fn bounded_build_resumes_from_the_durable_cursor_without_touching_the_live_index() {
+    let (source, backend) = (source(2500), FakeMeili::default());
     run_people(&Io::default(), &backend, &source, limits(100_000), now())
         .await
         .unwrap();
-    let old = source
-        .model
-        .lock()
-        .unwrap()
-        .state
-        .active_collection
-        .clone()
-        .unwrap();
+    // A person changes; the live snapshot keeps the old name until the swap.
+    source.model.lock().unwrap().people.insert(
+        Uuid::from_u128(1),
+        Some(document(Uuid::from_u128(1), "Renamed", 2)),
+    );
     let later = now() + refresh_interval() + ChronoDuration::minutes(1);
     assert_eq!(
         run_people(&Io::default(), &backend, &source, limits(1000), later)
@@ -264,11 +194,13 @@ async fn bounded_build_resumes_from_the_durable_cursor_without_touching_the_acti
     );
     {
         let m = source.model.lock().unwrap();
-        assert_eq!(m.state.active_collection.as_deref(), Some(old.as_str()));
+        assert_eq!(m.state.active_collection.as_deref(), Some(PEOPLE_ALIAS));
         assert_eq!(m.state.build_cursor, Some(Uuid::from_u128(1000)));
         assert_eq!(
-            backend.engine.lock().unwrap().alias.as_deref(),
-            Some(old.as_str())
+            backend
+                .doc(PEOPLE_ALIAS, &Uuid::from_u128(1).to_string())
+                .unwrap()["name"],
+            "Person 1"
         );
     }
     assert_eq!(
@@ -277,48 +209,24 @@ async fn bounded_build_resumes_from_the_durable_cursor_without_touching_the_acti
             .unwrap(),
         PeopleOutcome::Published
     );
-    let second = {
-        let m = source.model.lock().unwrap();
-        assert_eq!(m.starts, 2, "the resumed run continues the same generation");
-        let active = m.state.active_collection.clone().unwrap();
-        assert_ne!(active, old);
-        assert_eq!(m.previous_collection.as_deref(), Some(old.as_str()));
-        let e = backend.engine.lock().unwrap();
-        assert!(
-            e.deleted.is_empty(),
-            "the replaced generation stays for readers that just resolved it"
-        );
-        assert!(e.schemas.contains_key(&old));
-        assert_eq!(e.docs[&active].len(), 2500 - 2500 / 3);
-        active
-    };
-    let third_run = later + refresh_interval();
-    assert_eq!(
-        run_people(
-            &Io::default(),
-            &backend,
-            &source,
-            limits(100_000),
-            third_run
-        )
-        .await
-        .unwrap(),
-        PeopleOutcome::Published
-    );
     let m = source.model.lock().unwrap();
-    assert_eq!(m.previous_collection.as_deref(), Some(second.as_str()));
-    let e = backend.engine.lock().unwrap();
+    assert_eq!(m.starts, 2, "the resumed run continues the same generation");
     assert_eq!(
-        e.deleted,
-        vec![old],
-        "only the generation before the replaced one is removed"
+        backend
+            .doc(PEOPLE_ALIAS, &Uuid::from_u128(1).to_string())
+            .unwrap()["name"],
+        "Renamed"
     );
-    assert!(e.schemas.contains_key(&second));
+    assert_eq!(backend.doc_count(PEOPLE_ALIAS), 2500 - 2500 / 3);
+    assert!(
+        builds(&backend).is_empty(),
+        "the swapped-out snapshot is deleted"
+    );
 }
 
 #[tokio::test]
 async fn a_fresh_snapshot_is_left_alone_and_a_stale_one_is_rebuilt() {
-    let (source, backend) = (source(10), Backend::default());
+    let (source, backend) = (source(10), FakeMeili::default());
     run_people(&Io::default(), &backend, &source, limits(100_000), now())
         .await
         .unwrap();
@@ -341,22 +249,14 @@ async fn a_fresh_snapshot_is_left_alone_and_a_stale_one_is_rebuilt() {
 }
 
 #[tokio::test]
-async fn missing_or_incompatible_collections_start_a_new_generation_without_deleting_unknown_ones()
-{
-    let (source, backend) = (source(10), Backend::default());
+async fn outdated_settings_or_typesense_state_start_a_new_generation() {
+    // Typesense-era state: old version and collection names.
+    let (source, backend) = (source(10), FakeMeili::default());
     {
         let mut m = source.model.lock().unwrap();
+        m.state.schema_version = 1;
         m.state.active_collection = Some("movie_people_en__v1_gone".into());
         m.state.published_at = Some(now());
-        m.state.building_collection = Some("movie_people_en__v1_broken".into());
-        let mut wrong = people_schema("movie_people_en__v1_broken");
-        wrong["fields"][1]["type"] = json!("string");
-        backend
-            .engine
-            .lock()
-            .unwrap()
-            .schemas
-            .insert("movie_people_en__v1_broken".into(), wrong);
     }
     assert_eq!(
         run_people(&Io::default(), &backend, &source, limits(100_000), now())
@@ -364,19 +264,92 @@ async fn missing_or_incompatible_collections_start_a_new_generation_without_dele
             .unwrap(),
         PeopleOutcome::Published
     );
-    let e = backend.engine.lock().unwrap();
-    assert!(e.schemas.contains_key("movie_people_en__v1_broken"));
-    assert!(e.deleted.is_empty());
     assert_eq!(
-        source.model.lock().unwrap().previous_collection.as_deref(),
-        Some("movie_people_en__v1_gone")
+        source.model.lock().unwrap().state.schema_version,
+        PEOPLE_SCHEMA_VERSION
+    );
+
+    // A fresh snapshot whose live settings differ is rebuilt immediately.
+    backend
+        .state
+        .lock()
+        .unwrap()
+        .indexes
+        .get_mut(PEOPLE_ALIAS)
+        .unwrap()
+        .settings = json!({ "searchableAttributes": ["name"] });
+    assert_eq!(
+        run_people(&Io::default(), &backend, &source, limits(100_000), now())
+            .await
+            .unwrap(),
+        PeopleOutcome::Published
+    );
+    assert_eq!(source.model.lock().unwrap().starts, 2);
+    assert_eq!(
+        backend.state.lock().unwrap().indexes[PEOPLE_ALIAS].settings,
+        people_settings()
     );
 }
 
 #[tokio::test]
+async fn a_build_with_outdated_settings_is_abandoned_and_deleted() {
+    let (source, backend) = (
+        source(10),
+        FakeMeili::with(&[
+            ("movie_people_en__build_old", 3, json!({})),
+            ("unrelated", 1, json!({})),
+        ]),
+    );
+    source.model.lock().unwrap().state.building_collection =
+        Some("movie_people_en__build_old".into());
+    assert_eq!(
+        run_people(&Io::default(), &backend, &source, limits(100_000), now())
+            .await
+            .unwrap(),
+        PeopleOutcome::Published
+    );
+    assert!(!backend.exists("movie_people_en__build_old"));
+    assert!(backend.exists("unrelated"));
+    assert_eq!(source.model.lock().unwrap().starts, 1);
+}
+
+#[tokio::test]
+async fn a_crash_between_swap_and_publish_only_publishes() {
+    let (source, backend) = (source(10), FakeMeili::default());
+    run_people(&Io::default(), &backend, &source, limits(100_000), now())
+        .await
+        .unwrap();
+    backend.state.lock().unwrap().crash_after_swap = true;
+    let later = now() + refresh_interval();
+    assert!(
+        run_people(&Io::default(), &backend, &source, limits(100_000), later)
+            .await
+            .is_err()
+    );
+    let swaps = backend.state.lock().unwrap().swaps.len();
+    assert_eq!(source.model.lock().unwrap().publishes, 1);
+    assert_eq!(
+        run_people(&Io::default(), &backend, &source, limits(100_000), later)
+            .await
+            .unwrap(),
+        PeopleOutcome::Published
+    );
+    assert_eq!(
+        backend.state.lock().unwrap().swaps.len(),
+        swaps,
+        "no second swap"
+    );
+    let m = source.model.lock().unwrap();
+    assert_eq!(m.publishes, 2);
+    assert_eq!(m.starts, 2);
+    assert!(builds(&backend).is_empty());
+    assert_eq!(backend.doc_count(PEOPLE_ALIAS), 7);
+}
+
+#[tokio::test]
 async fn failed_import_never_advances_the_cursor_or_publishes() {
-    let (source, backend) = (source(10), Backend::default());
-    backend.engine.lock().unwrap().fail_import = true;
+    let (source, backend) = (source(10), FakeMeili::default());
+    backend.state.lock().unwrap().fail_next_add = true;
     assert!(
         run_people(&Io::default(), &backend, &source, limits(100_000), now())
             .await
@@ -402,7 +375,7 @@ async fn failed_import_never_advances_the_cursor_or_publishes() {
 
 #[tokio::test]
 async fn cancellation_stops_before_any_work() {
-    let (source, backend) = (source(10), Backend::default());
+    let (source, backend) = (source(10), FakeMeili::default());
     assert_eq!(
         run_people(
             &Io { stop: true },
@@ -416,23 +389,7 @@ async fn cancellation_stops_before_any_work() {
         PeopleOutcome::Interrupted
     );
     assert_eq!(source.model.lock().unwrap().starts, 0);
-}
-
-#[tokio::test]
-async fn unowned_retired_generations_are_never_deleted() {
-    let (source, backend) = (source(10), Backend::default());
-    {
-        let mut m = source.model.lock().unwrap();
-        m.state.active_collection = Some("movie_people_en__v1_old".into());
-        m.previous_collection = Some("movies_en__v2_live".into());
-    }
-    assert_eq!(
-        run_people(&Io::default(), &backend, &source, limits(100_000), now())
-            .await
-            .unwrap(),
-        PeopleOutcome::Published
-    );
-    assert!(backend.engine.lock().unwrap().deleted.is_empty());
+    assert!(backend.names().is_empty());
 }
 
 #[test]

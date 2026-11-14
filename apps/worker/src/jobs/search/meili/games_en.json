@@ -1,0 +1,33 @@
+{
+  "searchableAttributes": [
+    "title",
+    "originalTitle",
+    "slug",
+    "developerNames",
+    "publisherNames",
+    "genreNames",
+    "platformNames",
+    "themeNames",
+    "description"
+  ],
+  "filterableAttributes": [
+    "id",
+    "slug",
+    "developerIds",
+    "publisherIds",
+    "genreIds",
+    "platformIds",
+    "themeIds"
+  ],
+  "sortableAttributes": ["popularityScore", "releaseTimestamp", "createdAt"],
+  "rankingRules": [
+    "words",
+    "typo",
+    "proximity",
+    "attribute",
+    "sort",
+    "exactness",
+    "popularityScore:desc"
+  ],
+  "pagination": { "maxTotalHits": 500000 }
+}

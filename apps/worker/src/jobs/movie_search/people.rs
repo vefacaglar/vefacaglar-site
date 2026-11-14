@@ -1,53 +1,49 @@
 //! Movie people index. It runs inside `search.movies.sync`, after the movie
 //! step, and rebuilds a full snapshot of searchable people into a fresh owned
-//! collection. The API hydrates hits from PostgreSQL and falls back to SQL
+//! build index, then swaps it with the stable uid `movie_people_en` that the
+//! API queries. The API hydrates hits from PostgreSQL and falls back to SQL
 //! search whenever this index is unavailable, so a snapshot may lag slightly.
 //!
 //! Durable progress lives in `movie_people_search_state`: the cursor advances
-//! only after a batch was imported, the new generation becomes active only once
-//! the scan is complete, and the replaced generation is kept until the next
-//! publish (so readers that just resolved it never hit a deleted collection);
-//! only the owned generation before that is deleted.
+//! only after a batch was indexed, and the new snapshot becomes active only
+//! once the scan is complete. The swap happens before the state is published;
+//! a run resumed between the two sees the finished swap in Meilisearch's task
+//! history and only publishes. The swapped-out build index (the previous
+//! snapshot) is deleted right away: readers never query build indexes, so
+//! `previous_collection` is no longer needed and stays NULL.
 use std::time::Instant;
 
 use anyhow::{Result, ensure};
 use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use serde_json::{Value, json};
+use serde_json::Value;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use super::super::search::backend::SearchBackend;
-use super::super::search::import_batch;
-use super::Limits;
+use super::super::search::{import_batch, settings};
+use super::{Limits, current_index, delete_stale_builds, owned_with};
 use crate::context::JobIo;
 use crate::queue::LogLevel;
 
+/// Stable index uid the API queries; also the state row id.
 pub const PEOPLE_ALIAS: &str = "movie_people_en";
-pub const PEOPLE_SCHEMA_VERSION: i32 = 1;
+/// 2 = Meilisearch. Typesense-era state (1) starts a fresh build.
+pub const PEOPLE_SCHEMA_VERSION: i32 = 2;
 pub const PEOPLE_BATCH_SIZE: usize = 1000;
-const PEOPLE_PREFIX: &str = "movie_people_en__v1_";
-const PEOPLE_SCHEMA: &str =
-    include_str!("../../../../api/src/modules/movies/search/movie-people-search.schema.json");
+const PEOPLE_PREFIX: &str = "movie_people_en__build_";
 
 /// A published snapshot is rebuilt once it is older than this.
 pub fn refresh_interval() -> ChronoDuration {
     ChronoDuration::hours(12)
 }
 
-pub fn people_schema(target: &str) -> Value {
-    let mut schema: Value = serde_json::from_str(PEOPLE_SCHEMA).expect("people schema JSON");
-    schema["name"] = json!(target);
-    schema
+pub fn people_settings() -> Value {
+    settings::for_index(PEOPLE_ALIAS)
 }
 
 pub fn people_owned(target: &str) -> bool {
-    target.strip_prefix(PEOPLE_PREFIX).is_some_and(|suffix| {
-        !suffix.is_empty()
-            && suffix
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'_')
-    })
+    owned_with(PEOPLE_PREFIX, target)
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -73,9 +69,8 @@ pub trait PeopleSource: Send + Sync {
     async fn start_build(&self, target: &str) -> Result<()>;
     async fn scan(&self, after: Option<Uuid>, limit: usize) -> Result<PeopleBatch>;
     async fn advance(&self, target: &str, cursor: Uuid) -> Result<()>;
-    /// Activates `target`, keeps the replaced generation as `previous_collection`,
-    /// and returns the generation that was previous before (now safe to delete).
-    async fn publish(&self, target: &str) -> Result<Option<String>>;
+    /// Marks the stable index active after `build` was swapped into it.
+    async fn publish(&self, build: &str) -> Result<()>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,14 +83,27 @@ pub enum PeopleOutcome {
     Interrupted,
 }
 
-async fn valid_target(backend: &dyn SearchBackend, target: Option<&str>) -> Result<bool> {
-    let Some(target) = target.filter(|target| people_owned(target)) else {
-        return Ok(false);
-    };
-    Ok(backend
-        .collection_schema(target)
-        .await?
-        .is_some_and(|value| super::compatible_with(&value, &people_schema(target))))
+/// Publishes the swapped-in snapshot and drops the swapped-out one.
+async fn publish(
+    io: &dyn JobIo,
+    backend: &dyn SearchBackend,
+    source: &dyn PeopleSource,
+    build: &str,
+) -> Result<PeopleOutcome> {
+    source.publish(build).await?;
+    if let Err(error) = backend.delete_index(build).await {
+        io.log(
+            LogLevel::Warn,
+            &format!("movie people search: could not delete {build}: {error:#}"),
+        )
+        .await;
+    }
+    io.log(
+        LogLevel::Info,
+        &format!("movie people search ready: {build} swapped into {PEOPLE_ALIAS}"),
+    )
+    .await;
+    Ok(PeopleOutcome::Published)
 }
 
 pub async fn run_people(
@@ -110,28 +118,42 @@ pub async fn run_people(
     }
     let deadline = Instant::now() + limits.duration;
     let state = source.state().await?;
+    let settings = people_settings();
     let current = state.schema_version == PEOPLE_SCHEMA_VERSION;
-    let (target, mut cursor) =
-        if current && valid_target(backend, state.building_collection.as_deref()).await? {
-            let target = state.building_collection.clone().expect("validated target");
-            (target, state.build_cursor)
-        } else {
-            let fresh = current
-                && state.building_collection.is_none()
-                && state
-                    .published_at
-                    .is_some_and(|at| now - at < refresh_interval())
-                && valid_target(backend, state.active_collection.as_deref()).await?;
-            if fresh {
-                return Ok(PeopleOutcome::Idle);
-            }
-            // Persist the name before creating it. An abandoned or unknown
-            // collection is never deleted here.
-            let target = format!("{PEOPLE_PREFIX}{}", Uuid::new_v4().simple());
-            source.start_build(&target).await?;
-            backend.create_collection(&people_schema(&target)).await?;
-            (target, None)
-        };
+    let building = state
+        .building_collection
+        .clone()
+        .filter(|build| current && people_owned(build));
+    // Crash between swap and publish: only the publish is missing.
+    if let Some(build) = &building
+        && backend.was_swapped(build).await?
+    {
+        return publish(io, backend, source, build).await;
+    }
+    let resumable = match &building {
+        Some(build) => current_index(backend, build, &settings).await?,
+        None => false,
+    };
+    let (target, mut cursor) = if let (true, Some(build)) = (resumable, building) {
+        (build, state.build_cursor)
+    } else {
+        let fresh = current
+            && state.building_collection.is_none()
+            && state
+                .published_at
+                .is_some_and(|at| now - at < refresh_interval())
+            && state.active_collection.as_deref() == Some(PEOPLE_ALIAS)
+            && current_index(backend, PEOPLE_ALIAS, &settings).await?;
+        if fresh {
+            return Ok(PeopleOutcome::Idle);
+        }
+        // Persist the name before creating it; abandoned owned builds go.
+        let target = format!("{PEOPLE_PREFIX}{}", Uuid::new_v4().simple());
+        delete_stale_builds(io, backend, PEOPLE_PREFIX, None).await?;
+        source.start_build(&target).await?;
+        backend.create_index(&target, &settings).await?;
+        (target, None)
+    };
 
     let mut processed = 0;
     loop {
@@ -155,27 +177,8 @@ pub async fn run_people(
         }
     }
 
-    if backend.get_alias(PEOPLE_ALIAS).await?.as_deref() != Some(target.as_str()) {
-        backend.upsert_alias(PEOPLE_ALIAS, &target).await?;
-    }
-    let retired = source.publish(&target).await?;
-    if let Some(retired) = retired.filter(|name| name != &target && people_owned(name)) {
-        // Two generations stay live: active and the one it replaced. The
-        // generation before that was superseded a full refresh interval ago.
-        if let Err(error) = backend.delete_collection(&retired).await {
-            io.log(
-                LogLevel::Warn,
-                &format!("movie people search: could not delete {retired}: {error:#}"),
-            )
-            .await;
-        }
-    }
-    io.log(
-        LogLevel::Info,
-        &format!("movie people search ready in {target}"),
-    )
-    .await;
-    Ok(PeopleOutcome::Published)
+    backend.swap_indexes(&[(PEOPLE_ALIAS, &target)]).await?;
+    publish(io, backend, source, &target).await
 }
 
 pub struct PgPeopleSource {
@@ -253,25 +256,14 @@ impl PeopleSource for PgPeopleSource {
         );
         Ok(())
     }
-    async fn publish(&self, target: &str) -> Result<Option<String>> {
-        let mut tx = self.pool.begin().await?;
-        let row = sqlx::query(
-            "SELECT active_collection, previous_collection FROM movie_people_search_state WHERE id=$1 AND building_collection=$2 FOR UPDATE",
-        )
-        .bind(PEOPLE_ALIAS)
-        .bind(target)
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("movie people build target changed"))?;
-        let active: Option<String> = row.try_get("active_collection")?;
-        let previous: Option<String> = row.try_get("previous_collection")?;
-        // The replaced generation is kept; the one before it is handed back.
-        let kept = active.filter(|name| name != target);
-        let retired = previous.filter(|name| Some(name) != kept.as_ref() && name != target);
+    async fn publish(&self, build: &str) -> Result<()> {
         // The snapshot is as fresh as its start, so the refresh clock uses it.
-        sqlx::query("UPDATE movie_people_search_state SET active_collection=$1, previous_collection=$3, building_collection=NULL, build_cursor=NULL, published_at=coalesce(build_started_at, now()), updated_at=now() WHERE id=$2")
-            .bind(target).bind(PEOPLE_ALIAS).bind(kept).execute(&mut *tx).await?;
-        tx.commit().await?;
-        Ok(retired)
+        let result = sqlx::query("UPDATE movie_people_search_state SET active_collection=$1, previous_collection=NULL, building_collection=NULL, build_cursor=NULL, published_at=coalesce(build_started_at, now()), updated_at=now() WHERE id=$1 AND building_collection=$2")
+            .bind(PEOPLE_ALIAS).bind(build).execute(&self.pool).await?;
+        ensure!(
+            result.rows_affected() == 1,
+            "movie people build target changed"
+        );
+        Ok(())
     }
 }

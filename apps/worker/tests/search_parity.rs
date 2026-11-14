@@ -1,12 +1,11 @@
-//! Golden-fixture parity with the API's TypeScript mappers and collection
-//! schemas. The expected output in `fixtures/search/` is generated from the TS
+//! Golden-fixture parity with the API's TypeScript document mappers. The
+//! expected output in `fixtures/search/mappers.json` is generated from the TS
 //! code (see `apps/api/src/shared/search/mappers/mappers.parity.spec.ts`).
 
 use std::path::PathBuf;
 
 use serde::Deserialize;
 use serde_json::Value;
-use worker::jobs::search::collections::all_schemas;
 use worker::jobs::search::mappers::{
     GameRow, LookupKind, LookupRow, PostRow, to_game_doc, to_lookup_doc, to_post_doc,
 };
@@ -97,11 +96,4 @@ fn game_jsonl_serialization_matches_javascript_numbers() {
     let row: GameRow = serde_json::from_value(minimal.input.clone()).unwrap();
     let line = serde_json::to_string(&to_game_doc(&row)).unwrap();
     assert!(line.contains("\"popularityScore\":-1,"), "{line}");
-}
-
-#[test]
-fn collection_schemas_match_typescript() {
-    let expected: Value =
-        serde_json::from_str(&fixture("collections.json")).expect("valid collections.json");
-    assert_eq!(Value::Array(all_schemas()), expected);
 }

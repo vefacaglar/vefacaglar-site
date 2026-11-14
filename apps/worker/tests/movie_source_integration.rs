@@ -16,7 +16,7 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
     let id = Uuid::new_v4();
     let person = Uuid::new_v4();
     let qid = format!("Q{}", id.as_u128() % 1_000_000_000);
-    let target = "movies_en__v2_integration";
+    let target = "movies_en__build_integration";
     let date = NaiveDate::from_ymd_opt(2026, 11, 5).unwrap();
     source.state().await.unwrap();
     source.start_build(target).await.unwrap();
@@ -57,7 +57,7 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
         .advance_scan(target, scan.last_id, true)
         .await
         .unwrap();
-    assert!(!source.can_publish(target, scan.publication).await.unwrap());
+    assert!(!source.begin_swap(target, scan.publication).await.unwrap());
     let dirty = source.dirty(target, true, 500).await.unwrap();
     assert!(
         dirty
@@ -66,8 +66,31 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
             .any(|row| row.id == id && row.revision == captured.revision + 1)
     );
     source.ack(target, &dirty.rows).await.unwrap();
-    assert!(source.can_publish(target, dirty.publication).await.unwrap());
-    assert!(source.publish(target, dirty.publication).await.unwrap());
+    assert!(source.begin_swap(target, dirty.publication).await.unwrap());
+    assert!(
+        source
+            .dirty(target, true, 500)
+            .await
+            .unwrap()
+            .rows
+            .is_empty()
+    );
+    source.finish_swap(target).await.unwrap();
+    assert!(source.finish_swap(target).await.is_err(), "only once");
+    let swapped = source.state().await.unwrap();
+    assert_eq!(swapped.active_collection.as_deref(), Some("movies_en"));
+    assert!(swapped.building_collection.is_none());
+    assert_eq!(swapped.phase, "ready");
+    // The swap bumps the generation, so the old capture cannot publish.
+    let target = "movies_en";
+    assert!(!source.publish(target, dirty.publication).await.unwrap());
+    let current = source.dirty(target, false, 500).await.unwrap();
+    assert!(current.rows.is_empty());
+    assert_eq!(
+        current.publication.generation,
+        dirty.publication.generation + 1
+    );
+    assert!(source.publish(target, current.publication).await.unwrap());
     let state = sqlx::query(
         "SELECT ranking_ready,published_source_date FROM movie_search_state WHERE id='movies_en'",
     )

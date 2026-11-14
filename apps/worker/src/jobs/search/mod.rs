@@ -1,77 +1,74 @@
-//! Search index jobs: `search.reindex` (full rebuild + alias swap) and
-//! `search.sync` (fill in missing documents). Both share the concurrency key
-//! `search.index`, so they never run at the same time.
+//! Search index jobs: `search.reindex` (full rebuild + index swap) and
+//! `search.sync` (fill in missing documents; escalates to a full rebuild when
+//! an index is missing or its settings are outdated). Both share the
+//! concurrency key `search.index`, so they never run at the same time.
 
 pub mod backend;
-pub mod collections;
 pub mod full;
+pub mod indexes;
 pub mod mappers;
+pub mod settings;
 pub mod source;
 pub mod strip_mdx;
 pub mod sync;
 
 #[cfg(test)]
+pub(crate) mod fake;
+#[cfg(test)]
 mod tests;
 
 use std::sync::Arc;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::Utc;
 use serde_json::Value;
 
-use self::backend::{SearchBackend, TypesenseClient};
+use self::backend::{MeilisearchClient, SearchBackend, settings_match};
+use self::indexes::INDEXES;
 use self::source::PgSource;
-use crate::config::TypesenseConfig;
+use crate::config::MeilisearchConfig;
 use crate::context::{JobContext, JobIo};
 use crate::handler::{JobHandler, JobOutcome, PermanentError};
 use crate::queue::LogLevel;
 
-/// Documents per source query and Typesense import.
+/// Documents per source query and Meilisearch write.
 pub const BATCH_SIZE: usize = 500;
-/// Info log every N batches (10 000 documents) within a collection.
+/// Info log every N batches (10 000 documents) within an index.
 pub const LOG_EVERY_BATCHES: u64 = 20;
 /// Shared by both search jobs (must match the API's job-type allowlist).
 pub const CONCURRENCY_KEY: &str = "search.index";
-/// Sample size of per-document import errors written to the job log.
-const MAX_LOGGED_FAILURES: usize = 5;
 
-/// Imports one batch; any rejected document is logged and fails the job.
+/// Writes one batch and waits for Meilisearch to index it. A rejected batch
+/// (Meilisearch fails the whole task for one invalid document) is logged and
+/// fails the job.
 pub(crate) async fn import_batch(
     io: &dyn JobIo,
     backend: &dyn SearchBackend,
-    collection: &str,
+    index: &str,
     label: &str,
     docs: &[Value],
 ) -> Result<()> {
-    let failures = backend.import(collection, docs).await?;
-    if failures.is_empty() {
-        return Ok(());
-    }
-    for failure in failures.iter().take(MAX_LOGGED_FAILURES) {
+    if let Err(error) = backend.add_documents(index, docs).await {
         io.log(
             LogLevel::Error,
             &format!(
-                "{label}: document {} rejected: {}",
-                failure.id.as_deref().unwrap_or("?"),
-                failure.error
+                "{label}: batch of {} documents rejected: {error:#}",
+                docs.len()
             ),
         )
         .await;
+        return Err(error)
+            .with_context(|| format!("{label}: {} documents failed to import", docs.len()));
     }
-    bail!(
-        "{label}: {}/{} documents failed to import (first error: {})",
-        failures.len(),
-        docs.len(),
-        failures[0].error
-    )
+    Ok(())
 }
 
-fn typesense(config: &Option<TypesenseConfig>) -> Result<TypesenseClient> {
+pub(crate) fn meilisearch(config: &Option<MeilisearchConfig>) -> Result<MeilisearchClient> {
     match config {
-        Some(config) => TypesenseClient::new(config),
+        Some(config) => MeilisearchClient::new(config),
         None => Err(PermanentError::err(
-            "Typesense is not configured (set TYPESENSE_HOST and TYPESENSE_API_KEY)",
+            "Meilisearch is not configured (set MEILISEARCH_URL and MEILISEARCH_API_KEY)",
         )),
     }
 }
@@ -80,8 +77,41 @@ fn check_payload(payload: &Value) -> Result<()> {
     full::validate_payload(payload).map_err(|e| PermanentError::err(e.to_string()))
 }
 
+/// Why the live indexes cannot be synced incrementally: the first stable
+/// index that is missing or whose settings differ from the versioned file.
+pub async fn rebuild_reason(backend: &dyn SearchBackend) -> Result<Option<String>> {
+    for spec in INDEXES.iter() {
+        match backend.settings(spec.name).await? {
+            None => return Ok(Some(format!("index {} does not exist", spec.name))),
+            Some(actual) if !settings_match(&actual, &spec.settings()) => {
+                return Ok(Some(format!("index {} has outdated settings", spec.name)));
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(None)
+}
+
+fn full_checkpoint(ctx: &JobContext) -> Option<full::FullCheckpoint> {
+    match ctx.checkpoint_as::<full::FullCheckpoint>() {
+        Ok(cp) => cp,
+        Err(error) => {
+            let cause: &(dyn std::error::Error + 'static) = error.as_ref();
+            let stack = crate::telemetry::application_stack(error.backtrace());
+            tracing::warn!(
+                application_event = "job_checkpoint_invalid",
+                job_id = %ctx.job_id(),
+                error = cause,
+                origin_stack = stack.as_deref(),
+                "Checkpoint could not be decoded. Starting a fresh reindex"
+            );
+            None
+        }
+    }
+}
+
 pub struct SearchReindexHandler {
-    pub typesense: Arc<Option<TypesenseConfig>>,
+    pub meilisearch: Arc<Option<MeilisearchConfig>>,
 }
 
 #[async_trait]
@@ -96,35 +126,22 @@ impl JobHandler for SearchReindexHandler {
 
     async fn run(&self, ctx: &JobContext) -> Result<JobOutcome> {
         check_payload(ctx.payload())?;
-        let backend = typesense(&self.typesense)?;
+        let backend = meilisearch(&self.meilisearch)?;
         let source = PgSource {
             pool: ctx.pool().clone(),
         };
-        let checkpoint = match ctx.checkpoint_as::<full::FullCheckpoint>() {
-            Ok(cp) => cp,
-            Err(error) => {
-                {
-                    let cause: &(dyn std::error::Error + 'static) = error.as_ref();
-                    let stack = crate::telemetry::application_stack(error.backtrace());
-                    tracing::warn!(
-                        application_event = "job_checkpoint_invalid",
-                        job_id = %ctx.job_id(),
-                        error = cause,
-                        origin_stack = stack.as_deref(),
-                        "Checkpoint could not be decoded. Starting a fresh reindex"
-                    );
-                }
-                ctx.warn("checkpoint not understood; starting a fresh reindex")
-                    .await;
-                None
-            }
-        };
+        let had_checkpoint = ctx.checkpoint().is_some();
+        let checkpoint = full_checkpoint(ctx);
+        if had_checkpoint && checkpoint.is_none() {
+            ctx.warn("checkpoint not understood; starting a fresh reindex")
+                .await;
+        }
         full::run(ctx, &backend, &source, checkpoint, Utc::now()).await
     }
 }
 
 pub struct SearchSyncHandler {
-    pub typesense: Arc<Option<TypesenseConfig>>,
+    pub meilisearch: Arc<Option<MeilisearchConfig>>,
 }
 
 #[async_trait]
@@ -139,10 +156,22 @@ impl JobHandler for SearchSyncHandler {
 
     async fn run(&self, ctx: &JobContext) -> Result<JobOutcome> {
         check_payload(ctx.payload())?;
-        let backend = typesense(&self.typesense)?;
+        let backend = meilisearch(&self.meilisearch)?;
         let source = PgSource {
             pool: ctx.pool().clone(),
         };
+        // A sync that escalated to a full rebuild resumes that rebuild.
+        if let Ok(Some(cp)) = ctx.checkpoint_as::<full::FullCheckpoint>() {
+            return full::run(ctx, &backend, &source, Some(cp), Utc::now()).await;
+        }
+        if let Some(reason) = rebuild_reason(&backend).await? {
+            ctx.log(
+                LogLevel::Warn,
+                &format!("{reason}; running a full rebuild instead of a sync"),
+            )
+            .await;
+            return full::run(ctx, &backend, &source, None, Utc::now()).await;
+        }
         let checkpoint = ctx.checkpoint_as::<sync::SyncCheckpoint>().unwrap_or(None);
         sync::run(ctx, &backend, &source, checkpoint).await
     }

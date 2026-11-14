@@ -52,7 +52,7 @@ impl JobHandler for CatalogMoviesHandler {
                 "The compiled movie sync CLI is missing; deploy the current worker image",
             ));
         }
-        let secrets = ["DATABASE_URL", "TYPESENSE_API_KEY", "LOG_TYPESENSE_API_KEY"]
+        let secrets = ["DATABASE_URL", "MEILISEARCH_API_KEY"]
             .into_iter()
             .filter_map(|key| std::env::var(key).ok())
             .filter(|value| !value.is_empty())

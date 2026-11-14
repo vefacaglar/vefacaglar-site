@@ -1,0 +1,14 @@
+{
+  "searchableAttributes": ["name"],
+  "sortableAttributes": ["publicCreditCount", "nameSort"],
+  "rankingRules": [
+    "words",
+    "typo",
+    "proximity",
+    "attribute",
+    "exactness",
+    "publicCreditCount:desc",
+    "nameSort:asc"
+  ],
+  "pagination": { "maxTotalHits": 1000000 }
+}

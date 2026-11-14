@@ -1,17 +1,19 @@
-//! `search.reindex`: full rebuild with a zero-downtime alias swap.
+//! `search.reindex`: full rebuild with a zero-downtime index swap.
 //!
-//! 1. Fresh run: delete stale `{alias}__*` collections no alias points to (and
-//!    legacy `*_tr` collections), pick one run suffix and create a physical
-//!    `{alias}__{suffix}` collection for every alias.
-//! 2. Index every source into its physical collection (keyset batches,
-//!    checkpoint `{suffix, collectionIndex, lastId}` after every batch, so a
-//!    resumed run continues into the SAME physical collections).
-//! 3. Only after ALL collections are loaded, point every alias at its new
-//!    collection (a legacy real collection with the alias name is deleted
-//!    right before its alias is created).
-//! 4. Delete the previously aliased collections.
+//! 1. Fresh run: delete stale `{uid}__build_*` indexes, pick one run suffix
+//!    and create a `{uid}__build_{suffix}` index (with its versioned settings)
+//!    for every stable uid.
+//! 2. Index every source into its build index (keyset batches, each write
+//!    waited for, checkpoint `{suffix, collectionIndex, lastId}` after every
+//!    batch, so a resumed run continues into the SAME build indexes).
+//! 3. Only after ALL indexes are loaded, swap every build index with its
+//!    stable uid in one atomic Meilisearch task (a missing stable uid is
+//!    created by renaming its build index).
+//! 4. Delete the build indexes, which now hold the previous contents.
 //!
-//! Cancel deletes the half-built collections; failures keep them for retry.
+//! A run resumed after the swap (crash between swap and cleanup) detects the
+//! finished swap from Meilisearch's task history and only cleans up.
+//! Cancel deletes the half-built indexes; failures keep them for retry.
 
 use std::collections::HashSet;
 
@@ -21,10 +23,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use super::backend::SearchBackend;
-use super::collections::{
-    COLLECTIONS, is_physical_of, legacy_collections, physical_name, run_suffix, schema,
-};
+use super::backend::{SearchBackend, settings_match};
+use super::indexes::{INDEXES, build_name, is_build_of, run_suffix};
 use super::source::SourceData;
 use super::{BATCH_SIZE, LOG_EVERY_BATCHES, import_batch};
 use crate::context::{JobIo, Progress};
@@ -34,11 +34,11 @@ use crate::queue::LogLevel;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FullCheckpoint {
-    /// Suffix of this run's physical collections (`yyyymmddhhmmss`).
+    /// Suffix of this run's build indexes (`yyyymmddhhmmss`).
     pub suffix: String,
-    /// Index into [`COLLECTIONS`] being indexed; `COLLECTIONS.len()` = all loaded.
+    /// Index into [`INDEXES`] being loaded; `INDEXES.len()` = all loaded.
     pub collection_index: usize,
-    /// Last indexed primary key within the current collection.
+    /// Last indexed primary key within the current index.
     pub last_id: Option<Uuid>,
 }
 
@@ -58,13 +58,13 @@ pub async fn run(
     }
     let mut progress = Progress {
         phase: Some("preparing".into()),
-        message: Some("preparing collections".into()),
+        message: Some("preparing indexes".into()),
         ..Default::default()
     };
     io.progress(&progress).await?;
 
-    let checkpoint = checkpoint
-        .filter(|c| is_valid_suffix(&c.suffix) && c.collection_index <= COLLECTIONS.len());
+    let checkpoint =
+        checkpoint.filter(|c| is_valid_suffix(&c.suffix) && c.collection_index <= INDEXES.len());
     let fresh = checkpoint.is_none();
     let mut cp = checkpoint.unwrap_or_else(|| FullCheckpoint {
         suffix: run_suffix(now),
@@ -72,22 +72,31 @@ pub async fn run(
         last_id: None,
     });
 
+    // All indexes were loaded before the interruption: the swap may already
+    // have happened (one atomic task covers every index).
+    if !fresh
+        && cp.collection_index == INDEXES.len()
+        && backend
+            .was_swapped(&build_name(INDEXES[0].name, &cp.suffix))
+            .await?
+    {
+        io.log(
+            LogLevel::Info,
+            &format!(
+                "full reindex (run suffix {}) was already swapped in; cleaning up",
+                cp.suffix
+            ),
+        )
+        .await;
+        progress.message = Some("index swap finished".into());
+        return finish(io, backend, &mut progress).await;
+    }
+
     if fresh {
         progress.phase = Some("cleanup".into());
-        progress.message = Some("removing stale collections".into());
+        progress.message = Some("removing stale build indexes".into());
         io.progress(&progress).await?;
-        delete_stale(io, backend, None).await?;
-        for legacy in legacy_collections() {
-            if backend.collection_exists(&legacy).await?
-                && backend.delete_collection(&legacy).await?
-            {
-                io.log(
-                    LogLevel::Warn,
-                    &format!("deleted legacy collection {legacy}"),
-                )
-                .await;
-            }
-        }
+        delete_builds(io, backend, None).await?;
         io.log(
             LogLevel::Info,
             &format!("full reindex started (run suffix {})", cp.suffix),
@@ -99,9 +108,9 @@ pub async fn run(
             &format!(
                 "resuming full reindex (run suffix {}) at {} after {}",
                 cp.suffix,
-                COLLECTIONS
+                INDEXES
                     .get(cp.collection_index)
-                    .map_or("alias swap", |c| c.name),
+                    .map_or("index swap", |c| c.name),
                 cp.last_id
                     .map_or_else(|| "start".to_string(), |id| id.to_string())
             ),
@@ -109,22 +118,30 @@ pub async fn run(
         .await;
     }
 
-    // Every physical collection of this run must exist; a loaded one that
-    // vanished is rebuilt from scratch.
-    let existing: HashSet<String> = backend.list_collections().await?.into_iter().collect();
-    for (index, spec) in COLLECTIONS.iter().enumerate() {
-        let physical = physical_name(spec.name, &cp.suffix);
-        if existing.contains(&physical) {
-            continue;
+    // Every build index of this run must exist with the current settings; a
+    // loaded one that vanished (or whose settings changed) is rebuilt.
+    let existing: HashSet<String> = backend.list_indexes().await?.into_iter().collect();
+    for (index, spec) in INDEXES.iter().enumerate() {
+        let build = build_name(spec.name, &cp.suffix);
+        let settings = spec.settings();
+        if existing.contains(&build) {
+            let current = backend
+                .settings(&build)
+                .await?
+                .is_some_and(|actual| settings_match(&actual, &settings));
+            if current {
+                continue;
+            }
+            backend.delete_index(&build).await?;
         }
-        backend.create_collection(&schema(spec, &physical)).await?;
+        backend.create_index(&build, &settings).await?;
         let lost_data =
             index < cp.collection_index || (index == cp.collection_index && cp.last_id.is_some());
         if !fresh && lost_data {
             io.log(
                 LogLevel::Warn,
                 &format!(
-                    "collection {physical} was missing; re-indexing from {}",
+                    "build index {build} was missing or outdated; re-indexing from {}",
                     spec.name
                 ),
             )
@@ -138,15 +155,15 @@ pub async fn run(
     progress.phase = Some("counting".into());
     progress.message = Some("counting source rows".into());
     io.progress(&progress).await?;
-    let mut counts = Vec::with_capacity(COLLECTIONS.len());
-    for spec in COLLECTIONS.iter() {
+    let mut counts = Vec::with_capacity(INDEXES.len());
+    for spec in INDEXES.iter() {
         counts.push(source.count(spec.source, None).await?);
     }
     let total: u64 = counts.iter().sum();
-    let mut processed: u64 = counts[..cp.collection_index.min(COLLECTIONS.len())]
+    let mut processed: u64 = counts[..cp.collection_index.min(INDEXES.len())]
         .iter()
         .sum();
-    if let (Some(last_id), Some(spec)) = (cp.last_id, COLLECTIONS.get(cp.collection_index)) {
+    if let (Some(last_id), Some(spec)) = (cp.last_id, INDEXES.get(cp.collection_index)) {
         processed += source.count(spec.source, Some(last_id)).await?;
     }
     progress.total = Some(total.max(processed));
@@ -156,7 +173,7 @@ pub async fn run(
         LogLevel::Info,
         &format!(
             "{total} documents to index: {}",
-            COLLECTIONS
+            INDEXES
                 .iter()
                 .zip(&counts)
                 .map(|(c, n)| format!("{} {n}", c.name))
@@ -167,21 +184,21 @@ pub async fn run(
     .await;
 
     // Index.
-    while cp.collection_index < COLLECTIONS.len() {
+    while cp.collection_index < INDEXES.len() {
         if io.should_stop() {
             return interrupted(io, backend, &cp, &progress).await;
         }
-        let spec = &COLLECTIONS[cp.collection_index];
-        let physical = physical_name(spec.name, &cp.suffix);
+        let spec = &INDEXES[cp.collection_index];
+        let build = build_name(spec.name, &cp.suffix);
         let count = counts[cp.collection_index];
-        let mut in_collection = match cp.last_id {
+        let mut in_index = match cp.last_id {
             Some(last_id) => source.count(spec.source, Some(last_id)).await?,
             None => 0,
         };
         if cp.last_id.is_none() {
             io.log(
                 LogLevel::Info,
-                &format!("{}: indexing {count} documents into {physical}", spec.name),
+                &format!("{}: indexing {count} documents into {build}", spec.name),
             )
             .await;
         }
@@ -194,21 +211,21 @@ pub async fn run(
             if page.docs.is_empty() {
                 break;
             }
-            import_batch(io, backend, &physical, spec.name, &page.docs).await?;
+            import_batch(io, backend, &build, spec.name, &page.docs).await?;
             let n = page.docs.len() as u64;
             processed += n;
-            in_collection += n;
+            in_index += n;
             batches += 1;
             cp.last_id = page.last_id;
             progress.phase = Some(phase.clone());
             progress.processed = Some(processed);
             progress.total = Some(total.max(processed));
-            progress.message = Some(format!("{}: {in_collection}/{count}", spec.name));
+            progress.message = Some(format!("{}: {in_index}/{count}", spec.name));
             io.checkpoint(&progress, serde_json::to_value(&cp)?).await?;
             if batches.is_multiple_of(LOG_EVERY_BATCHES) {
                 io.log(
                     LogLevel::Info,
-                    &format!("{}: {in_collection}/{count} indexed", spec.name),
+                    &format!("{}: {in_index}/{count} indexed", spec.name),
                 )
                 .await;
             }
@@ -221,7 +238,7 @@ pub async fn run(
         }
         io.log(
             LogLevel::Info,
-            &format!("{}: {in_collection} documents indexed", spec.name),
+            &format!("{}: {in_index} documents indexed", spec.name),
         )
         .await;
         cp.collection_index += 1;
@@ -229,87 +246,74 @@ pub async fn run(
         io.checkpoint(&progress, serde_json::to_value(&cp)?).await?;
     }
 
-    // Swap every alias only now that every collection is fully loaded. No
-    // stop checks from here on: the remaining steps are quick and idempotent.
-    progress.phase = Some("swapping aliases".into());
-    progress.message = Some("pointing aliases at the new collections".into());
+    // Swap every index only now that every build is fully loaded, in one
+    // atomic task. No stop checks from here on: the remaining steps are quick
+    // and a resumed run detects a finished swap.
+    progress.phase = Some("swapping indexes".into());
+    progress.message = Some("swapping the new indexes in".into());
     io.progress(&progress).await?;
-    let mut previous = Vec::new();
-    for spec in COLLECTIONS.iter() {
-        let physical = physical_name(spec.name, &cp.suffix);
-        let old = backend.get_alias(spec.name).await?;
-        if old.is_none() && backend.collection_exists(spec.name).await? {
-            io.log(
-                LogLevel::Warn,
-                &format!(
-                    "deleting legacy real collection {} to replace it with an alias (brief search gap)",
-                    spec.name
-                ),
-            )
-            .await;
-            backend.delete_collection(spec.name).await?;
-        }
-        backend.upsert_alias(spec.name, &physical).await?;
-        io.log(
-            LogLevel::Info,
-            &format!(
-                "alias {} -> {physical}{}",
-                spec.name,
-                old.as_deref()
-                    .map_or(String::new(), |o| format!(" (was {o})"))
-            ),
-        )
-        .await;
-        if let Some(old) = old.filter(|o| *o != physical) {
-            previous.push(old);
-        }
-    }
-
-    progress.phase = Some("cleanup".into());
-    progress.message = Some("deleting previous collections".into());
-    io.progress(&progress).await?;
-    for old in previous {
-        if backend.delete_collection(&old).await? {
-            io.log(
-                LogLevel::Info,
-                &format!("deleted previous collection {old}"),
-            )
-            .await;
-        }
-    }
-    delete_stale(io, backend, None).await?;
+    let builds: Vec<String> = INDEXES
+        .iter()
+        .map(|spec| build_name(spec.name, &cp.suffix))
+        .collect();
+    let pairs: Vec<(&str, &str)> = INDEXES
+        .iter()
+        .zip(&builds)
+        .map(|(spec, build)| (spec.name, build.as_str()))
+        .collect();
+    backend.swap_indexes(&pairs).await?;
+    io.log(
+        LogLevel::Info,
+        &format!(
+            "swapped in {}",
+            pairs
+                .iter()
+                .map(|(stable, build)| format!("{stable} <- {build}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    )
+    .await;
 
     progress.message = Some(format!("{processed} documents indexed"));
-    io.progress(&progress).await?;
+    finish(io, backend, &mut progress).await
+}
+
+/// Deletes the build indexes, which hold the previous contents after a swap.
+/// `progress.message` is restored as the final message.
+async fn finish(
+    io: &dyn JobIo,
+    backend: &dyn SearchBackend,
+    progress: &mut Progress,
+) -> Result<JobOutcome> {
+    let done = progress.message.take();
+    progress.phase = Some("cleanup".into());
+    progress.message = Some("deleting previous indexes".into());
+    io.progress(progress).await?;
+    delete_builds(io, backend, None).await?;
+    progress.message = done;
+    io.progress(progress).await?;
     Ok(JobOutcome::Completed)
 }
 
-/// Deletes `{alias}__*` collections that no alias points to. With `only_suffix`,
-/// restricts deletion to that run's collections.
-async fn delete_stale(
+/// Deletes `{uid}__build_*` indexes. The API only queries stable uids, so
+/// no build index is ever live. With `only_suffix`, restricts deletion to
+/// that run's build indexes.
+async fn delete_builds(
     io: &dyn JobIo,
     backend: &dyn SearchBackend,
     only_suffix: Option<&str>,
 ) -> Result<()> {
-    let mut targets = HashSet::new();
-    for spec in COLLECTIONS.iter() {
-        if let Some(target) = backend.get_alias(spec.name).await? {
-            targets.insert(target);
-        }
-    }
-    let collections = backend.list_collections().await?;
-    for spec in COLLECTIONS.iter() {
-        for name in collections.iter().filter(|c| is_physical_of(spec.name, c)) {
-            if targets.contains(name) {
-                continue;
-            }
+    let indexes = backend.list_indexes().await?;
+    for spec in INDEXES.iter() {
+        for name in indexes.iter().filter(|c| is_build_of(spec.name, c)) {
             if let Some(suffix) = only_suffix
-                && *name != physical_name(spec.name, suffix)
+                && *name != build_name(spec.name, suffix)
             {
                 continue;
             }
-            if backend.delete_collection(name).await? {
-                io.log(LogLevel::Info, &format!("deleted unused collection {name}"))
+            if backend.delete_index(name).await? {
+                io.log(LogLevel::Info, &format!("deleted build index {name}"))
                     .await;
             }
         }
@@ -318,8 +322,8 @@ async fn delete_stale(
 }
 
 /// Stops at a batch boundary. A cancel also deletes this run's half-built
-/// collections and clears the checkpoint (a retry starts over); a shutdown
-/// keeps both so the next worker resumes.
+/// indexes and clears the checkpoint (a retry starts over); a shutdown keeps
+/// both so the next worker resumes.
 async fn interrupted(
     io: &dyn JobIo,
     backend: &dyn SearchBackend,
@@ -329,8 +333,8 @@ async fn interrupted(
     if io.is_cancel_requested() {
         let mut progress = progress.clone();
         progress.phase = Some("cleanup".into());
-        progress.message = Some("cancelled; deleting half-built collections".into());
-        delete_stale(io, backend, Some(&cp.suffix)).await?;
+        progress.message = Some("cancelled; deleting half-built indexes".into());
+        delete_builds(io, backend, Some(&cp.suffix)).await?;
         io.checkpoint(&progress, Value::Null).await?;
     }
     Ok(JobOutcome::Interrupted)

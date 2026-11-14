@@ -1,45 +1,31 @@
 use std::path::PathBuf;
 
-/// Typesense connection settings, mirroring the API's `readTypesenseConfig`.
+/// Meilisearch connection settings (`MEILISEARCH_URL`, `MEILISEARCH_API_KEY`).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypesenseConfig {
-    pub host: String,
-    pub port: u16,
-    pub protocol: String,
+pub struct MeilisearchConfig {
+    /// Base URL without a trailing slash, e.g. `http://meilisearch:7700`.
+    pub url: String,
+    /// Sent as a Bearer token; may be empty for a local server without a key.
     pub api_key: String,
 }
 
-impl TypesenseConfig {
-    /// Builds the config from raw env values. Returns `None` when the host or
-    /// API key is missing (search is then disabled, as in the API).
-    pub fn from_values(
-        host: Option<String>,
-        port: Option<String>,
-        protocol: Option<String>,
-        api_key: Option<String>,
-    ) -> Option<Self> {
-        let host = host.filter(|v| !v.trim().is_empty())?;
-        let api_key = api_key.filter(|v| !v.trim().is_empty())?;
-        let protocol = if protocol.as_deref() == Some("http") {
-            "http"
-        } else {
-            "https"
-        };
-        let default_port = if protocol == "https" { 443 } else { 80 };
-        let port = match port {
-            Some(raw) if !raw.trim().is_empty() => raw.trim().parse().unwrap_or(443),
-            _ => default_port,
-        };
+impl MeilisearchConfig {
+    /// Builds the config from raw env values. Returns `None` when the URL is
+    /// missing or is not an absolute http(s) URL (search is then disabled).
+    pub fn from_values(url: Option<String>, api_key: Option<String>) -> Option<Self> {
+        let url = url?.trim().trim_end_matches('/').to_string();
+        let parsed = reqwest::Url::parse(&url).ok()?;
+        if !matches!(parsed.scheme(), "http" | "https")
+            || parsed.host_str().is_none()
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+        {
+            return None;
+        }
         Some(Self {
-            host: host.trim().to_string(),
-            port,
-            protocol: protocol.to_string(),
-            api_key,
+            url,
+            api_key: api_key.unwrap_or_default().trim().to_string(),
         })
-    }
-
-    pub fn base_url(&self) -> String {
-        format!("{}://{}:{}", self.protocol, self.host, self.port)
     }
 }
 
@@ -52,7 +38,7 @@ pub struct Config {
     pub health_file: PathBuf,
     pub control_file: Option<PathBuf>,
     pub control_status_file: PathBuf,
-    pub typesense: Option<TypesenseConfig>,
+    pub meilisearch: Option<MeilisearchConfig>,
 }
 
 fn env_opt(name: &str) -> Option<String> {
@@ -94,11 +80,9 @@ impl Config {
             health_file: health_file_from_env(),
             control_file: env_opt("WORKER_CONTROL_FILE").map(PathBuf::from),
             control_status_file: control_status_file_from_env(),
-            typesense: TypesenseConfig::from_values(
-                env_opt("TYPESENSE_HOST"),
-                env_opt("TYPESENSE_PORT"),
-                env_opt("TYPESENSE_PROTOCOL"),
-                env_opt("TYPESENSE_API_KEY"),
+            meilisearch: MeilisearchConfig::from_values(
+                env_opt("MEILISEARCH_URL"),
+                env_opt("MEILISEARCH_API_KEY"),
             ),
         })
     }
@@ -121,18 +105,21 @@ mod tests {
     }
 
     #[test]
-    fn typesense_disabled_without_host_or_key() {
-        assert_eq!(TypesenseConfig::from_values(None, None, None, s("k")), None);
-        assert_eq!(TypesenseConfig::from_values(s("h"), None, None, None), None);
+    fn meilisearch_disabled_without_a_valid_url() {
+        assert_eq!(MeilisearchConfig::from_values(None, s("k")), None);
+        assert_eq!(
+            MeilisearchConfig::from_values(s("meilisearch:7700"), s("k")),
+            None
+        );
+        assert_eq!(MeilisearchConfig::from_values(s("ftp://m"), s("k")), None);
     }
 
     #[test]
-    fn typesense_defaults_follow_protocol() {
-        let https = TypesenseConfig::from_values(s("ts"), None, None, s("k")).unwrap();
-        assert_eq!(https.base_url(), "https://ts:443");
-        let http = TypesenseConfig::from_values(s("ts"), None, s("http"), s("k")).unwrap();
-        assert_eq!(http.base_url(), "http://ts:80");
-        let explicit = TypesenseConfig::from_values(s("ts"), s("8108"), s("http"), s("k")).unwrap();
-        assert_eq!(explicit.base_url(), "http://ts:8108");
+    fn meilisearch_url_is_normalized_and_key_is_optional() {
+        let config = MeilisearchConfig::from_values(s(" http://meilisearch:7700/ "), None).unwrap();
+        assert_eq!(config.url, "http://meilisearch:7700");
+        assert_eq!(config.api_key, "");
+        let keyed = MeilisearchConfig::from_values(s("https://search.example"), s("k")).unwrap();
+        assert_eq!(keyed.api_key, "k");
     }
 }

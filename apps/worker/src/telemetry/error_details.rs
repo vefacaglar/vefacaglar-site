@@ -3,7 +3,19 @@ use std::error::Error;
 use std::io;
 
 use crate::handler::PermanentError;
-use crate::jobs::search::backend::TypesenseReplyError;
+use crate::jobs::search::backend::{MeilisearchReplyError, MeilisearchTaskError};
+
+/// Meilisearch error codes are `snake_case`; anything else is not a code.
+fn safe_code(code: &str) -> &str {
+    if !code.is_empty()
+        && code.len() <= 64
+        && code.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+    {
+        code
+    } else {
+        "failed"
+    }
+}
 
 pub fn application_stack(backtrace: &Backtrace) -> Option<String> {
     if backtrace.status() != BacktraceStatus::Captured {
@@ -113,10 +125,16 @@ pub(super) fn describe_error(mut error: &(dyn Error + 'static)) -> (String, &'st
         if let Some(error) = error.downcast_ref::<sqlx::Error>() {
             return database_error(error);
         }
-        if let Some(error) = error.downcast_ref::<TypesenseReplyError>() {
+        if let Some(error) = error.downcast_ref::<MeilisearchReplyError>() {
             return (
-                format!("typesense_http_{}", error.status.as_u16()),
-                "Typesense rejected the request",
+                format!("meilisearch_http_{}", error.status.as_u16()),
+                "Meilisearch rejected the request",
+            );
+        }
+        if let Some(error) = error.downcast_ref::<MeilisearchTaskError>() {
+            return (
+                format!("meilisearch_task_{}", safe_code(&error.code)),
+                "a Meilisearch task failed",
             );
         }
         if let Some(error) = error.downcast_ref::<reqwest::Error>() {

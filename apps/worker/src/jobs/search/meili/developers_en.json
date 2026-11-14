@@ -1,0 +1,6 @@
+{
+  "searchableAttributes": ["name", "slug"],
+  "filterableAttributes": ["id", "slug"],
+  "sortableAttributes": ["name", "createdAt"],
+  "pagination": { "maxTotalHits": 200000 }
+}
