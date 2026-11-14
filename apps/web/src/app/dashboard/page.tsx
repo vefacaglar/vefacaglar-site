@@ -30,11 +30,6 @@ export default async function AdminDashboard(props: PageProps) {
   const state = parseContentQuery(searchParams);
   const headers = { Authorization: `Bearer ${token}` };
   let data: ContentList & { page: number } = { items: [], total: 0, totalPages: 0, page: state.page };
-  let movieCount: number | null = null;
-  try {
-    const response = await httpClient.get("/api/movies/dashboard/stats", { headers });
-    if (response.ok) movieCount = ((await response.json()) as { movieCount: number }).movieCount;
-  } catch (requestError) { unstable_rethrow(requestError); }
   let error = false;
   try {
     data = await loadContentList(state, async (page, limit) => {
@@ -66,8 +61,6 @@ export default async function AdminDashboard(props: PageProps) {
       </div>
 
       <DashboardTabs active="content" />
-
-      <p className={styles.movieCount}>Movies: {movieCount === null ? "Unavailable" : movieCount.toLocaleString("en-US")}</p>
 
       <DashboardListsContainer
         state={{ ...state, page: data.page }}
