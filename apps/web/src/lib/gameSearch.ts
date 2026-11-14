@@ -1,4 +1,5 @@
 // Client-safe: must not import modules that pull in httpClient (e.g. ./gameCompanies).
+import { suggestionGroupOrder } from "./suggestionGroupOrder";
 
 /** Mirrors the API's search box limits. */
 export const GAME_SEARCH_MAX_LENGTH = 100;
@@ -22,21 +23,23 @@ export interface GameSuggestionItem {
   developer: string | null;
 }
 
+export type GameSuggestionGroup = "developers" | "publishers" | "games";
+
 export interface GameSuggestions extends GameSearchCompanies {
   games: GameSuggestionItem[];
+  /** Every group once, best-matching group first (the API's order, or the default for older responses). */
+  order: GameSuggestionGroup[];
 }
-
-export type GameSuggestionGroup = "developers" | "publishers" | "games";
 
 /** One selectable dropdown row; `href` is unlocalized. */
 export type GameSuggestionOption =
   | { group: "developers" | "publishers"; key: string; href: string; company: GameSearchCompany }
   | { group: "games"; key: string; href: string; game: GameSuggestionItem };
 
-export const EMPTY_GAME_SUGGESTIONS: GameSuggestions = { developers: [], publishers: [], games: [] };
-
-/** Dropdown order: Developers, Publishers, Games. */
+/** Default dropdown order (when the API sends none): Developers, Publishers, Games. */
 export const GAME_SUGGESTION_GROUPS: GameSuggestionGroup[] = ["developers", "publishers", "games"];
+
+export const EMPTY_GAME_SUGGESTIONS: GameSuggestions = { developers: [], publishers: [], games: [], order: GAME_SUGGESTION_GROUPS };
 
 /** Trims and collapses whitespace; null when the query has no letter or digit to search for. */
 export function gameSearchTerm(value: string | null | undefined): string | null {
@@ -53,9 +56,9 @@ export function gameCompanyGroupHref(group: "developers" | "publishers", slug: s
   return `/explore/games/${group}/${encodeURIComponent(slug)}`;
 }
 
-/** Flattens grouped suggestions into the keyboard order of the dropdown. */
+/** Flattens grouped suggestions into the dropdown's render and keyboard order (the response's group order). */
 export function gameSuggestionOptions(suggestions: GameSuggestions): GameSuggestionOption[] {
-  return GAME_SUGGESTION_GROUPS.flatMap((group): GameSuggestionOption[] =>
+  return suggestionGroupOrder(suggestions.order, GAME_SUGGESTION_GROUPS).flatMap((group): GameSuggestionOption[] =>
     group === "games"
       ? suggestions.games.map((game) => ({ group, key: `games:${game.slug}`, href: gameHref(game.slug), game }))
       : suggestions[group].map((company) => ({
@@ -69,11 +72,12 @@ export function gameSuggestionOptions(suggestions: GameSuggestions): GameSuggest
 
 /** Keeps only well-formed groups, so a malformed response degrades to an empty dropdown. */
 export function parseGameSuggestions(data: unknown): GameSuggestions {
-  const value = (data ?? {}) as Partial<Record<GameSuggestionGroup, unknown>>;
+  const value = (data ?? {}) as Partial<Record<keyof GameSuggestions, unknown>>;
   const list = <T,>(items: unknown): T[] => (Array.isArray(items) ? (items as T[]) : []);
   return {
     developers: list<GameSearchCompany>(value.developers),
     publishers: list<GameSearchCompany>(value.publishers),
     games: list<GameSuggestionItem>(value.games),
+    order: suggestionGroupOrder(value.order, GAME_SUGGESTION_GROUPS),
   };
 }

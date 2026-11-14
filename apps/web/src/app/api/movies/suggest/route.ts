@@ -1,10 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getMovieSuggestions, type MovieSuggestions } from "../../../../lib/movies";
-import { movieSuggestTerm } from "../../../../lib/movieSearch";
+import { getMovieSuggestions } from "../../../../lib/movies";
+import { EMPTY_MOVIE_SUGGESTIONS as EMPTY, movieSuggestTerm } from "../../../../lib/movieSearch";
 
 export const dynamic = "force-dynamic";
-
-const EMPTY: MovieSuggestions = { movies: [], people: [] };
 
 /** Browser-facing typeahead proxy; the API base URL stays server-only. */
 export async function GET(request: NextRequest) {

@@ -9,7 +9,6 @@ import {
   EMPTY_GAME_SUGGESTIONS,
   GAME_SEARCH_MAX_LENGTH,
   GAME_SUGGEST_MIN_LENGTH,
-  GAME_SUGGESTION_GROUPS,
   gameSearchTerm,
   gameSuggestionOptions,
   parseGameSuggestions,
@@ -266,7 +265,8 @@ export default function GameSearchAutocomplete({
         // Keep focus in the input while a row is pressed.
         onMouseDown={(event) => event.preventDefault()}
       >
-        {GAME_SUGGESTION_GROUPS.map((group) => {
+        {/* Groups follow the response's order (best match first), the same order `options` uses for the keyboard. */}
+        {current.order.map((group) => {
           const groupOptions = options.filter((option) => option.group === group);
           if (!groupOptions.length) return null;
           const labelId = `${baseId}-${group}-label`;

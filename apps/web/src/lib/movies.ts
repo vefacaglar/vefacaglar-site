@@ -119,9 +119,12 @@ export interface MoviePersonSummary {
   roles: MoviePersonRole[];
   knownFor: { slug: string; title: string; releaseYear: number | null } | null;
 }
+export type MovieSuggestionGroup = "movies" | "people";
 export interface MovieSuggestions {
   movies: MovieSuggestion[];
   people: MoviePersonSummary[];
+  /** Best-matching group first; older API responses omit it (see `parseMovieSuggestions`). */
+  order?: MovieSuggestionGroup[];
 }
 
 export function getMovieSuggestions(query: string, init?: { signal?: AbortSignal }) {

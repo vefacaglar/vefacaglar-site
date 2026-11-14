@@ -8,14 +8,13 @@ import { localizeHref } from "../../lib/localizeHref";
 import { useDebounced } from "../../hooks/useDebounced";
 import type { MovieSuggestions } from "../../lib/movies";
 import {
-  MOVIE_SEARCH_MAX_LENGTH, MOVIE_SUGGEST_ENDPOINT, movieSearchOptions, movieSuggestTerm, nextMovieOptionIndex,
-  type MovieSearchOption,
+  EMPTY_MOVIE_SUGGESTIONS as EMPTY, MOVIE_SEARCH_MAX_LENGTH, MOVIE_SUGGEST_ENDPOINT, movieSearchOptions, movieSuggestTerm,
+  nextMovieOptionIndex, parseMovieSuggestions, type MovieSearchOption,
 } from "../../lib/movieSearch";
 import searchStyles from "../library/CatalogSearch.module.css";
 import styles from "./movieSearch.module.css";
 
 const BASE_PATH = "/explore/movies";
-const EMPTY: MovieSuggestions = { movies: [], people: [] };
 
 /** Movie catalog search with a text-only title/people combobox. Enter without a highlighted option opens the results page. */
 export default function MovieSearch({ initialQuery = "", placeholder }: { initialQuery?: string; placeholder: string }) {
@@ -29,7 +28,7 @@ export default function MovieSearch({ initialQuery = "", placeholder }: { initia
   const [active, setActive] = useState(-1);
   // Suggestions are tagged with the term they answer, so a slower or older
   // response can never be shown (or selected) for different input.
-  const [result, setResult] = useState<{ term: string; data: MovieSuggestions } | null>(null);
+  const [result, setResult] = useState<{ term: string; data: Required<MovieSuggestions> } | null>(null);
   const lastSubmitted = useRef<string | null>(null);
   const debounced = useDebounced(value, 200);
   // Nothing is fetched for the server-rendered query until the user focuses or edits.
@@ -46,13 +45,13 @@ export default function MovieSearch({ initialQuery = "", placeholder }: { initia
   useEffect(() => {
     if (!term) return;
     const controller = new AbortController();
-    const settle = (data: MovieSuggestions) => {
+    const settle = (data: Required<MovieSuggestions>) => {
       setResult({ term, data });
       setActive(-1);
     };
     fetch(`${MOVIE_SUGGEST_ENDPOINT}?${new URLSearchParams({ q: term })}`, { signal: controller.signal })
-      .then((response) => (response.ok ? (response.json() as Promise<MovieSuggestions>) : EMPTY))
-      .then((data) => settle({ movies: data.movies ?? [], people: data.people ?? [] }))
+      .then((response) => (response.ok ? response.json() : EMPTY))
+      .then((data) => settle(parseMovieSuggestions(data)))
       .catch(() => {
         // An aborted request is superseded by a newer term; a failed one shows nothing.
         if (!controller.signal.aborted) settle(EMPTY);
@@ -100,10 +99,12 @@ export default function MovieSearch({ initialQuery = "", placeholder }: { initia
     }
   };
 
-  const groups = [
-    { key: "movies", label: dict.movies_search_titles, start: 0, items: options.filter((option) => option.kind === "movie") },
-    { key: "people", label: dict.movies_search_people, start: suggestions.movies.length, items: options.filter((option) => option.kind === "person") },
-  ].filter((group) => group.items.length > 0);
+  // Rendered in the response's group order (best match first), the same order `options` uses for the keyboard.
+  const groups = suggestions.order.map((key) => {
+    const kind = key === "movies" ? "movie" : "person";
+    return { key, label: key === "movies" ? dict.movies_search_titles : dict.movies_search_people,
+      start: options.findIndex((option) => option.kind === kind), items: options.filter((option) => option.kind === kind) };
+  }).filter((group) => group.items.length > 0);
 
   return (
     <form
