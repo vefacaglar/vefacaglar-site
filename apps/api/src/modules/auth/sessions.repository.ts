@@ -38,4 +38,11 @@ export class DrizzleSessionsRepository implements ISessionsRepository {
       .set({ revokedAt: new Date() })
       .where(eq(sessions.id, sessionId));
   }
+
+  async extend(sessionId: string, expiresAt: Date): Promise<void> {
+    await this.dbProvider.client
+      .update(sessions)
+      .set({ expiresAt })
+      .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
+  }
 }

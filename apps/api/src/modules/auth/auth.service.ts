@@ -8,6 +8,15 @@ import { USERS_REPOSITORY, SESSIONS_REPOSITORY } from "./auth.tokens";
 import type { IUsersRepository } from "./users.repository.interface";
 import type { ISessionsRepository } from "./sessions.repository.interface";
 import { UnauthorizedError } from "../../shared/http-errors";
+import { reportRuntimeFailure } from "../../shared/application-logs/runtime-failures";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** A session expires after this long without use. */
+export const SESSION_IDLE_LIFETIME_MS = 7 * DAY_MS;
+/** A session never outlives this, however often it is used. Web session cookies last this long. */
+export const SESSION_ABSOLUTE_LIFETIME_MS = 30 * DAY_MS;
+/** Expiry is pushed forward at most once per this interval, so most requests do not write. */
+const SESSION_RENEW_INTERVAL_MS = DAY_MS;
 
 export interface LoginResult {
   token: string;
@@ -45,7 +54,7 @@ export class AuthService {
       throw new UnauthorizedError("Unauthorized", "The session belongs to a missing or disabled account");
     }
 
-    return { user, session };
+    return { user, session: await this.renewIfDue(session) };
   }
 
   async login(email: string, password: string): Promise<LoginResult> {
@@ -65,7 +74,7 @@ export class AuthService {
   async createSession(user: User): Promise<LoginResult> {
     const token = randomBytes(32).toString("hex");
     const tokenHash = hashToken(token);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + SESSION_IDLE_LIFETIME_MS);
 
     await this.sessionsRepo.create({
       userId: user.id,
@@ -84,5 +93,24 @@ export class AuthService {
         role: user.role,
       },
     };
+  }
+
+  /**
+   * Sliding expiry: a session in use keeps living for another idle period, up to
+   * its absolute lifetime. A failed renewal never fails the request; the session
+   * is still valid until its current expiry.
+   */
+  private async renewIfDue(session: Session): Promise<Session> {
+    const now = Date.now();
+    const expiresAt = Math.min(now + SESSION_IDLE_LIFETIME_MS, session.createdAt.getTime() + SESSION_ABSOLUTE_LIFETIME_MS);
+    if (expiresAt - session.expiresAt.getTime() < SESSION_RENEW_INTERVAL_MS) return session;
+
+    try {
+      await this.sessionsRepo.extend(session.id, new Date(expiresAt));
+      return { ...session, expiresAt: new Date(expiresAt) };
+    } catch (error) {
+      reportRuntimeFailure("session_renewal_failed", "Session expiry could not be extended", error, "warning");
+      return session;
+    }
   }
 }

@@ -13,6 +13,7 @@ describe("LogoutHandler", () => {
       create: vi.fn(),
       findActiveByTokenHash: vi.fn(),
       revoke: vi.fn(),
+      extend: vi.fn(),
     };
     handler = new LogoutHandler(mockSessionsRepo as unknown as ISessionsRepository);
   });
