@@ -288,6 +288,20 @@
       "when": 1794250766648,
       "tag": "0040_friendly_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794674735626,
+      "tag": "0041_wet_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794675794441,
+      "tag": "0042_absurd_puppet_master",
+      "breakpoints": true
     }
   ]
 }

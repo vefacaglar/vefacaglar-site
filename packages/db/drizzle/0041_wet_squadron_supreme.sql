@@ -1,0 +1,1 @@
+CREATE INDEX "movie_people_name_search_idx" ON "movie_people" USING gin (to_tsvector('simple', coalesce("name", '')));

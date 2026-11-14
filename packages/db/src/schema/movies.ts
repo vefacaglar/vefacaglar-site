@@ -69,7 +69,9 @@ export const moviePeople = pgTable('movie_people', {
   wikidataId: varchar('wikidata_id', { length: 24 }).notNull().unique(),
   name: text('name'),
   labelCheckedAt: timestamp('label_checked_at', { withTimezone: true, mode: 'date' }),
-});
+}, (table) => ({
+  nameSearchIdx: index('movie_people_name_search_idx').using('gin', sql`to_tsvector('simple', coalesce(${table.name}, ''))`),
+}));
 export const movieCompanies = pgTable('movie_companies', {
   id: uuid('id').primaryKey().defaultRandom(),
   wikidataId: varchar('wikidata_id', { length: 24 }).notNull().unique(),
@@ -166,3 +168,20 @@ export const movieSearchSync = pgTable('movie_search_sync', {
   pendingIdx: index('movie_search_sync_pending_idx').on(table.movieId)
     .where(sql`${table.requestedRevision} > ${table.appliedRevision}`),
 }));
+
+/**
+ * Movie people search snapshot, owned by the `search.movies.sync` worker job.
+ * A full snapshot is rebuilt into `building_collection` and swapped in when complete.
+ */
+export const moviePeopleSearchState = pgTable('movie_people_search_state', {
+  id: text('id').primaryKey(),
+  schemaVersion: integer('schema_version').notNull().default(1),
+  activeCollection: text('active_collection'),
+  buildingCollection: text('building_collection'),
+  /** The generation replaced by the last publish, kept until the next publish so in-flight readers never hit a deleted collection. */
+  previousCollection: text('previous_collection'),
+  buildCursor: uuid('build_cursor'),
+  buildStartedAt: timestamp('build_started_at', { withTimezone: true, mode: 'date' }),
+  publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
