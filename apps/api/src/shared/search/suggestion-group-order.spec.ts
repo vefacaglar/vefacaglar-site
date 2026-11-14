@@ -4,20 +4,23 @@ import { orderSuggestionGroups, suggestionMatch } from "./suggestion-group-order
 
 describe("suggestionMatch", () => {
   it("ranks an exact text above a whole-word, a word-prefix and a fuzzy match", () => {
-    expect(suggestionMatch("cargo", "Cargo")).toEqual({ tier: 3, coverage: 1, start: true });
-    expect(suggestionMatch("Megan  Fox", "megan fox")).toEqual({ tier: 3, coverage: 1, start: true });
-    expect(suggestionMatch("megan", "Megan Fox")).toEqual({ tier: 2, coverage: 0.5, start: true });
-    expect(suggestionMatch("halo", "Twins Halo")).toEqual({ tier: 2, coverage: 0.5, start: false });
-    expect(suggestionMatch("megan", "Megane")).toEqual({ tier: 1, coverage: 1, start: true });
-    expect(suggestionMatch("megan f", "Megan Fox")).toEqual({ tier: 1, coverage: 1, start: true });
+    expect(suggestionMatch("cargo", "Cargo")).toEqual({ tier: 4, coverage: 1, start: true });
+    expect(suggestionMatch("Megan  Fox", "megan fox")).toEqual({ tier: 4, coverage: 1, start: true });
+    expect(suggestionMatch("megan", "Megan Fox")).toEqual({ tier: 3, coverage: 0.5, start: true });
+    expect(suggestionMatch("halo", "Twins Halo")).toEqual({ tier: 3, coverage: 0.5, start: false });
+    expect(suggestionMatch("megan", "Megane")).toEqual({ tier: 2, coverage: 1, start: true });
+    expect(suggestionMatch("megan f", "Megan Fox")).toEqual({ tier: 2, coverage: 1, start: true });
     expect(suggestionMatch("ubisoft", "Ubi Soft: Happy New Year 2001")).toEqual({ tier: 0, coverage: 0, start: false });
-    expect(suggestionMatch("starfield", "Starfeld")).toEqual({ tier: 0, coverage: 0, start: false });
+    expect(suggestionMatch("starfield", "Starfeld")).toEqual({ tier: 1, coverage: 1, start: true });
+    expect(suggestionMatch("starfeild", "Starfield")).toEqual({ tier: 1, coverage: 1, start: true });
+    expect(suggestionMatch("skyrm", "Skyriver")).toEqual({ tier: 1, coverage: 1, start: true });
+    expect(suggestionMatch("halo", "Hale")).toEqual({ tier: 0, coverage: 0, start: false });
   });
 
   it("ignores case, punctuation and diacritics", () => {
-    expect(suggestionMatch("pokemon", "Pokémon")).toEqual({ tier: 3, coverage: 1, start: true });
-    expect(suggestionMatch("spider man", "Spider-Man")).toEqual({ tier: 3, coverage: 1, start: true });
-    expect(suggestionMatch("megan", "Megan Thee Stallion: In Her Words")).toEqual({ tier: 2, coverage: 1 / 6, start: true });
+    expect(suggestionMatch("pokemon", "Pokémon")).toEqual({ tier: 4, coverage: 1, start: true });
+    expect(suggestionMatch("spider man", "Spider-Man")).toEqual({ tier: 4, coverage: 1, start: true });
+    expect(suggestionMatch("megan", "Megan Thee Stallion: In Her Words")).toEqual({ tier: 3, coverage: 1 / 6, start: true });
   });
 
   it("treats blank input as no match", () => {
@@ -53,6 +56,14 @@ describe("orderSuggestionGroups", () => {
       ["Bethesda Softworks", "Bethesda Game Studios"], ["Bethesda Pinball"]))).toEqual(["developers", "publishers", "games"]);
     expect(orderSuggestionGroups("ubisoft", groups(["Ubisoft Montreal"], ["Ubisoft"],
       ["Ubi Soft: Happy New Year 2001"]))).toEqual(["publishers", "developers", "games"]);
+  });
+
+  it("ranks typo queries by the fuzzy match instead of falling back to input order", () => {
+    const groups = (developers: string[], games: string[]) => [{ key: "developers", texts: developers }, { key: "games", texts: games }];
+    expect(orderSuggestionGroups("starfeild", groups(["Starfield Gaming", "Mary Stanfield"],
+      ["Starfield", "Starfield Wars", "Starfield Legacy"]))).toEqual(["games", "developers"]);
+    expect(orderSuggestionGroups("skyrm", groups(["SkyRiver Studios", "Skyrocket Toys"],
+      ["The Elder Scrolls V: Skyrim", "Skirmish", "SkyRig", "Skyreach"]))).toEqual(["games", "developers"]);
   });
 
   it("prefers the group whose best match covers more of its text", () => {
