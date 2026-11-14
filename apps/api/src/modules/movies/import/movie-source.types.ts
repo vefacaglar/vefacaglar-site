@@ -19,4 +19,6 @@ export type EntityLabels = Record<string, string | null>;
 export interface IWikidataEntityClient {
   fetchEntities(qids: string[], options?: { signal?: AbortSignal }): Promise<Record<string, unknown>>;
   fetchLabels(qids: string[], options?: { signal?: AbortSignal }): Promise<EntityLabels>;
+  /** English-reader labels (en, en-gb, en-us, en-ca, mul) without language fallback; null when none exists. */
+  fetchEnglishLabels(qids: string[], options?: { signal?: AbortSignal }): Promise<EntityLabels>;
 }

@@ -66,6 +66,8 @@ import { WikidataFilmDiscoveryClient } from "./modules/movies/import/wikidata-di
 import { MOVIE_POPULARITY_REPOSITORY, WIKIPEDIA_INTEREST_CLIENT } from "./modules/movies/popularity/popularity.types";
 import { DrizzleMoviePopularityRepository } from "./modules/movies/popularity/popularity.repository";
 import { WikipediaInterestClient } from "./modules/movies/popularity/wikipedia-interest.client";
+import { MOVIE_ENGLISH_TITLE_REPOSITORY } from "./modules/movies/english-titles/english-titles.types";
+import { DrizzleMovieEnglishTitleRepository } from "./modules/movies/english-titles/english-titles.repository";
 
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
@@ -78,6 +80,7 @@ container.registerSingleton(MOVIE_PEOPLE_SEARCH_READER, TypesenseMoviePeopleSear
 container.registerSingleton(MOVIE_PEOPLE_SEARCH_STATE_REPOSITORY, DrizzleMoviePeopleSearchStateRepository);
 container.registerSingleton(MOVIE_POPULARITY_REPOSITORY, DrizzleMoviePopularityRepository);
 container.registerSingleton(WIKIPEDIA_INTEREST_CLIENT, WikipediaInterestClient);
+container.registerSingleton(MOVIE_ENGLISH_TITLE_REPOSITORY, DrizzleMovieEnglishTitleRepository);
 container.registerSingleton(WIKIDATA_ENTITY_CLIENT, WikidataEntityClient);
 container.registerSingleton(MOVIE_DISCOVERY_CLIENT, WikidataFilmDiscoveryClient);
 container.registerSingleton(POSTS_REPOSITORY, DrizzlePostsRepository);

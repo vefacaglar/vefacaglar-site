@@ -78,8 +78,20 @@ struct SyncResult {
     next_run_at: Option<DateTime<Utc>>,
 }
 
-pub(super) fn parse_result(line: &str) -> Result<Option<Option<DateTime<Utc>>>> {
-    let Some(raw) = line.strip_prefix("[catalog:movies] result ") else {
+#[cfg(test)]
+fn parse_result(line: &str) -> Result<Option<Option<DateTime<Utc>>>> {
+    parse_continuation(line, "[catalog:movies] ")
+}
+
+/// Parses `<prefix>result {...}` from a fixed continuing movie CLI (see `CliSpec::continues`).
+pub(super) fn parse_continuation(
+    line: &str,
+    prefix: &str,
+) -> Result<Option<Option<DateTime<Utc>>>> {
+    let Some(raw) = line
+        .strip_prefix(prefix)
+        .and_then(|rest| rest.strip_prefix("result "))
+    else {
         return Ok(None);
     };
     let result: SyncResult = serde_json::from_str(raw)

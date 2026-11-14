@@ -24,6 +24,7 @@ const PREFIX: &str = "[catalog:popularity] ";
 const MAX_LINE_BYTES: usize = 4096;
 
 pub mod movie_popularity;
+pub mod movie_titles;
 pub mod movies;
 
 struct CliSpec {
@@ -32,6 +33,9 @@ struct CliSpec {
     phase: &'static str,
     interrupted: &'static str,
     deadline: Option<Duration>,
+    /// Only fixed movie CLIs may request a bounded continuation through
+    /// `<prefix>result {...}`; every other CLI's output is plain log text.
+    continues: bool,
 }
 const POPULARITY: CliSpec = CliSpec {
     prefix: PREFIX,
@@ -39,6 +43,7 @@ const POPULARITY: CliSpec = CliSpec {
     phase: "refreshing game popularity",
     interrupted: "Catalog refresh stopped; its next attempt will safely rerun the full refresh",
     deadline: None,
+    continues: false,
 };
 const MOVIES: CliSpec = CliSpec {
     prefix: "[catalog:movies] ",
@@ -46,6 +51,7 @@ const MOVIES: CliSpec = CliSpec {
     phase: "synchronizing movie catalog",
     interrupted: "Movie sync stopped; durable source progress will resume on its next run",
     deadline: Some(Duration::from_secs(210)),
+    continues: true,
 };
 const MOVIE_POPULARITY: CliSpec = CliSpec {
     prefix: "[catalog:movie-interest] ",
@@ -53,6 +59,15 @@ const MOVIE_POPULARITY: CliSpec = CliSpec {
     phase: "refreshing movie Wikipedia interest",
     interrupted: "Movie interest refresh stopped; the previous snapshot remains available",
     deadline: Some(Duration::from_secs(150)),
+    continues: false,
+};
+const MOVIE_TITLES: CliSpec = CliSpec {
+    prefix: "[catalog:movie-titles] ",
+    label: "Movie English titles",
+    phase: "correcting movie titles to English",
+    interrupted: "Movie title correction stopped; its durable cursor resumes on the next run",
+    deadline: Some(Duration::from_secs(210)),
+    continues: true,
 };
 
 pub struct CatalogPopularityHandler;
@@ -205,8 +220,8 @@ async fn run_command_with_spec(
             line = lines.recv(), if !output_closed => {
                 match line {
                     Some((level, line)) => {
-                        if spec.prefix == MOVIES.prefix && level == LogLevel::Info {
-                            match movies::parse_result(&line) {
+                        if spec.continues && level == LogLevel::Info {
+                            match movies::parse_continuation(&line, spec.prefix) {
                                 Ok(Some(result)) => {
                                     if summary_seen { break Err(anyhow::anyhow!("Movie CLI returned more than one completion summary")); }
                                     summary_seen = true;

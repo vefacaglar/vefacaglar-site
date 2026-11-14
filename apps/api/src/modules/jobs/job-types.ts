@@ -53,6 +53,12 @@ export const JOB_TYPES = {
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "catalog.movies.popularity",
   }),
+  "catalog.movies.english_titles": defineJobType({
+    description:
+      "Replace stored non-English movie titles with the English Wikidata label (en, en-gb, en-us, en-ca, mul) in bounded, resumable batches. Slugs never change; a full pass repeats at most every 30 days.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.movies.english_titles",
+  }),
   "catalog.popularity.refresh": defineJobType({
     description:
       "Refresh game popularity and owner recommendations from IGDB signals and game modes, and synchronize game search documents. Runs daily and shares the search indexing lock.",

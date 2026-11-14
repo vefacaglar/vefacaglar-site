@@ -125,6 +125,23 @@ export const movieSourceState = pgTable('movie_source_state', {
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 
+/**
+ * Resumable English-title correction passes over hydrated films. `cursor` is the
+ * last processed movie id of the running pass; null between passes. Wikidata
+ * cooldowns stay in the shared `movie_source_state.cooldown_until`.
+ */
+export const movieEnglishTitleState = pgTable('movie_english_title_state', {
+  id: text('id').primaryKey(),
+  cursor: uuid('cursor'),
+  passStartedAt: timestamp('pass_started_at', { withTimezone: true, mode: 'date' }),
+  lastPassCompletedAt: timestamp('last_pass_completed_at', { withTimezone: true, mode: 'date' }),
+  passScanned: integer('pass_scanned').notNull().default(0),
+  passChanged: integer('pass_changed').notNull().default(0),
+  failureCount: integer('failure_count').notNull().default(0),
+  errorCode: varchar('error_code', { length: 80 }),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
 /** The accepted complete projection and independent AQS retry diagnostics. */
 export const moviePopularityState = pgTable('movie_popularity_state', {
   id: text('id').primaryKey(),

@@ -197,6 +197,33 @@ async fn only_a_successful_movie_process_can_request_one_continuation() {
 
 #[cfg(unix)]
 #[tokio::test]
+async fn only_the_title_cli_prefix_can_continue_the_title_job() {
+    let io = FakeIo::default();
+    let titles = r#"printf '[catalog:movie-titles] result {"hasMore":true,"progressMade":true,"nextRunAt":null}\n'"#;
+    assert!(matches!(
+        run_command_with_spec(&io, shell(titles), &[], &MOVIE_TITLES)
+            .await
+            .unwrap(),
+        JobOutcome::CompletedWithContinuation { .. }
+    ));
+    let foreign = r#"printf '[catalog:movies] result {"hasMore":true,"progressMade":true,"nextRunAt":null}\n'"#;
+    assert_eq!(
+        run_command_with_spec(&io, shell(foreign), &[], &MOVIE_TITLES)
+            .await
+            .unwrap(),
+        JobOutcome::Completed
+    );
+    let done = r#"printf '[catalog:movie-titles] result {"hasMore":false,"progressMade":true,"nextRunAt":null}\n'"#;
+    assert_eq!(
+        run_command_with_spec(&io, shell(done), &[], &MOVIE_TITLES)
+            .await
+            .unwrap(),
+        JobOutcome::Completed
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
 async fn movie_interest_output_cannot_create_a_catalog_continuation() {
     let io = FakeIo::default();
     let fixture = r#"printf '[catalog:movie-interest] result {"hasMore":true,"progressMade":true,"nextRunAt":null}\n'"#;

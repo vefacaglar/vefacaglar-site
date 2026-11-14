@@ -1,6 +1,6 @@
 import { injectable } from "tsyringe";
 import { wikidataRetryAfter } from "./wikidata-retry-after";
-import { isQid, sourceLabel } from "./wikidata-normalizer";
+import { ENGLISH_LABEL_LANGUAGES, englishLabel, isQid, sourceLabel } from "./wikidata-normalizer";
 import type { EntityLabels, IWikidataEntityClient } from "./movie-source.types";
 
 const API = "https://www.wikidata.org/w/api.php";
@@ -12,16 +12,18 @@ export class MovieSourceError extends Error {
 @injectable()
 export class WikidataEntityClient implements IWikidataEntityClient {
   private lastRequestAt = 0;
-  private async request(qids: string[], props: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+  private async request(qids: string[], props: string, signal?: AbortSignal, languages?: { codes: readonly string[]; fallback: boolean }): Promise<Record<string, unknown>> {
     if (!qids.length || qids.length > 50 || qids.some((qid) => !isQid(qid))) throw new MovieSourceError("invalid_entity_batch");
     const delay = this.lastRequestAt + 500 - Date.now();
     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
     this.lastRequestAt = Date.now();
     const url = new URL(API);
-    const parameters = new URLSearchParams({ action: "wbgetentities", ids: [...new Set(qids)].join("|"), props, languagefallback: "1", format: "json", maxlag: "5" });
+    const parameters = new URLSearchParams({ action: "wbgetentities", ids: [...new Set(qids)].join("|"), props, format: "json", maxlag: "5" });
+    if (languages?.fallback ?? true) parameters.set("languagefallback", "1");
     // A film may only have a source-language label. Full movie snapshots keep
     // those names; normalizeMovie still prefers English when it is available.
-    if (props === "labels") parameters.set("languages", "en");
+    if (languages) parameters.set("languages", languages.codes.join("|"));
+    else if (props === "labels") parameters.set("languages", "en");
     url.search = parameters.toString();
     const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000);
     let response: Response;
@@ -71,5 +73,10 @@ export class WikidataEntityClient implements IWikidataEntityClient {
   async fetchLabels(qids: string[], options: { signal?: AbortSignal } = {}): Promise<EntityLabels> {
     const entities = await this.request(qids, "labels", options.signal);
     return Object.fromEntries(qids.map((qid) => [qid, sourceLabel(entities[qid])]));
+  }
+  /** English-reader labels only (no fallback), resolved with the normalizer's priority. */
+  async fetchEnglishLabels(qids: string[], options: { signal?: AbortSignal } = {}): Promise<EntityLabels> {
+    const entities = await this.request(qids, "labels", options.signal, { codes: ENGLISH_LABEL_LANGUAGES, fallback: false });
+    return Object.fromEntries(qids.map((qid) => [qid, englishLabel(entities[qid])]));
   }
 }
