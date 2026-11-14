@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { describe, expect, it } from "vitest";
-import { addCharacterLabels, characterQidsFromQualifiers, isImdbId, movieSlug, movieSnapshotDisposition, normalizeMovie, wikipediaLanguageCount } from "./wikidata-normalizer";
+import { addCharacterLabels, characterQidsFromQualifiers, isImdbId, movieSlug, movieSnapshotDisposition, normalizeMovie, sourceLabel, storedMovieTitle, wikipediaLanguageCount } from "./wikidata-normalizer";
 const statement = (property: string, value: unknown, id = property) => ({ id: `Q47703$${id}`, rank: "normal", mainsnak: { property, snaktype: "value", datavalue: { value } } });
 const movie = (extra: Record<string, unknown> = {}) => ({ id: "Q47703", type: "item", labels: { en: { value: "The Godfather" } },
   lastrevid: 123, modified: "2026-11-05T00:00:00Z", sitelinks: {}, claims: { P31: [statement("P31", { id: "Q11424" })], ...extra } });
@@ -20,6 +20,25 @@ describe("Wikidata movie normalization", () => {
     expect(result.sourceRevision).toBe(123);
     expect(result.sourceModifiedAt?.toISOString()).toBe("2026-11-05T00:00:00.000Z");
     expect(movieSlug(result.title, "Q47703")).toBe("il-padrino-q47703");
+  });
+  it("prefers English labels (en, regional English, then mul) over any other language", () => {
+    const labels = (entries: Record<string, string>) => ({ labels: Object.fromEntries(Object.entries(entries).map(([language, value]) => [language, { language, value }])) });
+    expect(sourceLabel(labels({ "zh-hans": "无间道风云", mul: "The Departed" }))).toBe("The Departed");
+    expect(sourceLabel(labels({ ru: "Славные парни", "en-us": "Goodfellas", mul: "GoodFellas" }))).toBe("Goodfellas");
+    expect(sourceLabel(labels({ mul: "Hugo", en: "Hugo (film)", "zh-hant": "雨果" }))).toBe("Hugo (film)");
+    expect(sourceLabel(labels({ ar: "هوغو", "en-ca": "Hugo" }))).toBe("Hugo");
+    expect(sourceLabel(labels({ "zh-hans": "变形金刚", en: " " , ja: "トランスフォーマー" }))).toBe("变形金刚");
+    const raw = movie({ P1476: [statement("P1476", { text: "The Departed", language: "en" })] });
+    raw.labels = { "zh-hans": { value: "无间道风云" }, mul: { value: "The Departed" } } as any;
+    expect(normalizeMovie(raw, "Q47703")).toMatchObject({ title: "The Departed", titleIsEnglish: true });
+    raw.labels = { "zh-hans": { value: "无间道风云" } } as any;
+    expect(normalizeMovie(raw, "Q47703")).toMatchObject({ title: "无间道风云", titleIsEnglish: false });
+  });
+  it("never lets a non-English title replace a stored title, and always stores an English one", () => {
+    expect(storedMovieTitle("无间道风云", { title: "The Departed", titleIsEnglish: true })).toBe("The Departed");
+    expect(storedMovieTitle("The Departed", { title: "无间道风云", titleIsEnglish: false })).toBe("The Departed");
+    expect(storedMovieTitle(null, { title: "无间道风云", titleIsEnglish: false })).toBe("无间道风云");
+    expect(storedMovieTitle("  ", { title: "Il padrino", titleIsEnglish: false })).toBe("Il padrino");
   });
   it("preserves date precision and accepts only explicitly minute runtimes", () => {
     const result = normalizeMovie(movie({ P577: [statement("P577", { time: "+1972-00-00T00:00:00Z", precision: 9, calendarmodel: "http://www.wikidata.org/entity/Q1985727" })],

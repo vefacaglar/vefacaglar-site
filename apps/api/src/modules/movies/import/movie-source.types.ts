@@ -4,7 +4,7 @@ export type MovieRole = "P161" | "P57" | "P162";
 export type StatementRank = "preferred" | "normal" | "deprecated";
 export type SourceCredit = { statementId: string; personQid: string; roleProperty: MovieRole; rank: StatementRank; qualifiers: Record<string, unknown>; characterNames: string[]; characterQids: string[] };
 export type NormalizedMovie = {
-  wikidataId: string; title: string; originalTitle: string | null; description: string | null;
+  wikidataId: string; title: string; titleIsEnglish: boolean; originalTitle: string | null; description: string | null;
   imdbId: string | null; imdbConflict: boolean;
   posterFileName: string | null;
   /** Wikidata P373 Commons category, used only as a strictly verified free poster fallback. */

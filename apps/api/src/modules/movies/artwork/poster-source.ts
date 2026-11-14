@@ -47,9 +47,8 @@ export function posterInputsPatch(
   existing: StoredPosterInputs,
   incoming: PosterInputs & { title: string },
   now: Date,
-  options: { preserveStoredTitle?: boolean } = {},
 ) {
-  const title = options.preserveStoredTitle ? existing.title ?? incoming.title : incoming.title;
+  const title = incoming.title;
   const changed = existing.posterInputsCheckedAt === null ||
     existing.posterFileName !== incoming.posterFileName ||
     existing.enwikiArticle !== incoming.enwikiArticle ||

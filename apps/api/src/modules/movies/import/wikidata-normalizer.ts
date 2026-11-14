@@ -15,9 +15,32 @@ export function movieSlug(title: string, qid: string): string {
   return `${stem}-${qid.toLowerCase()}`;
 }
 
+/**
+ * Labels Wikidata shows English readers, in priority order. Many items now keep
+ * their English name only under `mul` (the shared default label), so a missing
+ * `en` key does not mean the entity lacks an English name.
+ */
+export const ENGLISH_LABEL_LANGUAGES = ["en", "en-gb", "en-us", "en-ca", "mul"] as const;
+
+export function englishLabel(entity: unknown): string | null {
+  if (!object(entity) || !object(entity.labels)) return null;
+  const labels = entity.labels;
+  return ENGLISH_LABEL_LANGUAGES.map((language) => text(labels[language]?.value)).find(Boolean) ?? null;
+}
+
+/** English first; any other language only when no English label exists. */
 export function sourceLabel(entity: unknown): string | null {
   if (!object(entity) || !object(entity.labels)) return null;
-  return text(entity.labels.en?.value) ?? Object.values(entity.labels).map((label: any) => text(label?.value)).find(Boolean) ?? null;
+  return englishLabel(entity) ?? Object.values(entity.labels).map((label: any) => text(label?.value)).find(Boolean) ?? null;
+}
+
+/**
+ * The title a snapshot may store. An English title always wins and replaces a
+ * stored non-English one; a non-English fallback never replaces a stored title.
+ */
+export function storedMovieTitle(existingTitle: string | null, incoming: { title: string; titleIsEnglish: boolean }): string {
+  const existing = text(existingTitle);
+  return incoming.titleIsEnglish || !existing ? incoming.title : existing;
 }
 
 /** Full sitelink URLs distinguish Wikipedia editions from sibling projects. */
@@ -72,7 +95,8 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
     if (checked.get(property)!.some((row) => row.mainsnak.snaktype === "value" && !isQid(value(row)?.id))) throw new Error("invalid_entity_reference");
   }
   const originalTitle = best(checked.get("P1476")!).map((row) => text(value(row)?.text)).find(Boolean) ?? null;
-  const title = sourceLabel(raw) ?? originalTitle;
+  const englishTitle = englishLabel(raw);
+  const title = englishTitle ?? sourceLabel(raw) ?? originalTitle;
   if (!title) throw new Error("title_missing");
   const imdbIds = [...new Set(best(checked.get("P345")!).map(value).filter(isImdbId))];
   const posters = [...new Set(best(checked.get("P3383")!).map((row) => commonsFileName(value(row))).filter((file): file is string => file !== null))];
@@ -110,7 +134,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
     }
   }
   const modified = typeof raw.modified === "string" && Number.isFinite(Date.parse(raw.modified)) ? new Date(raw.modified) : null;
-  return { wikidataId: expectedQid, title, originalTitle, description: text(raw.descriptions?.en?.value),
+  return { wikidataId: expectedQid, title, titleIsEnglish: englishTitle !== null, originalTitle, description: text(raw.descriptions?.en?.value),
     imdbId: imdbIds.length === 1 ? imdbIds[0] : null, imdbConflict: imdbIds.length > 1,
     posterFileName: posters.sort()[0] ?? null,
     commonsCategory: commonsCategories.sort()[0] ?? null,

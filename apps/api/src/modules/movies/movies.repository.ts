@@ -13,7 +13,7 @@ import type { MoviePersonSummary } from "./people/search/search.schema";
 import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
 import { moviePersonNameMatch, movieTitleMatch } from "./movie-title-search";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
-import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition } from "./import/wikidata-normalizer";
+import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition, storedMovieTitle } from "./import/wikidata-normalizer";
 
 const publicMovie = () => and(eq(movies.isFilm, true), isNotNull(movies.hydratedAt), isNotNull(movies.title));
 const chunks = <T>(rows: T[], size = 500): T[][] => Array.from({ length: Math.ceil(rows.length / size) }, (_, i) => rows.slice(i * size, (i + 1) * size));
@@ -108,13 +108,15 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const [existing] = await db.select().from(movies).where(eq(movies.wikidataId, movie.wikidataId)).for("update");
       if (!existing) throw new Error("Movie stub is missing");
       const disposition = movieSnapshotDisposition(movie.sourceRevision, existing.sourceRevision, existing.hydratedAt !== null, existing.imdbConflict);
-      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle, commonsCategory: movie.commonsCategory, title: movie.title }, now,
-        { preserveStoredTitle: disposition === "unchanged" });
+      // English always wins, even at an unchanged revision; a fallback label never replaces a stored title.
+      const title = storedMovieTitle(existing.title, movie);
+      const poster = posterInputsPatch(existing, { posterFileName: movie.posterFileName, enwikiArticle: movie.enwikiArticle, commonsCategory: movie.commonsCategory, title }, now);
       if (disposition === "unchanged") {
         const recognitionChanged = existing.wikipediaLanguageCount !== movie.wikipediaLanguageCount;
-        await db.update(movies).set({ ...poster, wikipediaLanguageCount: movie.wikipediaLanguageCount,
-          ...(recognitionChanged ? { updatedAt: now } : {}), checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
-        if (recognitionChanged || poster.posterCandidateVersion !== undefined || poster.posterImageUrl !== undefined) await dirtyMovieSearch(db, existing.id);
+        const titleChanged = existing.title !== title;
+        await db.update(movies).set({ ...poster, wikipediaLanguageCount: movie.wikipediaLanguageCount, ...(titleChanged ? { title } : {}),
+          ...(recognitionChanged || titleChanged ? { updatedAt: now } : {}), checkedAt: now, failureCount: 0, retryAfter: null, errorCode: null }).where(eq(movies.id, existing.id));
+        if (recognitionChanged || titleChanged || poster.posterCandidateVersion !== undefined || poster.posterImageUrl !== undefined) await dirtyMovieSearch(db, existing.id);
         return "unchanged";
       }
       let imdbId = movie.imdbConflict ? existing.imdbId : movie.imdbId;
@@ -135,8 +137,8 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       const companies = movie.companyQids.length ? await db.select().from(movieCompanies).where(inArray(movieCompanies.wikidataId, movie.companyQids)) : [];
       const genres = movie.genreQids.length ? await db.select().from(movieGenres).where(inArray(movieGenres.wikidataId, movie.genreQids)) : [];
       const peopleByQid = new Map(people.map((person) => [person.wikidataId, person.id]));
-      await db.update(movies).set({ ...poster, title: movie.title, originalTitle: movie.originalTitle, description: movie.description,
-        slug: existing.hydratedAt ? existing.slug : movieSlug(movie.title, movie.wikidataId), imdbId, imdbConflict,
+      await db.update(movies).set({ ...poster, title, originalTitle: movie.originalTitle, description: movie.description,
+        slug: existing.hydratedAt ? existing.slug : movieSlug(title, movie.wikidataId), imdbId, imdbConflict,
         releaseDate: movie.releaseDate, releaseYear: movie.releaseYear, releasePrecision: movie.releasePrecision, runtimeMinutes: movie.runtimeMinutes,
         isFilm: movie.isFilm, wikipediaLanguageCount: movie.wikipediaLanguageCount,
         sourceRevision: movie.sourceRevision ?? existing.sourceRevision, sourceModifiedAt: movie.sourceModifiedAt ?? existing.sourceModifiedAt,

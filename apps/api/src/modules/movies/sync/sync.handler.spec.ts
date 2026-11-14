@@ -84,6 +84,30 @@ describe("bounded movie sync handler", () => {
     expect(repo.markEntityFailure).not.toHaveBeenCalled();
   });
 
+  it("hydrates and refreshes with the English title when Wikidata keeps it under mul or a regional English code", async () => {
+    // Mirrors the real Q172975 response: no `en` key, Chinese labels listed first.
+    const shared = { ...entity(), labels: { "zh-hans": { value: "无间道风云" }, ja: { value: "ディパーテッド" }, mul: { value: "The Departed" } } };
+    repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703" }]);
+    client.fetchEntities.mockResolvedValue({ Q47703: shared });
+    await run({ maxRequests: 1 });
+    expect(repo.persistMovie).toHaveBeenLastCalledWith(expect.objectContaining({ title: "The Departed", titleIsEnglish: true }), expect.any(Date));
+
+    const regional = { ...entity(), labels: { ru: { value: "Отступники" }, "en-gb": { value: "The Departed" } } };
+    repo.persistMovie.mockClear();
+    repo.refreshCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: 42 }]);
+    client.fetchEntities.mockResolvedValue({ Q47703: regional });
+    await run({ maxRequests: 1 });
+    expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ title: "The Departed", titleIsEnglish: true }), expect.any(Date));
+  });
+
+  it("marks a source-language fallback title as non-English so it cannot replace a stored title", async () => {
+    const raw = { ...entity(), labels: { "zh-hans": { value: "无间道风云" } } };
+    repo.refreshCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703", sourceRevision: 42 }]);
+    client.fetchEntities.mockResolvedValue({ Q47703: raw });
+    await run({ maxRequests: 1 });
+    expect(repo.persistMovie).toHaveBeenCalledWith(expect.objectContaining({ title: "无间道风云", titleIsEnglish: false }), expect.any(Date));
+  });
+
   it("does not replace data for missing/partial entities", async () => {
     repo.hydrationCandidates.mockResolvedValueOnce([{ id: "a", wikidataId: "Q47703" }]);
     client.fetchEntities.mockResolvedValue({ Q47703: { id: "Q47703", missing: "" } });
