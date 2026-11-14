@@ -11,7 +11,7 @@ let client: Record<keyof ISearchClient, any>;
 let reader: MeilisearchMoviePeopleSearchReader;
 beforeEach(() => {
   client = { search: vi.fn().mockResolvedValue({ hits: [{ id }], totalHits: 1 }), addDocuments: vi.fn(),
-    deleteDocument: vi.fn(), indexExists: vi.fn(), waitForTask: vi.fn() };
+    deleteDocument: vi.fn(), indexExists: vi.fn(), waitForTask: vi.fn(), maxTotalHits: vi.fn().mockResolvedValue(1000) };
   reader = new MeilisearchMoviePeopleSearchReader(client, config);
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-11-14T12:00:00Z"));
 });
@@ -28,7 +28,7 @@ describe("movie people index query and fallback policy", () => {
   });
   it("returns validated IDs", async () => {
     expect(await reader.search(query)).toEqual({ ids: [id] });
-    expect(client.search).toHaveBeenCalledWith("movie_people_en", moviePeopleSearchParameters(query));
+    expect(client.search).toHaveBeenCalledWith("movie_people_en", moviePeopleSearchParameters(query), { signal: expect.any(AbortSignal) });
   });
   it("answers punctuation-only input without a request", async () => {
     expect(await reader.search({ ...query, q: "?!" })).toEqual({ ids: [] });
@@ -38,6 +38,12 @@ describe("movie people index query and fallback policy", () => {
     { hits: [{ id }, { id }], totalHits: 2 }, { hits: [{ id }] }])("rejects an invalid page (%j)", async (page) => {
     client.search.mockResolvedValue(page);
     expect(await reader.search(query)).toBeNull();
+  });
+  it("accepts a first page shortened by maxTotalHits", async () => {
+    client.maxTotalHits.mockResolvedValue(1);
+    client.search.mockResolvedValue({ hits: [{ id }], totalHits: 40 });
+    expect(await reader.search(query)).toEqual({ ids: [id] });
+    expect(reportRuntimeFailure).not.toHaveBeenCalled();
   });
   it("cools down for 30 seconds after a failure and reports it once", async () => {
     client.search.mockRejectedValue(new Error("down"));

@@ -31,7 +31,8 @@ const reader = (enabled = true) =>
 beforeEach(() => {
   vi.mocked(reportRuntimeFailure).mockClear();
   search = vi.fn().mockResolvedValue({ hits: [], totalHits: 0 });
-  client = { search, addDocuments: vi.fn(), deleteDocument: vi.fn(), indexExists: vi.fn(), waitForTask: vi.fn() };
+  client = { search, addDocuments: vi.fn(), deleteDocument: vi.fn(), indexExists: vi.fn(), waitForTask: vi.fn(),
+    maxTotalHits: vi.fn().mockResolvedValue(1000) };
   gamesRepo = {
     findPublicCompaniesByIds: vi.fn().mockResolvedValue([]),
     searchPublicCompanies: vi.fn().mockResolvedValue([]),
@@ -51,7 +52,7 @@ describe("MeilisearchSearchReader.searchPublicGames", () => {
       sort: ["popularityScore:desc", "releaseTimestamp:desc"],
       page: 2,
       hitsPerPage: 20,
-    });
+    }, { signal: expect.any(AbortSignal) });
     expect(result.total).toBe(41);
     expect(result.items.map((game) => game.id)).toEqual([ID(1)]);
   });
@@ -75,11 +76,53 @@ describe("MeilisearchSearchReader.searchPublicGames", () => {
     expect(await r.searchPublicGames({})).toMatchObject({ total: 7 });
     expect(search).toHaveBeenCalledTimes(1);
     expect(reportRuntimeFailure).toHaveBeenCalledTimes(1);
+    expect(reportRuntimeFailure).toHaveBeenCalledWith("search_fallback", expect.any(String), error, "warning");
+  });
+
+  it.each([
+    meiliError(403, "invalid_api_key", "The provided API key is invalid."),
+    meiliError(401, "missing_authorization_header", "The Authorization header is missing."),
+  ])("keeps pages up on an auth failure but reports it loudly once per cooldown (%s)", async (error) => {
+    vi.useFakeTimers();
+    try {
+      search.mockRejectedValue(error);
+      const r = reader();
+      expect((await r.searchPublicGames({})).total).toBe(7);
+      expect((await r.searchPublicGames({})).total).toBe(7);
+      expect(reportRuntimeFailure).toHaveBeenCalledTimes(1);
+      expect(reportRuntimeFailure).toHaveBeenCalledWith("search_auth_failure", expect.any(String), error, "error");
+      vi.advanceTimersByTime(30_000);
+      expect((await r.searchPublicGames({})).total).toBe(7);
+      expect(reportRuntimeFailure).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels the request when the three-second timeout fires", async () => {
+    vi.useFakeTimers();
+    try {
+      search.mockReturnValue(new Promise(() => {}));
+      const pending = reader().searchPublicGames({});
+      await vi.advanceTimersByTimeAsync(3000);
+      expect((await pending).total).toBe(7);
+      expect((search.mock.calls[0][2].signal as AbortSignal).aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("caps the total at maxTotalHits when deep pages come back short", async () => {
+    search.mockResolvedValue({ hits: [], totalHits: 9000 });
+    client.maxTotalHits.mockResolvedValue(1000);
+    expect(await reader().searchPublicGames({ page: 50, limit: 24 })).toEqual({ items: [], total: 1000 });
+    search.mockResolvedValue({ hits: [{ id: ID(1), slug: "a", title: "A", releaseTimestamp: 0 }], totalHits: 9000 });
+    expect((await reader().searchPublicGames({ page: 1, limit: 1 })).total).toBe(9000);
+    expect(client.maxTotalHits).toHaveBeenCalledTimes(1);
   });
 
   it.each([
     meiliError(400, "invalid_search_page", "Invalid value"),
-    meiliError(403, "invalid_api_key", "The provided API key is invalid."),
   ])("does not hide request errors behind the fallback (%s)", async (error) => {
     search.mockRejectedValue(error);
     await expect(reader().searchPublicGames({})).rejects.toBe(error);
@@ -93,7 +136,7 @@ describe("MeilisearchSearchReader dashboard lists", () => {
     const result = await reader().searchDevelopers({ q: "stu", page: 3, limit: 10 });
     expect(search).toHaveBeenCalledWith("developers_en", {
       q: "stu", attributesToSearchOn: ["name", "slug"], sort: ["createdAt:desc"], page: 3, hitsPerPage: 10,
-    });
+    }, { signal: expect.any(AbortSignal) });
     expect(result.total).toBe(31);
     expect(result.items[0]).toMatchObject({ id: ID(1), name: "Studio" });
   });
@@ -121,7 +164,7 @@ describe("MeilisearchSearchReader.searchPublicCompanies", () => {
 
     expect(search).toHaveBeenCalledWith("publishers_en", {
       q: "studio", attributesToSearchOn: ["name"], attributesToRetrieve: ["id"], showRankingScore: true, page: 1, hitsPerPage: 15,
-    });
+    }, { signal: expect.any(AbortSignal) });
     expect(gamesRepo.findPublicCompaniesByIds).toHaveBeenCalledWith("publisher", [ID(1), ID(2), ID(3), ID(4)]);
     expect(result.map((c) => c.id)).toEqual([ID(1), ID(3), ID(2)]);
     expect(gamesRepo.searchPublicCompanies).not.toHaveBeenCalled();
@@ -129,7 +172,7 @@ describe("MeilisearchSearchReader.searchPublicCompanies", () => {
 
   it("caps results at the limit and skips Postgres when the index has no hits", async () => {
     expect(await reader().searchPublicCompanies("developer", { q: "zzz", limit: 5 })).toEqual([]);
-    expect(search).toHaveBeenCalledWith("developers_en", expect.anything());
+    expect(search).toHaveBeenCalledWith("developers_en", expect.anything(), expect.anything());
     expect(gamesRepo.findPublicCompaniesByIds).not.toHaveBeenCalled();
 
     search.mockResolvedValue({ hits: [1, 2, 3].map((n) => ({ id: ID(n), _rankingScore: 1 - n / 10 })) });

@@ -32,6 +32,7 @@ beforeEach(() => {
     deleteDocument: vi.fn().mockResolvedValue({ taskUid: 8, status: "enqueued" }),
     indexExists: vi.fn().mockResolvedValue(true),
     waitForTask: vi.fn().mockResolvedValue({ taskUid: 7, status: "succeeded" }),
+    maxTotalHits: vi.fn(),
   };
   gamesRepo = {
     findById: vi.fn().mockResolvedValue(game),

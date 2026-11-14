@@ -9,6 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import { app, applicationLogs } from "./app";
 import { reportRuntimeFailure } from "./shared/application-logs/runtime-failures";
+import { meilisearchConfigWarning } from "./shared/search/meilisearch.client";
 
 const start = async () => {
   try {
@@ -16,6 +17,8 @@ const start = async () => {
     const host = process.env.API_HOST ?? "127.0.0.1";
     await app.listen({ port, host });
     applicationLogs.write({ level: "info", event: "api_started", message: "API started" });
+    const searchWarning = meilisearchConfigWarning();
+    if (searchWarning) applicationLogs.write({ level: "warning", event: "search_config_invalid", message: searchWarning });
   } catch (err) {
     reportRuntimeFailure("api_start_failed", "API failed to start", err);
     await applicationLogs.close();

@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { SEARCH_CLIENT, MEILISEARCH_CONFIG, type MeilisearchConfig } from "../../../shared/search/search.tokens";
-import type { ISearchClient, MeilisearchSearchParams } from "../../../shared/search/meilisearch.client";
+import { reachablePage, searchFailureEvent, type ISearchClient, type MeilisearchSearchParams } from "../../../shared/search/meilisearch.client";
 import { withTimeout } from "../../../shared/search/with-timeout";
 import { reportRuntimeFailure } from "../../../shared/application-logs/runtime-failures";
 
@@ -31,22 +31,34 @@ export class MeilisearchMoviePeopleSearchReader implements IMoviePeopleSearchRea
   async search(query: MoviePeopleSearchQuery) {
     if (!this.config.enabled || Date.now() < this.retryAt) return null;
     if (!/[\p{L}\p{N}]/u.test(query.q)) return { ids: [] };
+    const controller = new AbortController();
     try {
-      const result = await withTimeout(this.client.search<{ id: string }>(query.collection, moviePeopleSearchParameters(query)),
-        3000, "meilisearch.movie_people.search");
-      const ids = result.hits?.map((hit) => hit.id) ?? [];
-      const total = result.totalHits as number;
-      if (!Number.isSafeInteger(total) || total < 0 || ids.length > query.limit
-        || ids.length !== Math.min(query.limit, total) || ids.some((id) => !UUID.test(id)) || new Set(ids).size !== ids.length) {
-        throw new Error("Invalid movie people search page");
-      }
-      return { ids };
+      return await withTimeout(this.firstPage(query, controller.signal), 3000, "meilisearch.movie_people.search");
     } catch (error) {
       if (Date.now() >= this.retryAt) {
         this.retryAt = Date.now() + 30_000;
-        reportRuntimeFailure("search_fallback", "Meilisearch movie people search failed. Using Postgres", error, "warning");
+        const { event, level } = searchFailureEvent(error);
+        reportRuntimeFailure(event, "Meilisearch movie people search failed. Using Postgres", error, level);
       }
       return null;
+    } finally {
+      controller.abort();
     }
+  }
+
+  private async firstPage(query: MoviePeopleSearchQuery, signal: AbortSignal) {
+    const result = await this.client.search<{ id: string }>(query.collection, moviePeopleSearchParameters(query), { signal });
+    const ids = result.hits?.map((hit) => hit.id) ?? [];
+    const totalHits = result.totalHits as number;
+    if (!Number.isSafeInteger(totalHits) || totalHits < 0 || ids.length > query.limit
+      || ids.some((id) => !UUID.test(id)) || new Set(ids).size !== ids.length) {
+      throw new Error("Invalid movie people search page");
+    }
+    // A short first page is valid only when `pagination.maxTotalHits` caps it.
+    if (await reachablePage(this.client, query.collection,
+      { page: 1, hitsPerPage: query.limit, totalHits, count: ids.length }, { signal }) === null) {
+      throw new Error("Invalid movie people search page");
+    }
+    return { ids };
   }
 }

@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { SEARCH_CLIENT, MEILISEARCH_CONFIG, type MeilisearchConfig } from "../../../shared/search/search.tokens";
-import type { ISearchClient, MeilisearchSearchParams } from "../../../shared/search/meilisearch.client";
+import { reachablePage, searchFailureEvent, type ISearchClient, type MeilisearchSearchParams } from "../../../shared/search/meilisearch.client";
 import { withTimeout } from "../../../shared/search/with-timeout";
 import { reportRuntimeFailure } from "../../../shared/application-logs/runtime-failures";
 
@@ -37,24 +37,38 @@ export class MeilisearchMovieSearchReader implements IMovieSearchReader {
     @inject(MEILISEARCH_CONFIG) private readonly config: MeilisearchConfig) {}
   async search(query: MovieSearchQuery) {
     if (!this.config.enabled || Date.now() < this.retryAt) return null;
+    const controller = new AbortController();
     try {
       // Punctuation-only input is not a browse wildcard (same as SQL fallback).
       if (query.q && !/[\p{L}\p{N}]/u.test(query.q)) return { ids: [], total: 0 };
-      const result = await withTimeout(this.client.search<{ id: string }>(query.collection, movieSearchParameters(query)),
-        3000, "meilisearch.movies.search");
-      const ids = result.hits?.map((hit) => hit.id) ?? [];
-      const total = result.totalHits as number;
-      if (!Number.isSafeInteger(total) || total < 0 || ids.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) || new Set(ids).size !== ids.length
-        || ids.length !== Math.min(query.limit, Math.max(0, total - (query.page - 1) * query.limit))) {
-        throw new Error("Invalid movie search page");
-      }
-      return { ids, total };
+      return await withTimeout(this.page(query, controller.signal), 3000, "meilisearch.movies.search");
     } catch (error) {
       if (Date.now() >= this.retryAt) {
         this.retryAt = Date.now() + 30_000;
-        reportRuntimeFailure("search_fallback", "Meilisearch movie search failed. Using Postgres", error, "warning");
+        const { event, level } = searchFailureEvent(error);
+        reportRuntimeFailure(event, "Meilisearch movie search failed. Using Postgres", error, level);
       }
       return null;
+    } finally {
+      controller.abort();
     }
+  }
+
+  /**
+   * IDs plus the total a client may page through: `totalHits` capped at the
+   * index's `pagination.maxTotalHits`, so a page past that cap is a valid empty
+   * page rather than a corrupt one.
+   */
+  private async page(query: MovieSearchQuery, signal: AbortSignal) {
+    const result = await this.client.search<{ id: string }>(query.collection, movieSearchParameters(query), { signal });
+    const ids = result.hits?.map((hit) => hit.id) ?? [];
+    const totalHits = result.totalHits as number;
+    if (!Number.isSafeInteger(totalHits) || totalHits < 0 || ids.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) || new Set(ids).size !== ids.length) {
+      throw new Error("Invalid movie search page");
+    }
+    const total = await reachablePage(this.client, query.collection,
+      { page: query.page, hitsPerPage: query.limit, totalHits, count: ids.length }, { signal });
+    if (total === null) throw new Error("Invalid movie search page");
+    return { ids, total };
   }
 }

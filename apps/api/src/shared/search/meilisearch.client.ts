@@ -11,14 +11,32 @@ export interface MeilisearchConfig {
   apiKey: string;
 }
 
+function parseMeilisearchUrl(rawUrl: string): URL | undefined {
+  const url = URL.canParse(rawUrl) ? new URL(rawUrl) : undefined;
+  if (!url || !["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) return;
+  return url;
+}
+
 export function readMeilisearchConfig(env: NodeJS.ProcessEnv = process.env): MeilisearchConfig {
   const rawUrl = env.MEILISEARCH_URL?.trim();
   const apiKey = env.MEILISEARCH_API_KEY?.trim() ?? "";
-  const url = rawUrl && URL.canParse(rawUrl) ? new URL(rawUrl) : undefined;
-  if (!url || !["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-    return { enabled: false, url: "", apiKey: "" };
-  }
+  const url = rawUrl ? parseMeilisearchUrl(rawUrl) : undefined;
+  if (!url) return { enabled: false, url: "", apiKey: "" };
   return { enabled: true, url: url.href.replace(/\/+$/, ""), apiKey };
+}
+
+/**
+ * A startup warning when search is silently off: an unusable MEILISEARCH_URL,
+ * or no URL in production. Never includes the configured value.
+ */
+export function meilisearchConfigWarning(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const rawUrl = env.MEILISEARCH_URL?.trim();
+  if (rawUrl && !parseMeilisearchUrl(rawUrl)) {
+    return "MEILISEARCH_URL is not a plain http(s) URL (no credentials, query or fragment). Search is disabled and Postgres answers every query";
+  }
+  if (!rawUrl && env.NODE_ENV === "production") {
+    return "MEILISEARCH_URL is not set. Search is disabled and Postgres answers every query";
+  }
 }
 
 /** An HTTP error response (`httpStatus` + Meilisearch `code`) or a communication failure (no status). */
@@ -50,7 +68,11 @@ export interface MeilisearchSearchParams {
 
 export interface MeilisearchSearchResponse<T> {
   hits: Array<T & { _rankingScore?: number }>;
-  /** Present for `page`/`hitsPerPage` searches: exact up to the index's `pagination.maxTotalHits`. */
+  /**
+   * Present for `page`/`hitsPerPage` searches: the exact number of matches. Hits
+   * stop at the index's `pagination.maxTotalHits`, so pages past that limit come
+   * back short or empty although `totalHits` is larger (see `reachablePage`).
+   */
   totalHits?: number;
   page?: number;
   hitsPerPage?: number;
@@ -65,8 +87,15 @@ export interface MeilisearchTask {
 }
 
 /** Narrow client surface; injected under `SEARCH_CLIENT` and mocked in specs. */
+export interface RequestOptions {
+  /** Aborts the HTTP request (e.g. when the caller's search timeout fires). */
+  signal?: AbortSignal;
+}
+
 export interface ISearchClient {
-  search<T>(index: string, params: MeilisearchSearchParams): Promise<MeilisearchSearchResponse<T>>;
+  search<T>(index: string, params: MeilisearchSearchParams, options?: RequestOptions): Promise<MeilisearchSearchResponse<T>>;
+  /** The index's `pagination.maxTotalHits`: how many matches any search can page through. */
+  maxTotalHits(index: string, options?: RequestOptions): Promise<number>;
   /** Adds or fully replaces documents by primary key `id`. Resolves when the task is enqueued. */
   addDocuments(index: string, documents: object[]): Promise<MeilisearchTask>;
   /** Resolves when the deletion is enqueued; a missing index fails the task without creating the index. */
@@ -96,8 +125,17 @@ function isTransient(err: unknown): boolean {
 export class MeilisearchClient implements ISearchClient {
   constructor(private readonly config: MeilisearchConfig) {}
 
-  search<T>(index: string, params: MeilisearchSearchParams): Promise<MeilisearchSearchResponse<T>> {
-    return this.request("POST", `${indexPath(index)}/search`, params);
+  search<T>(index: string, params: MeilisearchSearchParams, options: RequestOptions = {}): Promise<MeilisearchSearchResponse<T>> {
+    return this.request("POST", `${indexPath(index)}/search`, params, options.signal);
+  }
+
+  async maxTotalHits(index: string, options: RequestOptions = {}): Promise<number> {
+    const pagination = await this.request<{ maxTotalHits?: unknown }>("GET", `${indexPath(index)}/settings/pagination`, undefined, options.signal);
+    const value = pagination.maxTotalHits;
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+      throw new MeilisearchError("Meilisearch returned invalid pagination settings", { code: "invalid_response" });
+    }
+    return value;
   }
 
   addDocuments(index: string, documents: object[]): Promise<MeilisearchTask> {
@@ -141,7 +179,7 @@ export class MeilisearchClient implements ISearchClient {
     }
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     if (!this.config.enabled) throw new Error("Meilisearch is not configured");
     const headers: Record<string, string> = {};
     if (this.config.apiKey) headers.Authorization = `Bearer ${this.config.apiKey}`;
@@ -153,7 +191,7 @@ export class MeilisearchClient implements ISearchClient {
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
         redirect: "error",
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]) : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (err) {
       throw new MeilisearchError("Could not reach Meilisearch", { code: "communication_error", cause: err });
@@ -176,17 +214,49 @@ export class MeilisearchClient implements ISearchClient {
   }
 }
 
+/** A rejected or missing API key: misconfiguration that must be loud, but must not take pages offline. */
+export function isSearchAuthError(err: unknown): boolean {
+  return err instanceof MeilisearchError && (err.httpStatus === 401 || err.httpStatus === 403);
+}
+
 /**
  * Errors after which a search may fall back to Postgres: no response or timeout,
- * a 5xx, a missing index, or an index whose settings predate the query (the
- * worker reapplies settings; Postgres answers meanwhile). Other request errors
- * (invalid parameters, authentication) are bugs or misconfiguration and propagate.
+ * a 5xx, a missing index, an index whose settings predate the query (the worker
+ * reapplies settings; Postgres answers meanwhile), or a rejected API key
+ * (reported separately as `search_auth_failure`). Other request errors (invalid
+ * parameters) are bugs and propagate.
  */
 export function isSearchFallbackError(err: unknown): boolean {
   if ((err as { code?: unknown } | null)?.code === "SEARCH_TIMEOUT") return true;
   if (!(err instanceof MeilisearchError)) return false;
-  if (isTransient(err)) return true;
+  if (isTransient(err) || isSearchAuthError(err)) return true;
   if (err.code === "index_not_found") return true;
   return /^invalid_search_(sort|filter|attributes_to_search_on)$/.test(err.code)
     && /is not (sortable|filterable|searchable)/.test(err.message);
+}
+
+/** Runtime-failure event and level for a search that fell back to Postgres. */
+export function searchFailureEvent(err: unknown): { event: string; level: "error" | "warning" } {
+  return isSearchAuthError(err)
+    ? { event: "search_auth_failure", level: "error" }
+    : { event: "search_fallback", level: "warning" };
+}
+
+/**
+ * Reconciles a numbered page with `pagination.maxTotalHits`. Returns the total
+ * the caller may page through (`totalHits` capped at `maxTotalHits`), or `null`
+ * when the page is inconsistent even with that cap (a partial or corrupt page).
+ * The pagination setting is read only for a page shorter than `totalHits` implies.
+ */
+export async function reachablePage(
+  client: ISearchClient,
+  index: string,
+  page: { page: number; hitsPerPage: number; totalHits: number; count: number },
+  options?: RequestOptions
+): Promise<number | null> {
+  const expected = (total: number) => Math.min(page.hitsPerPage, Math.max(0, total - (page.page - 1) * page.hitsPerPage));
+  if (page.count === expected(page.totalHits)) return page.totalHits;
+  if (page.count > expected(page.totalHits)) return null;
+  const reachable = Math.min(page.totalHits, await client.maxTotalHits(index, options));
+  return page.count === expected(reachable) ? reachable : null;
 }

@@ -28,7 +28,7 @@ import type { IThemesRepository } from "../../../modules/catalog/themes.reposito
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
 import { SEARCH_CLIENT, MEILISEARCH_CONFIG, type MeilisearchConfig } from "../search.tokens";
-import { isSearchFallbackError, type ISearchClient, type MeilisearchSearchParams } from "../meilisearch.client";
+import { isSearchFallbackError, reachablePage, searchFailureEvent, type ISearchClient, type MeilisearchSearchParams } from "../meilisearch.client";
 import type { ISearchReader } from "./search-reader.interface";
 import type { SearchQuery, SearchResult, PostSearchItem } from "../search.types";
 import { SEARCH_INDEXES } from "../search.indexes";
@@ -85,7 +85,7 @@ export class MeilisearchSearchReader implements ISearchReader {
 
   searchGames(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
     return this.runSearch(
-      () => this.page<GameDoc, GameWithRelations>(SEARCH_INDEXES.games, query, { sort: NEWEST_FIRST }, gameWithRelationsFromDoc),
+      (signal) => this.page<GameDoc, GameWithRelations>(SEARCH_INDEXES.games, query, { sort: NEWEST_FIRST }, gameWithRelationsFromDoc, signal),
       () => this.fallbackGamesSearch(query),
       "games"
     );
@@ -94,14 +94,14 @@ export class MeilisearchSearchReader implements ISearchReader {
   searchPublicGames(query: SearchQuery): Promise<SearchResult<GameCard>> {
     const typed = !!query.q?.trim();
     return this.runSearch(
-      () => this.page<GameDoc, GameCard>(SEARCH_INDEXES.games, { ...query, limit: query.limit ?? 24 }, {
+      (signal) => this.page<GameDoc, GameCard>(SEARCH_INDEXES.games, { ...query, limit: query.limit ?? 24 }, {
         attributesToSearchOn: ["title", "originalTitle"],
         attributesToRetrieve: ["id", "slug", "title", "releaseDate", "criticScore", "criticScoreCount", "popularityScore"],
         // Interest in announced/undated games belongs in the same public catalog.
         // Unscored games carry POPULARITY_UNKNOWN (-1), so they sort after every scored one.
         // Typed queries rank by relevance; the index's last ranking rule is popularityScore:desc.
         ...(typed ? {} : { sort: ["popularityScore:desc", "releaseTimestamp:desc"] }),
-      }, gameCardFromDoc),
+      }, gameCardFromDoc, signal),
       () => this.fallbackPublicGamesSearch(query),
       "public games"
     );
@@ -118,7 +118,7 @@ export class MeilisearchSearchReader implements ISearchReader {
     for (let page = 1; page <= COMPANY_MAX_PAGES; page++) {
       // Only the search call runs under the timeout and cooldown; null means it was skipped or failed.
       const hits = await this.runSearch(
-        () => this.runCompanyHitsSearch(role, q, page, perPage),
+        (signal) => this.runCompanyHitsSearch(role, q, page, perPage, signal),
         async () => null,
         `public ${role}s`
       );
@@ -149,8 +149,8 @@ export class MeilisearchSearchReader implements ISearchReader {
   searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
     return this.runSearch(
       // Title outranks content through the index's searchable attribute order.
-      () => this.page<PostDoc, PostSearchItem>(SEARCH_INDEXES.posts, query,
-        { attributesToSearchOn: ["title", "content"], sort: ["publishedAt:desc"] }, postFromDoc),
+      (signal) => this.page<PostDoc, PostSearchItem>(SEARCH_INDEXES.posts, query,
+        { attributesToSearchOn: ["title", "content"], sort: ["publishedAt:desc"] }, postFromDoc, signal),
       () => this.fallbackPostsSearch(query),
       "posts"
     );
@@ -158,7 +158,7 @@ export class MeilisearchSearchReader implements ISearchReader {
 
   searchDevelopers(query: SearchQuery): Promise<SearchResult<Developer>> {
     return this.runSearch(
-      () => this.page<DeveloperDoc, Developer>(SEARCH_INDEXES.developers, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, developerFromDoc),
+      (signal) => this.page<DeveloperDoc, Developer>(SEARCH_INDEXES.developers, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, developerFromDoc, signal),
       () => this.fallbackDevelopersSearch(query),
       "developers"
     );
@@ -166,7 +166,7 @@ export class MeilisearchSearchReader implements ISearchReader {
 
   searchPublishers(query: SearchQuery): Promise<SearchResult<Publisher>> {
     return this.runSearch(
-      () => this.page<PublisherDoc, Publisher>(SEARCH_INDEXES.publishers, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, publisherFromDoc),
+      (signal) => this.page<PublisherDoc, Publisher>(SEARCH_INDEXES.publishers, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, publisherFromDoc, signal),
       () => this.fallbackPublishersSearch(query),
       "publishers"
     );
@@ -174,7 +174,7 @@ export class MeilisearchSearchReader implements ISearchReader {
 
   searchGenres(query: SearchQuery): Promise<SearchResult<Genre>> {
     return this.runSearch(
-      () => this.page<GenreDoc, Genre>(SEARCH_INDEXES.genres, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, genreFromDoc),
+      (signal) => this.page<GenreDoc, Genre>(SEARCH_INDEXES.genres, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, genreFromDoc, signal),
       () => this.fallbackGenresSearch(query),
       "genres"
     );
@@ -182,7 +182,7 @@ export class MeilisearchSearchReader implements ISearchReader {
 
   searchPlatforms(query: SearchQuery): Promise<SearchResult<Platform>> {
     return this.runSearch(
-      () => this.page<PlatformDoc, Platform>(SEARCH_INDEXES.platforms, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, platformFromDoc),
+      (signal) => this.page<PlatformDoc, Platform>(SEARCH_INDEXES.platforms, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, platformFromDoc, signal),
       () => this.fallbackPlatformsSearch(query),
       "platforms"
     );
@@ -190,53 +190,61 @@ export class MeilisearchSearchReader implements ISearchReader {
 
   searchThemes(query: SearchQuery): Promise<SearchResult<Theme>> {
     return this.runSearch(
-      () => this.page<ThemeDoc, Theme>(SEARCH_INDEXES.themes, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, themeFromDoc),
+      (signal) => this.page<ThemeDoc, Theme>(SEARCH_INDEXES.themes, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, themeFromDoc, signal),
       () => this.fallbackThemesSearch(query),
       "themes"
     );
   }
 
   private async runSearch<T>(
-    searchCall: () => Promise<T>,
+    searchCall: (signal: AbortSignal) => Promise<T>,
     fallback: () => Promise<T>,
     entityLabel: string
   ): Promise<T> {
     if (!this.enabled || Date.now() < this.searchRetryAt) {
       return fallback();
     }
+    // Aborting after the race also cancels a request the timeout gave up on.
+    const controller = new AbortController();
     try {
-      return await withTimeout(searchCall(), SEARCH_TIMEOUT_MS, `meilisearch.${entityLabel}.search`);
+      return await withTimeout(searchCall(controller.signal), SEARCH_TIMEOUT_MS, `meilisearch.${entityLabel}.search`);
     } catch (err) {
       if (isSearchFallbackError(err)) {
         const now = Date.now();
         if (now >= this.searchRetryAt) {
           this.searchRetryAt = now + SEARCH_COOLDOWN_MS;
-          reportRuntimeFailure("search_fallback", `Meilisearch ${entityLabel} search failed. Using Postgres`, err, "warning");
+          const { event, level } = searchFailureEvent(err);
+          reportRuntimeFailure(event, `Meilisearch ${entityLabel} search failed. Using Postgres`, err, level);
         }
         return fallback();
       }
       throw err;
+    } finally {
+      controller.abort();
     }
   }
 
   // --- Private: search runners ---
 
-  /** One numbered page; an empty `q` is a placeholder (browse) search. */
+  /**
+   * One numbered page; an empty `q` is a placeholder (browse) search. The total
+   * is capped at what `pagination.maxTotalHits` lets a caller page through.
+   */
   private async page<D, T>(
     index: string,
     query: SearchQuery,
     params: MeilisearchSearchParams,
-    fromDoc: (doc: D) => T
+    fromDoc: (doc: D) => T,
+    signal: AbortSignal
   ): Promise<SearchResult<T>> {
-    const res = await this.client.search<D>(index, {
-      q: query.q?.trim() ?? "",
-      ...params,
-      page: query.page ?? 1,
-      hitsPerPage: query.limit ?? 10,
-    });
+    const page = query.page ?? 1;
+    const hitsPerPage = query.limit ?? 10;
+    const res = await this.client.search<D>(index, { q: query.q?.trim() ?? "", ...params, page, hitsPerPage }, { signal });
+    const totalHits = res.totalHits ?? 0;
+    const total = await reachablePage(this.client, index, { page, hitsPerPage, totalHits, count: res.hits.length }, { signal });
     return {
       items: res.hits.map((hit) => fromDoc(hit)),
-      total: res.totalHits ?? 0,
+      total: total ?? totalHits,
     };
   }
 
@@ -244,7 +252,8 @@ export class MeilisearchSearchReader implements ISearchReader {
     role: GameCompanyRole,
     q: string,
     page: number,
-    perPage: number
+    perPage: number,
+    signal: AbortSignal
   ): Promise<CompanyHit[]> {
     const index = role === "developer" ? SEARCH_INDEXES.developers : SEARCH_INDEXES.publishers;
     const res = await this.client.search<{ id: string }>(index, {
@@ -254,7 +263,7 @@ export class MeilisearchSearchReader implements ISearchReader {
       showRankingScore: true,
       page,
       hitsPerPage: perPage,
-    });
+    }, { signal });
     return res.hits;
   }
 

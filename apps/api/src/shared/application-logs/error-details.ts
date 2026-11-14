@@ -127,8 +127,8 @@ export function describeLogError(error: unknown, reportedAt?: Error) {
 
     const code = (current as Error & { code?: unknown }).code;
     if (current instanceof MeilisearchError) {
-      // Meilisearch codes are fixed snake_case identifiers (e.g. index_not_found).
-      error_code = /^[a-z_]{1,64}$/.test(current.code) ? `meilisearch_${current.code}` : undefined;
+      // Meilisearch codes are fixed snake_case identifiers (e.g. index_not_found, or http_502 without a body).
+      error_code = /^[a-z0-9_]{1,64}$/.test(current.code) ? `meilisearch_${current.code}` : undefined;
       const status = current.httpStatus;
       reason = status === undefined
         ? (current.code === "communication_error" ? "Meilisearch could not be reached" : "A Meilisearch operation failed")
