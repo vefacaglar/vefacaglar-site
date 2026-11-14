@@ -230,9 +230,7 @@ export class MeilisearchSearchWriter implements ISearchIndexWriter {
   private async reindexGamesForLookup(relation: LookupEntity, id: string): Promise<void> {
     try {
       const gameIds = await this.gamesRepo.findGameIdsByRelation(relation, id);
-      for (const gameId of gameIds) {
-        await this.indexGame(gameId);
-      }
+      await this.indexGames(gameIds);
     } catch (err) {
       reportRuntimeFailure("search_cascade_failed", `Could not reindex games related to a ${relation}`, err);
     }

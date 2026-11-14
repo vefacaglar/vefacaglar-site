@@ -81,6 +81,25 @@ describe("MeilisearchSearchWriter", () => {
     expect(client.waitForTask).toHaveBeenCalledWith(7);
   });
 
+  it("re-indexes a renamed lookup's games in one bulk import", async () => {
+    const other = { ...game, id: "00000000-0000-4000-8000-000000000002", slug: "b" };
+    const developersRepo = { findById: vi.fn().mockResolvedValue({ id: "d-1", name: "Dev", slug: "dev", countryCode: null,
+      createdAt: new Date("2026-01-01T00:00:00Z"), updatedAt: null }) };
+    gamesRepo.findGameIdsByRelation = vi.fn().mockResolvedValue([ID, other.id]);
+    gamesRepo.findByIds.mockResolvedValue([game, other]);
+    const lookupWriter = new MeilisearchSearchWriter(
+      client, { enabled: true, url: "http://localhost:7700", apiKey: "key" },
+      developersRepo as any, {} as any, {} as any, {} as any, {} as any, gamesRepo as any, {} as any,
+    );
+
+    await lookupWriter.indexDeveloper("d-1");
+
+    expect(gamesRepo.findGameIdsByRelation).toHaveBeenCalledWith("developer", "d-1");
+    expect(gamesRepo.findByIds).toHaveBeenCalledWith([ID, other.id]);
+    expect(gamesRepo.findById).not.toHaveBeenCalled();
+    expect(client.addDocuments).toHaveBeenCalledWith("games_en", [expect.objectContaining({ id: ID }), expect.objectContaining({ id: other.id })]);
+  });
+
   it("fails a required sync when the task fails or the index is missing", async () => {
     client.waitForTask.mockResolvedValue({ taskUid: 7, status: "failed",
       error: { message: "Document doesn't have a `id` attribute", code: "missing_document_id", type: "invalid_request" } });
