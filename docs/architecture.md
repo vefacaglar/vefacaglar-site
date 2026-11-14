@@ -1,215 +1,78 @@
 # Architecture
 
-How the pieces of this monorepo fit together. Coding rules live in
-[AGENTS.md](../AGENTS.md); the job system is specified in
-[jobs-worker.md](jobs-worker.md).
+This is an overview of the repository's current design and deployment
+configuration. [AGENTS.md](../AGENTS.md) contains coding rules.
 
-## Overview
-
-```txt
-                 ┌──────────────────────────────┐
-  browser ──────▶│ apps/web  (Next.js, Vercel)  │
-                 │ site · library · dashboard   │
-                 └──────────────┬───────────────┘
-                                │ HTTP (server components / actions / route handlers)
-                 ┌──────────────▼───────────────┐        ┌─────────────┐
-                 │ apps/api  (Fastify, VPS)     │───────▶│ Meilisearch │
-                 │ api2.vefacaglar.com          │◀── ─ ─ │ (search)    │
-                 └───┬──────────────────────────┘        └─────▲───────┘
-                     │ Drizzle                                 │ bulk import,
-                     ▼                                         │ index swap
-                ┌──────────┐                     ┌─────────────┴──────────┐
-                │ Postgres │                     │ apps/worker (Rust, VPS)│
-                │ data +   │                     │ background jobs        │
-                │ job queue│◀────────────────────│ LISTEN / poll / claim  │
-                └──────────┘                     └────────────────────────┘
+```text
+Browser -> apps/web (Next.js) -> apps/api (Fastify) -> PostgreSQL
+    |                              |                    ^
+    |                              -> Meilisearch       |
+    -> API job SSE                                      |
+                                       apps/worker (Rust)
+                                       -> PostgreSQL + Meilisearch
 ```
 
-| Part | Tech | Runs on | Purpose |
-|---|---|---|---|
-| `apps/web` | Next.js 15, React 19, CSS Modules | Docker on the VPS (standalone Node server) | Personal site, game library (`/games`, `/movies`, `/profile`), admin dashboard |
-| `apps/api` | Fastify 5, TypeBox, tsyringe, Drizzle | Docker on the VPS (`dist/server.js`); Vercel entry `dist/app.js` kept | REST API, auth, catalog, search reads + incremental writes, job enqueueing |
-| `apps/worker` | Rust (tokio, sqlx, reqwest) | Docker on the same VPS as the API, single replica | Long-running jobs: full search reindex, index sync |
-| `packages/db` | Drizzle ORM + Drizzle Kit | — | Schema, generated migrations, seeds |
-| Postgres | — | managed / VPS | Source of truth and the only job queue |
-| Meilisearch | v1.56.2 | VPS | Search (English-only indexes with stable uids; see [search-meilisearch.md](search-meilisearch.md)) |
+| Component | Role |
+| --- | --- |
+| `apps/web` | Next.js 15 and React 19 site, game/movie library and admin dashboard; Docker standalone deployment |
+| `apps/api` | Fastify 5 API, auth, catalog, search reads and incremental writes, and job enqueueing; Docker runs `dist/server.js` |
+| `apps/worker` | Rust background jobs; production deployment uses two replicas, with a global limit of two running jobs |
+| `packages/db` | Drizzle schema, generated migrations and database tools |
+| `packages/ui` | Shared React components, CSS controls and palette tokens |
+| PostgreSQL | Source of truth and job queue |
+| Meilisearch | Search indexes; see [search contract](search-meilisearch.md) |
 
-**Boundary rule:** the web app talks only to the API. It never connects to
-Postgres, Meilisearch or the worker. The API and the worker share one VPS.
-Browsers connect directly to the API for job SSE streams; the web server does
-not proxy those long-lived requests. See [web deployment](../deploy/web/README.md)
-for the initial DNS cutover and routine GitHub deployments.
+The configured Docker deployments target the VPS. The web app talks to the API
+rather than directly to the database, search engine or worker. Browsers connect
+directly to the API for job SSE streams, with polling as fallback.
 
-## Web (`apps/web`)
+## Web
 
-The web app has two products with separate looks:
+The main site contains the home, about, blog, projects and packages pages. The
+library includes `/explore/games`, `/explore/movies` and `/profile/...` with
+separate styling. Legacy `/games` and `/movies` paths redirect to `/explore`.
+Game and movie catalogs have detail pages; profiles include game and movie
+activity. See [game ranking](game-ranking.md), [movie catalog](movies-catalog.md)
+and [movie activity](movie-activity.md).
 
-- **Main site**: home, about, blog, projects, packages. Lowercase, monospaced
-  (Fira Code) on the root palette from `globals.css`.
-- **Library**: `/games`, `/movies`, `/profile/...`. It has its own brand
-  ("Vefa Library"), its own header and footer (`components/library/LibraryShell`),
-  its own SEO and Open Graph images (`lib/librarySeo.ts`) and never links back to
-  the main site. A graphite palette and the Geist font are scoped to library pages
-  in `globals.css` (`[data-library]`). Text is sentence case.
-  - `/games`: catalog browse/search sorted by popularity; game detail pages with a
-    blurred cover backdrop; signed-in users log games (status, rating, playtime).
-  - `/profile/[username]`: overview, `/games` (status tabs, sort, grid/list view,
-    platform chart), `/movies` (placeholder). Profiles are private by default;
-    the owner makes theirs public in `/profile/settings`.
-  - `/movies`: placeholder for a later phase.
-- **Dashboard** (`/dashboard`, admin only): content editing (posts, pages,
-  projects, packages, games) and the jobs screen (`/dashboard/jobs`).
+The admin dashboard manages content and jobs. Server components and actions use
+the API; authentication supports password and OIDC modes. Shared palette and
+controls live in `packages/ui`; app-specific styles use CSS Modules.
 
-Conventions: server components fetch the API through `lib/httpClient.ts`
-(`API_URL`); mutations go through server actions; styles are CSS Modules with
-palette variables only, no inline styles, square corners. Auth is a
-`session_token` cookie (password login or OIDC, see `lib/oidc.ts`); the session
-is resolved with `lib/session.ts` (`GET /api/auth/me`).
+## API and data
 
-## API (`apps/api`)
+Feature folders contain TypeBox schemas and handlers, with thin route dispatchers.
+Handlers delegate data access to repositories or services, and `tsyringe` supplies
+dependencies. Route pre-handlers enforce authorization. Swagger is available at
+`/swagger`. The database schema and migrations live in `packages/db`; when an API image is built and API or worker deployment is enabled, CD applies
+pending migrations before deployment. Migrations must remain
+compatible with releases still running during rollout.
 
-- **Feature folders**: `src/modules/<module>/<feature>/` with `*.schema.ts`
-  (TypeBox) and `*.handler.ts`; thin `*.routes.ts`; public and dashboard
-  endpoints are always separate features.
-- **Data access**: handlers never touch Drizzle. Repositories (one domain, may
-  span several tables) and services (several sources) inject `DbProvider`;
-  transactions propagate through `AsyncLocalStorage`.
-- **DI**: `tsyringe`, everything registered in `src/container.ts`.
-- **Auth**: `app.requireAdmin` / `app.tryAuth` pre-handlers in routes only.
-- **Errors and i18n**: `HttpError` subclasses with translation keys; DB content
-  translations come from the `localizations` table (skipped for English).
-- **Docs**: Swagger at `/swagger`.
+## Search and jobs
 
-Modules: `auth`, `authors`, `catalog` (games, developers, publishers, genres,
-platforms, themes, IGDB import, popularity), `games` (public catalog, logs,
-library, public profiles), `jobs`, `localizations`, `packages`, `pages`, `posts`,
-`projects`, `uploads`.
+Meilisearch serves search with PostgreSQL fallback when it is unavailable or an
+index is not ready. The API handles incremental writes; the worker builds and
+synchronizes indexes. Generic `search.reindex` and `search.sync` cover games,
+facets and posts; `search.movies.sync` owns movie and people indexes. These jobs
+share a concurrency key. See [search](search-meilisearch.md) and
+[movie search](movie-search.md).
 
-### Game library data
-
-- `user_games` holds one log per user and game (status, rating /100, playtime,
-  platform, dates).
-- `user_game_playtime_entries` is an audit trail: when playtime goes up
-  (5 h → 8 h) the increase (3 h) is stored with the previous and new values.
-  Decreases are not recorded.
-- Library endpoints (`/api/games/me/library`,
-  `/api/games/users/:username/library`) return a summary (counts, hours,
-  average rating, platform distribution) and per-game rows (completion date,
-  last activity, platform, critic score). Private profiles answer 401 for
-  visitors that are not signed in and 403 for signed-in non-owners.
-
-### Popularity
-
-General `/games` browse sorts by current-interest `popularityScore`, then release
-date. Announced, unreleased and undated catalog games remain eligible; an
-upcoming game can trend before its release. The score blends percentile-ranked
-IGDB Visits (type 1, 70%), Playing (type 3, 20%) and Steam 24-hour peak players
-(type 5, 10%). These are our documented weights, not an implementation of IGDB's
-undocumented "Popular Right Now" homepage formula, so identical ordering is not
-promised. Lifetime Played, ratings and Steam review totals do not affect this trend score.
-Weights are renormalized over known current signals; missing data is unknown,
-while a measured zero remains zero. IGDB primitives live in
-`game_popularity_signals`. Public cards expose the nullable 0–1 score alongside
-eligible critic scores, while stored cover URLs and completion durations remain
-suppressed (`null`) on public responses. No administrative source data is
-included in the public list response.
-
-Refresh with `pnpm --filter api catalog:popularity` or the existing admin-only
-`POST /api/catalog/popularity/refresh`. The CLI requires Meilisearch write access
-and resynchronizes all IGDB-linked catalog games in 500-document batches, so a
-rerun repairs search after a partial failure even when scores did not change.
-Indexing failures fail the CLI; ordinary API/import event behavior is unchanged.
-Popularity primitives are fetched globally in pages of 500, using their own
-ascending primitive ids as the cursor. Catalog matching happens afterwards, so
-a page containing no known games cannot end the provider scan early. Around
-245,000 current provider rows need about 491 requests, rather than querying
-roughly 308,000 catalog games in 1,855 id batches. Invalid/non-advancing pages,
-provider failures or an empty current-data feed abort before replacing scores.
-Strict search synchronization still uses roughly 616 batches. This is a batch
-job that can take minutes; the CLI reports elapsed time and memory every 30 s.
-
-Daily refresh runs through the existing Jobs system as
-`catalog.popularity.refresh` at 07:15 UTC, not a separate GitHub Actions schedule.
-The Rust worker starts the same compiled TypeScript CLI inside its image, with
-Node 24, keeping the scoring implementation in one place. It shares concurrency
-key `search.index` with search reindex/sync to prevent live index swap races.
-The worker needs `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` in addition to its
-existing database and Meilisearch (`MEILISEARCH_URL`, `MEILISEARCH_API_KEY`)
-credentials, which the child process inherits. No public API endpoint or
-internal HTTP authentication is involved.
-
-Generated migrations are applied automatically by CD before deployment. Migration `0026_catalog_popularity_job.sql` seeds the recurring row
-disabled; enable it only after the updated worker image and credentials are
-verified. `next_run_at = null` lets the existing scheduler compute the next
-07:15 UTC occurrence. The Jobs dashboard supports manual runs, progress, logs,
-retries and cancellation. Cancellation or shutdown kills and reaps the Node
-child; a subsequent attempt safely reruns the full refresh rather than resuming
-an incomplete provider scan. API and worker deployments do not run migrations.
-
-## Search
-
-- **Read/write split**: `ISearchReader` for queries, `ISearchIndexWriter` for
-  incremental per-document writes triggered by domain events
-  (`shared/events`, in-process bus). Handlers never write to Meilisearch directly.
-- **Resilience**: queries fall back to Postgres when Meilisearch times out or is
-  unavailable. The API process waits 30 seconds before trying Meilisearch again.
-- **Indexes**: English only — `games_en`, `developers_en`, `publishers_en`,
-  `genres_en`, `platforms_en`, `themes_en`, `posts_en`, plus `movies_en` and
-  `movie_people_en`. Each is a stable uid; rebuilds load `<uid>__build_<suffix>`
-  and swap it in atomically. The API never creates indexes: it writes only into
-  existing ones and otherwise serves SQL until the worker has built them.
-  Settings and the full contract: [search-meilisearch.md](search-meilisearch.md).
-- **Bulk work belongs to the worker**: full rebuilds and gap filling are jobs
-  (see below); the hourly `search.sync` rebuilds a missing or outdated index. The Rust mappers are kept identical to the TypeScript ones by
-  shared golden fixtures tested on both sides.
-
-## Background jobs
-
-A small Hangfire-style system with Postgres as the only queue.
-
-```txt
-dashboard ──▶ api: INSERT job + pg_notify('jobs') ──▶ Postgres ◀── worker: LISTEN + 5 s poll,
-                                                                  claim (FOR UPDATE SKIP LOCKED),
-dashboard ◀── api SSE stream ◀── LISTEN job_events ◀──────────────  progress / logs / checkpoint
-```
-
-- **Tables**: `jobs`, `job_logs`, `recurring_jobs` (registered jobs), `workers`.
-- **Worker**: heartbeats, a reaper that requeues jobs from dead workers,
-  per-batch checkpoints (resume after crash, deploy or retry), cancel between
-  batches, retries with backoff, graceful shutdown that pauses and requeues.
-- **Registered search jobs**:
-  - `search.reindex` (manual): full rebuild. Builds `<uid>__build_<timestamp>`
-    indexes, loads all data, then swaps every index at once and deletes the
-    builds. Search keeps serving the old data until the swap.
-  - `search.sync` (hourly): runs that full rebuild when an index is missing or
-    its settings changed; otherwise fills documents that exist in Postgres but
-    are missing from the live indexes.
-  Both share one concurrency key, so only one search job runs at a time.
-- **Live view**: the dashboard (`/dashboard/jobs`) has a runs tab and a
-  registered jobs tab; job pages stream progress and logs over Server-Sent
-  Events (`GET /api/jobs/dashboard/:id/stream`, proxied by a Next route handler),
-  with polling as fallback.
-- **Adding a job type**: implement the `JobHandler` trait in `apps/worker`, register
-  it, and add the type to `JOB_TYPES` in `apps/api/src/modules/jobs/job-types.ts`.
-
-Full spec: [jobs-worker.md](jobs-worker.md).
-
-## Database
-
-Drizzle schema in `packages/db/src/schema/` (`users`, `sessions`, `posts`,
-`pages`, `projects`, `packages`, `localizations`, `games`, `jobs`). Migrations
-are always generated (`db:generate`), never hand-written; generated files may only
-receive data backfill steps. CD applies pending migrations once per run, before
-any deployment, from the new API image on the VPS (`packages/db/dist/migrate.js`,
-serialized by a Postgres advisory lock). Migrations must stay backward-compatible
-with the releases still running.
+The API enqueues jobs in PostgreSQL and notifies workers; the worker claims jobs,
+reports progress, and supports retries and checkpoints where implemented. The
+jobs dashboard streams progress directly from the API. The worker also runs
+catalog and popularity jobs. For schedules, concurrency and deployment drain
+semantics, see [jobs-worker.md](jobs-worker.md).
 
 ## Deployment and CI
 
-| Workflow | What it does |
-|---|---|
-| `.github/workflows/ci-deploy.yml` | One run for all apps: detects affected apps, then verifies and builds API (multi-arch), web and worker images in parallel; on `main` applies DB migrations once, then deploys API (blue-green behind Caddy, `deploy/api`), web (`deploy/web`) and worker (`deploy/worker`) in parallel, each gated by its `*_DEPLOY_ENABLED` variable |
-| `.github/workflows/catalog-import.yml` | Scheduled IGDB catalog import every 6 hours |
+`.github/workflows/ci-deploy.yml` detects affected components, verifies and builds
+images, and applies pending migrations on `main` when an API image is built
+and API or worker deployment is enabled. The web,
+API and worker are deployed through their respective Docker workflows behind
+Caddy. `.github/workflows/catalog-import.yml` schedules the IGDB import every six
+hours. See the [web](../deploy/web/README.md), [API](../deploy/api/README.md)
+and [worker](../deploy/worker/README.md) deployment guides for current rollout,
+configuration and recovery details.
 
-The web app deploys on Vercel. The local `.env` points at production services,
-so the worker is not part of `pnpm dev` and any local job run touches live data.
+The worker is not started by `pnpm dev`. Always check the configured service
+URLs before starting it: it can run jobs against the configured database.

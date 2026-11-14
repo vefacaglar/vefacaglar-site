@@ -1,303 +1,109 @@
-# Vefa Çağlar Personal Website Monorepo
+# Vefa Çağlar's website
 
-Welcome to the personal developer website and API monorepo of Vefa Çağlar. It contains the personal site, the game library ("Vefa Library" at `/games`), the admin dashboard, the API and a Rust background worker.
+A personal website, game and movie library, admin dashboard, API and background
+worker in a pnpm/Turborepo monorepo. See [architecture](docs/architecture.md)
+for the system overview and [AGENTS.md](AGENTS.md) for repository conventions.
 
-For how the pieces fit together, see [docs/architecture.md](docs/architecture.md).
+## Stack
 
----
+- **Web:** Next.js 15, React 19, TypeScript, CSS Modules and the shared
+  `@vefacaglar/ui` package.
+- **API:** Fastify 5, TypeBox, tsyringe and OpenAPI/Swagger.
+- **Data:** PostgreSQL and Drizzle ORM/Kit; PostgreSQL is also the job queue.
+- **Search:** Meilisearch for games, catalog facets, posts, movies and movie
+  people, with PostgreSQL fallback. The Rust worker handles bulk indexing.
+- **Background jobs:** Rust (Tokio, SQLx and reqwest), PostgreSQL LISTEN/NOTIFY
+  and SSE for dashboard progress.
+- **Tests and tooling:** Vitest for API and web, Cargo for the worker, pnpm
+  11.2.2 and Turborepo. CI uses Node.js 24.
+- **Integrations:** ImageKit for uploads, IGDB for games, Wikidata and Wikipedia
+  for movie catalog and interest data.
 
-## 🚀 Tech Stack
+## Repository
 
-- **Monorepo Manager:** [Turborepo](https://turbo.build/)
-- **Package Manager:** [pnpm](https://pnpm.io/)
-- **Frontend:** [Next.js](https://nextjs.org/) 15 + React 19, CSS Modules (`apps/web`)
-- **Backend:** [Fastify](https://fastify.dev/) 5 (`apps/api`)
-- **Background Worker:** [Rust](https://www.rust-lang.org/) with tokio, sqlx and reqwest (`apps/worker`)
-- **Database / ORM:** PostgreSQL, [Drizzle ORM](https://orm.drizzle.team/) & [Drizzle Kit](https://orm.drizzle.team/docs/kit-overview) (`packages/db`)
-- **Job Queue:** PostgreSQL tables + `LISTEN/NOTIFY` (no Redis queue); live progress over Server-Sent Events
-- **Validation:** [TypeBox](https://github.com/sinclairzx81/typebox) (Runtime Validation & Schema Serialization)
-- **Testing:** [Vitest](https://vitest.dev/) (Handler-level unit tests in `apps/api`)
-- **Search & Indexing Engine:** [Meilisearch](https://www.meilisearch.com/) (typo-tolerant search across games, developers, publishers, genres, platforms, themes, posts, movies and movie people)
-- **API Documentation:** OpenAPI/Swagger (`@fastify/swagger` & `@fastify/swagger-ui`)
-- **Dependency Injection:** [`tsyringe`](https://github.com/microsoft/tsyringe)
-- **Image Hosting:** [ImageKit](https://imagekit.io/)
-- **Game Data:** [IGDB](https://api-docs.igdb.com/) (catalog import and popularity signals)
-
----
-
-## 📁 Repository Structure
-
-```txt
-apps/
-  ├── web/            # Next.js: personal site, game library, admin dashboard
-  ├── api/            # Fastify REST API
-  └── worker/         # Rust background job worker (search reindex / sync)
-
-packages/
-  ├── db/             # Drizzle ORM, Schemas, Migrations, and Seeders
-  └── shared/         # Shared TypeScript utilities and helpers
-
-deploy/
-  ├── api/            # API Docker + Caddy blue-green deployment
-  └── worker/         # Worker Docker deployment
-
-docs/
-  ├── architecture.md # System overview
-  └── jobs-worker.md  # Background job system spec
+```text
+apps/web       Next.js site, library and dashboard
+apps/api       Fastify API
+apps/worker    Rust background worker
+packages/db    Drizzle schema, migrations and database tools
+packages/ui    Shared components, styles and design tokens
+deploy/        Web, API and worker deployment scripts and guides
+docs/          Architecture and feature contracts
 ```
 
----
+The public library includes `/explore/games` and `/explore/movies`, game and
+movie detail pages, and user profiles with game and movie activity. Legacy
+`/games` and `/movies` paths redirect to `/explore`. The admin dashboard includes
+content and job management.
 
-## ⚙️ Architectural Conventions (API)
+## Local development
 
-The backend (`apps/api`) strictly implements the **Feature Folder** / **Handler Pattern** (similar to .NET's MediatR or CQRS approach):
+Use Node.js 24 (the version used by CI), pnpm 11.2.2, PostgreSQL and, for worker
+changes, Rust 1.88 or newer. Meilisearch is optional for API search but required
+for search jobs. Configure any integrations you need in a root `.env`:
 
-- **Single Source of Truth:** Schemas are defined using `@sinclair/typebox`. TypeScript types are automatically inferred via `Static<typeof Schema>`.
-- **Feature Folders:** Endpoint modules are located in isolated feature folders under `src/modules/<module>/<feature>/`. Each feature consists of:
-  - `*.schema.ts`: Request / Response TypeBox schemas and types.
-  - `*.handler.ts`: Business logic and database interaction within a dedicated Handler class.
-- **Thin Routes:** Routers under `src/modules/<module>/<module>.routes.ts` act as thin dispatchers that validate inputs, invoke the correct handler, and map responses/errors.
-- **Dependency Injection:** Handlers and services are managed via `tsyringe` using a centralized container (`container.ts`) for constructor injection.
-- **Autogenerated Documentation:** Every schema registered in the Fastify route option is automatically compiled into interactive OpenAPI docs available at `/swagger`.
-
----
-
-## 🔍 Search & Indexing Architecture (Meilisearch)
-
-Search across games, game-related entities, posts, movies and movie people is powered by **Meilisearch** (contract: [docs/search-meilisearch.md](docs/search-meilisearch.md)), designed with resilience and strict decoupling patterns:
-
-- **CQRS Search Pattern:** Search uses separate read and write contracts. Lookups and queries run via `ISearchReader` to fetch from Meilisearch, while index updates run via `ISearchIndexWriter`.
-- **Decoupled Event-Driven Indexing:** To avoid blocking API request pipelines, indexing is completely decoupled from core database write operations. Instead of writing to Meilisearch inside feature handlers, we utilize a domestic **Domain Event Bus** (`games.events.ts`). DB modifications trigger lightweight events that are subscribed to asynchronously to propagate updates to Meilisearch.
-- **Search Fallback:** When Meilisearch is unavailable or times out, the API uses PostgreSQL for searches. The API keeps a 30-second cooldown in memory before trying Meilisearch again.
-- **English-Only Index:** Search indexes only the default (English) content into one index per entity (`games_en`, `posts_en`, …). Every search reads these indexes regardless of the request language; translations are not indexed.
-- **Atomic Rebuilds:** Each index has a stable uid. A full rebuild loads a `<uid>__build_<suffix>` index and swaps it in, so it switches over without downtime.
-- **Popularity Ranking:** Game browse results are sorted by a popularity score built from IGDB signals, then by release date.
-- **Bulk Work in the Worker:** The API only does per-document writes into existing indexes and never creates one. Index creation, full rebuilds and gap filling are background jobs (see [Search Reindexing](#search-reindexing)).
-
----
-
-## 🎮 Game Library
-
-The library (`/games`, `/movies`, `/profile`) is a separate product inside the web app, with its own header, footer, palette (graphite, Geist font) and link previews. It never links back to the main site.
-
-- **Catalog:** browse and search games, game detail pages, sign-in to log a game (status, rating, playtime, platform).
-- **Profiles:** `/profile/[username]` with an overview, a games shelf (status tabs, sorting, grid and list views, platform chart) and a movies placeholder. Profiles are private by default and can be made public in `/profile/settings`.
-- **Playtime audit:** every playtime increase is stored as a separate entry (`user_game_playtime_entries`).
-- **Movies:** placeholder, planned for a later phase.
-
----
-
-## ⚡ Background Jobs
-
-Long-running work runs in the Rust worker (`apps/worker`), not in the API or on a developer machine. The API enqueues jobs into Postgres, the worker claims and runs them with checkpoints (resume after a crash or deploy), and the dashboard (`/dashboard/jobs`) shows runs and registered jobs with live progress and streaming logs. See [docs/jobs-worker.md](docs/jobs-worker.md).
-
----
-
-## 🧪 Testing
-
-The API (`apps/api`) is covered by **Vitest** unit tests that follow the Feature Folder / Handler conventions:
-
-- **The unit is the Handler.** Tests target Handler classes — their input→output logic: query/param parsing, default values, response shaping (e.g. `Date → ISO string`), and thrown `HttpError`s such as `NotFoundError`.
-- **Colocated specs.** Each test lives next to the file it covers, inside the same feature folder, named `<feature>.handler.spec.ts` (e.g. `src/modules/posts/list/list.handler.spec.ts`). There is no separate `__tests__/` or root `test/` directory.
-- **No DI container, no real I/O.** Handlers are instantiated directly (`new Handler(mockRepo)`), bypassing `tsyringe`. Every repository/service dependency is mocked with `vi.fn()`; tests never touch a real database, Drizzle, or the network.
-- **Out of scope for unit tests:** thin route dispatchers (`*.routes.ts`), TypeBox schemas (`*.schema.ts`), and repositories/services that perform direct DB access.
-- **Build isolation.** Specs are excluded from the production build (`tsconfig.json`) and Vitest only scans `src/**/*.spec.ts` (`apps/api/vitest.config.ts`), so test code never leaks into `dist/`.
-
-Run them with `pnpm test` (all workspaces) or `pnpm --filter api test` (API only) — see [Running Tests](#run-tests).
-
----
-
-## 📌 Development Conventions
-
-- **Language:** All visible UI text, source code comments, logs, and Git commit messages **must be in English**.
-- **Simplicity:** Keep the implementation minimal. No heavy UI libraries unless necessary.
-- **Verification:** Always use `pnpm typecheck` to verify codebase correctness non-destructively. Avoid running `pnpm build` during active local development as it breaks Next.js HMR.
-- **Testing:** API logic is covered by **Vitest** unit tests. See the [Testing](#-testing) section below for the conventions (Handler-level, colocated, mocked repositories).
-
----
-
-## 🛠️ Getting Started
-
-### Prerequisites
-
-- **Node.js:** v20 or higher
-- **pnpm:** v11 or higher
-- **PostgreSQL Database** (e.g., Neon Postgres, Local Postgres)
-- **Meilisearch** (optional search index; the API falls back to Postgres)
-- **Rust toolchain** (only for working on `apps/worker`)
-- **ImageKit Account** (for image uploads)
-
-### Installation
-
-First, clone the repository and install all workspace dependencies from the root directory:
-
-```bash
-pnpm install
-```
-
-Configure your environment variables by creating a `.env` file in the root directory (you can copy `.env.example` as a starting point):
-
-```bash
+```sh
 cp .env.example .env
-```
-
----
-
-## 💻 Running the Project
-
-The web, API and worker have Docker deployments on the VPS through GitHub Actions:
-[web deployment guide](deploy/web/README.md) · [API deployment guide](deploy/api/README.md) · [worker deployment guide](deploy/worker/README.md).
-The initial web migration still requires the domain owner to complete DNS cutover.
-
-All commands should be executed from the **project root directory**:
-
-### Development Mode
-Runs Next.js frontend, Fastify API, and all workspace development servers in parallel:
-```bash
+pnpm install
+pnpm --filter @vefacaglar/db db:migrate
 pnpm dev
 ```
 
-### Build Workspace
-Compiles all apps and packages for production:
-```bash
-pnpm build
-```
+Review `DATABASE_URL` and other service URLs before running database commands
+or jobs. They operate on the configured services, which may be production.
+`pnpm dev` builds the database workspace first and starts the development
+servers; the worker is deliberately separate:
 
-### Code Quality & Formatting
-Run typescript verification and code style checking across all packages:
-```bash
-pnpm typecheck
-pnpm lint
-```
-
-### Run Tests
-Execute the Vitest unit test suites across all workspaces:
-```bash
-# All workspaces (via Turborepo)
-pnpm test
-
-# API only
-pnpm --filter api test
-
-# API watch mode
-pnpm --filter api test:watch
-
-# Web (pure logic/helpers only) and its watch mode
-pnpm --filter web test
-pnpm --filter web test:watch
-```
-
-### Background Worker
-The worker is not part of `pnpm dev`, because the local `.env` points at production services. Start it on its own:
-```bash
+```sh
 pnpm --filter worker worker:dev
 ```
-Requires the Rust toolchain (`cargo`). Worker checks: `pnpm --filter worker typecheck`, `pnpm --filter worker test`, `pnpm --filter worker lint`.
 
-### Search Reindexing
-Search indexing runs as two registered jobs in the worker. Run them from **Dashboard → Jobs → Registered jobs**:
+The web app runs at `http://localhost:3000`, the API at
+`http://localhost:3001`, Swagger at `http://localhost:3001/swagger`, and the
+API health check at `http://localhost:3001/health`.
 
-- **`search.reindex`**: full rebuild. Loads everything into `<uid>__build_<timestamp>` indexes, then swaps all of them in at once. Search keeps serving the old data until the swap.
-- **`search.sync`**: runs hourly. Rebuilds everything when an index is missing or its settings file changed; otherwise adds documents that exist in Postgres but are missing from the live indexes.
+## Checks
 
-Only one search job can run at a time. Movies and movie people are indexed by `search.movies.sync`. The index contract is in [docs/search-meilisearch.md](docs/search-meilisearch.md).
-
-### Catalog Import & Popularity
-```bash
-pnpm --filter api catalog:import      # IGDB import (also runs every 6 hours in CI)
-pnpm --filter api catalog:popularity  # refresh popularity scores
+```sh
+pnpm typecheck                  # workspace type checks, including cargo check
+pnpm test                       # workspace tests, including cargo test
+pnpm lint                       # workspace lint tasks
+pnpm --filter api test          # API handler tests
+pnpm --filter web test          # web logic tests
+pnpm --filter worker test       # Rust worker tests
+pnpm --filter worker lint       # cargo clippy
 ```
 
----
+Do not run `pnpm build` during an active development session: it can overwrite
+Next.js output and interrupt HMR. See [AGENTS.md](AGENTS.md) for the complete
+testing and verification rules.
 
-## 🗄️ Database Management (Code-First)
+## Database and jobs
 
-Database operations use [Drizzle Kit] and are executed from the **root directory**:
+Edit the Drizzle schema, then generate migrations with
+`pnpm --filter @vefacaglar/db db:generate`; do not hand-write migration DDL.
+Apply migrations to the configured database with `db:migrate`. When an API image is built and API or worker deployment is enabled, CD applies
+pending migrations before deployment; see the
+[API deployment guide](deploy/api/README.md#database-migrations). The seed
+script creates a default admin with a weak password and is for isolated local
+development only. See [database commands](packages/db/README.md).
 
-### 1. Direct Push (Fast Prototyping / Local Dev)
-Instantly synchronize schema changes from TypeScript files directly into the database without generating migration files:
-```bash
-pnpm --filter @vefacaglar/db db:push
-```
+The dashboard's registered jobs include `search.reindex` and `search.sync` for
+games, facets and posts, and `search.movies.sync` for movies and people. They
+share the `search.index` concurrency key. Catalog and popularity jobs are also
+run by the worker. See [jobs](docs/jobs-worker.md),
+[search](docs/search-meilisearch.md), and [movie search](docs/movie-search.md).
 
-### 2. Generate Migrations
-Generate SQL migration files from your schema changes (saved under `packages/db/drizzle/`):
-```bash
-pnpm --filter @vefacaglar/db db:generate
-```
+## Deployment and further documentation
 
-### 3. Run Migrations (local / staging)
-Production migrations are applied automatically by CD (`.github/workflows/ci-deploy.yml`, `migrate` job) before any deploy. To apply generated SQL migration files to another database:
-```bash
-pnpm --filter @vefacaglar/db db:migrate
-```
+GitHub Actions verifies affected components, builds images and, when enabled,
+deploys the web app, API and worker to the VPS. When an API image is built and API or worker deployment is enabled, the workflow
+runs pending database migrations before deployment. The catalog-import workflow runs the
+IGDB importer every six hours. Deployment guides cover configuration, rollout
+and recovery: [web](deploy/web/README.md), [API](deploy/api/README.md),
+[worker](deploy/worker/README.md).
 
-### 4. Database Seeding
-Seed your database with default initial data (adds a default admin user `admin@vefacaglar.com` with password `123` securely hashed with `scrypt`):
-```bash
-pnpm --filter @vefacaglar/db db:seed
-```
-
-### 5. Drizzle Studio (Visual UI)
-Explore your PostgreSQL database, manage tables, and edit data in a clean UI inside your browser:
-```bash
-pnpm --filter @vefacaglar/db db:studio
-```
-
-### 6. Database Backup (SQL Dump)
-To take a secure copy/backup of your remote Neon database or any PostgreSQL instance:
-
-#### Prerequisites
-Ensure you have `pg_dump` installed. On macOS, you can install and link it via Homebrew:
-```bash
-brew install libpq
-brew link --force libpq
-```
-
-#### Run Backup Commands
-- **Standard SQL Backup (Highly Recommended & Fast):**
-  Uses PostgreSQL's high-speed `COPY` syntax to format your data:
-  ```bash
-  pg_dump "postgresql://user:password@host/dbname?sslmode=require" -F p -v -f ~/db_backup.sql
-  ```
-
-- **INSERT Statement Backup (Human-Readable & Portable):**
-  Dumps your rows as standard, explicit SQL `INSERT INTO table (columns) VALUES (...)` commands. This is slightly slower to restore but very easy to read, edit, or import into other database engines:
-  ```bash
-  pg_dump "postgresql://user:password@host/dbname?sslmode=require" --column-inserts -F p -v -f ~/db_backup_inserts.sql
-  ```
-
-### 7. Session Cleanup
-Sessions are not deleted on logout or expiry — `revoked_at` / `expires_at` columns are set instead, so the table grows over time. Run this periodically (recommended: weekly via cron, or manually) to physically delete:
-
-- sessions whose `expires_at` has already passed, and
-- sessions whose `revoked_at` is older than 30 days.
-
-```bash
-pnpm --filter @vefacaglar/db db:cleanup-sessions
-```
-
-
----
-
-## 🌐 API Endpoints & Swagger
-
-Once the API server is running (`pnpm dev`), you can explore and test all auth endpoints interactively via Swagger UI:
-
-- **Swagger Documentation:** `http://localhost:3001/swagger`
-- **Health Check Endpoint:** `http://localhost:3001/health`
-
----
-
-## 🌟 Modern Features & UX Enhancements
-
-The following UI, architecture, and performance improvements have been implemented to ensure a premium, modern experience:
-
-- **Premium Dark Palette:** The application's design system features a carefully crafted, high-contrast premium dark theme with custom typography, enhanced link underlines, and sharp, 90-degree square interactive elements (no rounded corners aesthetic).
-- **Modern Monospaced Typography:** Integrated **Fira Code** as a first-class typeface in global styles for technical elements, code blocks, and dashboard stats.
-- **Responsive Dashboard Card Grid:** Replaced older table-based list pages on the packages dashboard with responsive, modern card layouts to provide a clean visual overview of entities.
-- **Robust Client-Side Search:** Upgraded dashboard filters from debounced inputs to explicit form submissions, ensuring reliable results without clobbering input or clashing with browser URL state.
-- **Parallel Queries & ISR Caching:** Optimized data-fetching speed with parallel query execution, Incremental Static Regeneration (ISR), and database indexing to deliver instantaneous page transitions.
-- **Resilient Frontend Builds:** Replaced fragile decentralized API dependencies with centralized error boundary management, allowing Next.js builds to compile successfully even if the backend API is temporarily offline.
-- **Auto Redirects & Docs Router:** Integrated clean routing in `next.config.js` to redirect legacy path layouts to root paths, alongside internal routing to dynamic documentation.
-- **Direct Registry Links:** Support for direct npm registry links (`npmUrl` field support) on the packages schema and workflows.
+Feature details: [game ranking](docs/game-ranking.md),
+[movie catalog](docs/movies-catalog.md), [movie activity](docs/movie-activity.md),
+[movie interest](docs/movie-interest.md), [community ratings](docs/community-ratings.md),
+and [application logs](docs/application-logs.md).

@@ -10,13 +10,13 @@ dashboard (apps/web) ──HTTP──▶ api (apps/api) ──INSERT + pg_notify
                                      apps/worker (Rust) ── LISTEN / poll, claim, run, checkpoint
 ```
 
-Job types: `search.reindex` (full reindex), `search.sync` (heal: rebuild when
-an index is missing or outdated, else fill in missing documents), and
-`catalog.popularity.refresh` (daily game popularity and owner ranking refresh).
-All are registered jobs and share the `search.index` concurrency key, so live
-popularity writes cannot race with search index swaps. `search.reindex` is
-manual-only; `search.sync` runs hourly at minute 17 (migration
-`0044_schedule_search_sync`); game popularity runs daily at 07:15 UTC.
+Search jobs include `search.reindex` (full rebuild), `search.sync` (heal
+missing or outdated indexes), and `search.movies.sync` (movie and people
+indexes). Game and movie catalog maintenance also runs as registered jobs.
+`search.reindex`, `search.sync`, `search.movies.sync`, and
+`catalog.popularity.refresh` share the `search.index` concurrency key. See
+[search](search-meilisearch.md), [movie search](movie-search.md), and
+[movie catalog](movies-catalog.md) for each job’s scope and schedule.
 
 ## Database (owned by `packages/db`, Drizzle schema + generated migration)
 
@@ -51,7 +51,7 @@ Indexes: `(status, run_at)`, `(type, created_at desc)`, partial unique on `concu
 Registered jobs (Hangfire's "recurring jobs", but the schedule is optional).
 `id text pk` (= the job type for built-ins, e.g. `search.reindex`), `type text not null`, `cron text null` (5-field, UTC; **null = manual-only registered job**), `payload jsonb not null default {}`, `enabled boolean not null default true`, `next_run_at timestamptz null` (null = worker recomputes; always null while `cron` is null), `last_enqueued_at timestamptz null`, `last_job_id uuid null`, `created_at`, `updated_at`.
 
-Seeded by the migration `packages/db/drizzle/0023_magical_storm.sql` (data step, idempotent upsert): `search.reindex` and `search.sync`, both `cron = null`, `payload = {}`, `enabled = true`. The same migration moves the history of the former `search.reindex.daily` row to `search.reindex` and deletes that row. The worker does **not** seed registered jobs.
+Migration `packages/db/drizzle/0023_magical_storm.sql` originally seeded `search.reindex` and `search.sync` with `cron = null`, `payload = {}`, and `enabled = true`. Migration `0044_schedule_search_sync.sql` later scheduled `search.sync` hourly at minute 17. The same migration moves the history of the former `search.reindex.daily` row to `search.reindex` and deletes that row. The worker does **not** seed registered jobs.
 
 `0026_catalog_popularity_job.sql` registers `catalog.popularity.refresh` with
 `cron = '15 7 * * *'`, payload `{}`, initially disabled. Enable it after deploying
@@ -177,7 +177,7 @@ Worker = { id, hostname, version, startedAt, lastSeenAt, online }
 
 ## Live stream (SSE)
 
-`GET /api/jobs/dashboard/:id/stream`. The web app runs on Vercel's free tier and must not hold long-lived connections, so the **browser connects directly to the API** (`https://api2.vefacaglar.com`):
+`GET /api/jobs/dashboard/:id/stream`. The **browser connects directly to the API** (`https://api2.vefacaglar.com`):
 
 1. The dashboard (with its normal admin session) calls `POST /api/jobs/dashboard/:id/stream-token` → `{ token, expiresAt, streamPath }` where `streamPath = /api/jobs/dashboard/<id>/stream`.
 2. The browser opens `new EventSource(API_URL + streamPath + "?token=" + token)` (optionally `&afterLogId=`). On a `401` it fetches a new token and reconnects (EventSource's own reconnect reuses the old URL, so after 120 s a fresh token is needed for reconnects).
@@ -218,4 +218,4 @@ Image: `ghcr.io/<repo>-worker`, built and deployed by
 `MEILISEARCH_API_KEY`, optional `WORKER_ID` for independently managed workers,
 `RUST_LOG`. Logs are JSON lines on stdout ([application logs](application-logs.md)).
 
-Local: `pnpm --filter worker worker:dev` (deliberately not part of `pnpm dev`, because the local `.env` points at production services).
+Local: `pnpm --filter worker worker:dev` (deliberately not part of `pnpm dev`). Check the configured database and service URLs first; the worker can run jobs against them.

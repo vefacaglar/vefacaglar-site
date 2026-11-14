@@ -1,46 +1,24 @@
-# @vefacaglar/db - Code-First Veritabanı Rehberi
+# @vefacaglar/db
 
-Bu paket, projenin veritabanı şemalarını (Drizzle ORM) ve migration süreçlerini yönetir.
+Drizzle schema, generated migrations and database tools for the monorepo. Run
+commands from the repository root. The root `.env` supplies `DATABASE_URL`;
+check which database it targets before running any command that changes data.
 
-## Komutlar
-
-Aşağıdaki komutların tamamını projenin **root (ana) dizininde** çalıştırabilirsiniz:
-
-### 1. Şemaları Doğrudan Veritabanına Yansıtma (Local / Hızlı Geliştirme)
-Yerel geliştirme ortamında migration dosyası oluşturmadan şemaları doğrudan veritabanına yansıtmak için:
-```bash
-pnpm --filter @vefacaglar/db db:push
+```sh
+pnpm --filter @vefacaglar/db db:generate          # generate migrations from schema changes
+pnpm --filter @vefacaglar/db db:migrate           # apply pending migrations
+pnpm --filter @vefacaglar/db db:studio            # inspect data in Drizzle Studio
+pnpm --filter @vefacaglar/db db:cleanup-sessions  # remove expired/old revoked sessions
 ```
 
-### 2. Migration Dosyası Oluşturma
-Şemalarda (`src/schema/*.ts`) yaptığınız değişiklikleri SQL migration dosyasına dönüştürmek için:
-```bash
-pnpm --filter @vefacaglar/db db:generate
-```
-*Bu komut, `packages/db/drizzle/` klasörü altında SQL dosyaları üretir.*
+Schema definitions are in `src/schema/`, generated SQL in `drizzle/`, and CLI
+configuration in `drizzle.config.ts`. Follow [migration rules](../../AGENTS.md#database-migrations):
+never hand-write migration DDL. Generated files may contain data/backfill steps.
+`db:push` is available for disposable local databases, but does not replace the
+migration workflow. When an API image is built and API or worker deployment is
+enabled, CD applies pending migrations before deployment; see the
+[deployment guide](../../deploy/api/README.md#database-migrations).
 
-### 3. Migration'ları Uygulama (local / staging)
-Production migration'ları CD tarafından deploy'dan önce otomatik uygulanır (`.github/workflows/ci-deploy.yml`, `migrate` job'u). Başka bir veritabanında uygulamak için:
-```bash
-pnpm --filter @vefacaglar/db db:migrate
-```
-
-### 4. Drizzle Studio (Görsel Arayüz)
-Veritabanı tablolarını tarayıcı üzerinden görüntülemek, yeni veri eklemek veya düzenlemek için:
-```bash
-pnpm --filter @vefacaglar/db db:studio
-```
-
-### 5. Seeder (Veritabanı Başlangıç Verisi)
-`users` tablosuna varsayılan bir admin kullanıcısı (`admin@vefacaglar.com` / `123`) eklemek için:
-```bash
-pnpm --filter @vefacaglar/db db:seed
-```
-
----
-
-## Klasör Yapısı
-
-* `src/schema/`: Veritabanı tablo şemalarının tanımlandığı yer (`posts.ts`, `pages.ts`, `projects.ts`).
-* `drizzle/`: `db:generate` komutuyla üretilen SQL migration dosyaları.
-* `drizzle.config.ts`: Drizzle CLI (drizzle-kit) ayarları.
+`pnpm --filter @vefacaglar/db db:seed` creates default content and, if absent, an
+admin account with a known weak password. Use it only against an isolated local
+database; do not seed production with those credentials.
