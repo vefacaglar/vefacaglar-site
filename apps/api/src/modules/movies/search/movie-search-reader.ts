@@ -20,8 +20,8 @@ export function movieSearchParameters(query: MovieSearchQuery): MeilisearchSearc
   return {
     q: typed ? query.q : "", attributesToSearchOn: ["title", "originalTitle"], attributesToRetrieve: ["id"],
     page: query.page, hitsPerPage: query.limit,
-    // Typed queries: the `sort` ranking rule follows words/typo/proximity/attribute, so
-    // relevance comes first and these fields only break its ties.
+    // Typed queries: the `sort` ranking rule follows words/typo/proximity/wordPosition
+    // (no attribute or exactness), so relevance comes first and these fields only break its ties.
     sort: typed
       ? query.fresh ? ["interestRecognitionRank:desc", "tieBreakId:asc"] : ["recognitionCount:desc", "tieBreakId:asc"]
       : query.fresh ? ["interestScore:desc", "titleSort:asc", "tieBreakId:asc"] : ["titleSort:asc", "tieBreakId:asc"],
