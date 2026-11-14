@@ -19,11 +19,14 @@ pub struct IndexSpec {
     /// Stable index uid the API queries, e.g. `games_en`.
     pub name: &'static str,
     pub source: Source,
+    /// Versioned settings file (`meili/<name>.json`).
+    pub settings: &'static str,
 }
 
 impl IndexSpec {
+    /// Parsed [`IndexSpec::settings`].
     pub fn settings(&self) -> Value {
-        settings::for_index(self.name)
+        settings::parse(self.settings)
     }
 }
 
@@ -32,30 +35,37 @@ pub const INDEXES: [IndexSpec; 7] = [
     IndexSpec {
         name: "games_en",
         source: Source::Games,
+        settings: include_str!("meili/games_en.json"),
     },
     IndexSpec {
         name: "developers_en",
         source: Source::Lookup(LookupKind::Developer),
+        settings: include_str!("meili/developers_en.json"),
     },
     IndexSpec {
         name: "publishers_en",
         source: Source::Lookup(LookupKind::Publisher),
+        settings: include_str!("meili/publishers_en.json"),
     },
     IndexSpec {
         name: "genres_en",
         source: Source::Lookup(LookupKind::Genre),
+        settings: include_str!("meili/genres_en.json"),
     },
     IndexSpec {
         name: "platforms_en",
         source: Source::Lookup(LookupKind::Platform),
+        settings: include_str!("meili/platforms_en.json"),
     },
     IndexSpec {
         name: "themes_en",
         source: Source::Lookup(LookupKind::Theme),
+        settings: include_str!("meili/themes_en.json"),
     },
     IndexSpec {
         name: "posts_en",
         source: Source::Posts,
+        settings: include_str!("meili/posts_en.json"),
     },
 ];
 

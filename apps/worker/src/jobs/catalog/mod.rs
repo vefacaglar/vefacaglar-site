@@ -18,7 +18,7 @@ use crate::queue::LogLevel;
 
 pub const JOB_TYPE: &str = "catalog.popularity.refresh";
 // Serializes live game writes with full reindex alias swaps across all workers.
-pub const CONCURRENCY_KEY: &str = "search.index";
+pub use super::search::CONCURRENCY_KEY;
 const SCRIPT: &str = "/app/apps/api/dist/scripts/refresh-popularity.js";
 const PREFIX: &str = "[catalog:popularity] ";
 const MAX_LINE_BYTES: usize = 4096;

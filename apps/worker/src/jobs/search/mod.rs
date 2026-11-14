@@ -37,7 +37,9 @@ use crate::telemetry::log_safe;
 pub const BATCH_SIZE: usize = 500;
 /// Info log every N batches (10 000 documents) within an index.
 pub const LOG_EVERY_BATCHES: u64 = 20;
-/// Shared by both search jobs (must match the API's job-type allowlist).
+/// Shared by every job that writes search indexes: both search jobs, the
+/// movie search job and the game popularity refresh (must match the API's
+/// job-type allowlist).
 pub const CONCURRENCY_KEY: &str = "search.index";
 
 /// Writes one batch and waits for Meilisearch to index it. A rejected batch
@@ -66,13 +68,17 @@ pub(crate) async fn import_batch(
     Ok(())
 }
 
-pub(crate) fn meilisearch(config: &Option<MeilisearchConfig>) -> Result<MeilisearchClient> {
-    match config {
-        Some(config) => MeilisearchClient::new(config),
-        None => Err(PermanentError::err(
+/// The Meilisearch config, or a permanent error when search is not set up.
+pub(crate) fn meilisearch_config(config: &Option<MeilisearchConfig>) -> Result<&MeilisearchConfig> {
+    config.as_ref().ok_or_else(|| {
+        PermanentError::err(
             "Meilisearch is not configured (set MEILISEARCH_URL and MEILISEARCH_API_KEY)",
-        )),
-    }
+        )
+    })
+}
+
+pub(crate) fn meilisearch(config: &Option<MeilisearchConfig>) -> Result<MeilisearchClient> {
+    MeilisearchClient::new(meilisearch_config(config)?)
 }
 
 fn check_payload(payload: &Value) -> Result<()> {

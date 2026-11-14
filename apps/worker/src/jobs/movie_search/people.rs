@@ -40,7 +40,7 @@ pub fn refresh_interval() -> ChronoDuration {
 }
 
 pub fn people_settings() -> Value {
-    settings::for_index(PEOPLE_ALIAS)
+    settings::parse(include_str!("../search/meili/movie_people_en.json"))
 }
 
 pub fn people_owned(target: &str) -> bool {

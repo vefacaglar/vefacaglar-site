@@ -42,7 +42,7 @@ pub const BATCH_SIZE: usize = 500;
 const BUILD_PREFIX: &str = "movies_en__build_";
 
 pub fn index_settings() -> Value {
-    settings::for_index(ALIAS)
+    settings::parse(include_str!("../search/meili/movies_en.json"))
 }
 
 /// Build indexes owned by this job: `movies_en__build_<alnum>`.
@@ -104,16 +104,12 @@ impl JobHandler for MovieSearchHandler {
         "search.movies.sync"
     }
     fn concurrency_key(&self, _payload: &Value) -> Option<String> {
-        Some("search.index".into())
+        Some(super::search::CONCURRENCY_KEY.into())
     }
     async fn run(&self, ctx: &JobContext) -> Result<JobOutcome> {
         super::search::full::validate_payload(ctx.payload())
             .map_err(|error| PermanentError::err(error.to_string()))?;
-        let config = self.meilisearch.as_ref().as_ref().ok_or_else(|| {
-            PermanentError::err(
-                "Meilisearch is not configured (set MEILISEARCH_URL and MEILISEARCH_API_KEY)",
-            )
-        })?;
+        let config = super::search::meilisearch_config(&self.meilisearch)?;
         let backend = MeilisearchClient::with_timeouts(
             config,
             Duration::from_secs(20),
