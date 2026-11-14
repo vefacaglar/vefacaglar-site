@@ -199,8 +199,13 @@ async fn prepare(
     let settings = index_settings();
     if state.schema_version == SCHEMA_VERSION {
         let usable = match (state.building_collection.as_deref(), state.phase.as_str()) {
-            // The publication decision is durable; the swap finishes it.
-            (Some(_), "swap") => true,
+            // The publication decision is durable; the swap finishes it, as
+            // long as it already happened or the build is still there to swap.
+            (Some(build), "swap") => {
+                owned(build)
+                    && (backend.was_swapped(build).await?
+                        || current_index(backend, build, &settings).await?)
+            }
             (Some(build), "scan" | "replay") => {
                 owned(build) && current_index(backend, build, &settings).await?
             }
@@ -211,6 +216,14 @@ async fn prepare(
             _ => false,
         };
         if usable {
+            // Retries a failed delete of a swapped-out or abandoned build.
+            delete_stale_builds(
+                io,
+                backend,
+                BUILD_PREFIX,
+                state.building_collection.as_deref(),
+            )
+            .await?;
             return Ok(state);
         }
     }

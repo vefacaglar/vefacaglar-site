@@ -103,6 +103,9 @@ orphans until the next `search.sync` deletes them.
 `movie_people_en__build_<id>`. Before swapping movies it commits phase `swap`
 in `movie_search_state`, so a crash between the swap and the database update
 resumes by finishing the swap (or only recording it) instead of rescanning.
+If neither the swap happened nor the build index still exists, the run starts a
+fresh build instead. Every run also deletes leftover movie build indexes, so a
+failed delete after a swap is retried.
 
 ## Readiness signals for the API
 

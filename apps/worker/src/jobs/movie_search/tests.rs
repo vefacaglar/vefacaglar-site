@@ -595,6 +595,42 @@ async fn crash_after_the_swap_resumes_without_a_second_swap_or_rescan() {
     assert!(build_indexes(&backend).is_empty());
 }
 #[tokio::test]
+async fn swap_phase_without_its_build_or_a_finished_swap_starts_a_fresh_build() {
+    let (source, backend) = setup(3);
+    {
+        let mut m = source.model.lock().unwrap();
+        m.state.building_collection = Some("movies_en__build_lost".into());
+        m.state.phase = "swap".into();
+    }
+    run(&Io::default(), &backend, &source, limits(50_000))
+        .await
+        .unwrap();
+    let m = source.model.lock().unwrap();
+    assert!(m.ready);
+    assert_eq!(m.state.target(), Some(ALIAS));
+    assert_eq!(backend.docs(), 3);
+    assert_eq!(m.scans.len(), 1, "rebuilt from a fresh scan");
+}
+
+#[tokio::test]
+async fn a_failed_build_delete_is_retried_on_the_next_run() {
+    let (source, backend) = setup(1);
+    ready(&source, &backend);
+    backend
+        .meili
+        .state
+        .lock()
+        .unwrap()
+        .indexes
+        .insert("movies_en__build_leftover".into(), Default::default());
+    run(&Io::default(), &backend, &source, limits(50_000))
+        .await
+        .unwrap();
+    assert!(build_indexes(&backend).is_empty());
+    assert!(source.model.lock().unwrap().ready);
+}
+
+#[tokio::test]
 async fn missing_and_nonpublic_sources_are_deleted_and_tombstones_do_not_loop() {
     let (source, backend) = setup(2);
     ready(&source, &backend);
