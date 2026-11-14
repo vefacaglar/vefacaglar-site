@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Build context: repository root (see .github/workflows/worker-ci.yml).
+# Build context: repository root (see .github/workflows/ci-deploy.yml).
 # CI builds each architecture on its matching native runner.
 
 ARG RUST_VERSION=1.96

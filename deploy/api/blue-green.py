@@ -18,6 +18,8 @@ PROXY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PROXY)
 DOMAIN = PROXY.DOMAIN
 PREVIOUS_RELEASE_GRACE_SECONDS = 10 * 60
+RETIREMENTS = ".retirements.json"
+LEGACY = "legacy"
 
 
 def run(arguments, cwd=None):
@@ -107,6 +109,11 @@ def deploy(root, bundle, image):
     if not re.fullmatch(r"ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}", image):
         raise RuntimeError("Invalid image digest")
     recover(root)
+    try:
+        # Catch up on a retirement whose detached process did not finish (e.g. a reboot).
+        retire_due(root)
+    except (RuntimeError, OSError) as error:
+        print(f"Skipping overdue retirement: {error}", flush=True)
     state_path = root / ".releases.json"
     pending = root / ".pending-release.json"
     state = read(state_path)
@@ -167,47 +174,122 @@ def deploy(root, bundle, image):
         if not committed and not pending.exists():
             compose(directory, "down", "--timeout", "30")
         raise
-    # Keep the immediate predecessor's files for recovery, but stop its process
-    # after a bounded overlap instead of retaining a second API indefinitely.
-    keep = {candidate["id"]}
-    if active:
-        keep.add(active["id"])
-    obsolete = [path for path in (root / "releases").iterdir()
-                if path.is_dir() and re.fullmatch(r"(?:blue|green)-[0-9]+", path.name)
-                and path.name not in keep and (path / "compose.yml").is_file()]
+    # The previous release keeps serving in-flight requests (and stays available
+    # for rollback) for a grace period. Its retirement is handed to a detached
+    # process on the server so CI does not hold an SSH session for the window.
     try:
-        legacy = run(["docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=vefacaglar-api",
-                      "--filter", "label=com.docker.compose.service=api"]).split()
-        if any(not re.fullmatch(r"[a-f0-9]{12,64}", item) for item in legacy):
-            raise RuntimeError("Invalid legacy container ID")
-        if active or legacy:
-            print("Keeping the previous API running for 10 minutes before retirement.", flush=True)
-            remaining = PREVIOUS_RELEASE_GRACE_SECONDS
-            while remaining > 0:
-                interval = min(30, remaining)
-                time.sleep(interval)
-                remaining -= interval
-                # Keep the remote channel active and expose progress during the
-                # otherwise silent drain period without shortening retention.
-                print(f"Previous API retirement grace: {remaining}s remaining.", flush=True)
-            # Never discard the running fallback if the new release regressed.
-            verify(candidate)
-        if active:
-            compose(release_directory(root, active), "stop", "--timeout", "30", "api")
-        if legacy:
-            run(["docker", "stop", "--time", "30", *legacy])
-            run(["docker", "rm", *legacy])
-        if obsolete:
-            for old in obsolete:
-                compose(old, "down", "--timeout", "30")
-                shutil.rmtree(old)
+        retiring = [active["id"]] if active else []
+        if legacy_containers():
+            retiring.append(LEGACY)
+        schedule_retirement(root, retiring, time.time() + PREVIOUS_RELEASE_GRACE_SECONDS)
+        if retire_due(root) is not None:
+            spawn_retirement(root, directory)
+            print(f"Previous API keeps running for {PREVIOUS_RELEASE_GRACE_SECONDS // 60} minutes; "
+                  f"retirement is scheduled on the server ({RETIREMENTS}).", flush=True)
     except (RuntimeError, OSError):
-        raise RuntimeError("Previous release retirement failed or was interrupted; inspect the rollout before retrying") from None
-    print("Previous API stopped; only the active release remains running.", flush=True)
+        raise RuntimeError("Previous release retirement could not be scheduled; inspect the rollout before retrying") from None
+
+
+def legacy_containers():
+    legacy = run(["docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=vefacaglar-api",
+                  "--filter", "label=com.docker.compose.service=api"]).split()
+    if any(not re.fullmatch(r"[a-f0-9]{12,64}", item) for item in legacy):
+        raise RuntimeError("Invalid legacy container ID")
+    return legacy
+
+
+def schedule_retirement(root, names, due):
+    """Record releases to retire at `due`. The caller holds the deploy lock."""
+    path = root / RETIREMENTS
+    pending = read(path)
+    for name in names:
+        pending.setdefault(name, due)
+    save(path, pending)
+
+
+def retire_due(root, now=None):
+    """Retire releases whose grace period ended and remove stale release files.
+
+    Idempotent; the caller holds the deploy lock. Decisions use the state at
+    run time, so a deployment made during a grace window is never retired:
+    only names recorded in the retirement file are stopped, and never the
+    active release. Returns the next due time, or None when nothing is pending.
+    """
+    now = time.time() if now is None else now
+    path = root / RETIREMENTS
+    pending = read(path)
+    state = read(root / ".releases.json")
+    active = state.get("active")
+    previous = state.get("previous")
+    due = sorted(name for name, when in pending.items() if when <= now)
+    if due:
+        if not active:
+            raise RuntimeError("No active release recorded; refusing to retire releases")
+        # Never discard the running fallback if the serving release regressed.
+        verify(active)
+    for name in due:
+        if name == LEGACY:
+            legacy = legacy_containers()
+            if legacy:
+                run(["docker", "stop", "--time", "30", *legacy])
+                run(["docker", "rm", *legacy])
+        elif name != active["id"]:
+            old = release_directory(root, {"id": name})
+            if (old / "compose.yml").is_file():
+                if previous and name == previous["id"]:
+                    # Keep the immediate predecessor's files for recovery.
+                    compose(old, "stop", "--timeout", "30", "api")
+                else:
+                    compose(old, "down", "--timeout", "30")
+                    shutil.rmtree(old)
+        del pending[name]
+        save(path, pending)
+        print(f"Retired API release {name}.", flush=True)
+    keep = {release["id"] for release in (active, previous) if release} | set(pending)
+    releases = root / "releases"
+    obsolete = [old for old in (releases.iterdir() if releases.is_dir() else [])
+                if old.is_dir() and re.fullmatch(r"(?:blue|green)-[0-9]+", old.name)
+                and old.name not in keep and (old / "compose.yml").is_file()]
+    for old in obsolete:
+        compose(old, "down", "--timeout", "30")
+        shutil.rmtree(old)
+    return min(pending.values()) if pending else None
+
+
+def spawn_retirement(root, release):
+    """Start the detached retirement process from the new release's own copy of
+    this script (the incoming bundle is deleted when the SSH session ends)."""
+    source = Path(__file__).resolve().parent
+    for name in ("blue-green.py", "configure-caddy.py"):
+        shutil.copyfile(source / name, release / name)
+        (release / name).chmod(0o600)
+    environment = {key: value for key, value in os.environ.items() if key != "DOCKER_CONFIG"}
+    with (root / "retirement.log").open("a") as log:
+        subprocess.Popen(
+            [sys.executable, str(release / "blue-green.py"), "--retire", str(root)],
+            cwd=root, env=environment, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+            start_new_session=True, close_fds=True,
+        )
+
+
+def retire_loop(root):
+    """Detached: wait for each grace period to end, then retire under the deploy lock."""
+    print(f"{time.strftime('%Y-%m-%dT%H:%M:%S%z')} retirement process {os.getpid()} started.", flush=True)
+    while True:
+        with (root / ".deploy.lock").open("w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            following = retire_due(root)
+        if following is None:
+            print(f"{time.strftime('%Y-%m-%dT%H:%M:%S%z')} no retirement pending; exiting.", flush=True)
+            return
+        time.sleep(max(1, min(following - time.time(), 60)))
 
 
 def main():
     os.umask(0o077)
+    if sys.argv[1:2] == ["--retire"]:
+        retire_loop(Path(sys.argv[2]))
+        return
     root = Path(os.environ["API_DEPLOY_DIR"])
     bundle = Path(sys.argv[2])
     # Convert ordinary cancellation to rollback; SIGKILL/host failure is

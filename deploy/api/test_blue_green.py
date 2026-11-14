@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from contextlib import ExitStack
 import unittest
 from unittest.mock import patch
 
@@ -38,6 +39,7 @@ class BlueGreenTest(unittest.TestCase):
         self.counter = 0
         self.failure = None
         self.legacy = ""
+        self.clock = 1_000_000.0
 
     def compose(self, directory, *args):
         self.events.append((directory.name, *args))
@@ -73,23 +75,38 @@ class BlueGreenTest(unittest.TestCase):
         if self.failure == "interrupted":
             raise RuntimeError("deployment interrupted")
 
+    def patched(self, now=None):
+        stack = ExitStack()
+        stack.enter_context(patch.object(BG.PROXY, "target", return_value=(self.source, ["docker", "exec", "caddy", "caddy"], "/etc/caddy/Caddyfile", "vefacaglar-api:3001")))
+        stack.enter_context(patch.object(BG, "compose", side_effect=self.compose))
+        stack.enter_context(patch.object(BG, "run", side_effect=self.command))
+        stack.enter_context(patch.object(BG, "verify", side_effect=self.verify))
+        stack.enter_context(patch.object(BG, "spawn_retirement", side_effect=lambda root, release: self.events.append(("spawn", release.name))))
+        stack.enter_context(patch.object(BG.time, "time_ns", return_value=self.counter))
+        stack.enter_context(patch.object(BG.time, "time", return_value=self.clock if now is None else now))
+        stack.enter_context(patch.object(BG.time, "sleep", side_effect=self.sleep))
+        stack.enter_context(patch("builtins.print", side_effect=lambda message, **kwargs: self.events.append(("log", message, kwargs.get("flush", False)))))
+        return stack
+
     def deploy(self):
         self.counter += 1
-        with patch.object(BG.PROXY, "target", return_value=(self.source, ["docker", "exec", "caddy", "caddy"], "/etc/caddy/Caddyfile", "vefacaglar-api:3001")), \
-                patch.object(BG, "compose", side_effect=self.compose), \
-                patch.object(BG, "run", side_effect=self.command), \
-                patch.object(BG, "verify", side_effect=self.verify), \
-                patch.object(BG.time, "time_ns", return_value=self.counter), \
-                patch.object(BG.time, "sleep", side_effect=self.sleep), \
-                patch("builtins.print", side_effect=lambda message, **kwargs: self.events.append(("log", message, kwargs.get("flush", False)))):
+        with self.patched():
             BG.deploy(self.root, self.bundle, IMAGE)
 
-    def test_first_deploy_then_alternating_releases_stop_previous_after_ten_minutes(self):
+    def retire(self, now):
+        with self.patched(now=now):
+            return BG.retire_due(self.root)
+
+    def pending(self):
+        return BG.read(self.root / BG.RETIREMENTS)
+
+    def test_first_deploy_then_alternating_releases_retire_previous_after_ten_minutes(self):
         self.deploy()
         state = BG.read(self.root / ".releases.json")
         self.assertEqual(state["active"]["id"], "blue-1")
         self.assertIsNone(state["previous"])
         self.assertNotIn("down", str(self.events))
+        self.assertNotIn("spawn", str(self.events))
         self.assertIn("reverse_proxy authserver:5175", self.source.read_text())
         self.assertIn("X-API-Deployment blue-1", self.source.read_text())
         self.assertLess(next(i for i, event in enumerate(self.events) if "up" in event), next(i for i, event in enumerate(self.events) if "reload" in event))
@@ -97,54 +114,97 @@ class BlueGreenTest(unittest.TestCase):
         state = BG.read(self.root / ".releases.json")
         self.assertEqual(state["active"]["id"], "green-2")
         self.assertEqual(state["previous"]["id"], "blue-1")
-        sleeps = [(index, event[1]) for index, event in enumerate(self.events) if event[0] == "sleep"]
-        self.assertEqual(sum(seconds for _, seconds in sleeps), 600)
-        self.assertLessEqual(max(seconds for _, seconds in sleeps), 30)
-        progress = [event for event in self.events if event[0] == "log" and "retirement grace:" in event[1]]
-        self.assertTrue(progress)
-        self.assertTrue(all(event[2] for event in progress))
+        # The deployment returns right after the switch: no in-process grace wait.
+        self.assertFalse([event for event in self.events if event[0] == "sleep"])
+        self.assertNotIn(("blue-1", "stop", "--timeout", "30", "api"), self.events)
+        self.assertEqual(self.pending(), {"blue-1": self.clock + 600})
+        self.assertIn(("spawn", "green-2"), self.events)
+        # Before the grace period ends nothing is retired.
+        self.events.clear()
+        self.assertEqual(self.retire(self.clock + 599), self.clock + 600)
+        self.assertNotIn("stop", str(self.events))
+        self.assertIsNone(self.retire(self.clock + 600))
+        verified = self.events.index(("verify", "green-2"))
         stopped = self.events.index(("blue-1", "stop", "--timeout", "30", "api"))
-        self.assertLess(sleeps[-1][0], stopped)
-        verified = [index for index, event in enumerate(self.events) if event == ("verify", "green-2")]
-        self.assertEqual(len(verified), 2)
-        self.assertLess(sleeps[-1][0], verified[-1])
-        self.assertLess(verified[-1], stopped)
+        self.assertLess(verified, stopped)
+        self.assertEqual(self.pending(), {})
         self.assertNotIn(("blue-1", "down", "--timeout", "30"), self.events)
+        self.assertTrue(BG.release_directory(self.root, {"id": "blue-1"}).exists())
+        # Retirement is idempotent.
+        self.events.clear()
+        self.assertIsNone(self.retire(self.clock + 900))
+        self.assertNotIn("stop", str(self.events))
         self.deploy()
         self.assertIn(("blue-1", "down", "--timeout", "30"), self.events)
         self.assertNotIn(("green-2", "down", "--timeout", "30"), self.events)
 
+    def test_deploy_within_grace_window_never_retires_the_live_release(self):
+        self.deploy()
+        self.deploy()
+        self.clock += 300
+        self.deploy()
+        state = BG.read(self.root / ".releases.json")
+        self.assertEqual(state["active"]["id"], "blue-3")
+        self.assertEqual(self.pending(), {"blue-1": self.clock - 300 + 600, "green-2": self.clock + 600})
+        self.events.clear()
+        self.retire(self.clock + 300)
+        # blue-1 is no longer the rollback target: removed; green-2 still in its grace.
+        self.assertIn(("blue-1", "down", "--timeout", "30"), self.events)
+        self.assertFalse(BG.release_directory(self.root, {"id": "blue-1"}).exists())
+        self.assertNotIn("green-2", str(self.events).replace("'verify', 'green-2'", ""))
+        self.retire(self.clock + 600)
+        self.assertIn(("green-2", "stop", "--timeout", "30", "api"), self.events)
+        self.assertNotIn("blue-3", str([event for event in self.events if event[0] != "verify"]))
+        self.assertEqual(self.pending(), {})
+
+    def test_overdue_retirement_is_caught_up_by_the_next_deploy(self):
+        self.deploy()
+        self.deploy()
+        self.clock += 3600
+        self.events.clear()
+        self.deploy()
+        self.assertLess(self.events.index(("blue-1", "stop", "--timeout", "30", "api")),
+                        next(i for i, event in enumerate(self.events) if "up" in event))
+
     def test_original_single_container_is_retired_after_the_same_grace_period(self):
         self.legacy = "a" * 12
         self.deploy()
-        sleeps = [(index, event[1]) for index, event in enumerate(self.events) if event[0] == "sleep"]
-        self.assertEqual(sum(seconds for _, seconds in sleeps), 600)
-        self.assertLess(sleeps[-1][0], self.events.index(("docker", "stop", "--time", "30", self.legacy)))
+        self.assertEqual(self.pending(), {BG.LEGACY: self.clock + 600})
+        self.assertNotIn(("docker", "stop", "--time", "30", self.legacy), self.events)
+        self.retire(self.clock + 600)
+        self.assertIn(("docker", "stop", "--time", "30", self.legacy), self.events)
         self.assertIn(("docker", "rm", self.legacy), self.events)
 
     def test_regression_at_end_of_window_keeps_previous_running(self):
         self.deploy()
-        self.events.clear()
-        self.failure = "post-window"
-        with self.assertRaisesRegex(RuntimeError, "retirement failed"):
-            self.deploy()
-        self.assertNotIn(("blue-1", "stop", "--timeout", "30", "api"), self.events)
-        self.assertEqual(BG.read(self.root / ".releases.json")["active"]["id"], "green-2")
-
-    def test_interruption_during_grace_period_keeps_previous_running(self):
         self.deploy()
-        self.events.clear()
-        self.failure = "interrupted"
-        with self.assertRaisesRegex(RuntimeError, "retirement failed"):
-            self.deploy()
+        self.failure = "post-window"
+        with self.assertRaisesRegex(RuntimeError, "regressed"):
+            self.retire(self.clock + 600)
         self.assertNotIn(("blue-1", "stop", "--timeout", "30", "api"), self.events)
+        self.assertIn("blue-1", self.pending())
 
-    def test_stop_failure_is_reported_instead_of_silently_succeeding(self):
+    def test_stop_failure_is_reported_and_retried_later(self):
+        self.deploy()
         self.deploy()
         self.failure = "stop"
-        with self.assertRaisesRegex(RuntimeError, "retirement failed"):
-            self.deploy()
+        with self.assertRaisesRegex(RuntimeError, "stop failed"):
+            self.retire(self.clock + 600)
         self.assertTrue(BG.release_directory(self.root, {"id": "blue-1"}).exists())
+        self.assertIn("blue-1", self.pending())
+
+    def test_retirement_process_is_detached_and_uses_release_copy(self):
+        release = self.root / "releases" / "green-2"
+        release.mkdir(parents=True)
+        with patch.object(BG.subprocess, "Popen") as popen, patch.dict(os.environ, {"DOCKER_CONFIG": "/tmp/gone"}):
+            BG.spawn_retirement(self.root, release)
+        arguments, options = popen.call_args
+        self.assertEqual(arguments[0][1:], [str(release / "blue-green.py"), "--retire", str(self.root)])
+        self.assertTrue(options["start_new_session"])
+        self.assertIs(options["stdin"], BG.subprocess.DEVNULL)
+        self.assertNotIn("DOCKER_CONFIG", options["env"])
+        self.assertTrue((release / "blue-green.py").is_file())
+        self.assertTrue((release / "configure-caddy.py").is_file())
 
     def test_unhealthy_candidate_never_changes_traffic(self):
         self.failure = "container"

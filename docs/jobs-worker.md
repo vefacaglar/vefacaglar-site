@@ -210,7 +210,7 @@ containers have restart disabled before drain and are cleaned up only after exit
 Legacy images without the control protocol require a separate verified idle
 handoff; they must never be started as supposedly standby candidates.
 Image: `ghcr.io/<repo>-worker`, built and deployed by
-`.github/workflows/worker-ci.yml`. Env: `DATABASE_URL`, `TYPESENSE_HOST`,
+`.github/workflows/ci-deploy.yml`. Env: `DATABASE_URL`, `TYPESENSE_HOST`,
 `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_API_KEY`, optional `WORKER_ID`
 for independently managed workers, `RUST_LOG`.
 

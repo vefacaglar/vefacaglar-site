@@ -226,8 +226,8 @@ Generate SQL migration files from your schema changes (saved under `packages/db/
 pnpm --filter @vefacaglar/db db:generate
 ```
 
-### 3. Run Migrations (Production / Staging)
-Apply generated SQL migration files onto your remote/live database sequentially:
+### 3. Run Migrations (local / staging)
+Production migrations are applied automatically by CD (`.github/workflows/ci-deploy.yml`, `migrate` job) before any deploy. To apply generated SQL migration files to another database:
 ```bash
 pnpm --filter @vefacaglar/db db:migrate
 ```

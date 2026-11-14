@@ -1,0 +1,725 @@
+name: CI and deploy
+
+# One run per push/PR. A `changes` job selects the affected apps; their verify
+# and image jobs run in parallel. On main, a single `migrate` job applies pending
+# Drizzle migrations from the new API image before any deployment starts, and a
+# failed migration blocks every deploy (the running releases keep serving).
+#
+# Job graph:
+#   changes -> verify-{api,web,worker} -> image-{api,web,worker-amd64,worker-arm64}
+#   image-api -> migrate -> deploy-api, deploy-web, deploy-worker (parallel)
+#   image-worker-{amd64,arm64} -> publish-worker-manifest
+
+on:
+  pull_request:
+    paths: &all_paths
+      - "apps/api/**"
+      - "apps/web/**"
+      - "apps/worker/**"
+      - "packages/db/**"
+      - "packages/ui/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".dockerignore"
+      - "deploy/api/**"
+      - "deploy/web/**"
+      - "deploy/worker/**"
+      - "deploy/ssh-common.sh"
+      - ".github/workflows/ci-deploy.yml"
+  push:
+    branches: [main]
+    paths: *all_paths
+  workflow_dispatch:
+    inputs:
+      verify_https:
+        description: "Verify web VPS HTTPS (disable only for first staging before DNS cutover)"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+# Pull requests cancel superseded runs. Runs on main queue instead of cancelling:
+# a run may deploy several apps, and cancelling it mid-way would drop the other
+# apps' deployments. Change detection on main diffs against the last successful
+# run, so a superseded pending run's changes are still picked up.
+concurrency:
+  group: ci-deploy-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      worker: ${{ steps.filter.outputs.worker }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Detect affected apps
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          all=false
+          base=""
+          case "$EVENT" in
+            workflow_dispatch) all=true ;;
+            pull_request) base=$PR_BASE ;;
+            push)
+              base=$BEFORE
+              # Include commits of runs that never completed (superseded or failed).
+              last=$(gh api "repos/$REPOSITORY/actions/workflows/ci-deploy.yml/runs?branch=main&status=success&per_page=1" \
+                --jq '.workflow_runs[0].head_sha // empty' 2>/dev/null || true)
+              if [[ -n "$last" ]] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null; then
+                base=$last
+              fi
+              ;;
+          esac
+          if [[ "$all" != true ]] && { [[ -z "$base" || "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; }; then
+            all=true
+          fi
+          files=""
+          if [[ "$all" != true ]]; then
+            echo "Comparing $base..HEAD"
+            files=$(git diff --name-only "$base" HEAD)
+          fi
+          shared='package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|deploy/ssh-common\.sh$|\.github/workflows/ci-deploy\.yml$'
+          emit() {
+            local value=false
+            if [[ "$all" == true ]] || grep -Eq "^($2|$shared)" <<< "$files"; then
+              value=true
+            fi
+            echo "$1=$value" >> "$GITHUB_OUTPUT"
+            echo "$1: $value"
+          }
+          # apps/worker/fixtures: golden fixtures asserted by the API mapper parity spec.
+          emit api 'apps/api/|apps/worker/fixtures/|packages/db/|deploy/api/|\.dockerignore$'
+          emit web 'apps/web/|packages/ui/|deploy/web/|deploy/api/configure-caddy\.py$'
+          emit worker 'apps/worker/|apps/api/|packages/db/|deploy/worker/'
+
+  # ---------------------------------------------------------------- API
+
+  verify-api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+
+      - run: pnpm install --frozen-lockfile
+
+      # The API resolves this workspace dependency through its compiled types.
+      - name: Compile database package
+        run: pnpm --filter @vefacaglar/db exec tsc
+
+      - name: Typecheck API
+        run: pnpm --filter api typecheck
+
+      - name: Test API
+        run: pnpm --filter api test
+
+      - name: Compile API
+        run: pnpm --filter api exec tsc
+
+      - name: Check deployment scripts
+        run: |
+          bash -n deploy/ssh-common.sh deploy/api/deploy.sh deploy/api/receive.sh deploy/api/ssh-deploy.sh deploy/api/migrate.sh
+          shellcheck -x deploy/ssh-common.sh deploy/api/deploy.sh deploy/api/receive.sh deploy/api/ssh-deploy.sh deploy/api/migrate.sh
+          python3 -m unittest discover -s deploy/api -p 'test_*.py'
+
+      - name: Validate generated Caddy route
+        run: |
+          python3 - <<'PYCODE'
+          import os
+          from pathlib import Path
+          import runpy
+          proxy = runpy.run_path('deploy/api/configure-caddy.py')
+          existing = 'auth.vefacaglar.com {\n    reverse_proxy authserver:5175\n}\n'
+          config = proxy['blue_green_config'](existing, {}, 'vefacaglar-api:3001', 'vefacaglar-api-blue-1:3001', 'blue-1')
+          (Path(os.environ['RUNNER_TEMP']) / 'api-test-Caddyfile').write_text(config)
+          PYCODE
+          docker run --rm --mount "type=bind,src=$RUNNER_TEMP/api-test-Caddyfile,dst=/etc/caddy/Caddyfile,readonly" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+  image-api:
+    needs: verify-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}@${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Image name
+        id: name
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "image=ghcr.io/${REPOSITORY,,}-api" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish API
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------- Web
+
+  verify-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @vefacaglar/ui typecheck
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
+      - name: Check deployment scripts
+        run: |
+          bash -n deploy/ssh-common.sh deploy/web/receive.sh deploy/web/ssh-deploy.sh
+          shellcheck -x deploy/ssh-common.sh deploy/web/receive.sh deploy/web/ssh-deploy.sh
+          python3 -m unittest discover -s deploy/web -p 'test_*.py'
+      - name: Validate generated Caddy route
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import runpy
+          import shutil
+          import tempfile
+          with tempfile.TemporaryDirectory() as directory:
+              directory = Path(directory)
+              shutil.copyfile('deploy/web/deploy.py', directory / 'deploy.py')
+              shutil.copyfile('deploy/web/persist-caddy-network.py', directory / 'persist-caddy-network.py')
+              shutil.copyfile('deploy/api/configure-caddy.py', directory / 'caddy-target.py')
+              web = runpy.run_path(str(directory / 'deploy.py'))
+              config = web['caddy_config']('auth.vefacaglar.com {\n    reverse_proxy authserver:5175\n}\n', {}, 'vefacaglar-web-blue-1:3000', 'blue-1')
+              (Path(os.environ['RUNNER_TEMP']) / 'web-test-Caddyfile').write_text(config)
+          PY
+          docker run --rm --mount "type=bind,src=$RUNNER_TEMP/web-test-Caddyfile,dst=/etc/caddy/Caddyfile,readonly" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+  image-web:
+    needs: verify-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api2.vefacaglar.com' }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://vefacaglar.com' }}
+    outputs:
+      image: ${{ steps.name.outputs.image }}@${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Image name
+        id: name
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "image=ghcr.io/${REPOSITORY,,}-web" >> "$GITHUB_OUTPUT"
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish web
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # ---------------------------------------------------------------- Worker
+
+  verify-worker:
+    needs: changes
+    if: needs.changes.outputs.worker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: worker_test
+          POSTGRES_PASSWORD: worker_test
+          POSTGRES_DB: worker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U worker_test -d worker_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      WORKER_TEST_DATABASE_URL: postgresql://worker_test:worker_test@localhost:5432/worker_test
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/worker
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Initialize isolated queue test database
+        run: |
+          # Only the users foreign-key target is needed by the generated queue migration.
+          psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE TABLE users (id uuid PRIMARY KEY)'
+          psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0022_giant_sprite.sql
+          psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0023_magical_storm.sql
+          # Exercise the dedicated movie source SQL against its generated schema.
+          for migration in 0027_movies_catalog 0030_massive_chameleon 0031_right_tyrannus 0032_tired_serpent_society 0033_chunky_baron_strucker 0036_mute_nova; do
+            psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "../../packages/db/drizzle/$migration.sql"
+          done
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Check deployment scripts
+        working-directory: .
+        env:
+          WORKER_DEPLOY_TEST_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          bash -n deploy/ssh-common.sh deploy/worker/deploy.sh deploy/worker/receive.sh deploy/worker/ssh-deploy.sh
+          shellcheck -x deploy/ssh-common.sh deploy/worker/deploy.sh deploy/worker/receive.sh deploy/worker/ssh-deploy.sh
+          python3 -m unittest discover -s deploy/worker -p 'test_*.py'
+          tmp=$(mktemp -d)
+          cp deploy/worker/compose.yml "$tmp/"
+          : > "$tmp/worker.env"
+          WORKER_GENERATION=g00000000000000000000 \
+            WORKER_IMAGE="ghcr.io/example/worker@sha256:$(printf 'a%.0s' {1..64})" \
+            docker compose --file "$tmp/compose.yml" config --quiet
+
+  image-worker-amd64:
+    name: image-worker (amd64)
+    needs: verify-worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}@${{ steps.build.outputs.digest }}
+    env:
+      WORKER_PLATFORM: linux/amd64
+      WORKER_ARCH: amd64
+    steps: &worker_image_steps
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Image name
+        id: name
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "image=ghcr.io/${REPOSITORY,,}-worker" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish worker
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/worker/Dockerfile
+          platforms: ${{ env.WORKER_PLATFORM }}
+          push: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.name.outputs.image }}:${{ github.sha }}-${{ env.WORKER_ARCH }}
+          build-args: WORKER_GIT_SHA=${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: |
+            type=gha,scope=worker-${{ env.WORKER_ARCH }}
+            type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker-${{ env.WORKER_ARCH }},timeout=3m,ignore-error=true
+
+  image-worker-arm64:
+    name: image-worker (arm64)
+    needs: verify-worker
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}@${{ steps.build.outputs.digest }}
+    env:
+      WORKER_PLATFORM: linux/arm64
+      WORKER_ARCH: arm64
+    steps: *worker_image_steps
+
+  publish-worker-manifest:
+    name: Publish multi-platform worker tag
+    needs: [image-worker-amd64, image-worker-arm64]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge architecture digests
+        env:
+          AMD64_IMAGE: ${{ needs.image-worker-amd64.outputs.image }}
+          ARM64_IMAGE: ${{ needs.image-worker-arm64.outputs.image }}
+        run: |
+          image="${AMD64_IMAGE%@*}"
+          docker buildx imagetools create --tag "$image:$GITHUB_SHA" "$AMD64_IMAGE" "$ARM64_IMAGE"
+          docker buildx imagetools inspect "$image:$GITHUB_SHA"
+
+  # ---------------------------------------------------------------- Database
+
+  # Runs whenever a new API image is built (every packages/db change builds one).
+  # Pending migrations are applied from that image on the VPS, where DATABASE_URL
+  # resolves; nothing pending is a quick no-op. Migrations must stay
+  # backward-compatible with the releases still running (see CLAUDE.md).
+  migrate:
+    needs: [changes, image-api]
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && needs.changes.outputs.api == 'true' && needs.image-api.result == 'success'
+      && (vars.API_DEPLOY_ENABLED == 'true' || vars.WORKER_DEPLOY_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: api-production
+    env:
+      API_IMAGE: ${{ needs.image-api.outputs.image }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps: &api_ssh_steps
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          test -n "$KNOWN_HOSTS"
+          test -n "$SSH_KEY" || test -n "$SSH_PASSWORD"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [[ -n "$SSH_KEY" ]]; then
+            printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/vefacaglar-api-ssh-key"
+            chmod 600 "$RUNNER_TEMP/vefacaglar-api-ssh-key"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+      - name: Prepare configuration from GitHub secrets
+        env:
+          API_ENV: ${{ secrets.API_ENV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PG_POOL_MAX: ${{ secrets.PG_POOL_MAX }}
+          API_URL: ${{ secrets.API_URL }}
+          WEB_URL: ${{ secrets.WEB_URL }}
+          AUTH_MODE: ${{ secrets.AUTH_MODE }}
+          OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ secrets.OIDC_CLIENT_ID }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          TYPESENSE_PUBLIC_URL: ${{ secrets.TYPESENSE_PUBLIC_URL }}
+          IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
+          IMAGEKIT_PUBLIC_KEY: ${{ secrets.IMAGEKIT_PUBLIC_KEY }}
+          IMAGEKIT_FOLDER: ${{ secrets.IMAGEKIT_FOLDER }}
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+          JOB_STREAM_TOKEN_SECRET: ${{ secrets.JOB_STREAM_TOKEN_SECRET }}
+          WEB_ORIGINS: ${{ secrets.WEB_ORIGINS }}
+          LOG_TYPESENSE_URL: ${{ secrets.LOG_TYPESENSE_URL }}
+          LOG_TYPESENSE_API_KEY: ${{ secrets.LOG_TYPESENSE_API_KEY }}
+          LOG_ENVIRONMENT: ${{ secrets.LOG_ENVIRONMENT }}
+          API_DOCKER_NETWORK: ${{ vars.API_DOCKER_NETWORK || 'databases_default' }}
+          API_BIND_PORT: ${{ vars.API_BIND_PORT || '3001' }}
+          API_CADDY_CONTAINER: ${{ vars.API_CADDY_CONTAINER }}
+          API_CADDY_CONFIG_PATH: ${{ vars.API_CADDY_CONFIG_PATH }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 deploy/api/prepare-deploy.py "$RUNNER_TEMP/vefacaglar-api-bundle"
+      - name: Upload configuration and run on the VPS
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          # migrate | deploy
+          API_MODE: ${{ github.job == 'migrate' && 'migrate' || 'deploy' }}
+        run: bash deploy/api/ssh-deploy.sh "$API_MODE"
+      - name: Verify VPS and public HTTPS endpoints
+        if: github.job == 'deploy-api'
+        run: |
+          curl --connect-to "api2.vefacaglar.com:443:$VPS_HOST:443" --fail --silent --show-error --retry 24 --retry-delay 5 --retry-all-errors --retry-max-time 180 --max-time 10 https://api2.vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors --max-time 15 https://api2.vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+      - name: Remove temporary deployment credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/vefacaglar-api-ssh-key"
+          rm -rf "$RUNNER_TEMP/vefacaglar-api-bundle"
+
+  # ---------------------------------------------------------------- Deploy
+
+  deploy-api:
+    needs: [image-api, migrate]
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && vars.API_DEPLOY_ENABLED == 'true' && needs.image-api.result == 'success'
+      && needs.migrate.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: api-production
+      url: https://api2.vefacaglar.com
+    env:
+      API_IMAGE: ${{ needs.image-api.outputs.image }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps: *api_ssh_steps
+
+  deploy-web:
+    needs: [changes, image-web, migrate]
+    # Web code does not read the database, but still never deploys after a failed migration.
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && vars.WEB_DEPLOY_ENABLED == 'true' && needs.image-web.result == 'success'
+      && needs.migrate.result != 'failure' && needs.migrate.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    # Reuse the existing VPS and OIDC secrets; do not duplicate production credentials.
+    environment:
+      name: api-production
+      url: https://vefacaglar.com
+    env:
+      WEB_IMAGE: ${{ needs.image-web.outputs.image }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+      VERIFY_HTTPS: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_https || github.event_name != 'workflow_dispatch' && vars.WEB_VERIFY_HTTPS != 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          test -n "$KNOWN_HOSTS"
+          test -n "$SSH_KEY" || test -n "$SSH_PASSWORD"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [[ -n "$SSH_KEY" ]]; then
+            printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/vefacaglar-web-ssh-key"
+            chmod 600 "$RUNNER_TEMP/vefacaglar-web-ssh-key"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+      - name: Prepare web runtime configuration
+        env:
+          WEB_ENV: ${{ secrets.WEB_ENV }}
+          API_URL: ${{ vars.WEB_API_URL || 'https://api2.vefacaglar.com' }}
+          AUTH_MODE: ${{ secrets.AUTH_MODE }}
+          OIDC_ISSUER: ${{ secrets.OIDC_ISSUER }}
+          OIDC_CLIENT_ID: ${{ secrets.OIDC_CLIENT_ID }}
+          WEB_DOCKER_NETWORK: ${{ vars.WEB_DOCKER_NETWORK || 'vefacaglar-web' }}
+          WEB_CADDY_CONTAINER: ${{ vars.WEB_CADDY_CONTAINER }}
+          WEB_CADDY_CONFIG_PATH: ${{ vars.WEB_CADDY_CONFIG_PATH }}
+          WEB_VERIFY_HTTPS: ${{ env.VERIFY_HTTPS }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 deploy/web/prepare-deploy.py "$RUNNER_TEMP/vefacaglar-web-bundle"
+      - name: Deploy published image
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: bash deploy/web/ssh-deploy.sh
+      # www.vefacaglar.com is redirected by Cloudflare outside the app; only the apex is probed.
+      - name: Verify public HTTPS
+        if: env.VERIFY_HTTPS == 'true'
+        run: |
+          curl --connect-to "vefacaglar.com:443:$VPS_HOST:443" --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --max-time 15 https://vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --max-time 15 https://vefacaglar.com/health | jq -e '.status == "ok"' > /dev/null
+      - name: Remove temporary credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/vefacaglar-web-ssh-key"
+          rm -rf "$RUNNER_TEMP/vefacaglar-web-bundle"
+
+  deploy-worker:
+    # The VPS is amd64: ARM publication must never delay its deployment.
+    needs: [changes, image-worker-amd64, migrate]
+    # A run that changed the API/database must have migrated before new worker code starts.
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && vars.WORKER_DEPLOY_ENABLED == 'true' && needs.image-worker-amd64.result == 'success'
+      && (needs.migrate.result == 'success' || (needs.changes.outputs.api != 'true' && needs.migrate.result == 'skipped'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: api-production
+    env:
+      WORKER_IMAGE: ${{ needs.image-worker-amd64.outputs.image }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          test -n "$KNOWN_HOSTS"
+          test -n "$SSH_KEY" || test -n "$SSH_PASSWORD"
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]]
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if [[ -n "$SSH_KEY" ]]; then
+            printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/vefacaglar-worker-ssh-key"
+            chmod 600 "$RUNNER_TEMP/vefacaglar-worker-ssh-key"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends sshpass
+          fi
+      - name: Prepare configuration from GitHub secrets
+        env:
+          WORKER_ENV: ${{ secrets.WORKER_ENV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
+          TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+          TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
+          TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+          TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+          LOG_TYPESENSE_URL: ${{ secrets.LOG_TYPESENSE_URL }}
+          LOG_TYPESENSE_API_KEY: ${{ secrets.LOG_TYPESENSE_API_KEY }}
+          LOG_ENVIRONMENT: ${{ secrets.LOG_ENVIRONMENT }}
+          WORKER_ID: ${{ vars.WORKER_ID }}
+          WORKER_DB_POOL_MAX: ${{ vars.WORKER_DB_POOL_MAX }}
+          RUST_LOG: ${{ vars.WORKER_RUST_LOG }}
+          WORKER_DOCKER_NETWORK: ${{ vars.WORKER_DOCKER_NETWORK || vars.API_DOCKER_NETWORK || 'databases_default' }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 deploy/worker/prepare-deploy.py "$RUNNER_TEMP/vefacaglar-worker-bundle"
+      - name: Upload configuration and deploy published image
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: bash deploy/worker/ssh-deploy.sh
+      - name: Remove temporary deployment credentials
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/vefacaglar-worker-ssh-key"
+          rm -rf "$RUNNER_TEMP/vefacaglar-worker-bundle"

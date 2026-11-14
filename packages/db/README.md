@@ -19,8 +19,8 @@ pnpm --filter @vefacaglar/db db:generate
 ```
 *Bu komut, `packages/db/drizzle/` klasörü altında SQL dosyaları üretir.*
 
-### 3. Migration'ları Uygulama (Production / Staging)
-Üretilen SQL migration dosyalarını hedef veritabanında sırayla çalıştırmak için:
+### 3. Migration'ları Uygulama (local / staging)
+Production migration'ları CD tarafından deploy'dan önce otomatik uygulanır (`.github/workflows/ci-deploy.yml`, `migrate` job'u). Başka bir veritabanında uygulamak için:
 ```bash
 pnpm --filter @vefacaglar/db db:migrate
 ```

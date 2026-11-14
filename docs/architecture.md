@@ -137,8 +137,7 @@ The worker needs `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` in addition to its
 existing database and Typesense write credentials. No public API endpoint or
 internal HTTP authentication is involved.
 
-Apply generated migrations with `pnpm --filter @vefacaglar/db db:migrate` before
-deployment. Migration `0026_catalog_popularity_job.sql` seeds the recurring row
+Generated migrations are applied automatically by CD before deployment. Migration `0026_catalog_popularity_job.sql` seeds the recurring row
 disabled; enable it only after the updated worker image and credentials are
 verified. `next_run_at = null` lets the existing scheduler compute the next
 07:15 UTC occurrence. The Jobs dashboard supports manual runs, progress, logs,
@@ -197,15 +196,16 @@ Full spec: [jobs-worker.md](jobs-worker.md).
 Drizzle schema in `packages/db/src/schema/` (`users`, `sessions`, `posts`,
 `pages`, `projects`, `packages`, `localizations`, `games`, `jobs`). Migrations
 are always generated (`db:generate`), never hand-written; generated files may only
-receive data backfill steps. Migrations are applied manually
-(`pnpm --filter @vefacaglar/db db:migrate`); CD never migrates.
+receive data backfill steps. CD applies pending migrations once per run, before
+any deployment, from the new API image on the VPS (`packages/db/dist/migrate.js`,
+serialized by a Postgres advisory lock). Migrations must stay backward-compatible
+with the releases still running.
 
 ## Deployment and CI
 
 | Workflow | What it does |
 |---|---|
-| `.github/workflows/api-ci.yml` | Typecheck + tests, multi-arch image to GHCR, blue-green deploy to the VPS behind Caddy (`deploy/api`) |
-| `.github/workflows/worker-ci.yml` | `cargo fmt` / `clippy` / `test`, image to GHCR, deploy to the VPS (`deploy/worker`, gated by `WORKER_DEPLOY_ENABLED`) |
+| `.github/workflows/ci-deploy.yml` | One run for all apps: detects affected apps, then verifies and builds API (multi-arch), web and worker images in parallel; on `main` applies DB migrations once, then deploys API (blue-green behind Caddy, `deploy/api`), web (`deploy/web`) and worker (`deploy/worker`) in parallel, each gated by its `*_DEPLOY_ENABLED` variable |
 | `.github/workflows/catalog-import.yml` | Scheduled IGDB catalog import every 6 hours |
 
 The web app deploys on Vercel. The local `.env` points at production services,

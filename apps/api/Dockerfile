@@ -20,6 +20,9 @@ ENV NODE_ENV=production API_HOST=0.0.0.0 API_PORT=3001
 COPY --from=production-dependencies --chown=node:node /app ./
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/packages/db/dist ./packages/db/dist
+# Generated SQL for CD's one-shot `node packages/db/dist/migrate.js` (see deploy/api/migrate.sh).
+COPY --chown=node:node packages/db/drizzle ./packages/db/drizzle
+RUN node --check packages/db/dist/migrate.js && test -s packages/db/drizzle/meta/_journal.json
 USER node
 EXPOSE 3001
 CMD ["node", "--enable-source-maps", "apps/api/dist/server.js"]

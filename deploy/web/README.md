@@ -37,7 +37,7 @@ ImageKit private keys or Redis settings: those integrations belong to the API.
 ## First migration
 
 Set `WEB_DEPLOY_ENABLED=true` and `WEB_VERIFY_HTTPS=false` before the initial
-push, or run **Web CI and deploy** manually with `verify_https` disabled. This stages a healthy web release, checks page rendering
+push, or run **CI and deploy** manually with `verify_https` disabled. This stages a healthy web release, checks page rendering
 on its private loopback port, and configures both Caddy hostnames. The run explicitly
 reports that public HTTPS is still unverified. It does not modify DNS or Vercel.
 

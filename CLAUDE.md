@@ -14,10 +14,12 @@ All commands run from the repo root unless otherwise noted.
 
 **Migration files must never be hand-written.** Always change `packages/db/src/schema/*.ts` and let `db:generate` produce the SQL under `packages/db/drizzle/`. Editing a generated file is only allowed to add a backfill/data step (e.g. `UPDATE` between `ADD COLUMN` and `SET NOT NULL`) — never to alter the DDL Drizzle emitted.
 
+**Migrations are applied automatically on deploy.** The `migrate` job in `.github/workflows/ci-deploy.yml` runs `packages/db/dist/migrate.js` from the new API image on the VPS before any API/web/worker deploy; a failure blocks all deploys. The previous releases keep running during and after the migration, so every migration must be **backward-compatible with the currently deployed code** (add nullable columns/tables first, backfill, and drop/rename only in a later release once no running code reads them). Do not run `db:migrate` against production by hand.
+
 Database (Drizzle, against the `DATABASE_URL` in root `.env`):
 - `pnpm --filter @vefacaglar/db db:push` — push schema directly (fast prototyping).
 - `pnpm --filter @vefacaglar/db db:generate` — generate SQL migrations into `packages/db/drizzle/`.
-- `pnpm --filter @vefacaglar/db db:migrate` — apply generated migrations.
+- `pnpm --filter @vefacaglar/db db:migrate` — apply generated migrations (local/dev DBs; production migrates in CD).
 - `pnpm --filter @vefacaglar/db db:seed` — seed default admin (`admin@vefacaglar.com` / `123`, scrypt-hashed).
 - `pnpm --filter @vefacaglar/db db:studio` — Drizzle Studio UI.
 

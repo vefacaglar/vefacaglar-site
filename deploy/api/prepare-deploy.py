@@ -65,7 +65,7 @@ def prepare(destination):
 
     destination.mkdir(mode=0o700, parents=True, exist_ok=False)
     source = Path(__file__).resolve().parent
-    for name in ("compose.yml", "deploy.sh", "receive.sh", "configure-caddy.py", "blue-green.py"):
+    for name in ("compose.yml", "deploy.sh", "receive.sh", "migrate.sh", "configure-caddy.py", "blue-green.py"):
         shutil.copyfile(source / name, destination / name)
         (destination / name).chmod(0o600)
     for name, content in {

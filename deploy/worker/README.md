@@ -4,7 +4,7 @@ The background jobs worker (`apps/worker`, Rust; spec in
 [`docs/jobs-worker.md`](../../docs/jobs-worker.md)) runs as two Docker
 containers on the same VPS as the API. Each process executes one job; a database
 claim gate admits at most two running jobs across all worker instances. GitHub Actions
-(`.github/workflows/worker-ci.yml`) checks formatting, clippy and tests, then
+(`.github/workflows/ci-deploy.yml`, worker jobs) checks formatting, clippy and tests, then
 builds amd64 and arm64 images on separate native runners. The amd64 VPS deploy
 pins its architecture's immutable digest as soon as that build succeeds; it
 does not wait for ARM. After both builds succeed, CI publishes the combined
@@ -145,7 +145,7 @@ appropriate for a separately managed worker with a unique identity.
 
 Every deploy creates a new environment snapshot. Existing draining generations
 keep their original snapshot until they finish. Changing secrets alone does not deploy; use
-**Actions → Worker CI and deploy → Run workflow → main** afterwards.
+**Actions → CI and deploy → Run workflow → main** afterwards.
 
 For [application logs](../../docs/application-logs.md), set
 `LOG_TYPESENSE_URL` and `LOG_TYPESENSE_API_KEY` (optionally `LOG_ENVIRONMENT`)

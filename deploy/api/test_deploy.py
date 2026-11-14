@@ -106,7 +106,32 @@ fi
         self.assertFalse(Path((self.root / "registry-config-path").read_text()).exists())
         self.assertNotIn("test-registry-token", result.stdout + result.stderr)
 
-    def check_ssh_transfer(self, use_key, fail_upload=False):
+    def test_receiver_migrate_mode_runs_migration_script(self):
+        self.prepare()
+        bindir = self.root / "bin"
+        bindir.mkdir()
+        (bindir / "docker").write_text('''#!/usr/bin/env bash
+set -eu
+if [[ "$1" == login ]]; then cat > /dev/null; exit 0; fi
+printf '%s\\n' "$*" >> "$TEST_LOG"
+''')
+        (bindir / "flock").write_text("#!/bin/sh\nexit 0\n")
+        for path in bindir.iterdir():
+            path.chmod(0o700)
+        environment = os.environ | {
+            "PATH": str(bindir) + os.pathsep + os.environ["PATH"],
+            "TEST_LOG": str(self.root / "calls"),
+        }
+        result = subprocess.run(["bash", str(self.bundle / "receive.sh"), "migrate"], input="token", text=True, capture_output=True, env=environment)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = (self.root / "calls").read_text()
+        self.assertIn("pull --quiet " + NEW_IMAGE, calls)
+        self.assertIn("run --rm --network existing-network --env-file", calls)
+        self.assertIn("--entrypoint node " + NEW_IMAGE + " packages/db/dist/migrate.js", calls)
+        self.assertNotIn("blue-green", calls)
+        self.assertFalse(self.bundle.exists())
+
+    def check_ssh_transfer(self, use_key, fail_upload=False, mode=None):
         bindir = self.root / "ssh-bin"
         bindir.mkdir()
         self.prepare()
@@ -118,7 +143,7 @@ fi
 set -eu
 printf '%s %s\\n' "$(basename "$0")" "$*" >> "$SSH_TEST_LOG"
 if [[ "$0" == */scp && "$FAIL_UPLOAD" == true ]]; then exit 1; fi
-if [[ "$*" == *'/receive.sh' ]]; then
+if [[ "$0" == */ssh && "$*" == *'/receive.sh '* ]]; then
   [[ "$(cat)" == ci-registry-token ]]
 fi
 ''')
@@ -142,9 +167,10 @@ exec "$@"
             "RUNNER_TEMP": str(self.root),
             "SSH_TEST_LOG": str(self.root / "ssh-calls"),
             "FAIL_UPLOAD": "true" if fail_upload else "false",
+            "SSH_RETRY_DELAY": "0",
         }
         result = subprocess.run(
-            ["bash", str(Path(__file__).with_name("ssh-deploy.sh"))],
+            ["bash", str(Path(__file__).with_name("ssh-deploy.sh")), *([mode] if mode else [])],
             env=environment, capture_output=True, text=True,
         )
         calls = (self.root / "ssh-calls").read_text()
@@ -156,11 +182,17 @@ exec "$@"
         self.assertNotIn("ci-registry-token", calls + result.stdout + result.stderr)
         if fail_upload:
             self.assertNotEqual(result.returncode, 0)
+            # Idempotent upload retries with backoff before giving up.
+            self.assertEqual(calls.count("scp "), 5)
             self.assertNotIn("bash ~/vefacaglar-api/.incoming-123-1/receive.sh", calls)
+        elif mode == "migrate":
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("bash ~/vefacaglar-api/.incoming-123-1-migrate/receive.sh migrate", calls)
+            self.assertIn("rm -rf ~/vefacaglar-api/.incoming-123-1-migrate", calls)
         else:
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("vefacaglar-api-bundle/.env", calls)
-            self.assertIn("bash ~/vefacaglar-api/.incoming-123-1/receive.sh", calls)
+            self.assertIn("bash ~/vefacaglar-api/.incoming-123-1/receive.sh deploy", calls)
         if use_key:
             self.assertIn("BatchMode=yes", calls)
             self.assertNotIn("sshpass", calls)
@@ -172,6 +204,9 @@ exec "$@"
 
     def test_ssh_key_transfer(self):
         self.check_ssh_transfer(use_key=True)
+
+    def test_ssh_migrate_uses_separate_incoming_directory(self):
+        self.check_ssh_transfer(use_key=True, mode="migrate")
 
     def test_failed_upload_cleans_remote_bundle(self):
         self.check_ssh_transfer(use_key=False, fail_upload=True)

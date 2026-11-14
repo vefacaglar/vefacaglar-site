@@ -11,8 +11,9 @@ needed and checks HTTPS directly against the VPS. No manual SSH, env-file editin
 file uploads or registry login are needed for routine deployments.
 
 The Vercel entrypoint `dist/app.js` is preserved; Docker runs `dist/server.js`.
-CD does not create a database, seed it or apply migrations. Use the existing API
-database with its production schema and data. The auth server database is separate.
+CD does not create a database or seed it. It does apply pending Drizzle
+migrations (see [Database migrations](#database-migrations)). The auth server
+database is separate.
 
 ## GitHub secrets
 
@@ -75,7 +76,7 @@ Rate limit counters and the search circuit breaker are kept in each API process.
 | `API_CADDY_CONTAINER` | Optional container name/ID when multiple Caddy containers exist |
 | `API_CADDY_CONFIG_PATH` | Optional Caddyfile path inside the container or on the host |
 
-Push API/deployment changes to `main`, or select **Actions → API CI and deploy →
+Push API/deployment changes to `main`, or select **Actions → CI and deploy →
 Run workflow → main**. The deploy job uses the `api-production` environment.
 No separate GHCR token is required: the job's `GITHUB_TOKEN` has package-read access
 and is supplied over SSH stdin to a temporary Docker credential directory. That
@@ -125,19 +126,57 @@ and the candidate's `X-API-Deployment` response header. Only then is the active
 release recorded atomically in `.releases.json`.
 
 The immediate previous release stays running for 10 minutes after the verified
-traffic switch. CD checks the new release again before stopping the previous
-API, with Docker's 30-second stop timeout. The previous release directory and
-environment remain available for recovery, but its process and health checks
-stop. Only the active API normally remains running; reserve memory and DB
-connections for the temporary rollout overlap. Older release directories and
-the original single-container API are retired after the same grace period.
-Connections lasting beyond this overlap and stop timeout may be disconnected.
-The deploy job stays open during this interval and has a 25-minute timeout.
+traffic switch. The deploy job finishes right after the switch: the retirement is
+recorded in `~/vefacaglar-api/.retirements.json` (release ID → due Unix time) and
+handed to a detached server process (`blue-green.py --retire`, started with
+`setsid` from the new release's directory, logging to
+`~/vefacaglar-api/retirement.log`). When an entry is due, that process takes the
+deploy lock, checks the active release over HTTPS again and only then stops the
+recorded release with Docker's 30-second stop timeout. The immediate previous
+release directory and environment remain available for recovery, but its process
+and health checks stop. Older release directories and the original
+single-container API are retired the same way. Reserve memory and DB connections
+for the temporary rollout overlap; connections lasting beyond it may be
+disconnected.
 
-If the final health check fails, the running predecessor is retained and the
-workflow fails. The verified traffic switch remains committed; this later check
-does not automatically switch traffic back. Cancellation or cleanup failure also
-fails the workflow and can leave the predecessor running until another deploy.
+Retirement acts only on IDs recorded in the file and never on the active release,
+so a deployment made during a grace window is safe: the new active release is
+never stopped, and the earlier release still retires when its own grace ends.
+Retirement is idempotent. If the detached process dies (e.g. a reboot) or the
+active release fails its check, entries stay in the file; the next deployment
+retires overdue entries before starting its candidate.
+
+To inspect or cancel a pending retirement on the VPS:
+
+```sh
+cat ~/vefacaglar-api/.retirements.json        # pending releases and due times
+tail ~/vefacaglar-api/retirement.log          # retirement process output
+pgrep -af 'blue-green.py --retire'            # detached process(es)
+# Cancel: kill the process(es), then remove the entry (or the whole file).
+pkill -f 'blue-green.py --retire'; rm ~/vefacaglar-api/.retirements.json
+```
+
+If the candidate fails before the switch, the running predecessor is retained,
+the candidate is removed and the workflow fails.
+
+## Database migrations
+
+On `main`, the `migrate` job of `.github/workflows/ci-deploy.yml` runs whenever
+the run builds a new API image (any `packages/db` change does) and API or worker
+deployment is enabled. It uploads the same private API bundle, then on the VPS
+runs `deploy/api/migrate.sh`: under the API deploy lock it executes
+`node packages/db/dist/migrate.js` once in a throwaway container of the new API
+image (`--rm`, read-only, no capabilities) on the API network with the API env
+file, because `DATABASE_URL` uses the internal Docker hostname.
+
+The runner applies the generated SQL in `packages/db/drizzle` with the same
+bookkeeping as `drizzle-kit migrate` (`drizzle.__drizzle_migrations`), in one
+transaction guarded by `pg_advisory_xact_lock`, so concurrent runs serialize and
+a failed migration changes nothing. Nothing pending is a quick no-op. Only
+migration tags or the database error are printed, never the URL. A failure
+fails the job and skips the API, web and worker deployments; the running
+releases keep serving. Because the old releases keep running against the new
+schema, migrations must be backward-compatible with them.
 
 A failed candidate health check never changes traffic. A failed reload or HTTPS
 check reloads the original route before removing the candidate. If recovery is
