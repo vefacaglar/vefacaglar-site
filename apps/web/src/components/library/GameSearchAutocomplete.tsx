@@ -43,7 +43,11 @@ export default function GameSearchAutocomplete({
   const [value, setValue] = useState(initialQuery);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [suggestions, setSuggestions] = useState<GameSuggestions>(EMPTY_GAME_SUGGESTIONS);
+  // Suggestions are tagged with the term they answer, so stale rows are never shown or selected.
+  const [loaded, setLoaded] = useState<{ key: string; suggestions: GameSuggestions }>({
+    key: "",
+    suggestions: EMPTY_GAME_SUGGESTIONS,
+  });
   const [status, setStatus] = useState<Status>("idle");
   const [isPending, startTransition] = useTransition();
   const rootRef = useRef<HTMLFormElement>(null);
@@ -52,7 +56,9 @@ export default function GameSearchAutocomplete({
 
   const term = gameSearchTerm(value);
   const searchable = term !== null && term.length >= GAME_SUGGEST_MIN_LENGTH;
-  const options = useMemo(() => gameSuggestionOptions(suggestions), [suggestions]);
+  const termKey = searchable ? term.toLocaleLowerCase() : "";
+  const current = loaded.key === termKey ? loaded.suggestions : EMPTY_GAME_SUGGESTIONS;
+  const options = useMemo(() => gameSuggestionOptions(current), [current]);
   const expanded = open && searchable && (options.length > 0 || status === "ready" || status === "loading");
 
   // Keep the box in sync with the URL after navigation, without clobbering a newer edit.
@@ -71,7 +77,7 @@ export default function GameSearchAutocomplete({
     const key = term.toLocaleLowerCase();
     const cached = cacheRef.current.get(key);
     if (cached) {
-      setSuggestions(cached);
+      setLoaded({ key, suggestions: cached });
       setStatus("ready");
       setActiveIndex(-1);
       return;
@@ -89,12 +95,12 @@ export default function GameSearchAutocomplete({
         const cache = cacheRef.current;
         cache.set(key, next);
         if (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value as string);
-        setSuggestions(next);
+        setLoaded({ key, suggestions: next });
         setStatus("ready");
         setActiveIndex(-1);
       } catch {
         if (controller.signal.aborted) return;
-        setSuggestions(EMPTY_GAME_SUGGESTIONS);
+        setLoaded({ key, suggestions: EMPTY_GAME_SUGGESTIONS });
         setStatus("error");
         setActiveIndex(-1);
       }
@@ -224,6 +230,8 @@ export default function GameSearchAutocomplete({
           setActiveIndex(-1);
         }}
         onFocus={() => setOpen(true)}
+        // Option presses keep focus (the listbox prevents mousedown), so blur means focus left the search.
+        onBlur={close}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={placeholder}

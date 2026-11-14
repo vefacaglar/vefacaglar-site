@@ -132,8 +132,9 @@ export interface IGamesRepository {
   findPublicCardsByIds(ids: string[]): Promise<GameCard[]>;
   listPublic(filter: { page: number; limit: number; q?: string }): Promise<{ items: GameCard[]; total: number }>;
   /**
-   * Developers or publishers whose name contains `q`, linked to at least one game.
-   * Ranked exact > prefix > substring, then by game count. The Postgres fallback of public company search.
+   * Developers or publishers with a name word starting with `q` (the whole name or after a space),
+   * linked to at least one game. Ranked exact name > name prefix > word prefix, then by game count.
+   * The Postgres fallback of public company search.
    */
   searchPublicCompanies(role: GameCompanyRole, q: string, limit: number): Promise<PublicCompanyMatch[]>;
   /** Current name, slug and game count of these companies; those without games are omitted. Unordered. */

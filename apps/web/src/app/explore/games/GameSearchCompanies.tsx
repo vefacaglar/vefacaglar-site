@@ -19,7 +19,7 @@ export default function GameSearchCompanies({ companies, lang }: { companies: Co
   return (
     <div className={styles.companies}>
       {sections.map((section) => (
-        <section key={section.group} className={styles.section} aria-labelledby={`games-search-${section.group}`}>
+        <section key={section.group} aria-labelledby={`games-search-${section.group}`}>
           <h2 id={`games-search-${section.group}`} className={styles.heading}>
             {section.title}
           </h2>

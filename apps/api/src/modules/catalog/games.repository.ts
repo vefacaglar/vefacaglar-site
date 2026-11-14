@@ -447,7 +447,11 @@ export class DrizzleGamesRepository implements IGamesRepository {
     if (!term || limit < 1) return [];
     const pattern = term.replace(/[\\%_]/g, (c) => `\\${c}`);
     const lookup = role === "developer" ? developers : publishers;
-    const { query, table, gameCount } = this.publicCompaniesQuery(role, ilike(lookup.name, `%${pattern}%`));
+    // Word-prefix matching, close to Typesense's prefix search: "dog" finds "Naughty Dog", not "Bulldog".
+    const { query, table, gameCount } = this.publicCompaniesQuery(
+      role,
+      or(ilike(lookup.name, `${pattern}%`), ilike(lookup.name, `% ${pattern}%`)),
+    );
     const rows = await query
       .orderBy(
         asc(sql`case when lower(${table.name}) = lower(${term}) then 0 when ${table.name} ilike ${`${pattern}%`} then 1 else 2 end`),

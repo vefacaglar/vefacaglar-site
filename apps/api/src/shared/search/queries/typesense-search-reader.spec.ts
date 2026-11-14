@@ -89,6 +89,59 @@ describe("TypesenseSearchReader.searchPublicCompanies", () => {
     expect(gamesRepo.searchPublicCompanies).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps a failed Postgres hydration out of the Typesense fallback and cooldown", async () => {
+    search.mockResolvedValue({ hits: [{ document: { id: ID(1) }, text_match: 1 }] });
+    gamesRepo.findPublicCompaniesByIds.mockRejectedValueOnce(new Error("connect ECONNREFUSED 127.0.0.1:5432"));
+
+    const r = reader();
+    await expect(r.searchPublicCompanies("developer", { q: "studio", limit: 5 })).rejects.toThrow("ECONNREFUSED");
+    expect(gamesRepo.searchPublicCompanies).not.toHaveBeenCalled();
+
+    // Typesense itself did not fail, so the next search still uses it.
+    gamesRepo.findPublicCompaniesByIds.mockResolvedValue([company(1, 2)]);
+    expect(await r.searchPublicCompanies("developer", { q: "studio", limit: 5 })).toEqual([company(1, 2)]);
+    expect(search).toHaveBeenCalledTimes(2);
+    expect(gamesRepo.searchPublicCompanies).not.toHaveBeenCalled();
+  });
+
+  it("reads further Typesense pages while companies without games leave the group under-filled", async () => {
+    const page = (from: number, count: number) => ({
+      hits: Array.from({ length: count }, (_, i) => ({ document: { id: ID(from + i) }, text_match: 1000 - from - i })),
+    });
+    // limit 2 -> 6 candidates per page; only one company per full page has games.
+    search
+      .mockResolvedValueOnce(page(1, 6))
+      .mockResolvedValueOnce(page(7, 6))
+      .mockResolvedValueOnce(page(13, 6));
+    gamesRepo.findPublicCompaniesByIds.mockImplementation(async (_role: string, ids: string[]) =>
+      ids.includes(ID(1)) ? [company(1, 1)] : ids.includes(ID(7)) ? [company(7, 1)] : [],
+    );
+
+    const result = await reader().searchPublicCompanies("developer", { q: "studio", limit: 2 });
+
+    expect(search.mock.calls.map(([params]) => [params.page, params.per_page])).toEqual([[1, 6], [2, 6]]);
+    expect(result.map((c) => c.id)).toEqual([ID(1), ID(7)]);
+  });
+
+  it("stops after three pages or a short page, and keeps earlier matches when a later page fails", async () => {
+    const full = (from: number) => ({
+      hits: Array.from({ length: 6 }, (_, i) => ({ document: { id: ID(from + i) }, text_match: 1 })),
+    });
+    search.mockImplementation(async (params: { page: number }) => full(params.page * 10));
+    gamesRepo.findPublicCompaniesByIds.mockResolvedValue([]);
+    expect(await reader().searchPublicCompanies("developer", { q: "studio", limit: 2 })).toEqual([]);
+    expect(search).toHaveBeenCalledTimes(3);
+
+    search.mockReset();
+    search
+      .mockResolvedValueOnce(full(10))
+      .mockRejectedValueOnce(Object.assign(new Error("Service unavailable"), { httpStatus: 503 }));
+    gamesRepo.findPublicCompaniesByIds.mockResolvedValue([company(10, 4)]);
+    const result = await reader().searchPublicCompanies("publisher", { q: "studio", limit: 2 });
+    expect(result).toEqual([company(10, 4)]);
+    expect(gamesRepo.searchPublicCompanies).not.toHaveBeenCalled();
+  });
+
   it("does not hide non-search errors behind the fallback", async () => {
     search.mockRejectedValue(new Error("bad request"));
     await expect(reader().searchPublicCompanies("developer", { q: "studio", limit: 5 })).rejects.toThrow("bad request");

@@ -25,7 +25,8 @@ export interface ISearchReader {
   /**
    * Public developer or publisher search: Typesense text relevance, ties broken by game count,
    * with current fields and game counts from Postgres. Only companies with at least one game.
-   * Falls back to a ranked Postgres name search when Typesense is disabled or unavailable.
+   * Typesense pages are read (at most three) until the limit is filled after dropping companies without games.
+   * Falls back to a ranked Postgres word-prefix name search when Typesense is disabled or fails before any result.
    */
   searchPublicCompanies(role: GameCompanyRole, query: { q: string; limit: number }): Promise<PublicCompanyMatch[]>;
   searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>>;
