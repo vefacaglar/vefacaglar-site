@@ -32,8 +32,8 @@ export class SuggestGamesHandler {
     if (!term) return { developers: [], publishers: [], games: [] };
 
     const [developers, publishers, games] = await Promise.all([
-      this.gamesRepo.searchPublicCompanies("developer", term, LIMIT),
-      this.gamesRepo.searchPublicCompanies("publisher", term, LIMIT),
+      this.searchReader.searchPublicCompanies("developer", { q: term, limit: LIMIT }),
+      this.searchReader.searchPublicCompanies("publisher", { q: term, limit: LIMIT }),
       this.suggestGames(term),
     ]);
     return {

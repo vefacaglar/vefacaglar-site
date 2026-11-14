@@ -12,6 +12,7 @@ function makeReader(): Record<keyof ISearchReader, any> {
     searchGenres: vi.fn(),
     searchPlatforms: vi.fn(),
     searchThemes: vi.fn(),
+    searchPublicCompanies: vi.fn(),
   };
 }
 

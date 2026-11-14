@@ -16,6 +16,7 @@ describe("ListDevelopersHandler", () => {
       searchGenres: vi.fn(),
       searchPlatforms: vi.fn(),
       searchThemes: vi.fn(),
+      searchPublicCompanies: vi.fn(),
     };
 
     handler = new ListDevelopersHandler(mockSearchReader as unknown as ISearchReader);

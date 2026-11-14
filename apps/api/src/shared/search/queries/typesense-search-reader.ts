@@ -6,7 +6,12 @@ import type { Publisher } from "../../../modules/catalog/publishers.repository.i
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
 import type { Platform } from "../../../modules/catalog/platforms.repository.interface";
 import type { Theme } from "../../../modules/catalog/themes.repository.interface";
-import type { GameCard, GameWithRelations } from "../../../modules/catalog/games.repository.interface";
+import type {
+  GameCard,
+  GameCompanyRole,
+  GameWithRelations,
+  PublicCompanyMatch,
+} from "../../../modules/catalog/games.repository.interface";
 import {
   DEVELOPERS_REPOSITORY,
   PUBLISHERS_REPOSITORY,
@@ -45,6 +50,18 @@ import {
 
 const SEARCH_TIMEOUT_MS = 3000;
 const SEARCH_COOLDOWN_MS = 30_000;
+// Company candidates per requested result: a few matches may have no games and are dropped.
+const COMPANY_CANDIDATE_FACTOR = 3;
+const COMPANY_CANDIDATES_MAX = 72;
+
+type ScoredHit = { text_match?: number; text_match_info?: { score?: string } };
+
+/** Typesense's text match score; the string form keeps all 64 bits. */
+function textMatchScore(hit: ScoredHit): bigint {
+  const raw = hit.text_match_info?.score;
+  if (raw && /^\d+$/.test(raw)) return BigInt(raw);
+  return BigInt(Math.max(0, Math.trunc(Number(hit.text_match) || 0)));
+}
 
 @injectable()
 export class TypesenseSearchReader implements ISearchReader {
@@ -80,6 +97,14 @@ export class TypesenseSearchReader implements ISearchReader {
       () => this.runPublicGamesSearch(query),
       () => this.fallbackPublicGamesSearch(query),
       "public games"
+    );
+  }
+
+  searchPublicCompanies(role: GameCompanyRole, query: { q: string; limit: number }): Promise<PublicCompanyMatch[]> {
+    return this.runSearch(
+      () => this.runPublicCompaniesSearch(role, query),
+      () => this.gamesRepo.searchPublicCompanies(role, query.q, query.limit),
+      `public ${role}s`
     );
   }
 
@@ -191,6 +216,40 @@ export class TypesenseSearchReader implements ISearchReader {
       items: hits.map((h) => gameCardFromDoc(h.document)),
       total: (res.found as number) ?? 0,
     };
+  }
+
+  private async runPublicCompaniesSearch(
+    role: GameCompanyRole,
+    query: { q: string; limit: number }
+  ): Promise<PublicCompanyMatch[]> {
+    const q = query.q.trim();
+    if (!q || query.limit < 1) return [];
+    const collection = role === "developer" ? SEARCH_COLLECTIONS.developers : SEARCH_COLLECTIONS.publishers;
+    const res = await this.typesense.collections(collection).documents().search({
+      q,
+      query_by: "name",
+      include_fields: "id",
+      page: 1,
+      per_page: Math.min(query.limit * COMPANY_CANDIDATE_FACTOR, COMPANY_CANDIDATES_MAX),
+    });
+    const hits = (res.hits ?? []) as Array<ScoredHit & { document: { id: string } }>;
+    if (!hits.length) return [];
+
+    // Search owns relevance; Postgres owns names, slugs, game counts and the "has games" rule.
+    const current = await this.gamesRepo.findPublicCompaniesByIds(role, hits.map((hit) => hit.document.id));
+    const byId = new Map(current.map((company) => [company.id, company]));
+    return hits
+      .flatMap((hit, index) => {
+        const company = byId.get(hit.document.id);
+        return company ? [{ company, index, score: textMatchScore(hit) }] : [];
+      })
+      .sort((a, b) =>
+        a.score !== b.score
+          ? (a.score > b.score ? -1 : 1)
+          : b.company.gameCount - a.company.gameCount || a.index - b.index
+      )
+      .slice(0, query.limit)
+      .map(({ company }) => company);
   }
 
   private async runPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {

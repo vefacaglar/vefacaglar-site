@@ -13,9 +13,11 @@ describe("SuggestGamesHandler", () => {
   let handler: SuggestGamesHandler;
 
   beforeEach(() => {
-    reader = { searchPublicGames: vi.fn().mockResolvedValue({ items: [], total: 0 }) } as unknown as Record<keyof ISearchReader, any>;
-    repo = {
+    reader = {
+      searchPublicGames: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       searchPublicCompanies: vi.fn().mockResolvedValue([]),
+    } as unknown as Record<keyof ISearchReader, any>;
+    repo = {
       findPublicSuggestionsByIds: vi.fn().mockResolvedValue([]),
     } as unknown as Record<keyof IGamesRepository, any>;
     handler = new SuggestGamesHandler(reader, repo);
@@ -25,13 +27,13 @@ describe("SuggestGamesHandler", () => {
     const result = await handler.handle({ query: { q } } as any);
     expect(result).toEqual({ developers: [], publishers: [], games: [] });
     expect(reader.searchPublicGames).not.toHaveBeenCalled();
-    expect(repo.searchPublicCompanies).not.toHaveBeenCalled();
+    expect(reader.searchPublicCompanies).not.toHaveBeenCalled();
   });
 
   it("searches developers, publishers and games separately with the normalized term", async () => {
     await handler.handle({ query: { q: "  naughty   dog " } } as any);
-    expect(repo.searchPublicCompanies).toHaveBeenCalledWith("developer", "naughty dog", 5);
-    expect(repo.searchPublicCompanies).toHaveBeenCalledWith("publisher", "naughty dog", 5);
+    expect(reader.searchPublicCompanies).toHaveBeenCalledWith("developer", { q: "naughty dog", limit: 5 });
+    expect(reader.searchPublicCompanies).toHaveBeenCalledWith("publisher", { q: "naughty dog", limit: 5 });
     expect(reader.searchPublicGames).toHaveBeenCalledWith({ q: "naughty dog", page: 1, limit: 5 });
     expect(repo.findPublicSuggestionsByIds).not.toHaveBeenCalled();
   });
@@ -45,7 +47,7 @@ describe("SuggestGamesHandler", () => {
       { id: ID_A, slug: "a", title: "A", releaseDate: null, developerName: null },
       { id: ID_B, slug: "b", title: "B", releaseDate: "2020-03-01", developerName: "Studio" },
     ]);
-    repo.searchPublicCompanies.mockImplementation(async (role: string) => [
+    reader.searchPublicCompanies.mockImplementation(async (role: string) => [
       { id: `${role}-id`, name: `${role} name`, slug: `${role}-slug`, gameCount: 2 },
     ]);
 

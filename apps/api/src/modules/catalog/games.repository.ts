@@ -12,7 +12,7 @@ import {
   gameThemes,
   gamePopularitySignals,
 } from "@vefacaglar/db";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql, type SQL } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -417,22 +417,38 @@ export class DrizzleGamesRepository implements IGamesRepository {
     return this.dbProvider.client.select(PUBLIC_CARD_FIELDS).from(games).where(inArray(games.id, validIds));
   }
 
-  async searchPublicCompanies(role: GameCompanyRole, q: string, limit: number): Promise<PublicCompanyMatch[]> {
-    const term = q.trim();
-    if (!term || limit < 1) return [];
-    const pattern = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+  /** Companies of one role joined to their game links: the inner join keeps only companies with games. */
+  private publicCompaniesQuery(role: GameCompanyRole, where: SQL | undefined) {
     const table = role === "developer" ? developers : publishers;
     const link = role === "developer"
       ? { table: gameDevelopers, companyId: gameDevelopers.developerId, gameId: gameDevelopers.gameId }
       : { table: gamePublishers, companyId: gamePublishers.publisherId, gameId: gamePublishers.gameId };
-    // The inner join keeps only companies with at least one game; the link index serves the count.
+    // The link table's company index serves both the join and the count.
     const gameCount = sql<number>`count(${link.gameId})::int`;
-    const rows = await this.dbProvider.client
+    const query = this.dbProvider.client
       .select({ id: table.id, name: table.name, slug: table.slug, gameCount })
       .from(table)
       .innerJoin(link.table, eq(link.companyId, table.id))
-      .where(ilike(table.name, `%${pattern}%`))
-      .groupBy(table.id, table.name, table.slug)
+      .where(where)
+      .groupBy(table.id, table.name, table.slug);
+    return { query, table, gameCount };
+  }
+
+  async findPublicCompaniesByIds(role: GameCompanyRole, ids: string[]): Promise<PublicCompanyMatch[]> {
+    const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))].slice(0, 100);
+    if (!validIds.length) return [];
+    const table = role === "developer" ? developers : publishers;
+    const rows = await this.publicCompaniesQuery(role, inArray(table.id, validIds)).query;
+    return rows.map((row) => ({ ...row, gameCount: Number(row.gameCount) }));
+  }
+
+  async searchPublicCompanies(role: GameCompanyRole, q: string, limit: number): Promise<PublicCompanyMatch[]> {
+    const term = q.trim();
+    if (!term || limit < 1) return [];
+    const pattern = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const lookup = role === "developer" ? developers : publishers;
+    const { query, table, gameCount } = this.publicCompaniesQuery(role, ilike(lookup.name, `%${pattern}%`));
+    const rows = await query
       .orderBy(
         asc(sql`case when lower(${table.name}) = lower(${term}) then 0 when ${table.name} ilike ${`${pattern}%`} then 1 else 2 end`),
         desc(gameCount),
