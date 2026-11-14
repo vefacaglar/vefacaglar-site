@@ -1,6 +1,5 @@
 const secretVariables = [
-  "LOG_TYPESENSE_API_KEY",
-  "TYPESENSE_API_KEY",
+  "MEILISEARCH_API_KEY",
   "IMAGEKIT_PRIVATE_KEY",
   "IGDB_CLIENT_SECRET",
   "JOB_STREAM_TOKEN_SECRET",
@@ -33,7 +32,7 @@ export function logErrorMessage(message: string): string | undefined {
     .replace(/\b[a-z][a-z\d+.-]*:\/\/[^\s"'<>]+/gi, "[redacted URL]")
     .replace(/\b(?:Bearer|Basic)\s+[\w.+\/=-]{8,}/g, "[redacted authorization]")
     .replace(/\b(?:authorization|(?:set-)?cookie)\s*[:=].*$/i, "[redacted authorization]")
-    .replace(/\b(?:password|passwd|secret|(?:access[_-]?)?token|(?:x-typesense-)?api[_-]?key)\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;]+)/gi, "[redacted credential]")
+    .replace(/\b(?:password|passwd|secret|(?:access[_-]?)?token|(?:x-meili-)?api[_-]?key)\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;]+)/gi, "[redacted credential]")
     .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g, "[redacted token]")
     .replace(/"(?:\\.|[^"\\])*"|`[^`]*`|(?<!\w)'(?:\\.|[^'\\])*'/g, "[redacted]")
     .replace(/(?:\[(?!redacted(?: [a-z]+)?\])|[{<]).*$/, "[redacted]")
