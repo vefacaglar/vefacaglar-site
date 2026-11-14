@@ -8,9 +8,9 @@ import type { IMoviePeopleSearchStateRepository, MoviePeopleSearchState } from "
 
 const nolanId = "00000000-0000-4000-8000-000000000001";
 const caineId = "00000000-0000-4000-8000-000000000002";
-const nolan = { wikidataId: "Q25191", name: "Christopher Nolan", role: "director" as const,
+const nolan = { wikidataId: "Q25191", name: "Christopher Nolan", roles: ["director", "producer"] as ("director" | "producer")[],
   knownFor: { slug: "inception-q25188", title: "Inception", releaseYear: 2010 } };
-const caine = { wikidataId: "Q123166", name: "Michael Caine", role: "cast" as const, knownFor: null };
+const caine = { wikidataId: "Q123166", name: "Michael Caine", roles: ["cast"] as "cast"[], knownFor: null };
 const state = { id: "movie_people_en", schemaVersion: 1, activeCollection: "movie_people_en__v1_a1", buildingCollection: null,
   buildCursor: null, buildStartedAt: null, publishedAt: new Date(), updatedAt: new Date() } satisfies MoviePeopleSearchState;
 

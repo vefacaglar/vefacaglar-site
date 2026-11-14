@@ -9,7 +9,7 @@ const ranking = { mode: "alphabetical", sourceDate: null, sourceUrl: null, isFre
 const card = (slug: string, title: string, releaseYear: number | null) => ({ slug, title, releaseDate: "2010-07-16", releaseYear, runtimeMinutes: 148,
   posterImageUrl: "https://upload.wikimedia.org/poster.jpg",
   posterAttribution: { sourceUrl: "https://commons.wikimedia.org/wiki/File:P.jpg", artist: null, license: "CC0", licenseUrl: null } });
-const nolan = { wikidataId: "Q25191", name: "Christopher Nolan", role: "director" as const,
+const nolan = { wikidataId: "Q25191", name: "Christopher Nolan", roles: ["director", "producer"] as ("director" | "producer")[],
   knownFor: { slug: "inception-q25188", title: "Inception", releaseYear: 2010 } };
 
 function setup(items = [card("inception-q25188", "Inception", 2010), card("insomnia-q1", "Insomnia", null)]) {

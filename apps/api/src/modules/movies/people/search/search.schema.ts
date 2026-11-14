@@ -3,11 +3,11 @@ import { MoviePersonRoleSchema } from "../detail/detail.schema";
 
 const nullableNumber = Type.Union([Type.Number(), Type.Null()]);
 
-/** Public-safe person summary: identity, primary role, and one notable catalog film. */
+/** Public-safe person summary: identity, all roles, and one notable catalog film. */
 export const MoviePersonSummarySchema = Type.Object({
   wikidataId: Type.String(),
   name: Type.String(),
-  role: MoviePersonRoleSchema,
+  roles: Type.Array(MoviePersonRoleSchema, { minItems: 1 }),
   knownFor: Type.Union([Type.Object({ slug: Type.String(), title: Type.String(), releaseYear: nullableNumber }), Type.Null()]),
 });
 export const SearchMoviePeopleQuerySchema = Type.Object({

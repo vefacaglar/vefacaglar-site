@@ -23,7 +23,7 @@ const withYear = (title: string, year: number | null) => (year === null ? title 
 
 /** One text line under a person's name, e.g. "Director · Inception (2010)". */
 export function moviePersonKnownFor(person: MoviePersonSummary, roleLabels: Record<MoviePersonRole, string>) {
-  return [roleLabels[person.role], person.knownFor && withYear(person.knownFor.title, person.knownFor.releaseYear)]
+  return [person.roles.map((role) => roleLabels[role]).join(" · "), person.knownFor && withYear(person.knownFor.title, person.knownFor.releaseYear)]
     .filter(Boolean).join(" · ");
 }
 

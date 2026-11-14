@@ -16,7 +16,7 @@ export default function MoviePeopleList({ people, lang }: { people: MoviePersonS
           <Link href={localizeHref(moviePersonPath(person.wikidataId), lang)} className={styles.card}>
             <span className={styles.title}>{person.name}</span>
             <span className={styles.details}>
-              <span className={styles.roles}>{roleLabels[person.role]}</span>
+              <span className={styles.roles}>{person.roles.map((role) => roleLabels[role]).join(" · ")}</span>
               {person.knownFor && <span className={styles.meta}>{person.knownFor.title}</span>}
               {person.knownFor?.releaseYear != null && <span className={styles.year}>{person.knownFor.releaseYear}</span>}
             </span>

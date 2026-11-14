@@ -116,7 +116,7 @@ export interface MovieSuggestion {
 export interface MoviePersonSummary {
   wikidataId: string;
   name: string;
-  role: MoviePersonRole;
+  roles: MoviePersonRole[];
   knownFor: { slug: string; title: string; releaseYear: number | null } | null;
 }
 export interface MovieSuggestions {
