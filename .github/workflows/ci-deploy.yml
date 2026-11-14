@@ -7,8 +7,13 @@ name: CI and deploy
 #
 # Job graph:
 #   changes -> verify-{api,web,worker} -> image-{api,web,worker-amd64,worker-arm64}
-#   image-api -> migrate -> deploy-api, deploy-web, deploy-worker (parallel)
 #   image-worker-{amd64,arm64} -> publish-worker-manifest
+#   every verify/image job + publish-worker-manifest -> release-gate -> migrate
+#   release-gate, migrate -> deploy-api, deploy-web, deploy-worker (parallel)
+#
+# release-gate fails if any verify/image job failed or was cancelled (skipped
+# jobs of unchanged apps are fine), so all deploys start at the same moment or
+# not at all.
 
 on:
   pull_request:
@@ -447,6 +452,39 @@ jobs:
           docker buildx imagetools create --tag "$image:$GITHUB_SHA" "$AMD64_IMAGE" "$ARM64_IMAGE"
           docker buildx imagetools inspect "$image:$GITHUB_SHA"
 
+  # ---------------------------------------------------------------- Release gate
+
+  # Waits for every verify and image job of the run (including the arm64 worker
+  # image and the multi-platform manifest) so migration and all deploys start
+  # together. Jobs skipped because their app is unchanged do not block; any
+  # failure or cancellation blocks every deploy.
+  release-gate:
+    needs:
+      - verify-api
+      - verify-web
+      - verify-worker
+      - image-api
+      - image-web
+      - image-worker-amd64
+      - image-worker-arm64
+      - publish-worker-manifest
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every verify and image job to pass or be skipped
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for r in $RESULTS; do
+            if [[ "$r" != success && "$r" != skipped ]]; then
+              echo "A verify or image job did not succeed; blocking all deploys."
+              exit 1
+            fi
+          done
+
   # ---------------------------------------------------------------- Database
 
   # Runs whenever a new API image is built (every packages/db change builds one).
@@ -454,9 +492,10 @@ jobs:
   # resolves; nothing pending is a quick no-op. Migrations must stay
   # backward-compatible with the releases still running (see CLAUDE.md).
   migrate:
-    needs: [changes, image-api]
+    needs: [changes, image-api, release-gate]
     if: >-
       !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && needs.release-gate.result == 'success'
       && needs.changes.outputs.api == 'true' && needs.image-api.result == 'success'
       && (vars.API_DEPLOY_ENABLED == 'true' || vars.WORKER_DEPLOY_ENABLED == 'true')
     runs-on: ubuntu-latest
@@ -549,9 +588,10 @@ jobs:
   # ---------------------------------------------------------------- Deploy
 
   deploy-api:
-    needs: [image-api, migrate]
+    needs: [image-api, release-gate, migrate]
     if: >-
       !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && needs.release-gate.result == 'success'
       && vars.API_DEPLOY_ENABLED == 'true' && needs.image-api.result == 'success'
       && needs.migrate.result == 'success'
     runs-on: ubuntu-latest
@@ -571,10 +611,11 @@ jobs:
     steps: *api_ssh_steps
 
   deploy-web:
-    needs: [changes, image-web, migrate]
+    needs: [changes, image-web, release-gate, migrate]
     # Web code does not read the database, but still never deploys after a failed migration.
     if: >-
       !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && needs.release-gate.result == 'success'
       && vars.WEB_DEPLOY_ENABLED == 'true' && needs.image-web.result == 'success'
       && needs.migrate.result != 'failure' && needs.migrate.result != 'cancelled'
     runs-on: ubuntu-latest
@@ -650,10 +691,11 @@ jobs:
 
   deploy-worker:
     # The VPS is amd64: ARM publication must never delay its deployment.
-    needs: [changes, image-worker-amd64, migrate]
+    needs: [changes, image-worker-amd64, release-gate, migrate]
     # A run that changed the API/database must have migrated before new worker code starts.
     if: >-
       !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && needs.release-gate.result == 'success'
       && vars.WORKER_DEPLOY_ENABLED == 'true' && needs.image-worker-amd64.result == 'success'
       && (needs.migrate.result == 'success' || (needs.changes.outputs.api != 'true' && needs.migrate.result == 'skipped'))
     runs-on: ubuntu-latest
