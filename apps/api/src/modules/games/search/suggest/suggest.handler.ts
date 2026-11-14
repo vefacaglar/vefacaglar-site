@@ -44,7 +44,7 @@ export class SuggestGamesHandler {
   }
 
   private async suggestGames(term: string): Promise<GameSuggestion[]> {
-    // Search (Typesense, with a Postgres fallback) owns relevance; Postgres owns current display fields.
+    // Search (Meilisearch, with a Postgres fallback) owns relevance; Postgres owns current display fields.
     const { items: hits } = await this.searchReader.searchPublicGames({ q: term, page: 1, limit: LIMIT });
     if (!hits.length) return [];
     const current = await this.gamesRepo.findPublicSuggestionsByIds(hits.map((hit) => hit.id));

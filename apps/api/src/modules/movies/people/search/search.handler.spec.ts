@@ -11,7 +11,7 @@ const caineId = "00000000-0000-4000-8000-000000000002";
 const nolan = { wikidataId: "Q25191", name: "Christopher Nolan", roles: ["director", "producer"] as ("director" | "producer")[],
   knownFor: { slug: "inception-q25188", title: "Inception", releaseYear: 2010 } };
 const caine = { wikidataId: "Q123166", name: "Michael Caine", roles: ["cast"] as "cast"[], knownFor: null };
-const state = { id: "movie_people_en", schemaVersion: 1, activeCollection: "movie_people_en__v1_a1", buildingCollection: null,
+const state = { id: "movie_people_en", schemaVersion: 2, activeCollection: "movie_people_en", buildingCollection: null,
   buildCursor: null, buildStartedAt: null, publishedAt: new Date(), updatedAt: new Date() } satisfies MoviePeopleSearchState;
 
 let repo: Record<keyof IMoviesRepository, any>;
@@ -27,9 +27,9 @@ beforeEach(() => {
 });
 
 describe("public movie people search handler", () => {
-  it("uses the Typesense people index and hydrates hits in index order", async () => {
+  it("uses the Meilisearch people index and hydrates hits in index order", async () => {
     expect(await search({ q: "  chris nol " })).toEqual({ items: [caine, nolan] });
-    expect(reader.search).toHaveBeenCalledWith({ collection: "movie_people_en__v1_a1", q: "chris nol", limit: 12 });
+    expect(reader.search).toHaveBeenCalledWith({ collection: "movie_people_en", q: "chris nol", limit: 12 });
     expect(repo.hydratePublicPeople).toHaveBeenCalledWith([caineId, nolanId]);
     expect(repo.searchPublicPeople).not.toHaveBeenCalled();
   });
@@ -44,8 +44,8 @@ describe("public movie people search handler", () => {
     expect(await search({ q: "nolan", limit: 4 })).toEqual({ items: [nolan] });
     expect(repo.searchPublicPeople).toHaveBeenCalledWith("nolan", 4);
   });
-  it.each([null, { ...state, activeCollection: null }, { ...state, schemaVersion: 2 },
-    { ...state, activeCollection: "movies_en__v2_a1" }])("falls back to SQL until an owned people index is published (%j)", async (publication) => {
+  it.each([null, { ...state, activeCollection: null }, { ...state, schemaVersion: 1 },
+    { ...state, activeCollection: "movie_people_en__v1_a1" }, { ...state, activeCollection: "movies_en" }])("falls back to SQL until an owned people index is published (%j)", async (publication) => {
     stateRepo.state.mockResolvedValue(publication);
     expect(await search({ q: "nolan" })).toEqual({ items: [nolan] });
     expect(reader.search).not.toHaveBeenCalled();

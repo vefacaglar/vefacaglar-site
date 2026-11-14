@@ -4,12 +4,11 @@ import { describe, it, expect } from "vitest";
 import { toGameDoc } from "./game.mapper";
 import { toPostDoc } from "./post.mapper";
 import { toDeveloperDoc, toPublisherDoc, toGenreDoc, toPlatformDoc, toThemeDoc } from "./lookup.mapper";
-import { buildAllCollectionSchemas } from "../collections";
 
 /**
  * Golden fixtures shared with the Rust worker (apps/worker/fixtures/search),
- * which reindexes Typesense with its own port of these mappers and schemas.
- * The TS mappers are the source of truth: after changing a mapper or schema,
+ * which rebuilds the Meilisearch indexes with its own port of these mappers.
+ * The TS mappers are the source of truth: after changing a mapper,
  * regenerate the expected output with
  *   UPDATE_SEARCH_FIXTURES=1 pnpm --filter api test mappers.parity
  * then update the Rust port until `cargo test` in apps/worker passes again.
@@ -17,7 +16,6 @@ import { buildAllCollectionSchemas } from "../collections";
 
 const FIXTURES_DIR = resolve(__dirname, "../../../../../worker/fixtures/search");
 const MAPPERS_FILE = resolve(FIXTURES_DIR, "mappers.json");
-const COLLECTIONS_FILE = resolve(FIXTURES_DIR, "collections.json");
 const UPDATE = process.env.UPDATE_SEARCH_FIXTURES === "1";
 
 type Case = { name: string; kind?: string; input: Record<string, unknown>; expected: unknown };
@@ -34,7 +32,7 @@ function withDates<T>(input: Record<string, unknown>): T {
   return row as T;
 }
 
-/** The exact JSON Typesense receives (undefined fields dropped). */
+/** The exact JSON Meilisearch receives (undefined fields dropped). */
 function asJson(doc: unknown): unknown {
   return JSON.parse(JSON.stringify(doc));
 }
@@ -69,7 +67,6 @@ if (UPDATE) {
     for (const c of fixtures[group]) c.expected = mapCase(group, c);
   }
   writeFileSync(MAPPERS_FILE, JSON.stringify(fixtures, null, 2) + "\n");
-  writeFileSync(COLLECTIONS_FILE, JSON.stringify(buildAllCollectionSchemas(), null, 2) + "\n");
 }
 
 describe("search mapper parity with the Rust worker", () => {
@@ -83,9 +80,4 @@ describe("search mapper parity with the Rust worker", () => {
       }
     });
   }
-
-  it("collection schemas", () => {
-    const expected = JSON.parse(readFileSync(COLLECTIONS_FILE, "utf8"));
-    expect(asJson(buildAllCollectionSchemas())).toEqual(expected);
-  });
 });

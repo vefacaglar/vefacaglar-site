@@ -8,9 +8,6 @@ import * as path from "path";
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import { app, applicationLogs } from "./app";
-import { container } from "./container";
-import { SEARCH_WRITER } from "./shared/search/search.tokens";
-import type { ISearchIndexWriter } from "./shared/search/commands/search-writer.interface";
 import { reportRuntimeFailure } from "./shared/application-logs/runtime-failures";
 
 const start = async () => {
@@ -19,14 +16,6 @@ const start = async () => {
     const host = process.env.API_HOST ?? "127.0.0.1";
     await app.listen({ port, host });
     applicationLogs.write({ level: "info", event: "api_started", message: "API started" });
-    // Non-blocking: create missing Typesense collections (alias-aware, never
-    // deletes). Full reindexing is the worker's `search.reindex` job.
-    container
-      .resolve<ISearchIndexWriter>(SEARCH_WRITER)
-      .ensureCollections()
-      .catch((err) => {
-        reportRuntimeFailure("search_collection_bootstrap_failed", "Search collection bootstrap failed", err);
-      });
   } catch (err) {
     reportRuntimeFailure("api_start_failed", "API failed to start", err);
     await applicationLogs.close();

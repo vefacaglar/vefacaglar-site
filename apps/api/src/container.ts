@@ -43,20 +43,20 @@ import { JOBS_REPOSITORY, JOB_EVENTS_LISTENER, JOB_STREAM_TOKEN_CONFIG, JOB_STRE
 import { DrizzleJobsRepository } from "./modules/jobs/jobs.repository";
 import { PgJobEventsListener } from "./modules/jobs/job-events.listener";
 import { JobStreamTokenService, readJobStreamTokenConfig } from "./modules/jobs/job-stream-token.service";
-import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
-import { createTypesenseClient, createDisabledTypesenseClient, readTypesenseConfig } from "./shared/search/typesense.client";
-import { TypesenseSearchReader } from "./shared/search/queries/typesense-search-reader";
-import { TypesenseSearchWriter } from "./shared/search/commands/typesense-search-writer";
+import { SEARCH_CLIENT, MEILISEARCH_CONFIG, SEARCH_READER, SEARCH_WRITER } from "./shared/search/search.tokens";
+import { MeilisearchClient, readMeilisearchConfig } from "./shared/search/meilisearch.client";
+import { MeilisearchSearchReader } from "./shared/search/queries/meilisearch-search-reader";
+import { MeilisearchSearchWriter } from "./shared/search/commands/meilisearch-search-writer";
 import { SearchEventSubscriber } from "./shared/search/commands/search-event-subscriber";
 import { EVENT_BUS } from "./shared/events/events.tokens";
 import { InProcessEventBus } from "./shared/events/in-process-event-bus";
 
 import { MOVIE_CATALOG_SERVICE, MovieCatalogService } from "./modules/movies/search/movie-catalog.service";
-import { MOVIE_SEARCH_READER, TypesenseMovieSearchReader } from "./modules/movies/search/movie-search-reader";
+import { MOVIE_SEARCH_READER, MeilisearchMovieSearchReader } from "./modules/movies/search/movie-search-reader";
 import { MOVIE_PEOPLE_SEARCH_STATE_REPOSITORY, MOVIE_SEARCH_STATE_REPOSITORY } from "./modules/movies/search/movie-search.types";
 import { DrizzleMoviePeopleSearchStateRepository, DrizzleMovieSearchStateRepository } from "./modules/movies/search/movie-search-state.repository";
 import { MOVIE_PEOPLE_SEARCH_SERVICE, MoviePeopleSearchService } from "./modules/movies/search/movie-people-search.service";
-import { MOVIE_PEOPLE_SEARCH_READER, TypesenseMoviePeopleSearchReader } from "./modules/movies/search/movie-people-search-reader";
+import { MOVIE_PEOPLE_SEARCH_READER, MeilisearchMoviePeopleSearchReader } from "./modules/movies/search/movie-people-search-reader";
 import { MOVIES_REPOSITORY, WIKIDATA_ENTITY_CLIENT } from "./modules/movies/movies.tokens";
 import { DrizzleMoviesRepository } from "./modules/movies/movies.repository";
 import { WikidataEntityClient } from "./modules/movies/import/wikidata-entity.client";
@@ -73,10 +73,10 @@ container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
 container.registerSingleton(MOVIES_REPOSITORY, DrizzleMoviesRepository);
 container.registerSingleton(MOVIE_CATALOG_SERVICE, MovieCatalogService);
-container.registerSingleton(MOVIE_SEARCH_READER, TypesenseMovieSearchReader);
+container.registerSingleton(MOVIE_SEARCH_READER, MeilisearchMovieSearchReader);
 container.registerSingleton(MOVIE_SEARCH_STATE_REPOSITORY, DrizzleMovieSearchStateRepository);
 container.registerSingleton(MOVIE_PEOPLE_SEARCH_SERVICE, MoviePeopleSearchService);
-container.registerSingleton(MOVIE_PEOPLE_SEARCH_READER, TypesenseMoviePeopleSearchReader);
+container.registerSingleton(MOVIE_PEOPLE_SEARCH_READER, MeilisearchMoviePeopleSearchReader);
 container.registerSingleton(MOVIE_PEOPLE_SEARCH_STATE_REPOSITORY, DrizzleMoviePeopleSearchStateRepository);
 container.registerSingleton(MOVIE_POPULARITY_REPOSITORY, DrizzleMoviePopularityRepository);
 container.registerSingleton(WIKIPEDIA_INTEREST_CLIENT, WikipediaInterestClient);
@@ -111,17 +111,16 @@ container.registerSingleton(JOB_EVENTS_LISTENER, PgJobEventsListener);
 container.registerInstance(JOB_STREAM_TOKEN_CONFIG, readJobStreamTokenConfig());
 container.registerSingleton(JOB_STREAM_TOKEN_SERVICE, JobStreamTokenService);
 
-const typesenseConfig = readTypesenseConfig();
-container.registerInstance(TYPESENSE_CONFIG, typesenseConfig);
-container.registerInstance(
-  TYPESENSE_CLIENT,
-  typesenseConfig.enabled ? createTypesenseClient(typesenseConfig) : createDisabledTypesenseClient()
-);
+// Readers and writers check `enabled` before calling the client, which rejects
+// every request while Meilisearch is not configured.
+const meilisearchConfig = readMeilisearchConfig();
+container.registerInstance(MEILISEARCH_CONFIG, meilisearchConfig);
+container.registerInstance(SEARCH_CLIENT, new MeilisearchClient(meilisearchConfig));
 
 // CQRS segregation: read and write sides are separate implementations behind
 // distinct, narrow tokens.
-container.registerSingleton(SEARCH_READER, TypesenseSearchReader);
-container.registerSingleton(SEARCH_WRITER, TypesenseSearchWriter);
+container.registerSingleton(SEARCH_READER, MeilisearchSearchReader);
+container.registerSingleton(SEARCH_WRITER, MeilisearchSearchWriter);
 
 container.registerSingleton(EVENT_BUS, InProcessEventBus);
 

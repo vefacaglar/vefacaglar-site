@@ -58,7 +58,7 @@ export class MovieCatalogService implements IMovieCatalogService {
       return { items, total: selected.total, ranking };
     } catch {
       // Index metadata/search errors must not take the canonical catalog offline.
-      // Typesense diagnostics are rate-limited by the dedicated reader.
+      // Search diagnostics are rate-limited by the dedicated reader.
       return null;
     }
   }

@@ -22,7 +22,7 @@ export class SearchGameCompaniesHandler {
     const term = publicSearchTerm(request.query.q);
     if (!term) return { developers: [], publishers: [] };
     const limit = request.query.limit ?? DEFAULT_LIMIT;
-    // Typesense relevance with a Postgres fallback; only companies with at least one game.
+    // Meilisearch relevance with a Postgres fallback; only companies with at least one game.
     const [developers, publishers] = await Promise.all([
       this.searchReader.searchPublicCompanies("developer", { q: term, limit }),
       this.searchReader.searchPublicCompanies("publisher", { q: term, limit }),

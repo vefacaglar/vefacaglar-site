@@ -1,8 +1,9 @@
 /**
  * Command side (CQRS write model maintenance). Consumed by the domain-event
  * subscriber to keep the search index in sync with incremental per-document
- * writes. Full reindexing is a worker job (`search.reindex`, see
- * docs/jobs-worker.md) and is intentionally not part of this interface.
+ * writes into existing indexes. Index creation, settings and full rebuilds are
+ * worker jobs (see docs/jobs-worker.md) and intentionally not part of this
+ * interface; a write to an index that does not exist yet is skipped.
  */
 export interface ISearchIndexWriter {
   readonly enabled: boolean;
@@ -15,7 +16,7 @@ export interface ISearchIndexWriter {
   indexPlatform(id: string): Promise<void>;
   indexTheme(id: string): Promise<void>;
 
-  /** Batch variants for bulk imports: one Typesense import per collection. */
+  /** Batch variants for bulk imports: one document batch per index slice. */
   indexGames(ids: string[], options?: { throwOnError?: boolean }): Promise<void>;
   indexLookups(kind: "developer" | "publisher" | "genre" | "platform" | "theme", ids: string[]): Promise<void>;
 
@@ -26,7 +27,4 @@ export interface ISearchIndexWriter {
   removeGenre(id: string): Promise<void>;
   removePlatform(id: string): Promise<void>;
   removeTheme(id: string): Promise<void>;
-
-  /** Creates missing collections (alias-aware, never deletes). */
-  ensureCollections(): Promise<void>;
 }

@@ -1,6 +1,5 @@
 import { reportRuntimeFailure } from "../../application-logs/runtime-failures";
 import { inject, injectable } from "tsyringe";
-import { Client as TypesenseClient } from "typesense";
 import type { Developer } from "../../../modules/catalog/developers.repository.interface";
 import type { Publisher } from "../../../modules/catalog/publishers.repository.interface";
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
@@ -28,10 +27,11 @@ import type { IPlatformsRepository } from "../../../modules/catalog/platforms.re
 import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
-import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";
+import { SEARCH_CLIENT, MEILISEARCH_CONFIG, type MeilisearchConfig } from "../search.tokens";
+import { isSearchFallbackError, type ISearchClient, type MeilisearchSearchParams } from "../meilisearch.client";
 import type { ISearchReader } from "./search-reader.interface";
 import type { SearchQuery, SearchResult, PostSearchItem } from "../search.types";
-import { SEARCH_COLLECTIONS } from "../collections";
+import { SEARCH_INDEXES } from "../search.indexes";
 import { withTimeout } from "../with-timeout";
 import { gameCardFromDoc, gameWithRelationsFromDoc, type GameDoc } from "../mappers/game.mapper";
 import { postFromDoc, type PostDoc } from "../mappers/post.mapper";
@@ -53,26 +53,23 @@ const SEARCH_COOLDOWN_MS = 30_000;
 // Company candidates per requested result: a few matches may have no games and are dropped.
 const COMPANY_CANDIDATE_FACTOR = 3;
 const COMPANY_CANDIDATES_MAX = 72;
-// Typesense pages read at most while companies without games leave a group under-filled.
+// Search pages read at most while companies without games leave a group under-filled.
 const COMPANY_MAX_PAGES = 3;
 
-type ScoredHit = { text_match?: number; text_match_info?: { score?: string } };
+/** Dashboard lists: relevance first for typed queries (the `sort` rule follows `attribute`), newest first otherwise. */
+const NEWEST_FIRST = ["createdAt:desc"];
+const LOOKUP_SEARCH_ON = ["name", "slug"];
 
-/** Typesense's text match score; the string form keeps all 64 bits. */
-function textMatchScore(hit: ScoredHit): bigint {
-  const raw = hit.text_match_info?.score;
-  if (raw && /^\d+$/.test(raw)) return BigInt(raw);
-  return BigInt(Math.max(0, Math.trunc(Number(hit.text_match) || 0)));
-}
+type CompanyHit = { id: string; _rankingScore?: number };
 
 @injectable()
-export class TypesenseSearchReader implements ISearchReader {
+export class MeilisearchSearchReader implements ISearchReader {
   private readonly enabled: boolean;
-  private typesenseRetryAt = 0;
+  private searchRetryAt = 0;
 
   constructor(
-    @inject(TYPESENSE_CLIENT) private readonly typesense: TypesenseClient,
-    @inject(TYPESENSE_CONFIG) typesenseConfig: TypesenseConfig,
+    @inject(SEARCH_CLIENT) private readonly client: ISearchClient,
+    @inject(MEILISEARCH_CONFIG) config: MeilisearchConfig,
     @inject(DEVELOPERS_REPOSITORY) private readonly developersRepo: IDevelopersRepository,
     @inject(PUBLISHERS_REPOSITORY) private readonly publishersRepo: IPublishersRepository,
     @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
@@ -81,22 +78,30 @@ export class TypesenseSearchReader implements ISearchReader {
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository
   ) {
-    this.enabled = typesenseConfig.enabled;
+    this.enabled = config.enabled;
   }
 
   // --- Public search methods ---
 
   searchGames(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
     return this.runSearch(
-      () => this.runGamesSearch(query),
+      () => this.page<GameDoc, GameWithRelations>(SEARCH_INDEXES.games, query, { sort: NEWEST_FIRST }, gameWithRelationsFromDoc),
       () => this.fallbackGamesSearch(query),
       "games"
     );
   }
 
   searchPublicGames(query: SearchQuery): Promise<SearchResult<GameCard>> {
+    const typed = !!query.q?.trim();
     return this.runSearch(
-      () => this.runPublicGamesSearch(query),
+      () => this.page<GameDoc, GameCard>(SEARCH_INDEXES.games, { ...query, limit: query.limit ?? 24 }, {
+        attributesToSearchOn: ["title", "originalTitle"],
+        attributesToRetrieve: ["id", "slug", "title", "releaseDate", "criticScore", "criticScoreCount", "popularityScore"],
+        // Interest in announced/undated games belongs in the same public catalog.
+        // Unscored games carry POPULARITY_UNKNOWN (-1), so they sort after every scored one.
+        // Typed queries rank by relevance; the index's last ranking rule is popularityScore:desc.
+        ...(typed ? {} : { sort: ["popularityScore:desc", "releaseTimestamp:desc"] }),
+      }, gameCardFromDoc),
       () => this.fallbackPublicGamesSearch(query),
       "public games"
     );
@@ -107,47 +112,45 @@ export class TypesenseSearchReader implements ISearchReader {
     const limit = query.limit;
     if (!q || limit < 1) return [];
     const perPage = Math.min(limit * COMPANY_CANDIDATE_FACTOR, COMPANY_CANDIDATES_MAX);
-    const ranked: Array<{ company: PublicCompanyMatch; order: number; score: bigint }> = [];
+    const ranked: Array<{ company: PublicCompanyMatch; order: number; score: number }> = [];
     let order = 0;
 
     for (let page = 1; page <= COMPANY_MAX_PAGES; page++) {
-      // Only the Typesense call runs under the timeout and cooldown; null means it was skipped or failed.
+      // Only the search call runs under the timeout and cooldown; null means it was skipped or failed.
       const hits = await this.runSearch(
         () => this.runCompanyHitsSearch(role, q, page, perPage),
         async () => null,
         `public ${role}s`
       );
       if (hits === null) {
-        // Postgres answers in full when Typesense never did; otherwise keep the matches already found.
+        // Postgres answers in full when search never did; otherwise keep the matches already found.
         if (page === 1) return this.gamesRepo.searchPublicCompanies(role, q, limit);
         break;
       }
       if (!hits.length) break;
 
       // Search owns relevance; Postgres owns names, slugs, game counts and the "has games" rule.
-      const current = await this.gamesRepo.findPublicCompaniesByIds(role, hits.map((hit) => hit.document.id));
+      const current = await this.gamesRepo.findPublicCompaniesByIds(role, hits.map((hit) => hit.id));
       const byId = new Map(current.map((company) => [company.id, company]));
       for (const hit of hits) {
-        const company = byId.get(hit.document.id);
-        if (company) ranked.push({ company, order: order++, score: textMatchScore(hit) });
+        const company = byId.get(hit.id);
+        if (company) ranked.push({ company, order: order++, score: hit._rankingScore ?? 0 });
       }
       // Companies without games are dropped; read further pages only while the group is under-filled.
       if (ranked.length >= limit || hits.length < perPage) break;
     }
 
     return ranked
-      .sort((a, b) =>
-        a.score !== b.score
-          ? (a.score > b.score ? -1 : 1)
-          : b.company.gameCount - a.company.gameCount || a.order - b.order
-      )
+      .sort((a, b) => b.score - a.score || b.company.gameCount - a.company.gameCount || a.order - b.order)
       .slice(0, limit)
       .map(({ company }) => company);
   }
 
   searchPosts(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
     return this.runSearch(
-      () => this.runPostsSearch(query),
+      // Title outranks content through the index's searchable attribute order.
+      () => this.page<PostDoc, PostSearchItem>(SEARCH_INDEXES.posts, query,
+        { attributesToSearchOn: ["title", "content"], sort: ["publishedAt:desc"] }, postFromDoc),
       () => this.fallbackPostsSearch(query),
       "posts"
     );
@@ -155,7 +158,7 @@ export class TypesenseSearchReader implements ISearchReader {
 
   searchDevelopers(query: SearchQuery): Promise<SearchResult<Developer>> {
     return this.runSearch(
-      () => this.runDevelopersSearch(query),
+      () => this.page<DeveloperDoc, Developer>(SEARCH_INDEXES.developers, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, developerFromDoc),
       () => this.fallbackDevelopersSearch(query),
       "developers"
     );
@@ -163,7 +166,7 @@ export class TypesenseSearchReader implements ISearchReader {
 
   searchPublishers(query: SearchQuery): Promise<SearchResult<Publisher>> {
     return this.runSearch(
-      () => this.runPublishersSearch(query),
+      () => this.page<PublisherDoc, Publisher>(SEARCH_INDEXES.publishers, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, publisherFromDoc),
       () => this.fallbackPublishersSearch(query),
       "publishers"
     );
@@ -171,7 +174,7 @@ export class TypesenseSearchReader implements ISearchReader {
 
   searchGenres(query: SearchQuery): Promise<SearchResult<Genre>> {
     return this.runSearch(
-      () => this.runGenresSearch(query),
+      () => this.page<GenreDoc, Genre>(SEARCH_INDEXES.genres, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, genreFromDoc),
       () => this.fallbackGenresSearch(query),
       "genres"
     );
@@ -179,7 +182,7 @@ export class TypesenseSearchReader implements ISearchReader {
 
   searchPlatforms(query: SearchQuery): Promise<SearchResult<Platform>> {
     return this.runSearch(
-      () => this.runPlatformsSearch(query),
+      () => this.page<PlatformDoc, Platform>(SEARCH_INDEXES.platforms, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, platformFromDoc),
       () => this.fallbackPlatformsSearch(query),
       "platforms"
     );
@@ -187,28 +190,28 @@ export class TypesenseSearchReader implements ISearchReader {
 
   searchThemes(query: SearchQuery): Promise<SearchResult<Theme>> {
     return this.runSearch(
-      () => this.runThemesSearch(query),
+      () => this.page<ThemeDoc, Theme>(SEARCH_INDEXES.themes, query, { attributesToSearchOn: LOOKUP_SEARCH_ON, sort: NEWEST_FIRST }, themeFromDoc),
       () => this.fallbackThemesSearch(query),
       "themes"
     );
   }
 
   private async runSearch<T>(
-    typesenseCall: () => Promise<T>,
+    searchCall: () => Promise<T>,
     fallback: () => Promise<T>,
     entityLabel: string
   ): Promise<T> {
-    if (!this.enabled || Date.now() < this.typesenseRetryAt) {
+    if (!this.enabled || Date.now() < this.searchRetryAt) {
       return fallback();
     }
     try {
-      return await withTimeout(typesenseCall(), SEARCH_TIMEOUT_MS, `typesense.${entityLabel}.search`);
+      return await withTimeout(searchCall(), SEARCH_TIMEOUT_MS, `meilisearch.${entityLabel}.search`);
     } catch (err) {
-      if (this.isFallbackEligibleError(err)) {
+      if (isSearchFallbackError(err)) {
         const now = Date.now();
-        if (now >= this.typesenseRetryAt) {
-          this.typesenseRetryAt = now + SEARCH_COOLDOWN_MS;
-          reportRuntimeFailure("search_fallback", `Typesense ${entityLabel} search failed. Using Postgres`, err, "warning");
+        if (now >= this.searchRetryAt) {
+          this.searchRetryAt = now + SEARCH_COOLDOWN_MS;
+          reportRuntimeFailure("search_fallback", `Meilisearch ${entityLabel} search failed. Using Postgres`, err, "warning");
         }
         return fallback();
       }
@@ -218,40 +221,22 @@ export class TypesenseSearchReader implements ISearchReader {
 
   // --- Private: search runners ---
 
-  private async runGamesSearch(query: SearchQuery): Promise<SearchResult<GameWithRelations>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "title,originalTitle,description,slug,developerNames,publisherNames,genreNames,platformNames,themeNames",
+  /** One numbered page; an empty `q` is a placeholder (browse) search. */
+  private async page<D, T>(
+    index: string,
+    query: SearchQuery,
+    params: MeilisearchSearchParams,
+    fromDoc: (doc: D) => T
+  ): Promise<SearchResult<T>> {
+    const res = await this.client.search<D>(index, {
+      q: query.q?.trim() ?? "",
+      ...params,
       page: query.page ?? 1,
-      per_page: query.limit ?? 10,
+      hitsPerPage: query.limit ?? 10,
     });
-    const hits = (res.hits ?? []) as Array<{ document: GameDoc }>;
     return {
-      items: hits.map((h) => gameWithRelationsFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
-  }
-
-  private async runPublicGamesSearch(query: SearchQuery): Promise<SearchResult<GameCard>> {
-    const q = query.q?.trim();
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().search({
-      q: q || "*",
-      query_by: "title,originalTitle",
-      // Interest in announced/undated games belongs in the same public catalog.
-      // Unscored games carry POPULARITY_UNKNOWN (-1), so they sort after every scored one.
-      ...(q
-        ? { sort_by: "_text_match:desc,popularityScore:desc" }
-        : {
-            sort_by: "popularityScore:desc,releaseTimestamp:desc",
-          }),
-      include_fields: "id,slug,title,releaseDate,criticScore,criticScoreCount,popularityScore",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 24,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: GameDoc }>;
-    return {
-      items: hits.map((h) => gameCardFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
+      items: res.hits.map((hit) => fromDoc(hit)),
+      total: res.totalHits ?? 0,
     };
   }
 
@@ -260,101 +245,17 @@ export class TypesenseSearchReader implements ISearchReader {
     q: string,
     page: number,
     perPage: number
-  ): Promise<Array<ScoredHit & { document: { id: string } }>> {
-    const collection = role === "developer" ? SEARCH_COLLECTIONS.developers : SEARCH_COLLECTIONS.publishers;
-    const res = await this.typesense.collections(collection).documents().search({
+  ): Promise<CompanyHit[]> {
+    const index = role === "developer" ? SEARCH_INDEXES.developers : SEARCH_INDEXES.publishers;
+    const res = await this.client.search<{ id: string }>(index, {
       q,
-      query_by: "name",
-      include_fields: "id",
+      attributesToSearchOn: ["name"],
+      attributesToRetrieve: ["id"],
+      showRankingScore: true,
       page,
-      per_page: perPage,
+      hitsPerPage: perPage,
     });
-    return (res.hits ?? []) as Array<ScoredHit & { document: { id: string } }>;
-  }
-
-  private async runPostsSearch(query: SearchQuery): Promise<SearchResult<PostSearchItem>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.posts).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "title,content",
-      query_by_weights: "4,1",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 10,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: PostDoc }>;
-    return {
-      items: hits.map((h) => postFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
-  }
-
-  private async runDevelopersSearch(query: SearchQuery): Promise<SearchResult<Developer>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.developers).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "name,slug",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 10,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: DeveloperDoc }>;
-    return {
-      items: hits.map((h) => developerFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
-  }
-
-  private async runPublishersSearch(query: SearchQuery): Promise<SearchResult<Publisher>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.publishers).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "name,slug",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 10,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: PublisherDoc }>;
-    return {
-      items: hits.map((h) => publisherFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
-  }
-
-  private async runGenresSearch(query: SearchQuery): Promise<SearchResult<Genre>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.genres).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "name,slug",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 10,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: GenreDoc }>;
-    return {
-      items: hits.map((h) => genreFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
-  }
-
-  private async runPlatformsSearch(query: SearchQuery): Promise<SearchResult<Platform>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.platforms).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "name,slug",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 10,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: PlatformDoc }>;
-    return {
-      items: hits.map((h) => platformFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
-  }
-
-  private async runThemesSearch(query: SearchQuery): Promise<SearchResult<Theme>> {
-    const res = await this.typesense.collections(SEARCH_COLLECTIONS.themes).documents().search({
-      q: query.q?.trim() || "*",
-      query_by: "name,slug",
-      page: query.page ?? 1,
-      per_page: query.limit ?? 10,
-    });
-    const hits = (res.hits ?? []) as Array<{ document: ThemeDoc }>;
-    return {
-      items: hits.map((h) => themeFromDoc(h.document)),
-      total: (res.found as number) ?? 0,
-    };
+    return res.hits;
   }
 
   // --- Private: Postgres fallbacks ---
@@ -421,24 +322,5 @@ export class TypesenseSearchReader implements ISearchReader {
 
   private fallbackThemesSearch(query: SearchQuery): Promise<SearchResult<Theme>> {
     return this.themesRepo.list({ q: query.q, page: query.page, limit: query.limit });
-  }
-
-  private isFallbackEligibleError(err: unknown): boolean {
-    if (!(err instanceof Error)) return false;
-    const msg = err.message.toLowerCase();
-    if (msg.includes("timed out")) return true;
-    if (msg.includes("econnrefused") || msg.includes("enotfound") || msg.includes("etimedout") || msg.includes("network")) return true;
-    if (msg.includes("collection") && msg.includes("not found")) return true;
-    const status = (err as { httpStatus?: number }).httpStatus;
-    // 404 means the collection itself is missing (e.g. the index host restarted
-    // with an empty disk) — the client reports it as a generic "Not found."
-    // without naming the collection, so match on status too.
-    if (status === 404) return true;
-    // The collection predates a field the query filters or sorts on; it is
-    // fixed by a `search.reindex` job with `drop: true` (docs/jobs-worker.md),
-    // and Postgres can answer meanwhile.
-    if (status === 400 && msg.includes("could not find a field")) return true;
-    if (typeof status === "number" && status >= 500) return true;
-    return false;
   }
 }

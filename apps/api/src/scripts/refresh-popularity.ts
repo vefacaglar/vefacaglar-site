@@ -19,7 +19,7 @@ import type { ISearchIndexWriter } from "../shared/search/commands/search-writer
 async function main() {
   console.log("[catalog:popularity] refreshing...");
   if (!container.resolve<ISearchIndexWriter>(SEARCH_WRITER).enabled) {
-    throw new Error("Configure TYPESENSE_PUBLIC_URL and a TYPESENSE_API_KEY with write access before refreshing popularity");
+    throw new Error("Configure MEILISEARCH_URL and a MEILISEARCH_API_KEY with write access before refreshing popularity");
   }
   const startedAt = Date.now();
   const heartbeat = setInterval(() => {

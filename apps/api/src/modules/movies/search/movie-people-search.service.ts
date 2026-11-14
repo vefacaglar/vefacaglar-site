@@ -10,7 +10,7 @@ export interface IMoviePeopleSearchService {
   searchPublicPeople(q: string, limit: number): Promise<MoviePersonSummary[]>;
 }
 
-/** Typesense people index first; SQL prefix search when it is not ready, fails, or returns stale people. */
+/** Meilisearch people index first; SQL prefix search when it is not ready, fails, or returns stale people. */
 @injectable()
 export class MoviePeopleSearchService implements IMoviePeopleSearchService {
   constructor(@inject(MOVIES_REPOSITORY) private readonly repo: IMoviesRepository,

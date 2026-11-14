@@ -135,7 +135,7 @@ export class DrizzlePostsRepository implements IPostsRepository {
       const baseMatch = sql`(${posts.title} ILIKE ${searchTerm} OR ${posts.excerpt} ILIKE ${searchTerm} OR ${posts.content} ILIKE ${searchTerm})`;
       if (lang && lang !== "en") {
         // Match the base (English) columns OR a translation in the active
-        // language, so the Typesense-down fallback can still find localized text.
+        // language, so the search-down fallback can still find localized text.
         conditions.push(sql`(${baseMatch} OR ${posts.id} IN (
           SELECT ${localizations.entityId} FROM ${localizations}
           WHERE ${localizations.entityType} = 'post'

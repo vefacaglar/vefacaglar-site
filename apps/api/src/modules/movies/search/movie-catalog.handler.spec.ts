@@ -14,7 +14,7 @@ const storedCard = { slug: "inception-q25188", title: "Inception", releaseDate: 
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Inception.jpg", artist: "Studio", license: "CC0", licenseUrl: null } };
 const card = { ...storedCard, posterImageUrl: null, posterAttribution: null };
 const fallback = { items: [], total: 91, ranking: { mode: "alphabetical", sourceDate: null, sourceUrl: null, isFresh: false } };
-const state = { id: "movies_en", schemaVersion: 2, activeCollection: "movies_en__v2_a1", buildingCollection: null,
+const state = { id: "movies_en", schemaVersion: 3, activeCollection: "movies_en", buildingCollection: null,
   bootstrapPhase: "ready", bootstrapCursor: null, rankingGeneration: 2, rankingReady: true,
   publishedSourceDate: "2026-11-06", repairCursor: null, repairCompletedAt: null, updatedAt: new Date() } satisfies MovieSearchState;
 let repo: Record<keyof IMoviesRepository, any>;
@@ -38,7 +38,7 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("movie catalog handlers using the movie index", () => {
-  it("uses Typesense for browse and typed search and suppresses poster fields on cards", async () => {
+  it("uses Meilisearch for browse and typed search and suppresses poster fields on cards", async () => {
     const browse = await list();
     expect(reader.search).toHaveBeenCalledWith({ page: 1, limit: 21, collection: state.activeCollection, fresh: true, personQid: undefined });
     expect(browse.items).toEqual([card]);
@@ -52,7 +52,7 @@ describe("movie catalog handlers using the movie index", () => {
     expect(repo.listPublic).not.toHaveBeenCalled();
   });
   it.each([null, { ...state, rankingReady: false }, { ...state, bootstrapPhase: "replay" },
-    { ...state, schemaVersion: 1 }, { ...state, activeCollection: "movies_en__v1_legacy" },
+    { ...state, schemaVersion: 2 }, { ...state, activeCollection: "movies_en__v2_legacy" },
     { ...state, activeCollection: "games_en__123" }])("falls back until an owned publication is ready (%j)", async (publication) => {
     stateRepo.state.mockResolvedValue(publication);
     expect((await list()).total).toBe(91);
@@ -68,7 +68,7 @@ describe("movie catalog handlers using the movie index", () => {
     expect((await list()).total).toBe(91);
   });
   it.each([{ ...state, rankingReady: false }, { ...state, rankingGeneration: 3 },
-    { ...state, activeCollection: "movies_en__v2_b2" }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
+    { ...state, activeCollection: "movies_en__v2_b2" }, { ...state, schemaVersion: 4 }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
     repo.hydrateCatalogPage.mockResolvedValue({ items: [storedCard], state: after });
     expect((await list()).total).toBe(91);
   });

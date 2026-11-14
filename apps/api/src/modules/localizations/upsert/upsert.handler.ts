@@ -23,7 +23,7 @@ export class UpsertLocalizationHandler {
       value: request.value,
     });
 
-    // Posts are the only Typesense-indexed localized entity; refresh its index
+    // Posts are the only search-indexed localized entity; refresh its index
     // so a translation-only edit is reflected in search without a full reindex.
     if (request.entityType === "post") {
       try {

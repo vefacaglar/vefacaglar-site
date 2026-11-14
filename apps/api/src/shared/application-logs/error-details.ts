@@ -1,7 +1,7 @@
 import { basename, dirname, resolve } from "node:path";
 import { DrizzleQueryError } from "drizzle-orm";
 import postgres from "postgres";
-import { Errors as TypesenseErrors } from "typesense";
+import { MeilisearchError } from "../search/meilisearch.client";
 import { HttpError } from "../http-errors";
 import en from "../locales/en.json";
 import { logErrorMessage } from "./error-message";
@@ -54,13 +54,13 @@ const runtimeReasons: Record<string, string> = {
 const appRoot = resolve(__dirname, "../..");
 const frameRoots = [resolve(dirname(appRoot), "src"), appRoot];
 const maxStackFrames = 12;
-const typesenseReasons: Record<number, string> = {
-  400: "Typesense rejected an invalid request",
-  401: "Typesense rejected the API key",
-  403: "The Typesense API key lacks the required permissions",
-  404: "The requested Typesense collection or document was not found",
-  409: "The Typesense collection or document already exists",
-  422: "Typesense could not process the document",
+const meilisearchReasons: Record<number, string> = {
+  400: "Meilisearch rejected an invalid request",
+  401: "Meilisearch requires an API key",
+  403: "Meilisearch rejected the API key or its permissions",
+  404: "The requested Meilisearch index or document was not found",
+  408: "Meilisearch timed out processing the request",
+  413: "The Meilisearch request payload is too large",
 };
 
 function applicationFrames(error: Error, limit: number): string[] {
@@ -126,11 +126,13 @@ export function describeLogError(error: unknown, reportedAt?: Error) {
     }
 
     const code = (current as Error & { code?: unknown }).code;
-    if (current instanceof TypesenseErrors.TypesenseError &&
-        typeof current.httpStatus === "number" && Number.isInteger(current.httpStatus)) {
+    if (current instanceof MeilisearchError) {
+      // Meilisearch codes are fixed snake_case identifiers (e.g. index_not_found).
+      error_code = /^[a-z_]{1,64}$/.test(current.code) ? `meilisearch_${current.code}` : undefined;
       const status = current.httpStatus;
-      error_code = `typesense_http_${status}`;
-      reason = typesenseReasons[status] ?? `Typesense returned HTTP ${status}`;
+      reason = status === undefined
+        ? (current.code === "communication_error" ? "Meilisearch could not be reached" : "A Meilisearch operation failed")
+        : meilisearchReasons[status] ?? `Meilisearch returned HTTP ${status}`;
     } else if (typeof code === "string" && Object.hasOwn(runtimeReasons, code)) {
       error_code = code;
       reason = runtimeReasons[code];

@@ -2,7 +2,7 @@ import { Type, Static } from "@sinclair/typebox";
 
 export const ListGamesQuerySchema = Type.Object({
   page: Type.Optional(Type.Integer({ minimum: 1 })),
-  // Typesense rejects per_page above 250.
+  // Bounded page size for dashboard lists (and the search page size).
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 250 })),
   q: Type.Optional(Type.String()),
 });

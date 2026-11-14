@@ -28,7 +28,7 @@ export class DeleteLocalizationHandler {
           query.languageCode
         );
 
-    // Refresh Typesense post document when Turkish fields are removed.
+    // Refresh the search post document when Turkish fields are removed.
     if (query.entityType === "post" && deletedCount > 0) {
       try {
         await this.eventBus.publish(postChanged(query.entityId));

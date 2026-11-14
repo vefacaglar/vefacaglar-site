@@ -1,6 +1,5 @@
 import { reportRuntimeFailure } from "../../application-logs/runtime-failures";
 import { inject, injectable } from "tsyringe";
-import { Client as TypesenseClient } from "typesense";
 import type { Developer } from "../../../modules/catalog/developers.repository.interface";
 import type { Publisher } from "../../../modules/catalog/publishers.repository.interface";
 import type { Genre } from "../../../modules/catalog/genres.repository.interface";
@@ -22,8 +21,9 @@ import type { IPlatformsRepository } from "../../../modules/catalog/platforms.re
 import type { IThemesRepository } from "../../../modules/catalog/themes.repository.interface";
 import type { IGamesRepository } from "../../../modules/catalog/games.repository.interface";
 import type { IPostsRepository } from "../../../modules/posts/posts.repository.interface";
-import { TYPESENSE_CLIENT, TYPESENSE_CONFIG, type TypesenseConfig } from "../search.tokens";
-import { buildAllCollectionSchemas, SEARCH_COLLECTIONS } from "../collections";
+import { SEARCH_CLIENT, MEILISEARCH_CONFIG, type MeilisearchConfig } from "../search.tokens";
+import { MeilisearchError, type ISearchClient } from "../meilisearch.client";
+import { SEARCH_INDEXES } from "../search.indexes";
 import type { ISearchIndexWriter } from "./search-writer.interface";
 import { toGameDoc } from "../mappers/game.mapper";
 import { toPostDoc } from "../mappers/post.mapper";
@@ -47,21 +47,21 @@ type LookupEntity = "developer" | "publisher" | "genre" | "platform" | "theme";
 type LookupRow = Developer | Publisher | Genre | Platform | Theme;
 type LookupDoc = DeveloperDoc | PublisherDoc | GenreDoc | PlatformDoc | ThemeDoc;
 
-const LOOKUP_COLLECTIONS: Record<LookupEntity, string> = {
-  developer: SEARCH_COLLECTIONS.developers,
-  publisher: SEARCH_COLLECTIONS.publishers,
-  genre: SEARCH_COLLECTIONS.genres,
-  platform: SEARCH_COLLECTIONS.platforms,
-  theme: SEARCH_COLLECTIONS.themes,
+const LOOKUP_INDEXES: Record<LookupEntity, string> = {
+  developer: SEARCH_INDEXES.developers,
+  publisher: SEARCH_INDEXES.publishers,
+  genre: SEARCH_INDEXES.genres,
+  platform: SEARCH_INDEXES.platforms,
+  theme: SEARCH_INDEXES.themes,
 };
 
 @injectable()
-export class TypesenseSearchWriter implements ISearchIndexWriter {
+export class MeilisearchSearchWriter implements ISearchIndexWriter {
   readonly enabled: boolean;
 
   constructor(
-    @inject(TYPESENSE_CLIENT) private readonly typesense: TypesenseClient,
-    @inject(TYPESENSE_CONFIG) typesenseConfig: TypesenseConfig,
+    @inject(SEARCH_CLIENT) private readonly client: ISearchClient,
+    @inject(MEILISEARCH_CONFIG) config: MeilisearchConfig,
     @inject(DEVELOPERS_REPOSITORY) private readonly developersRepo: IDevelopersRepository,
     @inject(PUBLISHERS_REPOSITORY) private readonly publishersRepo: IPublishersRepository,
     @inject(GENRES_REPOSITORY) private readonly genresRepo: IGenresRepository,
@@ -70,7 +70,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(POSTS_REPOSITORY) private readonly postsRepo: IPostsRepository
   ) {
-    this.enabled = typesenseConfig.enabled;
+    this.enabled = config.enabled;
   }
 
   // --- Public index methods ---
@@ -83,7 +83,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removeGame(id);
         return;
       }
-      await this.typesense.collections(SEARCH_COLLECTIONS.games).documents().upsert(toGameDoc(game));
+      await this.upsertDocument(SEARCH_INDEXES.games, toGameDoc(game));
     } catch (err) {
       reportRuntimeFailure("search_index_failed", "Could not index game", err);
     }
@@ -97,7 +97,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
         await this.removePost(id);
         return;
       }
-      await this.typesense.collections(SEARCH_COLLECTIONS.posts).documents().upsert(toPostDoc(post));
+      await this.upsertDocument(SEARCH_INDEXES.posts, toPostDoc(post));
     } catch (err) {
       reportRuntimeFailure("search_index_failed", "Could not index post", err);
     }
@@ -174,32 +174,42 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
   }
 
   async indexGames(ids: string[], options: { throwOnError?: boolean } = {}): Promise<void> {
-    if (options.throwOnError && !this.enabled) throw new Error("Typesense must be configured for popularity search synchronization");
-    await this.bulkIndex(SEARCH_COLLECTIONS.games, ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), toGameDoc, options.throwOnError);
+    if (options.throwOnError && !this.enabled) throw new Error("Meilisearch must be configured for popularity search synchronization");
+    await this.bulkIndex(SEARCH_INDEXES.games, ids, (sliceIds) => this.gamesRepo.findByIds(sliceIds), toGameDoc, options.throwOnError);
   }
 
   async indexLookups(kind: LookupEntity, ids: string[]): Promise<void> {
-    await this.bulkIndex(LOOKUP_COLLECTIONS[kind], ids, (sliceIds) => this.gamesRepo.findLookupsByIds(kind, sliceIds), (row) =>
+    await this.bulkIndex(LOOKUP_INDEXES[kind], ids, (sliceIds) => this.gamesRepo.findLookupsByIds(kind, sliceIds), (row) =>
       this.toLookupDoc(kind, row)
     );
   }
 
   /** Loads and imports the rows one slice at a time: a bulk import costs a few round trips, not one per row. */
   private async bulkIndex<T extends { id: string }>(
-    collection: string,
+    index: string,
     ids: string[],
     load: (ids: string[]) => Promise<T[]>,
     toDoc: (row: T) => object,
     throwOnError = false
   ): Promise<void> {
     if (!this.enabled || ids.length === 0) return;
+    try {
+      if (!(await this.indexReady(index))) {
+        if (throwOnError) throw new Error(`Search index ${index} does not exist yet`);
+        return;
+      }
+    } catch (err) {
+      reportRuntimeFailure("search_bulk_index_failed", `Could not bulk index ${index}`, err);
+      if (throwOnError) throw err;
+      return;
+    }
     for (let i = 0; i < ids.length; i += BULK_INDEX_SIZE) {
       const sliceIds = ids.slice(i, i + BULK_INDEX_SIZE);
       try {
         const rows = await load(sliceIds);
-        await this.bulkImportDocs(collection, rows.map(toDoc), throwOnError);
+        await this.bulkImportDocs(index, rows.map(toDoc), throwOnError);
       } catch (err) {
-        reportRuntimeFailure("search_bulk_index_failed", `Could not bulk index ${collection}`, err);
+        reportRuntimeFailure("search_bulk_index_failed", `Could not bulk index ${index}`, err);
         if (throwOnError) throw err;
       }
     }
@@ -207,7 +217,7 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
 
   private async upsertLookup(entityName: LookupEntity, id: string, row: LookupRow): Promise<void> {
     try {
-      await this.typesense.collections(LOOKUP_COLLECTIONS[entityName]).documents().upsert(this.toLookupDoc(entityName, row));
+      await this.upsertDocument(LOOKUP_INDEXES[entityName], this.toLookupDoc(entityName, row));
     } catch (err) {
       reportRuntimeFailure("search_index_failed", `Could not index ${entityName}`, err);
     }
@@ -242,120 +252,86 @@ export class TypesenseSearchWriter implements ISearchIndexWriter {
 
   async removeGame(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.games, id);
+    await this.removeDocument(SEARCH_INDEXES.games, id);
   }
 
   async removePost(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.posts, id);
+    await this.removeDocument(SEARCH_INDEXES.posts, id);
   }
 
   async removeDeveloper(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.developers, id);
+    await this.removeDocument(SEARCH_INDEXES.developers, id);
   }
 
   async removePublisher(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.publishers, id);
+    await this.removeDocument(SEARCH_INDEXES.publishers, id);
   }
 
   async removeGenre(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.genres, id);
+    await this.removeDocument(SEARCH_INDEXES.genres, id);
   }
 
   async removePlatform(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.platforms, id);
+    await this.removeDocument(SEARCH_INDEXES.platforms, id);
   }
 
   async removeTheme(id: string): Promise<void> {
     if (!this.enabled) return;
-    await this.removeDocument(SEARCH_COLLECTIONS.themes, id);
+    await this.removeDocument(SEARCH_INDEXES.themes, id);
   }
 
-  private async removeDocument(collectionName: string, id: string): Promise<void> {
+  private async removeDocument(index: string, id: string): Promise<void> {
     try {
-      await this.typesense.collections(collectionName).documents(id).delete();
+      // Enqueued only: a missing index or document fails the task without creating anything.
+      await this.client.deleteDocument(index, id);
     } catch (err) {
-      const status = (err as { httpStatus?: number }).httpStatus;
-      if (status === 404) return;
-      reportRuntimeFailure("search_delete_failed", `Could not delete a document from ${collectionName}`, err);
+      reportRuntimeFailure("search_delete_failed", `Could not delete a document from ${index}`, err);
     }
   }
 
-  // --- Collection bootstrap ---
+  // --- Private: write helpers ---
 
   /**
-   * Creates missing collections; never deletes or recreates anything. Full
-   * reindexing (including zero-downtime alias swaps) is owned by the worker's
-   * `search.reindex` job (docs/jobs-worker.md), so a name that resolves to an
-   * alias counts as present and no real collection is ever created over it.
+   * `false` (with a warning) when the index does not exist yet: the worker owns
+   * index creation and settings, and a document write would otherwise create
+   * the index with default settings.
    */
-  async ensureCollections(): Promise<void> {
-    if (!this.enabled) return;
-    for (const schema of buildAllCollectionSchemas()) {
-      try {
-        if (await this.aliasExists(schema.name)) continue;
-        if (await this.collectionExists(schema.name)) continue;
-        await this.typesense.collections().create(schema);
-        console.log(`[search] created collection ${schema.name}`);
-      } catch (err) {
-        const status = (err as { httpStatus?: number }).httpStatus;
-        const msg = (err as Error).message ?? "";
-        // Created concurrently (another instance or the worker); nothing to do.
-        if (status === 409 || msg.includes("already exists")) continue;
-        reportRuntimeFailure("search_collection_bootstrap_failed", `Could not prepare search collection ${schema.name}`, err);
-      }
-    }
-    console.log("[search] collections ready");
+  private async indexReady(index: string): Promise<boolean> {
+    if (await this.client.indexExists(index)) return true;
+    reportRuntimeFailure("search_index_missing", `Search index ${index} does not exist yet. Skipping the write`, undefined, "warning");
+    return false;
   }
 
-  private async aliasExists(name: string): Promise<boolean> {
-    return this.exists(() => this.typesense.aliases(name).retrieve());
+  /** Adds or fully replaces one document. Resolves once Meilisearch has enqueued the write. */
+  private async upsertDocument(index: string, doc: object): Promise<void> {
+    if (!(await this.indexReady(index))) return;
+    await this.client.addDocuments(index, [doc]);
   }
 
-  private async collectionExists(name: string): Promise<boolean> {
-    return this.exists(() => this.typesense.collections(name).retrieve());
-  }
-
-  /** `true` if the lookup succeeds, `false` on 404; other errors propagate. */
-  private async exists(lookup: () => Promise<unknown>): Promise<boolean> {
-    try {
-      await lookup();
-      return true;
-    } catch (err) {
-      if ((err as { httpStatus?: number }).httpStatus === 404) return false;
-      throw err;
-    }
-  }
-
-  // --- Private: bulk import helper ---
-
-  private async bulkImportDocs(collectionName: string, docs: object[], throwOnError = false): Promise<void> {
+  /**
+   * Enqueues one batch. With `throwOnError` the call waits for the task, since
+   * Meilisearch validates documents asynchronously and rejects the whole batch
+   * on any invalid document.
+   */
+  private async bulkImportDocs(index: string, docs: object[], throwOnError = false): Promise<void> {
     if (docs.length === 0) return;
     try {
-      const results = await this.typesense
-        .collections(collectionName)
-        .documents()
-        .import(docs, { action: "upsert" });
-      // Typesense reports per-document outcomes in the results array without
-      // throwing, so partial failures are otherwise silent. Surface them.
-      const failures = Array.isArray(results)
-        ? results.filter((r) => r && (r as { success?: boolean }).success === false)
-        : [];
-      if (failures.length > 0) {
-        const firstError = (failures[0] as { error?: string }).error ?? "unknown";
-        reportRuntimeFailure(
-          "search_bulk_import_partial_failure",
-          `Typesense rejected ${failures.length} of ${docs.length} documents for ${collectionName}`,
-          new Error(firstError),
+      const enqueued = await this.client.addDocuments(index, docs);
+      if (!throwOnError) return;
+      const task = await this.client.waitForTask(enqueued.taskUid);
+      if (task.status !== "succeeded") {
+        throw new MeilisearchError(
+          task.error?.message ?? `Meilisearch task ${task.taskUid} ended as ${task.status}`,
+          { code: task.error?.code ?? `task_${task.status}`, type: task.error?.type }
         );
-        if (throwOnError) throw new Error(`Typesense rejected ${failures.length} documents during popularity synchronization`);
       }
     } catch (err) {
-      reportRuntimeFailure("search_bulk_import_failed", `Could not import documents into ${collectionName}`, err);
+      reportRuntimeFailure("search_bulk_import_failed", `Could not import documents into ${index}`, err);
       if (throwOnError) throw err;
     }
   }
