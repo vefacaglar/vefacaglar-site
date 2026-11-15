@@ -296,8 +296,21 @@ pub async fn mark_succeeded(
         tx.rollback().await?;
         return Ok(false);
     };
-    insert_log_tx(&mut tx, job_id, if status == "cancelled" { LogLevel::Warn } else { LogLevel::Info },
-        if status == "cancelled" { "cancelled before movie sync finalization" } else { log }).await?;
+    insert_log_tx(
+        &mut tx,
+        job_id,
+        if status == "cancelled" {
+            LogLevel::Warn
+        } else {
+            LogLevel::Info
+        },
+        if status == "cancelled" {
+            "cancelled before movie sync finalization"
+        } else {
+            log
+        },
+    )
+    .await?;
     notify_tx(&mut tx, JOB_EVENTS_CHANNEL, job_id).await?;
     tx.commit().await?;
     Ok(true)

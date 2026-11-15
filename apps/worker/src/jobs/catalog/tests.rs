@@ -170,10 +170,16 @@ async fn a_stopped_job_does_not_spawn_a_child() {
 async fn movie_windows_never_request_a_successor_job() {
     let io = FakeIo::default();
     let summary = r#"printf '[catalog:movies] result {"hasMore":true,"progressMade":true,"nextRunAt":null}\n'"#;
-    let result = run_command_with_spec(&io, shell(summary), &[], &MOVIES).await.unwrap();
+    let result = run_command_with_spec(&io, shell(summary), &[], &MOVIES)
+        .await
+        .unwrap();
     assert_eq!(result, JobOutcome::Completed);
     let failed = format!("{summary}; exit 7");
-    assert!(run_command_with_spec(&io, shell(&failed), &[], &MOVIES).await.is_err());
+    assert!(
+        run_command_with_spec(&io, shell(&failed), &[], &MOVIES)
+            .await
+            .is_err()
+    );
 }
 
 #[cfg(unix)]
@@ -187,9 +193,18 @@ async fn movie_hard_deadline_kills_child_and_yields_without_retry() {
     let result = tokio::time::timeout(
         Duration::from_secs(3),
         run_command_with_spec(&io, shell("exec sleep 60"), &[], &SHORT_MOVIES),
-    ).await.unwrap().unwrap();
+    )
+    .await
+    .unwrap()
+    .unwrap();
     assert_eq!(result, JobOutcome::Completed);
-    assert!(io.logs.lock().unwrap().iter().any(|line| line.contains("safety limit")));
+    assert!(
+        io.logs
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|line| line.contains("safety limit"))
+    );
 }
 
 #[cfg(unix)]
