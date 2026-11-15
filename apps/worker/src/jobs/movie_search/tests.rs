@@ -396,6 +396,16 @@ fn build_indexes(backend: &Backend) -> Vec<String> {
 #[test]
 fn movie_settings_and_build_names() {
     let settings = index_settings();
+    // "rango 2011" ranks Rango (2011) first through the words rule; a 4-letter
+    // year never typo-matches its neighbours.
+    assert_eq!(
+        settings["searchableAttributes"],
+        json!(["title", "originalTitle", "releaseYear"])
+    );
+    assert_eq!(
+        settings["typoTolerance"]["minWordSizeForTypos"]["oneTypo"],
+        json!(5)
+    );
     assert_eq!(settings["filterableAttributes"], json!(["personQids"]));
     assert_eq!(
         settings["sortableAttributes"],

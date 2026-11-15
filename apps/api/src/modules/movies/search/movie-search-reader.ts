@@ -1,8 +1,9 @@
 import { inject, injectable } from "tsyringe";
 import { SEARCH_CLIENT, MEILISEARCH_CONFIG, type MeilisearchConfig } from "../../../shared/search/search.tokens";
-import { reachablePage, searchFailureEvent, type ISearchClient, type MeilisearchSearchParams } from "../../../shared/search/meilisearch.client";
+import { MeilisearchError, reachablePage, searchFailureEvent, type ISearchClient, type MeilisearchSearchParams } from "../../../shared/search/meilisearch.client";
 import { withTimeout } from "../../../shared/search/with-timeout";
 import { reportRuntimeFailure } from "../../../shared/application-logs/runtime-failures";
+import { splitMovieYearQuery } from "../movie-search-year";
 
 export const MOVIE_SEARCH_READER = Symbol("MovieSearchReader");
 /** Stable Meilisearch index uid; the worker rebuilds it behind an index swap. */
@@ -13,12 +14,19 @@ export interface IMovieSearchReader { search(query: MovieSearchQuery): Promise<{
 export function isOwnedMovieCollection(collection: string): boolean {
   return collection === MOVIE_SEARCH_INDEX;
 }
-export function movieSearchParameters(query: MovieSearchQuery): MeilisearchSearchParams {
+const TITLE_ATTRIBUTES = ["title", "originalTitle"];
+/**
+ * `matchYear` also searches `releaseYear`, so for "rango 2011" the `words` rule
+ * ranks Rango (2011) above the other Rango matches that the default `last`
+ * matching strategy still returns. A year-only query ("1917") stays a title search.
+ */
+export function movieSearchParameters(query: MovieSearchQuery, matchYear = !!splitMovieYearQuery(query.q)): MeilisearchSearchParams {
   if (!isOwnedMovieCollection(query.collection)) throw new Error("Invalid movie search collection");
   if (query.personQid && !/^Q[1-9]\d*$/.test(query.personQid)) throw new Error("Invalid movie person filter");
   const typed = !!query.q?.trim();
   return {
-    q: typed ? query.q : "", attributesToSearchOn: ["title", "originalTitle"], attributesToRetrieve: ["id"],
+    q: typed ? query.q : "", attributesToSearchOn: typed && matchYear ? [...TITLE_ATTRIBUTES, "releaseYear"] : TITLE_ATTRIBUTES,
+    attributesToRetrieve: ["id"],
     page: query.page, hitsPerPage: query.limit,
     // Typed queries: the `sort` ranking rule follows words/typo/proximity/wordPosition
     // (no attribute or exactness), so relevance comes first and these fields only break its ties.
@@ -41,7 +49,7 @@ export class MeilisearchMovieSearchReader implements IMovieSearchReader {
     try {
       // Punctuation-only input is not a browse wildcard (same as SQL fallback).
       if (query.q && !/[\p{L}\p{N}]/u.test(query.q)) return { ids: [], total: 0 };
-      return await withTimeout(this.page(query, controller.signal), 3000, "meilisearch.movies.search");
+      return await withTimeout(this.yearRankedPage(query, controller.signal), 3000, "meilisearch.movies.search");
     } catch (error) {
       if (Date.now() >= this.retryAt) {
         this.retryAt = Date.now() + 30_000;
@@ -55,12 +63,28 @@ export class MeilisearchMovieSearchReader implements IMovieSearchReader {
   }
 
   /**
+   * An index built before `releaseYear` was searchable rejects it in
+   * `attributesToSearchOn`; until the rebuilt index is swapped in, search the
+   * title words alone rather than opening the outage window.
+   */
+  private async yearRankedPage(query: MovieSearchQuery, signal: AbortSignal) {
+    const split = splitMovieYearQuery(query.q);
+    if (!split) return this.page(query, signal, false);
+    try {
+      return await this.page(query, signal, true);
+    } catch (error) {
+      if (!(error instanceof MeilisearchError && error.code === "invalid_search_attributes_to_search_on")) throw error;
+      return this.page({ ...query, q: split.words }, signal, false);
+    }
+  }
+
+  /**
    * IDs plus the total a client may page through: `totalHits` capped at the
    * index's `pagination.maxTotalHits`, so a page past that cap is a valid empty
    * page rather than a corrupt one.
    */
-  private async page(query: MovieSearchQuery, signal: AbortSignal) {
-    const result = await this.client.search<{ id: string }>(query.collection, movieSearchParameters(query), { signal });
+  private async page(query: MovieSearchQuery, signal: AbortSignal, matchYear: boolean) {
+    const result = await this.client.search<{ id: string }>(query.collection, movieSearchParameters(query, matchYear), { signal });
     const ids = result.hits?.map((hit) => hit.id) ?? [];
     const totalHits = result.totalHits as number;
     if (!Number.isSafeInteger(totalHits) || totalHits < 0 || ids.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) || new Set(ids).size !== ids.length) {

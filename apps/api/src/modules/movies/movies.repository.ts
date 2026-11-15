@@ -12,6 +12,7 @@ import type { MoviePersonRole } from "./people/detail/detail.schema";
 import type { MoviePersonSummary } from "./people/search/search.schema";
 import { posterInputsPatch, publicMoviePoster } from "./artwork/poster-source";
 import { moviePersonNameMatch, movieTitleMatch } from "./movie-title-search";
+import { splitMovieYearQuery } from "./movie-search-year";
 import { MOVIE_SEEDS, MOVIE_SOURCE_ID, type EntityLabels, type NormalizedMovie } from "./import/movie-source.types";
 import { characterQidsFromQualifiers, isQid, movieSlug, movieSnapshotDisposition, storedMovieTitle } from "./import/wikidata-normalizer";
 
@@ -164,7 +165,10 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     return result;
   }
   private async listPublicMatching(filter: { page: number; limit: number; q?: string }, extraFilter?: SQL) {
-    const where = and(publicMovie(), extraFilter, movieTitleMatch(filter.q))!;
+    // "rango 2011": every title word must match, and films from that year come first.
+    const split = splitMovieYearQuery(filter.q);
+    const where = and(publicMovie(), extraFilter, movieTitleMatch(split?.words ?? filter.q))!;
+    const yearMatch = split ? sql`coalesce(${movies.releaseYear} = ${split.year}, false)` : sql`false`;
     // One statement owns both the ranking descriptor and the page ordering. A
     // concurrent publication cannot expose date A with ordered observations B.
     const rows = await this.dbProvider.client.execute(sql`
@@ -179,15 +183,16 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
           ${movies.enwikiArticle} as poster_article, ${movies.posterResolvedFrom} as poster_origin, ${movies.posterBlockedAt} as poster_blocked_at,
           ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
           case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
-            then ${movies.wikipediaViews} else null end as interest
+            then ${movies.wikipediaViews} else null end as interest,
+          ${yearMatch} as year_match
         from ${movies} where ${where}
-        order by interest desc nulls last, ${movies.title}, ${movies.id}
+        order by year_match desc, interest desc nulls last, ${movies.title}, ${movies.id}
         limit ${filter.limit} offset ${(filter.page - 1) * filter.limit}
       )
       select coalesce((select jsonb_agg(jsonb_build_object('movieId',id,'slug',slug,'title',title,'releaseDate',release_date,
           'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution,
           'posterArticle',poster_article,'posterOrigin',poster_origin,'posterBlockedAt',poster_blocked_at)
-          order by interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
+          order by year_match desc,interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
         (select count(*) from ${movies} where ${where}) as total,
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
         (select is_fresh from ranking) as is_fresh

@@ -91,6 +91,39 @@ describe("movie index query and fallback policy", () => {
     client.search.mockResolvedValue({ hits: [], totalHits: 5000 });
     expect(await reader.search({ ...query, page: 1 })).toBeNull();
   });
+  it("also searches the release year for a title-and-year query, as typed", async () => {
+    expect(movieSearchParameters({ ...query, q: "rango 2011" })).toMatchObject({ q: "rango 2011",
+      attributesToSearchOn: ["title", "originalTitle", "releaseYear"], sort: ["interestRecognitionRank:desc", "tieBreakId:asc"] });
+    client.search.mockResolvedValue({ hits: [{ id }], totalHits: 22 });
+    expect(await reader.search({ ...query, q: "rango 2011", page: 2 })).toEqual({ ids: [id], total: 22 });
+    expect(client.search).toHaveBeenCalledTimes(1);
+    expect(client.search).toHaveBeenCalledWith("movies_en", expect.objectContaining({ q: "rango 2011",
+      attributesToSearchOn: ["title", "originalTitle", "releaseYear"], page: 2, hitsPerPage: 21 }), { signal: expect.any(AbortSignal) });
+    expect(client.search.mock.calls[0][1]).not.toHaveProperty("filter");
+  });
+  it("searches the title words alone while the live index cannot search the year", async () => {
+    client.search.mockRejectedValueOnce(new MeilisearchError("Attribute `releaseYear` is not searchable.",
+      { httpStatus: 400, code: "invalid_search_attributes_to_search_on" }));
+    expect(await reader.search({ ...query, q: "2001 a space odyssey 1968" })).toEqual({ ids: [id], total: 1 });
+    expect(client.search).toHaveBeenCalledTimes(2);
+    // The remaining words still hold a year token, yet the retry stays title-only.
+    expect(client.search.mock.calls[1][1]).toEqual(movieSearchParameters({ ...query, q: "2001 a space odyssey" }, false));
+    expect(client.search.mock.calls[1][1]).toMatchObject({ attributesToSearchOn: ["title", "originalTitle"] });
+    expect(reportRuntimeFailure).not.toHaveBeenCalled();
+    expect(await reader.search({ ...query, q: "rango 2011" })).not.toBeNull();
+  });
+  it("treats other failures of a year search as an outage", async () => {
+    client.search.mockRejectedValue(new MeilisearchError("down", { code: "communication_error" }));
+    expect(await reader.search({ ...query, q: "rango 2011" })).toBeNull();
+    expect(client.search).toHaveBeenCalledTimes(1);
+    expect(reportRuntimeFailure).toHaveBeenCalledTimes(1);
+  });
+  it.each(["1917", "2012", "blade runner 2049", "Star Wars"])("searches %j on titles only", async (q) => {
+    await reader.search({ ...query, q });
+    expect(client.search).toHaveBeenCalledTimes(1);
+    expect(client.search).toHaveBeenCalledWith("movies_en", expect.objectContaining({ q, attributesToSearchOn: ["title", "originalTitle"] }),
+      { signal: expect.any(AbortSignal) });
+  });
   it("reports a rejected API key as an error-level auth failure", async () => {
     client.search.mockRejectedValue(new MeilisearchError("The provided API key is invalid.", { httpStatus: 403, code: "invalid_api_key" }));
     expect(await reader.search(query)).toBeNull();

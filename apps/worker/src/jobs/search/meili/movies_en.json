@@ -1,5 +1,5 @@
 {
-  "searchableAttributes": ["title", "originalTitle"],
+  "searchableAttributes": ["title", "originalTitle", "releaseYear"],
   "filterableAttributes": ["personQids"],
   "sortableAttributes": [
     "interestRecognitionRank",
@@ -9,5 +9,6 @@
     "tieBreakId"
   ],
   "rankingRules": ["words", "typo", "proximity", "wordPosition", "sort"],
+  "typoTolerance": { "minWordSizeForTypos": { "oneTypo": 5, "twoTypos": 9 } },
   "pagination": { "maxTotalHits": 1000000 }
 }

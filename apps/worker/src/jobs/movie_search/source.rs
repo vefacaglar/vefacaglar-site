@@ -88,6 +88,7 @@ const CAPTURE: &str = r#"
       CASE WHEN m.is_film=true AND m.hydrated_at IS NOT NULL AND m.title IS NOT NULL THEN
         jsonb_strip_nulls(jsonb_build_object(
           'id', l.movie_id::text, 'title', m.title, 'originalTitle', m.original_title,
+          'releaseYear', m.release_year::text,
           'personQids', ARRAY(SELECT DISTINCT p.wikidata_id::text
             FROM movie_credits c JOIN movie_people p ON p.id=c.person_id
             WHERE c.movie_id=m.id AND c.rank <> 'deprecated' ORDER BY p.wikidata_id::text),

@@ -24,7 +24,7 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
         .execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO movie_popularity_state (id,source_date) VALUES ('enwiki-top-articles-v1',$1) ON CONFLICT (id) DO UPDATE SET source_date=$1")
         .bind(date).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO movies (id,wikidata_id,slug,title,is_film,hydrated_at,wikipedia_views,wikipedia_source_date) VALUES ($1,$2,$2,'Captured Movie',true,now(),42,$3)")
+    sqlx::query("INSERT INTO movies (id,wikidata_id,slug,title,release_year,is_film,hydrated_at,wikipedia_views,wikipedia_source_date) VALUES ($1,$2,$2,'Captured Movie',2011,true,now(),42,$3)")
         .bind(id).bind(&qid).bind(date).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO movie_people (id,wikidata_id,name) VALUES ($1,$2,'Person')")
         .bind(person)
@@ -43,6 +43,7 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
     assert_eq!(doc["recognitionCount"], 0);
     assert_eq!(doc["interestRecognitionRank"], 43_000_000);
     assert_eq!(doc["personQids"], serde_json::json!([qid]));
+    assert_eq!(doc["releaseYear"], "2011");
     assert_eq!(scan.publication.source_date, Some(date));
     // A source change committed after capture must survive acknowledgement.
     sqlx::query(
