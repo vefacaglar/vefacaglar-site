@@ -1,4 +1,5 @@
 import type { EntityLabels, NormalizedMovie, SourceCredit, StatementRank } from "./movie-source.types";
+import { FILM_CLASS_QIDS } from "./wikidata-discovery.types";
 import { commonsCategoryName, commonsFileName, wikipediaArticleTitle } from "../artwork/poster-source";
 
 export const isQid = (value: unknown): value is string => typeof value === "string" && /^Q[1-9]\d{0,20}$/.test(value);
@@ -141,7 +142,7 @@ export function normalizeMovie(raw: unknown, expectedQid: string): NormalizedMov
     enwikiArticle, wikipediaLanguageCount: languageCount,
     releaseDate: dates[0]?.date ?? null, releaseYear: dates[0]?.year ?? null, releasePrecision: dates[0]?.precision ?? null,
     runtimeMinutes: runtimes.length === 1 ? runtimes[0] : null,
-    isFilm: qids(best(checked.get("P31")!)).includes("Q11424"),
+    isFilm: qids(best(checked.get("P31")!)).some((qid) => (FILM_CLASS_QIDS as readonly string[]).includes(qid)),
     sourceRevision: Number.isSafeInteger(raw.lastrevid) && raw.lastrevid > 0 ? raw.lastrevid : null,
     sourceModifiedAt: modified, credits, companyQids: qids(checked.get("P272")!), genreQids: qids(checked.get("P136")!) };
 }

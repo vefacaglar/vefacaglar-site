@@ -1,6 +1,7 @@
 import { injectable } from "tsyringe";
 import { wikidataRetryAfter } from "./wikidata-retry-after";
 import {
+  FILM_CLASS_QIDS,
   FILM_DISCOVERY_STRATEGY,
   type FilmDiscoveryResult,
   type IFilmDiscoveryClient,
@@ -8,8 +9,10 @@ import {
 
 const ENDPOINT = "https://query.wikidata.org/sparql";
 // A complete unordered projection avoids an unstable LIMIT/OFFSET pseudo-cursor.
-// This intentionally discovers direct films only, not every film subclass.
-const QUERY = "SELECT ?film WHERE { ?film wdt:P31 wd:Q11424 . }";
+// This intentionally discovers items directly classified as one of FILM_CLASS_QIDS, not every film subclass.
+// DISTINCT keeps films that carry several listed classes to a single row.
+export const DISCOVERY_QUERY =
+  `SELECT DISTINCT ?film WHERE { VALUES ?class { ${FILM_CLASS_QIDS.map((qid) => `wd:${qid}`).join(" ")} } ?film wdt:P31 ?class . }`;
 const MAX_BODY_BYTES = 48 * 1024 * 1024;
 const BATCH_SIZE = 1000;
 const USER_AGENT = "VefaLibrary/1.0 (+https://vefacaglar.com)";
@@ -31,7 +34,7 @@ export class WikidataFilmDiscoveryClient implements IFilmDiscoveryClient {
     if (options.signal?.aborted || (options.maxRequests ?? 1) < 1) return result;
     const signal = AbortSignal.any([AbortSignal.timeout(40_000), ...(options.signal ? [options.signal] : [])]);
     const url = new URL(ENDPOINT);
-    url.searchParams.set("query", QUERY);
+    url.searchParams.set("query", DISCOVERY_QUERY);
     url.searchParams.set("format", "json");
     const response = await fetch(url, {
       headers: { "User-Agent": USER_AGENT, Accept: "application/sparql-results+json" },

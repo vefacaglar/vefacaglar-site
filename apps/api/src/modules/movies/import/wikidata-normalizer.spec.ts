@@ -81,9 +81,14 @@ describe("Wikidata movie normalization", () => {
     expect(characterQidsFromQualifiers({})).toEqual([]);
   });
 
-  it("matches the truthy classification used by direct-film discovery", () => {
+  it("matches the truthy classification used by direct film-class discovery", () => {
     const preferred = { ...statement("P31", { id: "Q5" }, "preferred-class"), rank: "preferred" };
     expect(normalizeMovie(movie({ P31: [statement("P31", { id: "Q11424" }), preferred] }), "Q47703").isFilm).toBe(false);
+  });
+
+  it("accepts animated films and rejects unrelated classes", () => {
+    expect(normalizeMovie(movie({ P31: [statement("P31", { id: "Q202866" })] }), "Q47703").isFilm).toBe(true);
+    expect(normalizeMovie(movie({ P31: [statement("P31", { id: "Q5" })] }), "Q47703").isFilm).toBe(false);
   });
 
   it("only extracts explicit active poster claims and can enrich unchanged revisions", () => {

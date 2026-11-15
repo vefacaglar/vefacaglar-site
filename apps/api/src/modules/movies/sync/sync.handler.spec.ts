@@ -1,13 +1,14 @@
 import "reflect-metadata";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IMoviesRepository, MovieSourceState } from "../movies.repository.interface";
+import { FILM_DISCOVERY_STRATEGY } from "../import/wikidata-discovery.types";
 import { MovieSyncService } from "./movie-sync.service";
 import { SyncMoviesHandler } from "./sync.handler";
 
 const state = (): MovieSourceState => ({
   discoveryComplete: true,
   discoveryCycle: 1,
-  discoveryStrategy: "wikidata-direct-film-v1",
+  discoveryStrategy: FILM_DISCOVERY_STRATEGY,
   nextDiscoveryAt: new Date("2099-01-01"),
   cooldownUntil: null,
   artworkCooldownUntil: null,
@@ -137,12 +138,20 @@ describe("bounded movie sync handler", () => {
     repo.insertDiscovered.mockResolvedValue(2);
     discovery.discover.mockImplementation(async (batch: any) => {
       await batch(["Q1", "Q2"]);
-      return { complete: true, strategy: "wikidata-direct-film-v1", discovered: 2 };
+      return { complete: true, strategy: FILM_DISCOVERY_STRATEGY, discovered: 2 };
     });
     const result = await run({ maxRequests: 1 });
     expect(result.discovered).toBe(2);
     expect(repo.saveSourceState).toHaveBeenCalledWith(expect.objectContaining({ discoveryComplete: true, discoveryCycle: 2 }));
     expect(repo.insertDiscovered).toHaveBeenCalledWith(["Q1", "Q2"]);
+  });
+
+  it("rescans discovery once when the stored strategy predates the current film class list", async () => {
+    repo.ensureSourceAndSeeds.mockResolvedValue({ inserted: 0, state: { ...state(), discoveryStrategy: "wikidata-direct-film-v1" } });
+    discovery.discover.mockResolvedValue({ complete: true, strategy: FILM_DISCOVERY_STRATEGY, discovered: 0 });
+    await run({ maxRequests: 1 });
+    expect(discovery.discover).toHaveBeenCalledTimes(1);
+    expect(repo.saveSourceState).toHaveBeenCalledWith(expect.objectContaining({ discoveryStrategy: FILM_DISCOVERY_STRATEGY }));
   });
 
   it("persists cooldown and never loops a duplicate run during that cooldown", async () => {

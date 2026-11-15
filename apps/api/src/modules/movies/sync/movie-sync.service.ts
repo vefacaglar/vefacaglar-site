@@ -2,7 +2,7 @@ import { inject, injectable } from "tsyringe";
 import { MOVIES_REPOSITORY, WIKIDATA_ENTITY_CLIENT } from "../movies.tokens";
 import type { IMoviesRepository, MovieCandidate } from "../movies.repository.interface";
 import type { EntityLabels, IWikidataEntityClient, NormalizedMovie } from "../import/movie-source.types";
-import { MOVIE_DISCOVERY_CLIENT, type IFilmDiscoveryClient } from "../import/wikidata-discovery.types";
+import { FILM_DISCOVERY_STRATEGY, MOVIE_DISCOVERY_CLIENT, type IFilmDiscoveryClient } from "../import/wikidata-discovery.types";
 import { normalizeMovie, supportingQids } from "../import/wikidata-normalizer";
 
 const DAY = 86_400_000;
@@ -129,7 +129,8 @@ export class MovieSyncService {
       recognitionRemaining -= processed;
       if (!processed) break;
     }
-    const discoveryDue = !state.discoveryComplete || !state.nextDiscoveryAt || state.nextDiscoveryAt <= now();
+    // A stored strategy from an older class list forces one immediate rescan instead of waiting for the daily window.
+    const discoveryDue = !state.discoveryComplete || state.discoveryStrategy !== FILM_DISCOVERY_STRATEGY || !state.nextDiscoveryAt || state.nextDiscoveryAt <= now();
     if (discoveryDue && room() && await allowRequest()) {
       result.requests++;
       let projection;
