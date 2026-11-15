@@ -50,7 +50,7 @@ export class MovieSyncService {
       result.nextRunAt = state.cooldownUntil.toISOString();
       result.discoveryComplete = state.discoveryComplete;
       result.durationMs = Date.now() - started;
-      // A duplicate/manual run during the same cooldown does not spawn a chain.
+      // A duplicate/manual run during the same cooldown yields without provider requests.
       return result;
     }
     const allowRequest = async () => {
@@ -188,7 +188,7 @@ export class MovieSyncService {
     if (successfulRequest && !providerStopped) await save({ cooldownUntil: null, failureCount: 0, lastSuccessAt: now() });
     result.discoveryComplete = state.discoveryComplete;
     if (providerStopped) {
-      // Stop automatic retry chains after three consecutive unavailable windows. Daily runs can retry later.
+      // Record the cooldown so this run yields and a later scheduled run can retry.
       result.hasMore = state.failureCount <= 3;
       result.nextRunAt = state.cooldownUntil?.toISOString() ?? null;
     } else {

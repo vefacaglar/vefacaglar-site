@@ -5,18 +5,18 @@ dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 import { container } from "../container";
 import { SyncMoviesHandler } from "../modules/movies/sync/sync.handler";
 async function main() {
-  console.log("[catalog:movies] starting bounded Wikidata synchronization");
+  console.log("[catalog:movies] starting Wikidata synchronization");
   const heartbeat = setInterval(() => console.log("[catalog:movies] working"), 30_000);
   try {
-    const result = await container.resolve(SyncMoviesHandler).handle();
-    // Whitelist numeric counters so the dashboard can show a useful summary
-    // without forwarding provider bodies or relying on redacted JSON output.
-    const counters = [["discovered", result.discovered], ["hydrated", result.hydrated],
-      ["refreshed", result.refreshed], ["failed", result.failed], ["labels checked", result.labelsChecked],
-      ["source requests", result.requests]] as const;
-    console.log(`[catalog:movies] finished: ${counters.map(([label, value]) =>
-      `${label}: ${Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0}`).join(", ")}; more work: ${result.hasMore ? "yes" : "no"}`);
-    console.log(`[catalog:movies] result ${JSON.stringify(result)}`);
+    const reason = await container.resolve(SyncMoviesHandler).handleRun((result, window) => {
+      // Whitelist numeric counters so provider bodies never reach the dashboard.
+      const counters = [["discovered", result.discovered], ["hydrated", result.hydrated],
+        ["refreshed", result.refreshed], ["failed", result.failed], ["labels checked", result.labelsChecked],
+        ["source requests", result.requests]] as const;
+      console.log(`[catalog:movies] window ${window}: ${counters.map(([label, value]) =>
+        `${label}: ${Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0}`).join(", ")}; more work: ${result.hasMore ? "yes" : "no"}`);
+    });
+    console.log(`[catalog:movies] finished: ${reason.replace("_", " ")}`);
   } finally { clearInterval(heartbeat); }
   process.exit(0);
 }

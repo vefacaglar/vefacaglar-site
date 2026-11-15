@@ -68,8 +68,8 @@ impl JobHandler for CatalogMoviesHandler {
     }
 }
 
-/// Only this fixed movie CLI may request a continuation. No command/type/payload
-/// may be supplied by the subprocess. Lack of committed progress ends the chain.
+/// Protocol for the fixed English-title CLI continuation. No command, type, or
+/// payload may be supplied by the subprocess. Lack of progress ends the chain.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SyncResult {

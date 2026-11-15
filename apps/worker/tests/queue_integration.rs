@@ -121,6 +121,33 @@ async fn claim_checkpoint_fail_reap_cycle() {
 }
 
 #[tokio::test]
+async fn movie_sync_finishes_the_original_job_without_a_successor() {
+    let _fixture = QUEUE_FIXTURE.lock().await;
+    let Some(pool) = pool().await else {
+        eprintln!("WORKER_TEST_DATABASE_URL not set; skipping movie sync integration");
+        return;
+    };
+    let registered_id = format!("test.movies.single.{}", Uuid::new_v4());
+    let worker_id = format!("test-movies-worker-{}", Uuid::new_v4());
+    sqlx::query("INSERT INTO recurring_jobs (id, type, cron) VALUES ($1, 'catalog.movies.sync', NULL)")
+        .bind(&registered_id).execute(&pool).await.unwrap();
+    let original: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,status,payload,concurrency_key,recurring_job_id,locked_by,heartbeat_at,locked_at,started_at,attempts) VALUES ('catalog.movies.sync','running','{}','catalog.movies',$1,$2,now(),now(),now(),1) RETURNING id")
+        .bind(&registered_id).bind(&worker_id).fetch_one(&pool).await.unwrap();
+    assert!(!queue::mark_succeeded_with_continuation(&pool, original, &worker_id, "unexpected", chrono::Utc::now()).await.unwrap());
+    assert!(queue::mark_succeeded(&pool, original, &worker_id, "finished").await.unwrap());
+    let rows: Vec<(Uuid, String)> = sqlx::query_as("SELECT id,status FROM jobs WHERE recurring_job_id=$1")
+        .bind(&registered_id).fetch_all(&pool).await.unwrap();
+    assert_eq!(rows, vec![(original, "succeeded".to_owned())]);
+    let late_cancel: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,status,payload,concurrency_key,recurring_job_id,locked_by,heartbeat_at,locked_at,started_at,attempts,cancel_requested) VALUES ('catalog.movies.sync','running','{}','catalog.movies',$1,$2,now(),now(),now(),1,true) RETURNING id")
+        .bind(&registered_id).bind(&worker_id).fetch_one(&pool).await.unwrap();
+    assert!(queue::mark_succeeded(&pool, late_cancel, &worker_id, "finished").await.unwrap());
+    let status: String = sqlx::query_scalar("SELECT status FROM jobs WHERE id=$1").bind(late_cancel).fetch_one(&pool).await.unwrap();
+    assert_eq!(status, "cancelled");
+    sqlx::query("DELETE FROM jobs WHERE recurring_job_id=$1").bind(&registered_id).execute(&pool).await.unwrap();
+    sqlx::query("DELETE FROM recurring_jobs WHERE id=$1").bind(&registered_id).execute(&pool).await.unwrap();
+}
+
+#[tokio::test]
 async fn movie_continuation_is_atomic_unique_and_obeys_late_cancellation() {
     let _fixture = QUEUE_FIXTURE.lock().await;
     let Some(pool) = pool().await else {
@@ -130,14 +157,14 @@ async fn movie_continuation_is_atomic_unique_and_obeys_late_cancellation() {
     let registered_id = format!("test.movies.{}", Uuid::new_v4());
     let worker_id = format!("test-movies-worker-{}", Uuid::new_v4());
     sqlx::query(
-        "INSERT INTO recurring_jobs (id, type, cron) VALUES ($1, 'catalog.movies.sync', NULL)",
+        "INSERT INTO recurring_jobs (id, type, cron) VALUES ($1, 'catalog.movies.english_titles', NULL)",
     )
     .bind(&registered_id)
     .execute(&pool)
     .await
     .unwrap();
     let payload = json!({"fixture": "preserve original payload"});
-    let original: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,status,payload,concurrency_key,recurring_job_id,max_attempts,locked_by,heartbeat_at,locked_at,started_at,attempts) VALUES ('catalog.movies.sync','running',$1,'catalog.movies',$2,5,$3,now(),now(),now(),1) RETURNING id")
+    let original: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,status,payload,concurrency_key,recurring_job_id,max_attempts,locked_by,heartbeat_at,locked_at,started_at,attempts) VALUES ('catalog.movies.english_titles','running',$1,'catalog.movies.english_titles',$2,5,$3,now(),now(),now(),1) RETURNING id")
         .bind(&payload).bind(&registered_id).bind(&worker_id).fetch_one(&pool).await.unwrap();
     let at = chrono::Utc::now() + chrono::Duration::minutes(2);
     assert!(
@@ -174,9 +201,9 @@ async fn movie_continuation_is_atomic_unique_and_obeys_late_cancellation() {
         .bind(&registered_id).bind(original).fetch_all(&pool).await.unwrap();
     assert_eq!(successors.len(), 1);
     let (successor, kind, next_payload, key, max_attempts, run_at) = &successors[0];
-    assert_eq!(kind, "catalog.movies.sync");
+    assert_eq!(kind, "catalog.movies.english_titles");
     assert_eq!(next_payload, &payload);
-    assert_eq!(key.as_deref(), Some("catalog.movies"));
+    assert_eq!(key.as_deref(), Some("catalog.movies.english_titles"));
     assert_eq!(*max_attempts, 5);
     assert!((*run_at - at).num_milliseconds().abs() < 2);
     // Force a rollback after the terminal UPDATE by violating a successor check.

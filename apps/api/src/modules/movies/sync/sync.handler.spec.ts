@@ -278,3 +278,54 @@ describe("shared Wikidata cooldown during a fact window", () => {
     expect(repo.saveSourceState).not.toHaveBeenCalledWith(expect.objectContaining({ cooldownUntil: null }));
   });
 });
+
+describe("single movie sync run", () => {
+  const windowResult = (changes: Record<string, unknown> = {}) => ({
+    discovered: 0, hydrated: 1, refreshed: 0, failed: 0, imdbConflicts: 0,
+    labelsChecked: 0, postersChecked: 0, postersUpdated: 0, posterFailures: 0,
+    requests: 1, discoveryComplete: true, durationMs: 1, hasMore: true,
+    progressMade: true, nextRunAt: null, ...changes,
+  });
+  const handlerWith = (synchronize: ReturnType<typeof vi.fn>) =>
+    new SyncMoviesHandler({ synchronize } as unknown as MovieSyncService);
+
+  it("processes successive windows in one handler invocation and reports each one", async () => {
+    const synchronize = vi.fn().mockResolvedValueOnce(windowResult()).mockResolvedValueOnce(windowResult({ hasMore: false }));
+    const report = vi.fn();
+    expect(await handlerWith(synchronize).handleRun(report)).toBe("complete");
+    expect(synchronize).toHaveBeenCalledTimes(2);
+    expect(report.mock.calls.map((call) => call[1])).toEqual([1, 2]);
+  });
+
+  it("yields on cooldown or lack of progress even when work remains", async () => {
+    for (const [result, reason] of [
+      [windowResult({ nextRunAt: "2099-01-01T00:00:00.000Z" }), "cooldown"],
+      [windowResult({ progressMade: false }), "no_progress"],
+    ] as const) {
+      const synchronize = vi.fn().mockResolvedValue(result);
+      expect(await handlerWith(synchronize).handleRun()).toBe(reason);
+      expect(synchronize).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("stops at the window-count safety cap", async () => {
+    const synchronize = vi.fn().mockResolvedValue(windowResult());
+    expect(await handlerWith(synchronize).handleRun()).toBe("safety_limit");
+    expect(synchronize).toHaveBeenCalledTimes(100);
+  });
+
+  it("does not start another window after the runtime limit", async () => {
+    const now = vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(42 * 60_000);
+    try {
+      const synchronize = vi.fn().mockResolvedValue(windowResult());
+      expect(await handlerWith(synchronize).handleRun()).toBe("safety_limit");
+      expect(synchronize).toHaveBeenCalledTimes(1);
+    } finally { now.mockRestore(); }
+  });
+
+  it("propagates failures instead of creating another window", async () => {
+    const synchronize = vi.fn().mockRejectedValue(new Error("database failure"));
+    await expect(handlerWith(synchronize).handleRun()).rejects.toThrow("database failure");
+    expect(synchronize).toHaveBeenCalledTimes(1);
+  });
+});

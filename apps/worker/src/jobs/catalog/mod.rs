@@ -33,6 +33,8 @@ struct CliSpec {
     phase: &'static str,
     interrupted: &'static str,
     deadline: Option<Duration>,
+    /// Yield without retrying when the movie run reaches its outer safety cap.
+    deadline_yields: bool,
     /// Only fixed movie CLIs may request a bounded continuation through
     /// `<prefix>result {...}`; every other CLI's output is plain log text.
     continues: bool,
@@ -43,6 +45,7 @@ const POPULARITY: CliSpec = CliSpec {
     phase: "refreshing game popularity",
     interrupted: "Catalog refresh stopped; its next attempt will safely rerun the full refresh",
     deadline: None,
+    deadline_yields: false,
     continues: false,
 };
 const MOVIES: CliSpec = CliSpec {
@@ -50,8 +53,9 @@ const MOVIES: CliSpec = CliSpec {
     label: "Movie catalog",
     phase: "synchronizing movie catalog",
     interrupted: "Movie sync stopped; durable source progress will resume on its next run",
-    deadline: Some(Duration::from_secs(210)),
-    continues: true,
+    deadline: Some(Duration::from_secs(50 * 60)),
+    deadline_yields: true,
+    continues: false,
 };
 const MOVIE_POPULARITY: CliSpec = CliSpec {
     prefix: "[catalog:movie-interest] ",
@@ -59,6 +63,7 @@ const MOVIE_POPULARITY: CliSpec = CliSpec {
     phase: "refreshing movie Wikipedia interest",
     interrupted: "Movie interest refresh stopped; the previous snapshot remains available",
     deadline: Some(Duration::from_secs(150)),
+    deadline_yields: false,
     continues: false,
 };
 const MOVIE_TITLES: CliSpec = CliSpec {
@@ -67,6 +72,7 @@ const MOVIE_TITLES: CliSpec = CliSpec {
     phase: "correcting movie titles to English",
     interrupted: "Movie title correction stopped; its durable cursor resumes on the next run",
     deadline: Some(Duration::from_secs(210)),
+    deadline_yields: false,
     continues: true,
 };
 
@@ -236,6 +242,10 @@ async fn run_command_with_spec(
             _ = poll.tick() => {
                 if io.should_stop() { break Ok(JobOutcome::Interrupted); }
                 if spec.deadline.is_some_and(|limit| started.elapsed() >= limit) {
+                    if spec.deadline_yields {
+                        io.log(LogLevel::Info, "Movie sync reached its runtime safety limit; committed progress resumes on the next run").await;
+                        break Ok(JobOutcome::Completed);
+                    }
                     break Err(anyhow::anyhow!("{} exceeded its bounded runtime", spec.label));
                 }
             }

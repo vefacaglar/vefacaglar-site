@@ -283,19 +283,29 @@ pub async fn mark_succeeded(
     worker_id: &str,
     log: &str,
 ) -> sqlx::Result<bool> {
-    transition(
-        pool,
-        job_id,
-        worker_id,
-        "status = 'succeeded', finished_at = now(), checkpoint = NULL, error = NULL, cancel_requested = false",
-        Some((LogLevel::Info, log)),
-    )
-    .await
+    let mut tx = pool.begin().await?;
+    // Preserve a movie cancellation that arrives between the final heartbeat
+    // and process exit, as the former continuation finalizer already did.
+    let status: Option<String> = sqlx::query_scalar(&format!(
+        "UPDATE jobs SET status = CASE WHEN type = 'catalog.movies.sync' AND cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
+         finished_at = now(), checkpoint = NULL, error = NULL, cancel_requested = false, updated_at = now() \
+         WHERE {HELD_BY_ME} RETURNING status"
+    ))
+    .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;
+    let Some(status) = status else {
+        tx.rollback().await?;
+        return Ok(false);
+    };
+    insert_log_tx(&mut tx, job_id, if status == "cancelled" { LogLevel::Warn } else { LogLevel::Info },
+        if status == "cancelled" { "cancelled before movie sync finalization" } else { log }).await?;
+    notify_tx(&mut tx, JOB_EVENTS_CHANNEL, job_id).await?;
+    tx.commit().await?;
+    Ok(true)
 }
 
-/// Movie bootstrap batches use normal new job IDs, without consuming retries or
-/// keeping a child alive indefinitely. The held row is terminal and its successor
-/// exists in the same commit; retrying finalization cannot enqueue a second one.
+/// Continuing title and search batches use new job IDs without consuming retries.
+/// The held row is terminal and its successor exists in the same commit;
+/// retrying finalization cannot enqueue a second one.
 #[derive(sqlx::FromRow)]
 struct ContinuationRow {
     job_type: String,
@@ -320,7 +330,7 @@ pub async fn mark_succeeded_with_continuation(
     let row: Option<ContinuationRow> = sqlx::query_as(&format!(
         "UPDATE jobs SET status = CASE WHEN cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
          finished_at = now(), checkpoint = NULL, error = NULL, updated_at = now() \
-         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.sync' AND concurrency_key = 'catalog.movies') OR (type = 'catalog.movies.english_titles' AND concurrency_key = 'catalog.movies.english_titles') OR (type = 'search.movies.sync' AND concurrency_key = 'search.index')) \
+         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.english_titles' AND concurrency_key = 'catalog.movies.english_titles') OR (type = 'search.movies.sync' AND concurrency_key = 'search.index')) \
          RETURNING type AS job_type, payload, concurrency_key, recurring_job_id, max_attempts, created_by, cancel_requested"
     ))
     .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;

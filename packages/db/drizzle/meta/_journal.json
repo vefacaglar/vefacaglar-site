@@ -316,6 +316,13 @@
       "when": 1794682260355,
       "tag": "0044_schedule_search_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794750534940,
+      "tag": "0045_schedule_movies_hourly",
+      "breakpoints": true
     }
   ]
 }
