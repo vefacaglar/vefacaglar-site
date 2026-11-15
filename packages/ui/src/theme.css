@@ -1,6 +1,6 @@
 /* Canonical palette and typeface tokens. The host loads its preferred font source. */
 :root {
-  --bg: #11100f; /* Subtle warm charcoal site background */
+  --bg: #23211f; /* Subtle warm charcoal site background */
   --text: #eaeaea; /* Crisp, premium off-white text for supreme contrast */
   --text-heading: #ffffff; /* Brilliant pure white headings */
   --muted: #8e8e8e; /* Muted off-white/light-grey */
@@ -18,7 +18,7 @@
 /* Graphite mode follows the shell onto the root for backgrounds and modal dialogs. */
 :root:has([data-ui-theme="graphite"]),
 [data-ui-theme="graphite"] {
-  --bg: #11100f;            /* subtle warm charcoal ground */
+  --bg: #23211f;            /* subtle warm charcoal ground */
   --surface: #0b0b0b;       /* subtle raised areas: game header, profile header, panels */
   --surface-2: #161616;     /* controls, inputs, plates, covers before they load */
   --text: #eaeaea;          /* crisp off-white body text */
