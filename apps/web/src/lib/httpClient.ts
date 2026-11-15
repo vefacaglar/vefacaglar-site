@@ -1,5 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 import { getActiveLanguage } from "./lang";
+import { VISITOR_IP_HEADER, visitorIp } from "./visitorIp";
 
 const API_URL = process.env.API_URL;
 
@@ -34,14 +35,9 @@ class HttpClient {
       try {
         const { headers: nextHeaders } = require("next/headers");
         const list = await nextHeaders();
-        const forwardedFor = list.get("x-forwarded-for");
-        const realIp = list.get("x-real-ip");
-
-        if (forwardedFor && !headers.has("x-forwarded-for")) {
-          headers.set("x-forwarded-for", forwardedFor);
-        } else if (realIp && !headers.has("x-forwarded-for")) {
-          headers.set("x-forwarded-for", realIp);
-        }
+        // Lets the API rate-limit per visitor; Caddy replaces X-Forwarded-For on the API route.
+        const visitor = visitorIp(list.get("x-forwarded-for"), list.get("x-real-ip"), list.get("cf-connecting-ip"));
+        if (visitor) headers.set(VISITOR_IP_HEADER, visitor);
       } catch (e) {
         unstable_rethrow(e);
       }

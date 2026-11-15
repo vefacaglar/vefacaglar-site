@@ -29,6 +29,7 @@ import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
 import { HttpError } from "./shared/http-errors";
 import { serializeRequestForLog } from "./shared/log-redaction";
+import { INTERNAL_RANGES, rateLimitKey } from "./shared/rate-limit-key";
 import { installApplicationLogs } from "./shared/application-logs/application-logs";
 import fastifyMultipart from "@fastify/multipart";
 
@@ -39,7 +40,9 @@ export const app = Fastify({
   logger: { serializers: { req: serializeRequestForLog } },
   requestIdHeader: false,
   genReqId: () => randomUUID(),
-  trustProxy: true,
+  // Only Caddy (loopback or the Docker network) is a trusted hop, so clients cannot
+  // pick their own address with X-Forwarded-For. Vercel's own proxy sets it there.
+  trustProxy: process.env.VERCEL ? true : INTERNAL_RANGES,
   bodyLimit: 10 * 1024 * 1024,
 });
 
@@ -71,10 +74,12 @@ app.register(fastifyMultipart, {
 });
 
 // Fastify keeps counters in memory for the lifetime of the API process.
+// Keyed per visitor: web SSR requests carry the visitor they render for.
 app.register(fastifyRateLimit, {
   global: true,
   max: 100,
   timeWindow: "1 minute",
+  keyGenerator: rateLimitKey,
 });
 
 // Swagger — disabled in production to avoid exposing the admin API surface

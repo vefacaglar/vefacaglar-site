@@ -59,6 +59,10 @@ declare module "fastify" {
 
 const TAGS = ["Jobs"];
 const SECURITY = [{ bearerAuth: [] }];
+// The jobs dashboard auto-refreshes every few seconds with one list call per status
+// count. Its polled reads get their own per-route counters so they neither trip nor
+// drain the global per-visitor budget.
+const DASHBOARD_POLL_RATE_LIMIT = { max: 600, timeWindow: "1 minute" };
 
 export async function jobsRoutes(app: FastifyInstance) {
   const listHandler = container.resolve(ListJobsHandler);
@@ -120,6 +124,7 @@ export async function jobsRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: ListJobsQuery }>("/dashboard", {
     preHandler: app.requireAdmin,
+    config: { rateLimit: DASHBOARD_POLL_RATE_LIMIT },
     schema: {
       description: "List background jobs (newest first)",
       tags: TAGS,
@@ -142,6 +147,7 @@ export async function jobsRoutes(app: FastifyInstance) {
 
   app.get("/dashboard/recurring", {
     preHandler: app.requireAdmin,
+    config: { rateLimit: DASHBOARD_POLL_RATE_LIMIT },
     schema: {
       description: "List recurring job definitions",
       tags: TAGS,
@@ -175,6 +181,7 @@ export async function jobsRoutes(app: FastifyInstance) {
 
   app.get("/dashboard/workers", {
     preHandler: app.requireAdmin,
+    config: { rateLimit: DASHBOARD_POLL_RATE_LIMIT },
     schema: {
       description: "List registered workers and whether they are online",
       tags: TAGS,
@@ -185,6 +192,7 @@ export async function jobsRoutes(app: FastifyInstance) {
 
   app.get<{ Params: GetJobParams; Querystring: GetJobQuery }>("/dashboard/:id", {
     preHandler: app.requireAdmin,
+    config: { rateLimit: DASHBOARD_POLL_RATE_LIMIT },
     schema: {
       description: "Get a job with its logs after `afterLogId` (max 200, ascending)",
       tags: TAGS,

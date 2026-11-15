@@ -26,6 +26,7 @@ import { OidcExchangeHandler } from "./oidc/exchange/exchange.handler";
 import { getAuthMode, AuthMode } from "./auth.mode";
 import { NotFoundError } from "../../shared/http-errors";
 import { ErrorResponseSchema } from "../../shared/error-schema";
+import { rateLimitKey } from "../../shared/rate-limit-key";
 import { container } from "../../container";
 
 function onlyInAuthMode(mode: AuthMode) {
@@ -52,7 +53,7 @@ export async function authRoutes(app: FastifyInstance) {
         timeWindow: "15 minutes",
         keyGenerator: (request) => {
           const email = (request.body as LoginRequest | undefined)?.email || "";
-          return `${request.ip}-${email}`;
+          return `${rateLimitKey(request)}-${email}`;
         },
       },
     },

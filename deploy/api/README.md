@@ -64,6 +64,13 @@ user. Each release has its own private environment. A failed rollout leaves the 
 release running; a failed traffic check restores the previous Caddy route.
 
 Rate limit counters and the search circuit breaker are kept in each API process.
+Limits are per visitor: the API trusts `X-Forwarded-For` only from loopback and
+private (Docker) addresses, i.e. Caddy, and web SSR requests reaching it from such an
+address name their visitor in `X-Visitor-IP`. A client on the internet can set neither.
+The web is behind Cloudflare, so it takes the visitor from `CF-Connecting-IP` (falling
+back to the last `X-Forwarded-For` entry, then `X-Real-IP`). A client that reaches the
+web origin directly, bypassing Cloudflare, can spoof `CF-Connecting-IP`; at worst it
+picks its own rate-limit key and evades its own limit, which is accepted here.
 
 ## GitHub variables and deployment
 
