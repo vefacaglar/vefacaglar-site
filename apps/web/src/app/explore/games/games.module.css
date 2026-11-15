@@ -64,3 +64,7 @@ nav.pagination > div {
   font-size: 15px;
   color: var(--muted);
 }
+
+.resultsSection:not(:last-child) {
+  margin-bottom: 40px;
+}

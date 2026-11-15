@@ -4,7 +4,7 @@ import { getDictionary } from "../../../dictionaries";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import { libraryMetadata } from "../../../lib/librarySeo";
-import { getPublicMovies, searchMoviePeople } from "../../../lib/movies";
+import { MOVIE_SUGGESTION_GROUPS, getPublicMovies, searchMoviePeople } from "../../../lib/movies";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
 import MovieSearch from "../../../components/movies/MovieSearch";
 import Pagination from "../../components/Pagination";
@@ -20,13 +20,14 @@ export async function generateMetadata() {
   });
 }
 
-/** The people section is auxiliary: if it fails, the film results still render. */
+/** The people section is auxiliary: if it fails, the film results still render in the default order. */
 async function matchingPeople(query: string) {
   try {
-    return (await searchMoviePeople(query))?.items ?? [];
+    const result = await searchMoviePeople(query);
+    return { people: result?.items ?? [], order: result?.order ?? MOVIE_SUGGESTION_GROUPS };
   } catch (error) {
     unstable_rethrow(error);
-    return [];
+    return { people: [], order: MOVIE_SUGGESTION_GROUPS };
   }
 }
 
@@ -38,29 +39,31 @@ export default async function Movies({ searchParams }: {
   const query = params.q?.trim() || "";
   const lang = await getActiveLanguage();
   const dict = getDictionary(lang);
-  const [data, people] = await Promise.all([
+  const [data, matches] = await Promise.all([
     getPublicMovies(page, query || undefined),
-    query && page === 1 ? matchingPeople(query) : Promise.resolve([]),
+    query && page === 1 ? matchingPeople(query) : Promise.resolve({ people: [], order: MOVIE_SUGGESTION_GROUPS }),
   ]);
+  const { people } = matches;
+  const peopleSection = people.length > 0 && (
+    <section key="people" className={styles.section} aria-labelledby="movie-search-people">
+      <h2 id="movie-search-people" className={styles.sectionTitle}>{dict.movies_search_people}</h2>
+      <MoviePeopleList people={people} lang={lang} />
+    </section>
+  );
+  const titlesSection = data?.items.length ? (
+    <section key="movies" className={styles.section} aria-labelledby={people.length ? "movie-search-titles" : undefined}>
+      {people.length > 0 && <h2 id="movie-search-titles" className={styles.sectionTitle}>{dict.movies_search_titles}</h2>}
+      <MovieCards movies={data.items} lang={lang} />
+      <Pagination currentPage={page} totalPages={data.totalPages} className={styles.pagination}
+        labels={{ previous: dict.library_previous, next: dict.library_next, pageOf: dict.library_page_of }} />
+    </section>
+  ) : !people.length && <p key="movies" className={styles.empty}>{query ? dict.movies_no_results : dict.movies_catalog_empty}</p>;
   return (
     <div>
       <LibraryMasthead title={dict.movies} subtitle={dict.movies_catalog_subtitle}>
         <MovieSearch initialQuery={query} placeholder={dict.movies_search_placeholder} />
       </LibraryMasthead>
-      {people.length > 0 && (
-        <section className={styles.section} aria-labelledby="movie-search-people">
-          <h2 id="movie-search-people" className={styles.sectionTitle}>{dict.movies_search_people}</h2>
-          <MoviePeopleList people={people} lang={lang} />
-        </section>
-      )}
-      {data?.items.length ? (
-        <section className={styles.section} aria-labelledby={people.length ? "movie-search-titles" : undefined}>
-          {people.length > 0 && <h2 id="movie-search-titles" className={styles.sectionTitle}>{dict.movies_search_titles}</h2>}
-          <MovieCards movies={data.items} lang={lang} />
-          <Pagination currentPage={page} totalPages={data.totalPages} className={styles.pagination}
-            labels={{ previous: dict.library_previous, next: dict.library_next, pageOf: dict.library_page_of }} />
-        </section>
-      ) : !people.length && <p className={styles.empty}>{query ? dict.movies_no_results : dict.movies_catalog_empty}</p>}
+      {matches.order.map((group) => group === "people" ? peopleSection : titlesSection)}
     </div>
   );
 }

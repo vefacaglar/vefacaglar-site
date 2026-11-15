@@ -2,6 +2,7 @@ import { cache } from "react";
 import { httpClient } from "./httpClient";
 import { formatDate, parseDateKey } from "./formatDate";
 import { moviePersonPath } from "./movieSearch";
+import { suggestionGroupOrder } from "./suggestionGroupOrder";
 
 export interface MovieCard {
   slug: string;
@@ -132,8 +133,12 @@ export function getMovieSuggestions(query: string, init?: { signal?: AbortSignal
   return movieJson<MovieSuggestions>(`/api/movies/suggest?${params}`, init);
 }
 
-/** People section of the search results page. */
-export const searchMoviePeople = cache((query: string) => {
+/** Default section order of the results page (name group before titles). */
+export const MOVIE_SUGGESTION_GROUPS: MovieSuggestionGroup[] = ["people", "movies"];
+
+/** People section of the search results page, with the best-first order of the people and titles sections. */
+export const searchMoviePeople = cache(async (query: string) => {
   const params = new URLSearchParams({ q: query, limit: "12" });
-  return movieJson<{ items: MoviePersonSummary[] }>(`/api/movies/people?${params}`);
+  const data = await movieJson<{ items: MoviePersonSummary[]; order?: unknown }>(`/api/movies/people?${params}`);
+  return data && { items: data.items, order: suggestionGroupOrder(data.order, MOVIE_SUGGESTION_GROUPS) };
 });

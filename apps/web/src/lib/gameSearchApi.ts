@@ -4,7 +4,7 @@ import {
   EMPTY_GAME_SUGGESTIONS,
   gameSearchTerm,
   parseGameSuggestions,
-  type GameSearchCompanies,
+  GAME_SUGGESTION_GROUPS,
   type GameSuggestions,
 } from "./gameSearch";
 
@@ -17,19 +17,22 @@ export async function fetchGameSuggestions(q: string | null | undefined, signal?
   return parseGameSuggestions(await response.json());
 }
 
+/** Developers and publishers matching a games search, plus the best-first order of those sections and the games grid. */
+export type GameSearchSections = Pick<GameSuggestions, "developers" | "publishers" | "order">;
+
 /**
- * Developers and publishers matching a games search, shown above the grid.
- * Request-scoped only; a failure hides the sections instead of failing the page.
+ * Developers and publishers matching a games search, with the section order.
+ * Request-scoped only; a failure hides the company sections and keeps the default order.
  */
-export const getGameSearchCompanies = cache(async (q: string): Promise<GameSearchCompanies> => {
-  const empty = { developers: [], publishers: [] };
+export const getGameSearchCompanies = cache(async (q: string): Promise<GameSearchSections> => {
+  const empty = { developers: [], publishers: [], order: GAME_SUGGESTION_GROUPS };
   const term = gameSearchTerm(q);
   if (!term) return empty;
   try {
     const response = await httpClient.get(`/api/games/search/companies?${new URLSearchParams({ q: term, limit: "12" })}`);
     if (!response.ok) return empty;
-    const { developers, publishers } = parseGameSuggestions(await response.json());
-    return { developers, publishers };
+    const { developers, publishers, order } = parseGameSuggestions(await response.json());
+    return { developers, publishers, order };
   } catch {
     return empty;
   }

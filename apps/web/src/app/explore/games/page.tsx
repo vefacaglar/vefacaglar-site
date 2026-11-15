@@ -7,6 +7,7 @@ import { getPublicGames } from "../../../lib/data";
 import Pagination from "../../components/Pagination";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
 import GameSearchAutocomplete from "../../../components/library/GameSearchAutocomplete";
+import { GAME_SUGGESTION_GROUPS } from "../../../lib/gameSearch";
 import { getGameSearchCompanies } from "../../../lib/gameSearchApi";
 import GameGrid, { type GameCardItem } from "./GameGrid";
 import GameSearchCompanies from "./GameSearchCompanies";
@@ -39,6 +40,8 @@ export default async function Games(props: GamesProps) {
     query && page === 1 ? getGameSearchCompanies(query) : null,
   ]);
   const games = (data?.items ?? []) as GameCardItem[];
+  // Sections render best match first; without a company search the grid is the only section.
+  const order = companies ? companies.order : GAME_SUGGESTION_GROUPS.filter((group) => group === "games");
   const hasCompanies = !!companies && (companies.developers.length > 0 || companies.publishers.length > 0);
 
   return (
@@ -47,20 +50,26 @@ export default async function Games(props: GamesProps) {
         <GameSearchAutocomplete initialQuery={query} placeholder={dict.games_search_placeholder} />
       </LibraryMasthead>
 
-      {companies && <GameSearchCompanies companies={companies} lang={lang} />}
-
-      {games.length === 0 ? (
-        <p className={styles.noResults}>{query && page === 1 && !hasCompanies ? dict.games_search_no_results : dict.no_games}</p>
-      ) : (
-        <>
-          <GameGrid games={games} lang={lang} />
-          <Pagination
-            currentPage={page}
-            totalPages={data?.totalPages ?? 0}
-            className={styles.pagination}
-            labels={{ previous: dict.library_previous, next: dict.library_next, pageOf: dict.library_page_of }}
-          />
-        </>
+      {order.map((group) =>
+        group === "games" ? (
+          <section key={group} className={styles.resultsSection}>
+            {games.length === 0 ? (
+              <p className={styles.noResults}>{query && page === 1 && !hasCompanies ? dict.games_search_no_results : dict.no_games}</p>
+            ) : (
+              <>
+                <GameGrid games={games} lang={lang} />
+                <Pagination
+                  currentPage={page}
+                  totalPages={data?.totalPages ?? 0}
+                  className={styles.pagination}
+                  labels={{ previous: dict.library_previous, next: dict.library_next, pageOf: dict.library_page_of }}
+                />
+              </>
+            )}
+          </section>
+        ) : (
+          <GameSearchCompanies key={group} group={group} items={companies?.[group] ?? []} lang={lang} />
+        ),
       )}
     </div>
   );

@@ -13,8 +13,13 @@ export const CompanyMatchSchema = Type.Object({
 });
 export type CompanyMatch = Static<typeof CompanyMatchSchema>;
 
+export const SearchCompaniesGroupSchema = Type.Union([Type.Literal("developers"), Type.Literal("publishers"), Type.Literal("games")]);
+export type SearchCompaniesGroup = Static<typeof SearchCompaniesGroupSchema>;
+
 export const SearchCompaniesResponseSchema = Type.Object({
   developers: Type.Array(CompanyMatchSchema),
   publishers: Type.Array(CompanyMatchSchema),
+  /** All three section keys, best-matching first; the results page renders the sections in this order. */
+  order: Type.Array(SearchCompaniesGroupSchema, { minItems: 3, maxItems: 3 }),
 });
 export type SearchCompaniesResponse = Static<typeof SearchCompaniesResponseSchema>;

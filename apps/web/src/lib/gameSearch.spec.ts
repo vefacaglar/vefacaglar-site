@@ -78,7 +78,7 @@ describe("gameSuggestionOptions", () => {
 describe("game search API", () => {
   it("skips the API for unsearchable input", async () => {
     expect(await fetchGameSuggestions("  ")).toEqual({ developers: [], publishers: [], games: [], order: ["developers", "publishers", "games"] });
-    expect(await getGameSearchCompanies("--")).toEqual({ developers: [], publishers: [] });
+    expect(await getGameSearchCompanies("--")).toEqual({ developers: [], publishers: [], order: ["developers", "publishers", "games"] });
     expect(httpClient.get).not.toHaveBeenCalled();
   });
 
@@ -95,15 +95,15 @@ describe("game search API", () => {
 
   it("hides company sections when the API fails", async () => {
     vi.mocked(httpClient.get).mockResolvedValue(response({}, 503));
-    expect(await getGameSearchCompanies("sony")).toEqual({ developers: [], publishers: [] });
+    expect(await getGameSearchCompanies("sony")).toEqual({ developers: [], publishers: [], order: ["developers", "publishers", "games"] });
     vi.mocked(httpClient.get).mockRejectedValue(new Error("down"));
-    expect(await getGameSearchCompanies("sony")).toEqual({ developers: [], publishers: [] });
+    expect(await getGameSearchCompanies("sony")).toEqual({ developers: [], publishers: [], order: ["developers", "publishers", "games"] });
   });
 
-  it("returns only the company groups", async () => {
+  it("returns the company groups with the API's section order, ignoring game rows", async () => {
     const company = { name: "Sony", slug: "sony", gameCount: 3 };
-    vi.mocked(httpClient.get).mockResolvedValue(response({ developers: [company], publishers: [], games: [{}] }));
-    expect(await getGameSearchCompanies("sony")).toEqual({ developers: [company], publishers: [] });
+    vi.mocked(httpClient.get).mockResolvedValue(response({ developers: [company], publishers: [], games: [{}], order: ["games", "developers", "publishers"] }));
+    expect(await getGameSearchCompanies("sony")).toEqual({ developers: [company], publishers: [], order: ["games", "developers", "publishers"] });
     expect(httpClient.get).toHaveBeenCalledWith("/api/games/search/companies?q=sony&limit=12");
   });
 });

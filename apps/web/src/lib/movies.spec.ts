@@ -18,8 +18,15 @@ describe("movie data requests", () => {
   });
   it("requests the people results section with a fixed limit", async () => {
     vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
-    expect(await searchMoviePeople("Chris Nolan")).toEqual({ items: [] });
+    expect(await searchMoviePeople("Chris Nolan")).toEqual({ items: [], order: ["people", "movies"] });
     expect(httpClient.get).toHaveBeenCalledWith("/api/movies/people?q=Chris+Nolan&limit=12");
+  });
+  it("carries the API's section order and falls back to people first when it is missing or invalid", async () => {
+    const get = (order: unknown) => vi.mocked(httpClient.get).mockResolvedValue(new Response(JSON.stringify({ items: [], order }), { status: 200 }));
+    get(["movies", "people"]);
+    expect((await searchMoviePeople("cargo"))?.order).toEqual(["movies", "people"]);
+    get(["movies", "movies"]);
+    expect((await searchMoviePeople("cargo"))?.order).toEqual(["people", "movies"]);
   });
   it("surfaces upstream failures for people and suggestions", async () => {
     vi.mocked(httpClient.get).mockResolvedValue(new Response(null, { status: 503 }));
