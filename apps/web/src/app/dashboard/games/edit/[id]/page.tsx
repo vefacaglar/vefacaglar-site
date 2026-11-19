@@ -25,7 +25,7 @@ export default async function EditGame(
 
   let game: Game | null = null;
   try {
-    const res = await httpClient.get(`/api/catalog/games/${params.id}`, {
+    const res = await httpClient.get(`/api/catalog/games/${encodeURIComponent(params.id)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

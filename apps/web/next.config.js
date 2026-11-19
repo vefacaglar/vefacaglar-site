@@ -43,6 +43,11 @@ const securityHeaders = [
     value: "strict-origin-when-cross-origin",
   },
   {
+    // Deliberately minimal: script-src/style-src would need nonces for Next's inline scripts.
+    key: "Content-Security-Policy",
+    value: "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+  },
+  {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
   },

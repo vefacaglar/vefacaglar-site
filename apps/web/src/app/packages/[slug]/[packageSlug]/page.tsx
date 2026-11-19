@@ -6,6 +6,7 @@ import { localizedAlternates } from "../../../../lib/seo";
 import { getPackageItem } from "../../../../lib/data";
 import MarkdownPreview from "../../../components/MarkdownPreview";
 import styles from "../packagePage.module.css";
+import { safeExternalUrl } from "../../../../lib/safeExternalUrl";
 
 
 export async function generateMetadata(props: { params: Promise<{ slug: string; packageSlug: string }> }) {
@@ -63,22 +64,22 @@ export default async function PackageItemPage(props: { params: Promise<{ slug: s
       <section className={styles.packageList}>
         <h2 className={styles.sectionTitle}>Links</h2>
         <div className={styles.links}>
-          {pkg.nugetUrl && (
-            <a href={pkg.nugetUrl} target="_blank" rel="noopener noreferrer">
+          {safeExternalUrl(pkg.nugetUrl) && (
+            <a href={safeExternalUrl(pkg.nugetUrl)} target="_blank" rel="noopener noreferrer">
               nuget
             </a>
           )}
-          {pkg.npmUrl && (
-            <a href={pkg.npmUrl} target="_blank" rel="noopener noreferrer">
+          {safeExternalUrl(pkg.npmUrl) && (
+            <a href={safeExternalUrl(pkg.npmUrl)} target="_blank" rel="noopener noreferrer">
               npm
             </a>
           )}
-          {pkg.githubUrl && (
-            <a href={pkg.githubUrl} target="_blank" rel="noopener noreferrer">
+          {safeExternalUrl(pkg.githubUrl) && (
+            <a href={safeExternalUrl(pkg.githubUrl)} target="_blank" rel="noopener noreferrer">
               github
             </a>
           )}
-          {!pkg.nugetUrl && !pkg.npmUrl && !pkg.githubUrl && <p className={styles.emptyText}>No package links available.</p>}
+          {!safeExternalUrl(pkg.nugetUrl) && !safeExternalUrl(pkg.npmUrl) && !safeExternalUrl(pkg.githubUrl) && <p className={styles.emptyText}>No package links available.</p>}
         </div>
       </section>
 

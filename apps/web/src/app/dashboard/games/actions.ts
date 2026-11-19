@@ -22,7 +22,7 @@ export async function updateDeveloperAction(
   id: string,
   data: { name?: string; slug?: string; countryCode?: string | null }
 ) {
-  return authedMutation("PUT", `/api/catalog/developers/${id}`, {
+  return authedMutation("PUT", `/api/catalog/developers/${encodeURIComponent(id)}`, {
     body: data,
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to update developer.",
@@ -30,7 +30,7 @@ export async function updateDeveloperAction(
 }
 
 export async function deleteDeveloperAction(id: string) {
-  return authedMutation("DELETE", `/api/catalog/developers/${id}`, {
+  return authedMutation("DELETE", `/api/catalog/developers/${encodeURIComponent(id)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to delete developer.",
   });
@@ -54,7 +54,7 @@ export async function updatePublisherAction(
   id: string,
   data: { name?: string; slug?: string; countryCode?: string | null }
 ) {
-  return authedMutation("PUT", `/api/catalog/publishers/${id}`, {
+  return authedMutation("PUT", `/api/catalog/publishers/${encodeURIComponent(id)}`, {
     body: data,
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to update publisher.",
@@ -62,7 +62,7 @@ export async function updatePublisherAction(
 }
 
 export async function deletePublisherAction(id: string) {
-  return authedMutation("DELETE", `/api/catalog/publishers/${id}`, {
+  return authedMutation("DELETE", `/api/catalog/publishers/${encodeURIComponent(id)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to delete publisher.",
   });
@@ -79,7 +79,7 @@ export async function createGenreAction(data: { name: string; slug: string }) {
 }
 
 export async function updateGenreAction(id: string, data: { name?: string; slug?: string }) {
-  return authedMutation("PUT", `/api/catalog/genres/${id}`, {
+  return authedMutation("PUT", `/api/catalog/genres/${encodeURIComponent(id)}`, {
     body: data,
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to update genre.",
@@ -87,7 +87,7 @@ export async function updateGenreAction(id: string, data: { name?: string; slug?
 }
 
 export async function deleteGenreAction(id: string) {
-  return authedMutation("DELETE", `/api/catalog/genres/${id}`, {
+  return authedMutation("DELETE", `/api/catalog/genres/${encodeURIComponent(id)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to delete genre.",
   });
@@ -104,7 +104,7 @@ export async function createThemeAction(data: { name: string; slug: string }) {
 }
 
 export async function updateThemeAction(id: string, data: { name?: string; slug?: string }) {
-  return authedMutation("PUT", `/api/catalog/themes/${id}`, {
+  return authedMutation("PUT", `/api/catalog/themes/${encodeURIComponent(id)}`, {
     body: data,
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to update theme.",
@@ -112,7 +112,7 @@ export async function updateThemeAction(id: string, data: { name?: string; slug?
 }
 
 export async function deleteThemeAction(id: string) {
-  return authedMutation("DELETE", `/api/catalog/themes/${id}`, {
+  return authedMutation("DELETE", `/api/catalog/themes/${encodeURIComponent(id)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to delete theme.",
   });
@@ -129,7 +129,7 @@ export async function createPlatformAction(data: { name: string; slug: string })
 }
 
 export async function updatePlatformAction(id: string, data: { name?: string; slug?: string }) {
-  return authedMutation("PUT", `/api/catalog/platforms/${id}`, {
+  return authedMutation("PUT", `/api/catalog/platforms/${encodeURIComponent(id)}`, {
     body: data,
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to update platform.",
@@ -137,7 +137,7 @@ export async function updatePlatformAction(id: string, data: { name?: string; sl
 }
 
 export async function deletePlatformAction(id: string) {
-  return authedMutation("DELETE", `/api/catalog/platforms/${id}`, {
+  return authedMutation("DELETE", `/api/catalog/platforms/${encodeURIComponent(id)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to delete platform.",
   });
@@ -176,7 +176,7 @@ export async function updateGameAction(
     releaseDate?: string | null;
   }
 ) {
-  return authedMutation("PUT", `/api/catalog/games/${id}`, {
+  return authedMutation("PUT", `/api/catalog/games/${encodeURIComponent(id)}`, {
     body: data,
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to update game.",
@@ -184,7 +184,7 @@ export async function updateGameAction(
 }
 
 export async function deleteGameAction(id: string) {
-  return authedMutation("DELETE", `/api/catalog/games/${id}`, {
+  return authedMutation("DELETE", `/api/catalog/games/${encodeURIComponent(id)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to delete game.",
   });
@@ -195,14 +195,14 @@ export async function deleteGameAction(id: string) {
 type RelationType = "developers" | "publishers" | "genres" | "platforms" | "themes";
 
 export async function linkGameRelationAction(gameId: string, relationType: RelationType, relationId: string) {
-  return authedMutation("POST", `/api/catalog/games/${gameId}/${relationType}/${relationId}`, {
+  return authedMutation("POST", `/api/catalog/games/${encodeURIComponent(gameId)}/${encodeURIComponent(relationType)}/${encodeURIComponent(relationId)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to link relation.",
   });
 }
 
 export async function unlinkGameRelationAction(gameId: string, relationType: RelationType, relationId: string) {
-  return authedMutation("DELETE", `/api/catalog/games/${gameId}/${relationType}/${relationId}`, {
+  return authedMutation("DELETE", `/api/catalog/games/${encodeURIComponent(gameId)}/${encodeURIComponent(relationType)}/${encodeURIComponent(relationId)}`, {
     revalidate: REVALIDATE_GAMES,
     fallbackError: "Failed to unlink relation.",
   });
@@ -257,7 +257,7 @@ export async function listPlatformsAction(params: ListParams) {
   return listProxy("/api/catalog/platforms", params);
 }
 export async function getGameAction(id: string) {
-  return getProxy<unknown>(`/api/catalog/games/${id}`);
+  return getProxy<unknown>(`/api/catalog/games/${encodeURIComponent(id)}`);
 }
 export async function listRelationsOptionsAction() {
   return getProxy<{

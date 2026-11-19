@@ -69,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // The list endpoint has no nested items/docs, so load each package's detail.
   const packageDetails: any[] = await Promise.all(
-    (packagesData?.items ?? []).map((pkg: { slug: string }) => fetchJson(`/api/packages/${pkg.slug}`))
+    (packagesData?.items ?? []).map((pkg: { slug: string }) => fetchJson(`/api/packages/${encodeURIComponent(pkg.slug)}`))
   );
 
   // lastModified is only set where a real date exists; a "now" on every request teaches

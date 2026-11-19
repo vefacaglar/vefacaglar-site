@@ -5,6 +5,7 @@ import { getActiveLanguage } from "../../lib/lang";
 import { localizedAlternates } from "../../lib/seo";
 import Pagination from "../components/Pagination";
 import { getPublicPackages } from "../../lib/data";
+import { safeExternalUrl } from "../../lib/safeExternalUrl";
 
 
 export async function generateMetadata() {
@@ -64,8 +65,8 @@ export default async function PackagesPage(props: PackagesProps) {
                     <Link href={`/packages/${group.slug}/docs`} className={styles.link}>
                       documentation
                     </Link>
-                    {group.githubUrl && (
-                      <a href={group.githubUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {safeExternalUrl(group.githubUrl) && (
+                      <a href={safeExternalUrl(group.githubUrl)} target="_blank" rel="noopener noreferrer" className={styles.link}>
                         github
                       </a>
                     )}

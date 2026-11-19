@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { httpClient } from "./httpClient";
+import { seg } from "./apiPath";
 import { getActiveLanguage } from "./lang";
 import { PUBLIC_CONTENT_TAG } from "./cacheTags";
 
@@ -44,20 +45,20 @@ export const getFooterPage = cache(async () => {
   }
 });
 
-export const getPage = cache((slug: string) => getJson(`/api/pages/${slug}`));
+export const getPage = cache((slug: string) => getJson(`/api/pages/${seg(slug)}`));
 
-export const getPost = cache((slug: string) => getJson(`/api/posts/${slug}`));
+export const getPost = cache((slug: string) => getJson(`/api/posts/${seg(slug)}`));
 
-export const getProject = cache((slug: string) => getJson(`/api/projects/${slug}`));
+export const getProject = cache((slug: string) => getJson(`/api/projects/${seg(slug)}`));
 
-export const getPackage = cache((slug: string) => getJson(`/api/packages/${slug}`));
+export const getPackage = cache((slug: string) => getJson(`/api/packages/${seg(slug)}`));
 
 export const getPackageItem = cache((groupSlug: string, packageSlug: string) =>
-  getJson(`/api/packages/${groupSlug}/${packageSlug}`)
+  getJson(`/api/packages/${seg(groupSlug)}/${seg(packageSlug)}`)
 );
 
 export const getPackageDoc = cache((slug: string, docSlug: string) =>
-  getJson(`/api/packages/${slug}/docs/${docSlug}`)
+  getJson(`/api/packages/${seg(slug)}/docs/${seg(docSlug)}`)
 );
 
 export const getPublicGames = cache((page: number, q?: string) => {
@@ -66,9 +67,9 @@ export const getPublicGames = cache((page: number, q?: string) => {
   return getJson(`/api/games?${params.toString()}`, { cached: false });
 });
 
-export const getGame = cache((slug: string) => getJson(`/api/games/${slug}`));
+export const getGame = cache((slug: string) => getJson(`/api/games/${seg(slug)}`));
 
-export const getAuthor = cache((username: string) => getJson(`/api/authors/${username}`));
+export const getAuthor = cache((username: string) => getJson(`/api/authors/${seg(username)}`));
 
 export const getPublicPosts = cache((page: number, q?: string) => {
   const params = new URLSearchParams({ page: String(page), limit: "10" });

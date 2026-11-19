@@ -52,14 +52,14 @@ export async function logoutAction() {
 }
 
 export async function deletePostAction(id: string) {
-  const result = await authedMutation("DELETE", `/api/posts/dashboard/${id}`, {
+  const result = await authedMutation("DELETE", `/api/posts/dashboard/${encodeURIComponent(id)}`, {
     fallbackError: "Failed to delete post.",
   });
   return result;
 }
 
 export async function deletePageAction(id: string) {
-  const result = await authedMutation("DELETE", `/api/pages/dashboard/${id}`, {
+  const result = await authedMutation("DELETE", `/api/pages/dashboard/${encodeURIComponent(id)}`, {
     fallbackError: "Failed to delete page.",
   });
   return result;
@@ -95,7 +95,7 @@ export async function updatePostAction(
     seoDescription?: string;
   }
 ) {
-  const result = await authedMutation("PUT", `/api/posts/dashboard/${id}`, {
+  const result = await authedMutation("PUT", `/api/posts/dashboard/${encodeURIComponent(id)}`, {
     body: data,
     fallbackError: "Failed to update post.",
   });
@@ -128,7 +128,7 @@ export async function updatePageAction(
     seoDescription?: string;
   }
 ) {
-  const result = await authedMutation("PUT", `/api/pages/dashboard/${id}`, {
+  const result = await authedMutation("PUT", `/api/pages/dashboard/${encodeURIComponent(id)}`, {
     body: data,
     fallbackError: "Failed to update page.",
   });
@@ -204,7 +204,7 @@ export async function updateProjectAction(
     endedAt?: string;
   }
 ) {
-  const result = await authedMutation("PUT", `/api/projects/dashboard/${id}`, {
+  const result = await authedMutation("PUT", `/api/projects/dashboard/${encodeURIComponent(id)}`, {
     body: data,
     fallbackError: "Failed to update project.",
   });
@@ -212,7 +212,7 @@ export async function updateProjectAction(
 }
 
 export async function deleteProjectAction(id: string) {
-  const result = await authedMutation("DELETE", `/api/projects/dashboard/${id}`, {
+  const result = await authedMutation("DELETE", `/api/projects/dashboard/${encodeURIComponent(id)}`, {
     fallbackError: "Failed to delete project.",
   });
   return result;

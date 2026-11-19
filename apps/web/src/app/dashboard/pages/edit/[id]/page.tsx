@@ -30,7 +30,7 @@ export default async function EditPage(props: { params: Promise<{ id: string }> 
 
   let page: PageItem | null = null;
   try {
-    const res = await httpClient.get(`/api/pages/dashboard/${params.id}`, {
+    const res = await httpClient.get(`/api/pages/dashboard/${encodeURIComponent(params.id)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

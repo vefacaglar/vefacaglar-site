@@ -56,7 +56,7 @@ export async function getPackageGroupAction(id: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.get(`/api/packages/dashboard/${id}`, {
+    const res = await httpClient.get(`/api/packages/dashboard/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -130,7 +130,7 @@ export async function updatePackageAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.put(`/api/packages/dashboard/${id}`, data, {
+    const res = await httpClient.put(`/api/packages/dashboard/${encodeURIComponent(id)}`, data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -157,7 +157,7 @@ export async function deletePackageAction(id: string, slug?: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.delete(`/api/packages/dashboard/${id}`, {
+    const res = await httpClient.delete(`/api/packages/dashboard/${encodeURIComponent(id)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -185,7 +185,7 @@ export async function listPackageItemsAction(groupId: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.get(`/api/packages/dashboard/${groupId}/package-items`, {
+    const res = await httpClient.get(`/api/packages/dashboard/${encodeURIComponent(groupId)}/package-items`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -206,7 +206,7 @@ export async function getPackageItemAction(id: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.get(`/api/packages/dashboard/package-items/${id}`, {
+    const res = await httpClient.get(`/api/packages/dashboard/package-items/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -242,7 +242,7 @@ export async function createPackageItemAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.post(`/api/packages/dashboard/${groupId}/package-items`, data, {
+    const res = await httpClient.post(`/api/packages/dashboard/${encodeURIComponent(groupId)}/package-items`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -281,7 +281,7 @@ export async function updatePackageItemAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.put(`/api/packages/dashboard/package-items/${id}`, data, {
+    const res = await httpClient.put(`/api/packages/dashboard/package-items/${encodeURIComponent(id)}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -309,7 +309,7 @@ export async function deletePackageItemAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.delete(`/api/packages/dashboard/package-items/${id}`, {
+    const res = await httpClient.delete(`/api/packages/dashboard/package-items/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -333,7 +333,7 @@ export async function listCategoriesAction(packageId: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.get(`/api/packages/dashboard/${packageId}/categories`, {
+    const res = await httpClient.get(`/api/packages/dashboard/${encodeURIComponent(packageId)}/categories`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -354,7 +354,7 @@ export async function createCategoryAction(packageId: string, data: { title: str
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.post(`/api/packages/dashboard/${packageId}/categories`, data, {
+    const res = await httpClient.post(`/api/packages/dashboard/${encodeURIComponent(packageId)}/categories`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -377,7 +377,7 @@ export async function updateCategoryAction(packageId: string, id: string, data: 
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.put(`/api/packages/dashboard/categories/${id}`, data, {
+    const res = await httpClient.put(`/api/packages/dashboard/categories/${encodeURIComponent(id)}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -400,7 +400,7 @@ export async function deleteCategoryAction(packageId: string, id: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.delete(`/api/packages/dashboard/categories/${id}`, {
+    const res = await httpClient.delete(`/api/packages/dashboard/categories/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -425,7 +425,7 @@ export async function listDocsAction(packageId: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.get(`/api/packages/dashboard/${packageId}/docs`, {
+    const res = await httpClient.get(`/api/packages/dashboard/${encodeURIComponent(packageId)}/docs`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -446,7 +446,7 @@ export async function getDocAction(id: string) {
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.get(`/api/packages/dashboard/docs/${id}`, {
+    const res = await httpClient.get(`/api/packages/dashboard/docs/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -480,7 +480,7 @@ export async function createDocAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.post(`/api/packages/dashboard/${packageId}/docs`, data, {
+    const res = await httpClient.post(`/api/packages/dashboard/${encodeURIComponent(packageId)}/docs`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -517,7 +517,7 @@ export async function updateDocAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.put(`/api/packages/dashboard/docs/${id}`, data, {
+    const res = await httpClient.put(`/api/packages/dashboard/docs/${encodeURIComponent(id)}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
@@ -544,7 +544,7 @@ export async function deleteDocAction(
   if (!token) return { error: "Unauthorized." };
 
   try {
-    const res = await httpClient.delete(`/api/packages/dashboard/docs/${id}`, {
+    const res = await httpClient.delete(`/api/packages/dashboard/docs/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {

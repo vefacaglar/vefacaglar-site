@@ -9,6 +9,7 @@ import { localizedAlternates } from "../../../lib/seo";
 import AdminEditLink from "../../../components/AdminEditLink";
 import { localizeHref } from "../../../lib/localizeHref";
 import { getProject } from "../../../lib/data";
+import { safeExternalUrl } from "../../../lib/safeExternalUrl";
 
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
@@ -65,11 +66,11 @@ export default async function Project(props: { params: Promise<{ slug: string }>
         </h1>
         {duration && <div className={styles.dates}>{duration}</div>}
 
-        {(project.githubUrl || project.liveUrl) && (
+        {(safeExternalUrl(project.githubUrl) || safeExternalUrl(project.liveUrl)) && (
           <div className={styles.links}>
-            {project.githubUrl && (
+            {safeExternalUrl(project.githubUrl) && (
               <a
-                href={project.githubUrl}
+                href={safeExternalUrl(project.githubUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={styles.link}
@@ -77,9 +78,9 @@ export default async function Project(props: { params: Promise<{ slug: string }>
                 {dict.source_code}
               </a>
             )}
-            {project.liveUrl && (
+            {safeExternalUrl(project.liveUrl) && (
               <a
-                href={project.liveUrl}
+                href={safeExternalUrl(project.liveUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={styles.link}

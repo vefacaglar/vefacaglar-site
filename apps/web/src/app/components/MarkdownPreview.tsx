@@ -82,6 +82,8 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
 
   const isSafeUrl = (url: string): boolean => {
     const trimmed = url.trim().toLowerCase();
+    if (/[\u0000-\u001f\u007f\s]/.test(trimmed)) return false;
+    if (trimmed.startsWith("//") || trimmed.startsWith("/\\")) return false;
     if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith("?")) return true;
     if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true;
     if (trimmed.startsWith("mailto:")) return true;

@@ -9,6 +9,9 @@ on:
     - cron: "0 */6 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Never run two crawls at once; a scheduled run waits for the current one.
 concurrency:
   group: catalog-import
@@ -38,6 +41,8 @@ jobs:
           done
           exit "$missing"
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 

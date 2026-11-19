@@ -6,6 +6,7 @@ import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import styles from "./packagePage.module.css";
 import { getPackage } from "../../../lib/data";
+import { safeExternalUrl } from "../../../lib/safeExternalUrl";
 
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
@@ -52,18 +53,18 @@ export default async function PackagePage(props: { params: Promise<{ slug: strin
                   <span className={styles.version}>v{item.latestVersion}</span>
                 </div>
                 <div className={styles.links}>
-                  {item.nugetUrl && (
-                    <a href={item.nugetUrl} target="_blank" rel="noopener noreferrer">
+                  {safeExternalUrl(item.nugetUrl) && (
+                    <a href={safeExternalUrl(item.nugetUrl)} target="_blank" rel="noopener noreferrer">
                       nuget
                     </a>
                   )}
-                  {item.npmUrl && (
-                    <a href={item.npmUrl} target="_blank" rel="noopener noreferrer">
+                  {safeExternalUrl(item.npmUrl) && (
+                    <a href={safeExternalUrl(item.npmUrl)} target="_blank" rel="noopener noreferrer">
                       npm
                     </a>
                   )}
-                  {item.githubUrl && (
-                    <a href={item.githubUrl} target="_blank" rel="noopener noreferrer">
+                  {safeExternalUrl(item.githubUrl) && (
+                    <a href={safeExternalUrl(item.githubUrl)} target="_blank" rel="noopener noreferrer">
                       github
                     </a>
                   )}

@@ -38,7 +38,7 @@ export default async function EditProject(props: { params: Promise<{ id: string 
 
   let project: ProjectItem | null = null;
   try {
-    const res = await httpClient.get(`/api/projects/dashboard/${params.id}`, {
+    const res = await httpClient.get(`/api/projects/dashboard/${encodeURIComponent(params.id)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

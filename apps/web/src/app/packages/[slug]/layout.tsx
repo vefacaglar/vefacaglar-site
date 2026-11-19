@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import styles from "./packageLayout.module.css";
 import { getPackage } from "../../../lib/data";
+import { safeExternalUrl } from "../../../lib/safeExternalUrl";
 
 
 export default async function PackageLayout(
@@ -40,23 +41,23 @@ export default async function PackageLayout(
 
         <ul className={styles.metaList}>
           <li className={styles.metaItem}>Version: {pkg.latestVersion}</li>
-          {pkg.nugetUrl && (
+          {safeExternalUrl(pkg.nugetUrl) && (
             <li className={styles.metaItem}>
-              <a href={pkg.nugetUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
+              <a href={safeExternalUrl(pkg.nugetUrl)} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
                 NuGet
               </a>
             </li>
           )}
-          {pkg.npmUrl && (
+          {safeExternalUrl(pkg.npmUrl) && (
             <li className={styles.metaItem}>
-              <a href={pkg.npmUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
+              <a href={safeExternalUrl(pkg.npmUrl)} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
                 npm
               </a>
             </li>
           )}
-          {pkg.githubUrl && (
+          {safeExternalUrl(pkg.githubUrl) && (
             <li className={styles.metaItem}>
-              <a href={pkg.githubUrl} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
+              <a href={safeExternalUrl(pkg.githubUrl)} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
                 GitHub
               </a>
             </li>

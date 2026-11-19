@@ -6,6 +6,7 @@ import { localizeHref } from '../../lib/localizeHref';
 import Pagination from '../components/Pagination';
 import { localizedAlternates } from '../../lib/seo';
 import { getPublicProjects } from '../../lib/data';
+import { safeExternalUrl } from "../../lib/safeExternalUrl";
 
 
 export async function generateMetadata() {
@@ -66,11 +67,11 @@ export default async function Projects(props: ProjectsProps) {
                     )}
                   </div>
                   <p className={styles.summary}>{project.summary}</p>
-                  {(project.githubUrl || project.liveUrl) && (
+                  {(safeExternalUrl(project.githubUrl) || safeExternalUrl(project.liveUrl)) && (
                     <div className={styles.links}>
-                      {project.githubUrl && (
+                      {safeExternalUrl(project.githubUrl) && (
                         <a
-                          href={project.githubUrl}
+                          href={safeExternalUrl(project.githubUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.link}
@@ -78,9 +79,9 @@ export default async function Projects(props: ProjectsProps) {
                           {dict.source_code}
                         </a>
                       )}
-                      {project.liveUrl && (
+                      {safeExternalUrl(project.liveUrl) && (
                         <a
-                          href={project.liveUrl}
+                          href={safeExternalUrl(project.liveUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.link}

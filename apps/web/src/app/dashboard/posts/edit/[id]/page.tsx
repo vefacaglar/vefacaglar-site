@@ -32,7 +32,7 @@ export default async function EditPost(props: { params: Promise<{ id: string }> 
 
   let post: PostItem | null = null;
   try {
-    const res = await httpClient.get(`/api/posts/dashboard/${params.id}`, {
+    const res = await httpClient.get(`/api/posts/dashboard/${encodeURIComponent(params.id)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
