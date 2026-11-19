@@ -51,6 +51,8 @@ export async function authRoutes(app: FastifyInstance) {
       rateLimit: {
         max: 5,
         timeWindow: "15 minutes",
+        // The default onRequest hook runs before the body is parsed, so the per-email key would be empty.
+        hook: "preHandler",
         keyGenerator: (request) => {
           const email = (request.body as LoginRequest | undefined)?.email || "";
           return `${rateLimitKey(request)}-${email}`;

@@ -12,8 +12,8 @@ export const GetProfileResponseSchema = Type.Object({
 export type GetProfileResponse = Static<typeof GetProfileResponseSchema>;
 
 export const UpdateProfileRequestSchema = Type.Object({
-  email: Type.String({ format: "email" }),
-  displayName: Type.String({ minLength: 1 }),
+  email: Type.String({ format: "email", maxLength: 254 }),
+  displayName: Type.String({ minLength: 1, maxLength: 100 }),
 });
 export type UpdateProfileRequest = Static<typeof UpdateProfileRequestSchema>;
 
@@ -29,8 +29,8 @@ export const UpdateProfileResponseSchema = Type.Object({
 export type UpdateProfileResponse = Static<typeof UpdateProfileResponseSchema>;
 
 export const ChangePasswordRequestSchema = Type.Object({
-  currentPassword: Type.String({ minLength: 1 }),
-  newPassword: Type.String({ minLength: 6 }),
+  currentPassword: Type.String({ minLength: 1, maxLength: 256 }),
+  newPassword: Type.String({ minLength: 6, maxLength: 256 }),
 });
 export type ChangePasswordRequest = Static<typeof ChangePasswordRequestSchema>;
 

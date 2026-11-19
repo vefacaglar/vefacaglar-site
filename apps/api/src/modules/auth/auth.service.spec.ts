@@ -4,7 +4,7 @@ import type { FastifyRequest } from "fastify";
 import { AuthService, SESSION_ABSOLUTE_LIFETIME_MS, SESSION_IDLE_LIFETIME_MS } from "./auth.service";
 import type { IUsersRepository } from "./users.repository.interface";
 import type { ISessionsRepository } from "./sessions.repository.interface";
-import { hashToken } from "./auth.utils";
+import { hashPassword, hashToken } from "./auth.utils";
 import { UnauthorizedError } from "../../shared/http-errors";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -115,5 +115,27 @@ describe("AuthService.authenticate", () => {
 
     expect(result.session).toBe(current);
     expect(result.user).toEqual({ id: "user-1", isActive: true });
+  });
+});
+
+describe("AuthService.login", () => {
+  const makeService = (user: unknown) => {
+    const usersRepo = { findByEmail: vi.fn().mockResolvedValue(user) } as unknown as Record<keyof IUsersRepository, any>;
+    const sessionsRepo = { create: vi.fn() } as unknown as Record<keyof ISessionsRepository, any>;
+    return new AuthService(usersRepo as unknown as IUsersRepository, sessionsRepo as unknown as ISessionsRepository);
+  };
+
+  it("rejects an unknown email with the generic error", async () => {
+    await expect(makeService(undefined).login("a@b.co", "pw")).rejects.toThrow("Invalid email or password.");
+  });
+
+  it("rejects an inactive account with the generic error", async () => {
+    const user = { id: "u", isActive: false, passwordHash: hashPassword("pw") };
+    await expect(makeService(user).login("a@b.co", "pw")).rejects.toThrow("Invalid email or password.");
+  });
+
+  it("rejects a wrong password with the generic error", async () => {
+    const user = { id: "u", isActive: true, passwordHash: hashPassword("right") };
+    await expect(makeService(user).login("a@b.co", "wrong")).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });

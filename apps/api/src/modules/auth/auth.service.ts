@@ -1,6 +1,6 @@
 import { FastifyRequest } from "fastify";
 import { randomBytes } from "crypto";
-import { hashToken, verifyPassword } from "./auth.utils";
+import { hashPassword, hashToken, verifyPassword } from "./auth.utils";
 import type { User } from "./users.repository";
 import type { Session } from "./sessions.repository";
 import { injectable, inject } from "tsyringe";
@@ -9,6 +9,9 @@ import type { IUsersRepository } from "./users.repository.interface";
 import type { ISessionsRepository } from "./sessions.repository.interface";
 import { UnauthorizedError } from "../../shared/http-errors";
 import { reportRuntimeFailure } from "../../shared/application-logs/runtime-failures";
+
+/** Verified against when no usable account exists, so unknown emails cost the same scrypt work as real ones. */
+const DUMMY_PASSWORD_HASH = hashPassword(randomBytes(16).toString("hex"));
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A session expires after this long without use. */
@@ -61,10 +64,16 @@ export class AuthService {
     const user = await this.usersRepo.findByEmail(email);
 
     if (!user || !user.isActive) {
+      verifyPassword(password, DUMMY_PASSWORD_HASH);
       throw new UnauthorizedError("Invalid email or password.");
     }
 
-    if (!user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+    if (!user.passwordHash) {
+      verifyPassword(password, DUMMY_PASSWORD_HASH);
+      throw new UnauthorizedError("Invalid email or password.");
+    }
+
+    if (!verifyPassword(password, user.passwordHash)) {
       throw new UnauthorizedError("Invalid email or password.");
     }
 

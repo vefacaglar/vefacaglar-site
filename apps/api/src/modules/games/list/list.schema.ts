@@ -1,7 +1,7 @@
 import { Type, Static } from "@sinclair/typebox";
 
 export const ListGamesQuerySchema = Type.Object({
-  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 48 })),
   q: Type.Optional(Type.String({ maxLength: 100 })),
 });

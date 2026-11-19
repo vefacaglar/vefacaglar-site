@@ -3,7 +3,7 @@ import { PageResponseSchema } from "../create/create.schema";
 
 export const ListAdminPagesQuerySchema = Type.Object({
   status: Type.Optional(Type.Union([Type.Literal("draft"), Type.Literal("published")])),
-  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
 });
 export type ListAdminPagesQuery = Static<typeof ListAdminPagesQuerySchema>;

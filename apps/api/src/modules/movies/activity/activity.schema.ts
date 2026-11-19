@@ -1,7 +1,7 @@
 import { Type, type Static } from "@sinclair/typebox";
 export const MovieActivityParamsSchema = Type.Object({ slug: Type.String({ minLength: 1, maxLength: 250 }) });
 export const MovieWatchParamsSchema = Type.Object({ ...MovieActivityParamsSchema.properties, id: Type.String({ format: "uuid" }) });
-export const MovieActivityQuerySchema = Type.Object({ page: Type.Optional(Type.Integer({ minimum: 1 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })) });
+export const MovieActivityQuerySchema = Type.Object({ page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })) });
 export const WatchDateBodySchema = Type.Object({ watchedOn: Type.Optional(Type.Union([Type.String({ pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }), Type.Null()])), comment: Type.Optional(Type.Union([Type.String({ maxLength: 2000 }), Type.Null()])), isPublic: Type.Optional(Type.Boolean()) }, { additionalProperties: false });
 export const CreateMovieWatchBodySchema = Type.Object({ ...WatchDateBodySchema.properties, id: Type.String({ format: "uuid" }) }, { additionalProperties: false });
 export const MovieRatingBodySchema = Type.Object({ rating: Type.Union([Type.Integer({ minimum: 1, maximum: 10 }), Type.Null()]) }, { additionalProperties: false });

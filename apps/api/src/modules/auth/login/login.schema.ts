@@ -1,8 +1,8 @@
 import { Type, Static } from "@sinclair/typebox";
 
 export const LoginRequestSchema = Type.Object({
-  email: Type.String({ format: "email" }),
-  password: Type.String(),
+  email: Type.String({ format: "email", maxLength: 254 }),
+  password: Type.String({ maxLength: 256 }),
 });
 export type LoginRequest = Static<typeof LoginRequestSchema>;
 

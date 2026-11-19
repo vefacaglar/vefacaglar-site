@@ -1,6 +1,6 @@
 import { Type, type Static } from "@sinclair/typebox";
 export const ListDashboardMoviesQuerySchema = Type.Object({
-  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
   q: Type.Optional(Type.String({ maxLength: 140 })),
   blocked: Type.Optional(Type.Boolean({ description: "Only movies whose poster is blocked" })),
