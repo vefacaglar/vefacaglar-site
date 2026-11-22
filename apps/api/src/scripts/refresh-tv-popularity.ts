@@ -1,0 +1,13 @@
+import "reflect-metadata";
+import { config } from "dotenv";
+config({ quiet: true });
+import { container } from "../container";
+import { RefreshTvPopularityHandler } from "../modules/tv-series/popularity/refresh.handler";
+const prefix = "[catalog:tv-interest] ";
+container.resolve(RefreshTvPopularityHandler).handle((message) => console.log(prefix + message)).then((result) => {
+  console.log(prefix + Object.entries(result).map(([key, value]) => `${key}=${value}`).join(" "));
+  process.exit(0);
+}).catch((error) => {
+  console.error(prefix + (error instanceof Error && /^[a-z0-9_]+$/.test(error.message) ? error.message : "tv_popularity_refresh_failed"));
+  process.exit(1);
+});
