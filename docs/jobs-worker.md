@@ -53,10 +53,8 @@ Registered jobs (Hangfire's "recurring jobs", but the schedule is optional).
 
 Migration `packages/db/drizzle/0023_magical_storm.sql` originally seeded `search.reindex` and `search.sync` with `cron = null`, `payload = {}`, and `enabled = true`. Migration `0044_schedule_search_sync.sql` later scheduled `search.sync` hourly at minute 17. The same migration moves the history of the former `search.reindex.daily` row to `search.reindex` and deletes that row. The worker does **not** seed registered jobs.
 
-`0026_catalog_popularity_job.sql` registers `catalog.popularity.refresh` with
-`cron = '15 7 * * *'`, payload `{}`, initially disabled. Enable it after deploying
-the updated worker and its IGDB credentials; existing workers cannot execute the
-new type. A null `next_run_at` computes the next daily occurrence on enable.
+`0026_catalog_popularity_job.sql` originally registered `catalog.popularity.refresh` with
+`cron = '15 7 * * *'`, payload `{}`, initially disabled, and `0030_massive_chameleon.sql` / `0033_chunky_baron_strucker.sql` registered `catalog.movies.popularity.refresh` (manual-only, disabled) and `search.movies.sync` (`*/5 * * * *`, disabled). Migration `0046_schedule_popularity_jobs.sql` enables the default schedules: `catalog.movies.popularity.refresh` daily at `50 5 * * *` UTC, `catalog.popularity.refresh` daily at `52 6 * * *` UTC (updating unscheduled or default `15 7 * * *` rows), and `search.movies.sync` at its default `*/5 * * * *` UTC cron, while preserving any administrator-customized cron expressions. Configure `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` in the worker environment for `catalog.popularity.refresh`. A null `next_run_at` causes the worker to compute the next occurrence on the next scheduler tick.
 
 ### `workers`
 `id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`. Online = `last_seen_at` within 30 s. Maintenance removes rows last seen more than one hour ago, except workers still holding a running job. Jobs/logs retain their history independently of worker rows.
@@ -97,7 +95,7 @@ draining and active generations share the same global two-running-job gate.
 - **Explicit OS shutdown (SIGTERM/SIGINT)**: stop claiming, ask the handler to stop, save its checkpoint, set the job back to `queued` (`locked_by=null`), log "paused for shutdown", exit. Must finish well inside the container stop grace period (120 s). Deployment uses the independent drain protocol above, which allows the running job to finish instead.
 - **Failure**: error → if `attempts < max_attempts`, `status='queued'`, `run_at = now() + 30s * 2^(attempts-1)`, checkpoint kept; else `status='failed'`, `finished_at=now()`. `error` holds the message; a log line is written.
 - **Success**: `status='succeeded'`, `finished_at=now()`, `checkpoint=null`.
-- **Scheduler**: every 30 s, lock due `recurring_jobs` (`enabled AND cron IS NOT NULL AND (next_run_at IS NULL OR next_run_at <= now())`, `FOR UPDATE SKIP LOCKED`) — rows with `cron IS NULL` are manual-only and must be ignored entirely (`cron` is nullable, so decode it as an optional value); if `next_run_at` is null just compute it; otherwise insert a job (respecting `concurrency_key`; skip if one is active), set `last_enqueued_at`, `last_job_id`, and the next `next_run_at`. Invalid cron → log and skip.
+- **Scheduler**: every 30 s, lock due `recurring_jobs` (`enabled AND cron IS NOT NULL AND (next_run_at IS NULL OR next_run_at <= now())`, `FOR UPDATE SKIP LOCKED`) — rows with `cron IS NULL` are manual-only and must be ignored entirely (`cron` is nullable, so decode it as an optional value); if `next_run_at` is null just compute it; otherwise insert a job (respecting `concurrency_key`). If a different job holding the same `concurrency_key` is currently active, `scheduler.rs` defers the recurring job by leaving `next_run_at` pending instead of advancing it and skipping the day/slot; once enqueued, it sets `last_enqueued_at`, `last_job_id`, and the next `next_run_at`. Invalid cron → log and skip.
 - **Seeding**: none in the worker. Registered jobs are seeded by the DB migration (see `recurring_jobs`); the old built-in `search.reindex.daily` (cron `0 3 * * *`) is gone.
 - **Extensibility**: a `JobHandler` trait + registry; adding a job type = one module implementing the trait + one registration line. Handlers get a context with `progress()`, `log()`, `checkpoint()`, `should_stop()` (shutdown or cancel).
 
@@ -121,7 +119,7 @@ Both: payload `{}` (no options; the old `drop` flag is removed), concurrency key
 
 - Parity: shared golden fixtures (input rows → expected documents) are asserted by both a TS spec and a Rust test so mappers cannot drift.
 
-### Game popularity (`catalog.popularity.refresh`)
+### Game popularity (`catalog.popularity.refresh`, daily `52 6 * * *` UTC)
 
 Payload `{}` only; concurrency key `search.index`, shared with both search jobs.
 The Rust handler starts `/usr/local/bin/node` with the compiled existing

@@ -151,10 +151,7 @@ keep their original snapshot until they finish. Changing secrets alone does not 
 Logs are JSON lines on stdout, collected by the VPS log shipper
 ([application logs](../../docs/application-logs.md)); no log settings are needed.
 
-The daily popularity refresh is a registered job in the site's Jobs dashboard,
-not a GitHub schedule. Configure the two IGDB secrets before enabling its
-recurring schedule. Its Node child inherits the worker's `MEILISEARCH_URL` and
-`MEILISEARCH_API_KEY`.
+The daily popularity refresh (`catalog.popularity.refresh`, scheduled at `52 6 * * *` UTC and enabled by default by migration `0046_schedule_popularity_jobs`, while preserving any administrator-customized cron) is a registered job in the site's Jobs dashboard, not a GitHub schedule. Configure the two IGDB secrets (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`) before deploying or running it. Its Node child inherits the worker's `MEILISEARCH_URL` and `MEILISEARCH_API_KEY`.
 The maintenance process has a 2 GiB JavaScript heap budget by default
 (`NODE_OPTIONS=--max-old-space-size=2048`). This is not a container RSS limit;
 allow room for Node's other allocations and the Rust worker. The Compose

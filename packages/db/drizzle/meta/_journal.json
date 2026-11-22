@@ -323,6 +323,13 @@
       "when": 1794750534940,
       "tag": "0045_schedule_movies_hourly",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795353147349,
+      "tag": "0046_schedule_popularity_jobs",
+      "breakpoints": true
     }
   ]
 }

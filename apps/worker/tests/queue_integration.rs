@@ -4,12 +4,16 @@
 
 use std::time::Duration;
 
-use serde_json::json;
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use serde_json::{Value, json};
 use sqlx::postgres::PgListener;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use uuid::Uuid;
-use worker::context::Progress;
+use worker::context::{JobContext, Progress};
+use worker::handler::{JobHandler, JobOutcome, Registry};
 use worker::queue::{self, FailureResult, Held};
+use worker::scheduler;
 
 // Queue admission and stale recovery are global, so fixtures sharing this
 // disposable database must not manufacture competing running rows in parallel.
@@ -547,6 +551,226 @@ async fn active_keys_stay_unique_and_pruning_preserves_live_workers_and_history(
         .unwrap();
     sqlx::query("DELETE FROM workers WHERE id LIKE $1")
         .bind(format!("{prefix}%"))
+        .execute(&pool)
+        .await
+        .unwrap();
+}
+
+struct SharedKeyTestHandler {
+    job_type: &'static str,
+    concurrency_key: String,
+}
+
+#[async_trait]
+impl JobHandler for SharedKeyTestHandler {
+    fn job_type(&self) -> &'static str {
+        self.job_type
+    }
+
+    fn concurrency_key(&self, _payload: &Value) -> Option<String> {
+        Some(self.concurrency_key.clone())
+    }
+
+    async fn run(&self, _ctx: &JobContext) -> anyhow::Result<JobOutcome> {
+        Ok(JobOutcome::Completed)
+    }
+}
+
+#[tokio::test]
+async fn recurring_conflict_defers_for_different_job_and_skips_for_same_job() {
+    let _fixture = QUEUE_FIXTURE.lock().await;
+    let Some(pool) = pool().await else {
+        eprintln!("WORKER_TEST_DATABASE_URL not set; skipping recurring conflict integration");
+        return;
+    };
+
+    const TARGET_TYPE: &str = "test.scheduler.conflict.target";
+    const BLOCKER_TYPE: &str = "test.scheduler.conflict.blocker";
+
+    let suffix = Uuid::new_v4();
+    let recurring_id = format!("test.scheduler.conflict.{suffix}");
+    let shared_key = format!("test.scheduler.key.{suffix}");
+
+    let mut registry = Registry::new();
+    registry.register(SharedKeyTestHandler {
+        job_type: TARGET_TYPE,
+        concurrency_key: shared_key.clone(),
+    });
+
+    sqlx::query(
+        "INSERT INTO recurring_jobs (id, type, cron, enabled, next_run_at) \
+         VALUES ($1, $2, '0 3 * * *', true, now() - interval '1 minute')",
+    )
+    .bind(&recurring_id)
+    .bind(TARGET_TYPE)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let original_due: DateTime<Utc> =
+        sqlx::query_scalar("SELECT next_run_at FROM recurring_jobs WHERE id = $1")
+            .bind(&recurring_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    // 1. A different job holding the shared concurrency key (queued) defers
+    // the recurring run without advancing next_run_at.
+    let blocker_id: Uuid = sqlx::query_scalar(
+        "INSERT INTO jobs (type, status, concurrency_key) \
+         VALUES ($1, 'queued', $2) RETURNING id",
+    )
+    .bind(BLOCKER_TYPE)
+    .bind(&shared_key)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    scheduler::tick(&pool, &registry).await.unwrap();
+
+    let due_after_queued_blocker: DateTime<Utc> =
+        sqlx::query_scalar("SELECT next_run_at FROM recurring_jobs WHERE id = $1")
+            .bind(&recurring_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(due_after_queued_blocker, original_due);
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE recurring_job_id = $1")
+        .bind(&recurring_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+
+    // 2. While that different job is running, the recurring run stays deferred.
+    sqlx::query(
+        "UPDATE jobs SET status = 'running', locked_by = 'conflict-test', \
+         locked_at = now(), heartbeat_at = now(), started_at = now(), attempts = 1 \
+         WHERE id = $1",
+    )
+    .bind(blocker_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    scheduler::tick(&pool, &registry).await.unwrap();
+
+    let due_after_running_blocker: DateTime<Utc> =
+        sqlx::query_scalar("SELECT next_run_at FROM recurring_jobs WHERE id = $1")
+            .bind(&recurring_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(due_after_running_blocker, original_due);
+
+    // 3. Once the blocker completes, the next tick enqueues the deferred job
+    // once and advances next_run_at into the future.
+    sqlx::query("UPDATE jobs SET status = 'succeeded', finished_at = now() WHERE id = $1")
+        .bind(blocker_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    scheduler::tick(&pool, &registry).await.unwrap();
+
+    let enqueued: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM jobs WHERE recurring_job_id = $1")
+        .bind(&recurring_id)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    assert_eq!(enqueued.len(), 1);
+    let enqueued_id = enqueued[0];
+    let (due_after_enqueue, last_job_id): (DateTime<Utc>, Option<Uuid>) =
+        sqlx::query_as("SELECT next_run_at, last_job_id FROM recurring_jobs WHERE id = $1")
+            .bind(&recurring_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(due_after_enqueue > Utc::now());
+    assert_eq!(last_job_id, Some(enqueued_id));
+
+    // 4. If the same recurring job is still active when next due, skip and
+    // advance next_run_at instead of stacking another run.
+    sqlx::query(
+        "UPDATE jobs SET status = 'running', locked_by = 'conflict-test', \
+         locked_at = now(), heartbeat_at = now(), started_at = now(), attempts = 1 \
+         WHERE id = $1",
+    )
+    .bind(enqueued_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "UPDATE recurring_jobs SET next_run_at = now() - interval '1 minute' WHERE id = $1",
+    )
+    .bind(&recurring_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    scheduler::tick(&pool, &registry).await.unwrap();
+
+    let due_after_same_active: DateTime<Utc> =
+        sqlx::query_scalar("SELECT next_run_at FROM recurring_jobs WHERE id = $1")
+            .bind(&recurring_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(due_after_same_active > Utc::now());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE recurring_job_id = $1")
+        .bind(&recurring_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+
+    // 5. A manually enqueued active job of the same type (recurring_job_id IS NULL)
+    // also counts as the same job and skips + advances next_run_at.
+    sqlx::query("UPDATE jobs SET status = 'succeeded', finished_at = now() WHERE id = $1")
+        .bind(enqueued_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let manual_same_id: Uuid = sqlx::query_scalar(
+        "INSERT INTO jobs (type, status, concurrency_key, locked_by, locked_at, heartbeat_at, started_at, attempts) \
+         VALUES ($1, 'running', $2, 'conflict-test', now(), now(), now(), 1) RETURNING id",
+    )
+    .bind(TARGET_TYPE)
+    .bind(&shared_key)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "UPDATE recurring_jobs SET next_run_at = now() - interval '1 minute' WHERE id = $1",
+    )
+    .bind(&recurring_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    scheduler::tick(&pool, &registry).await.unwrap();
+
+    let due_after_manual_same: DateTime<Utc> =
+        sqlx::query_scalar("SELECT next_run_at FROM recurring_jobs WHERE id = $1")
+            .bind(&recurring_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(due_after_manual_same > Utc::now());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE recurring_job_id = $1")
+        .bind(&recurring_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+
+    sqlx::query("DELETE FROM jobs WHERE id = ANY($1)")
+        .bind([blocker_id, enqueued_id, manual_same_id])
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM recurring_jobs WHERE id = $1")
+        .bind(&recurring_id)
         .execute(&pool)
         .await
         .unwrap();

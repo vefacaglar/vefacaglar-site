@@ -61,6 +61,43 @@ pub fn decide(
     }
 }
 
+/// What the scheduler does when `enqueue_in_tx` conflicts on `concurrency_key`
+/// for a due recurring job (pure, for testing).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConflictAction {
+    /// Movie search due times also carry source-change demand; keep `next_run_at`
+    /// unchanged while any search/retry/bounded continuation owns the key.
+    DeferMovieDemand,
+    /// The same recurring job (by `recurring_job_id` or `type`) is already
+    /// queued or running: advance `next_run_at` so a long-running job does not
+    /// stack back-to-back duplicate runs.
+    SkipSameActive,
+    /// A different job temporarily holds the shared `concurrency_key` (or the
+    /// blocker finished between conflict and lookup): leave `next_run_at`
+    /// unchanged so the next scheduler tick retries once the key is free.
+    DeferOtherActive,
+}
+
+pub fn classify_conflict(
+    movie_demand: bool,
+    recurring_job_id: &str,
+    job_type: &str,
+    active_holder: Option<&queue::ActiveConcurrencyHolder>,
+) -> ConflictAction {
+    if movie_demand {
+        return ConflictAction::DeferMovieDemand;
+    }
+    match active_holder {
+        Some(holder)
+            if holder.recurring_job_id.as_deref() == Some(recurring_job_id)
+                || holder.job_type == job_type =>
+        {
+            ConflictAction::SkipSameActive
+        }
+        _ => ConflictAction::DeferOtherActive,
+    }
+}
+
 /// One scheduler pass. Rows are locked with `FOR NO KEY UPDATE SKIP LOCKED` so
 /// several workers never enqueue the same run twice.
 pub async fn tick(pool: &PgPool, registry: &Registry) -> sqlx::Result<()> {
@@ -156,17 +193,51 @@ async fn dispatch_row(
                     // Movie due times also carry source-change requests.
                     // Keep them pending while another search/retry/bounded
                     // continuation owns the key; never shorten its run_at.
-                    if !movie_demand {
-                        sqlx::query("UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1")
-                                .bind(&row.id)
-                                .bind(next_run_at)
-                                .execute(&mut **tx)
-                                .await?;
+                    let active_holder = if movie_demand {
+                        None
+                    } else if let Some(key) = concurrency_key.as_deref() {
+                        queue::active_concurrency_holder_in_tx(tx, key).await?
+                    } else {
+                        None
+                    };
+                    match classify_conflict(
+                        movie_demand,
+                        &row.id,
+                        &row.job_type,
+                        active_holder.as_ref(),
+                    ) {
+                        ConflictAction::DeferMovieDemand => {
+                            tracing::info!(
+                                recurring_job_id = %row.id,
+                                "deferred recurring run: movie search demand kept pending while concurrency key is active"
+                            );
+                        }
+                        ConflictAction::SkipSameActive => {
+                            sqlx::query(
+                                "UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1",
+                            )
+                            .bind(&row.id)
+                            .bind(next_run_at)
+                            .execute(&mut **tx)
+                            .await?;
+                            tracing::info!(
+                                recurring_job_id = %row.id,
+                                %next_run_at,
+                                "skipped recurring run: same job is already active"
+                            );
+                        }
+                        ConflictAction::DeferOtherActive => {
+                            tracing::info!(
+                                recurring_job_id = %row.id,
+                                concurrency_key = concurrency_key.as_deref().unwrap_or(""),
+                                active_job_type = active_holder
+                                    .as_ref()
+                                    .map(|h| h.job_type.as_str())
+                                    .unwrap_or(""),
+                                "deferred recurring run: another job holds the concurrency key"
+                            );
+                        }
                     }
-                    tracing::info!(
-                        recurring_job_id = %row.id,
-                        "skipped recurring run: a job with the same concurrency key is active"
-                    );
                 }
             }
         }
@@ -224,5 +295,109 @@ mod tests {
             decide(Some("bogus"), None, at(1, 0)),
             Decision::InvalidCron(_)
         ));
+    }
+
+    fn holder(job_type: &str, recurring_job_id: Option<&str>) -> queue::ActiveConcurrencyHolder {
+        queue::ActiveConcurrencyHolder {
+            job_type: job_type.to_string(),
+            recurring_job_id: recurring_job_id.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn movie_demand_conflict_always_defers() {
+        let same = holder(MOVIE_SEARCH_SYNC, Some(MOVIE_SEARCH_SYNC));
+        let other = holder("search.sync", Some("search.sync"));
+        assert_eq!(
+            classify_conflict(true, MOVIE_SEARCH_SYNC, MOVIE_SEARCH_SYNC, Some(&same)),
+            ConflictAction::DeferMovieDemand
+        );
+        assert_eq!(
+            classify_conflict(true, MOVIE_SEARCH_SYNC, MOVIE_SEARCH_SYNC, Some(&other)),
+            ConflictAction::DeferMovieDemand
+        );
+        assert_eq!(
+            classify_conflict(true, MOVIE_SEARCH_SYNC, MOVIE_SEARCH_SYNC, None),
+            ConflictAction::DeferMovieDemand
+        );
+    }
+
+    #[test]
+    fn same_recurring_job_active_skips() {
+        let same_recurring = holder(
+            "catalog.popularity.refresh",
+            Some("catalog.popularity.refresh"),
+        );
+        assert_eq!(
+            classify_conflict(
+                false,
+                "catalog.popularity.refresh",
+                "catalog.popularity.refresh",
+                Some(&same_recurring),
+            ),
+            ConflictAction::SkipSameActive
+        );
+        // Matching recurring_job_id still counts as the same recurring job.
+        let matching_id = holder("other.type", Some("custom.recurring"));
+        assert_eq!(
+            classify_conflict(
+                false,
+                "custom.recurring",
+                "catalog.popularity.refresh",
+                Some(&matching_id)
+            ),
+            ConflictAction::SkipSameActive
+        );
+    }
+
+    #[test]
+    fn same_job_type_without_recurring_id_skips() {
+        let manual_same = holder("catalog.popularity.refresh", None);
+        assert_eq!(
+            classify_conflict(
+                false,
+                "catalog.popularity.refresh",
+                "catalog.popularity.refresh",
+                Some(&manual_same),
+            ),
+            ConflictAction::SkipSameActive
+        );
+    }
+
+    #[test]
+    fn different_job_holding_shared_key_defers() {
+        let movie_sync = holder(MOVIE_SEARCH_SYNC, Some(MOVIE_SEARCH_SYNC));
+        assert_eq!(
+            classify_conflict(
+                false,
+                "catalog.popularity.refresh",
+                "catalog.popularity.refresh",
+                Some(&movie_sync),
+            ),
+            ConflictAction::DeferOtherActive
+        );
+        let manual_reindex = holder("search.reindex", None);
+        assert_eq!(
+            classify_conflict(
+                false,
+                "catalog.popularity.refresh",
+                "catalog.popularity.refresh",
+                Some(&manual_reindex),
+            ),
+            ConflictAction::DeferOtherActive
+        );
+    }
+
+    #[test]
+    fn vanished_holder_defers() {
+        assert_eq!(
+            classify_conflict(
+                false,
+                "catalog.popularity.refresh",
+                "catalog.popularity.refresh",
+                None,
+            ),
+            ConflictAction::DeferOtherActive
+        );
     }
 }

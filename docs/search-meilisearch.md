@@ -154,7 +154,7 @@ restores missing documents and deletes orphans (documents without a source
 row). The indexed ids are read before the source ids, so a document created
 while the sync runs is never taken for an orphan. So the first sync after the
 cutover builds everything, and later syncs heal drift. `search.movies.sync` builds `movies_en` and `movie_people_en`
-on its own schedule (`*/5 * * * *`); the registration must be enabled.
+on its own schedule (`*/5 * * * *`), enabled by default via migration `0046_schedule_popularity_jobs` (unless disabled with a non-default schedule).
 
 
 ## API keys

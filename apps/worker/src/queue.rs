@@ -554,6 +554,30 @@ pub async fn prune_workers(pool: &PgPool) -> sqlx::Result<u64> {
     Ok(done.rows_affected())
 }
 
+/// Minimal identity of an active (`queued` or `running`) job holding a
+/// `concurrency_key`, used by the scheduler to classify enqueue conflicts.
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct ActiveConcurrencyHolder {
+    #[sqlx(rename = "type")]
+    pub job_type: String,
+    pub recurring_job_id: Option<String>,
+}
+
+/// Returns the active (`queued` or `running`) job holding `concurrency_key`, if any.
+pub async fn active_concurrency_holder_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    concurrency_key: &str,
+) -> sqlx::Result<Option<ActiveConcurrencyHolder>> {
+    sqlx::query_as(
+        "SELECT type, recurring_job_id FROM jobs \
+         WHERE concurrency_key = $1 AND status IN ('queued', 'running') \
+         LIMIT 1",
+    )
+    .bind(concurrency_key)
+    .fetch_optional(&mut **tx)
+    .await
+}
+
 /// Inserts a job unless an active job holds the same concurrency key (the
 /// partial unique index turns that into a no-op). Notifies `jobs` (workers)
 /// and `job_events` (dashboard) on commit.
