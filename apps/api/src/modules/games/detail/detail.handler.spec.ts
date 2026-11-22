@@ -12,6 +12,19 @@ describe("GetGameHandler", () => {
     handler = new GetGameHandler(repo);
   });
 
+  it("uses the same source consensus while retaining all reported detail values", async () => {
+    repo.findBySlug.mockResolvedValue({ slug: "example-adventure", title: "Example adventure", description: null,
+      completionTimes: { hastilySeconds: 115 * 3600, normallySeconds: null, completelySeconds: null, sampleCount: 73, sourceUpdatedAt: null },
+      completionReports: [
+        { provider: "backloggd", sourceUrl: "https://backloggd.com/games/example-adventure/", scope: "All editions", finishSeconds: 30 * 3600, fetchedAt: "2026-11-22T00:00:00Z" },
+        { provider: "ifdb", sourceUrl: "https://ifdb.org/viewgame?id=abcdefghijklmnop", scope: "One ending", finishSeconds: 34 * 3600, fetchedAt: "2026-11-22T00:00:00Z" },
+      ], developers: [], publishers: [], genres: [], themes: [], platforms: [] });
+    const result = await handler.handle({ params: { slug: "example-adventure" } } as any);
+    expect(result.completionSummary).toMatchObject({ kind: "agreement", estimateSeconds: 32 * 3600, excludedProviders: ["igdb"] });
+    expect(result.completionTimes?.creditsSeconds).toBe(115 * 3600);
+    expect(result.completionReports).toHaveLength(2);
+  });
+
   it("throws NotFound for an unknown slug", async () => {
     repo.findBySlug.mockResolvedValue(null);
     await expect(handler.handle({ params: { slug: "nope" } } as any)).rejects.toThrow("Game not found.");

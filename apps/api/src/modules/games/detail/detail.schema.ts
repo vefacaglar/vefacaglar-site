@@ -1,3 +1,4 @@
+import { CompletionReportSchema, CompletionSummarySchema } from "../../catalog/completion-times/completion-sources.schema";
 import { Type, Static } from "@sinclair/typebox";
 import { GameCompletionTimesSchema } from "../../catalog/completion-times/completion-times.schema";
 
@@ -16,6 +17,9 @@ export const GameDetailResponseSchema = Type.Object({
   criticScore: NullableNumber,
   criticScoreCount: NullableNumber,
   completionTimes: GameCompletionTimesSchema,
+  completionReports: Type.Array(CompletionReportSchema),
+  completionSummary: CompletionSummarySchema,
+  completionMasterSummary: CompletionSummarySchema,
   hltbMainHours: NullableNumber,
   hltbMainExtraHours: NullableNumber,
   hltbCompletionistHours: NullableNumber,

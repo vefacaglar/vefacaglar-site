@@ -1,6 +1,7 @@
 import {
   games,
   gameIgdbCompletionTimes,
+  gameCompletionReports,
   developers,
   publishers,
   genres,
@@ -87,6 +88,15 @@ const CURRENT_POPULARITY_SCORE = sql<number | null>`case
   when ${games.popularityUpdatedAt} >= now() - ${POPULARITY_MAX_AGE_MS} * interval '1 millisecond'
   then ${games.popularityScore} else null end`;
 
+const PUBLIC_COMPLETION_REPORTS = sql<unknown>`coalesce((
+  select jsonb_agg(jsonb_build_object(
+    'provider',r.provider,'sourceUrl',r.source_url,'scope',r.scope,'statistic',r.statistic,
+    'finishSeconds',r.finish_seconds,'masterSeconds',r.master_seconds,'playtimeSeconds',r.playtime_seconds,
+    'sampleCount',r.sample_count,'sourceUpdatedAt',r.source_updated_at,'fetchedAt',r.observed_at
+  ) order by r.provider) from ${gameCompletionReports} r
+  where r.igdb_id=${games.igdbId} and r.observed_at is not null
+), '[]'::jsonb)`;
+
 const PUBLIC_CARD_FIELDS = {
   id: games.id,
   slug: games.slug,
@@ -98,6 +108,7 @@ const PUBLIC_CARD_FIELDS = {
   criticScore: games.criticScore,
   criticScoreCount: games.criticScoreCount,
   popularityScore: CURRENT_POPULARITY_SCORE,
+  completionReports: PUBLIC_COMPLETION_REPORTS,
   completionTimes: {
     // Keep the non-null joined key first so partial metric rows remain hydrated.
     igdbId: gameIgdbCompletionTimes.igdbId,
@@ -297,12 +308,12 @@ export class DrizzleGamesRepository implements IGamesRepository {
 
   async findBySlug(slug: string): Promise<GameWithRelations | null> {
     const [row] = await this.dbProvider.client
-      .select({ game: getTableColumns(games), completionTimes: PUBLIC_CARD_FIELDS.completionTimes })
+      .select({ game: getTableColumns(games), completionTimes: PUBLIC_CARD_FIELDS.completionTimes, completionReports: PUBLIC_COMPLETION_REPORTS })
       .from(games)
       .leftJoin(gameIgdbCompletionTimes, eq(games.igdbId, gameIgdbCompletionTimes.igdbId))
       .where(eq(games.slug, slug)).limit(1);
     if (!row) return null;
-    return { ...await this.getGameWithRelations(row.game), completionTimes: row.completionTimes };
+    return { ...await this.getGameWithRelations(row.game), completionTimes: row.completionTimes, completionReports: row.completionReports };
   }
 
   async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: GameWithRelations[]; total: number }> {

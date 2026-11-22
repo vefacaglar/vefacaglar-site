@@ -25,7 +25,7 @@ const EmptyPayloadSchema = Type.Object({}, { additionalProperties: false });
 
 export const JOB_TYPES = {
   "catalog.games.completion_times.refresh": defineJobType({
-    description: "Refresh the complete official IGDB completion-time snapshot, including category durations, submission counts and source update dates. Runs daily.",
+    description: "Refresh official IGDB completion times and independent Backloggd, IFDB and VNDB reports with verified game identities, per-source caches and robust finish-time estimates. Runs daily.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "catalog.games.completion_times",
   }),

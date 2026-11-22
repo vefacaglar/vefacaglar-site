@@ -2,7 +2,7 @@ import Link from "next/link";
 import { localizeHref } from "../../../lib/localizeHref";
 import { formatReviewScore, selectReviewScores } from "./cardMetrics";
 import { scoreTier } from "./scoreTier";
-import { compactCompletionTime, type GameCompletionTimes } from "../../../lib/gameCompletionTimes";
+import { compactCompletionTime, compactCompletionEstimate, compactIndependentCompletion, type GameCompletionTimes, type CompletionSummary, type CompletionReport } from "../../../lib/gameCompletionTimes";
 import styles from "./GameGrid.module.css";
 
 export type GameCardItem = {
@@ -12,6 +12,8 @@ export type GameCardItem = {
   releaseDate: string | null;
   criticScore?: number | null;
   completionTimes?: GameCompletionTimes | null;
+  completionSummary?: CompletionSummary | null;
+  completionReports?: CompletionReport[];
 };
 
 export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang: string }) {
@@ -20,7 +22,7 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
       {games.map((game) => {
         const year = game.releaseDate?.slice(0, 4) ?? null;
         const reviews = selectReviewScores(game);
-        const duration = compactCompletionTime(game.completionTimes);
+        const duration = compactCompletionEstimate(game.completionSummary) ?? compactIndependentCompletion(game.completionReports) ?? compactCompletionTime(game.completionTimes);
         const hasMeta = reviews.length > 0 || year !== null || duration !== null;
 
         return (

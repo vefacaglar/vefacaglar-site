@@ -1,3 +1,4 @@
+import { CompletionReportSchema, CompletionSummarySchema } from "../../catalog/completion-times/completion-sources.schema";
 import { Type, Static } from "@sinclair/typebox";
 import { GameCompletionTimesSchema } from "../../catalog/completion-times/completion-times.schema";
 
@@ -18,6 +19,9 @@ export const GameCardSchema = Type.Object({
   criticScore: Type.Union([Type.Number({ minimum: 0, maximum: 100, description: "IGDB aggregated critic score based on at least three reviews" }), Type.Null()]),
   popularityScore: Type.Union([Type.Number({ minimum: 0, maximum: 1, description: "Relative catalog popularity, not a review rating" }), Type.Null()]),
   completionTimes: GameCompletionTimesSchema,
+  completionReports: Type.Array(CompletionReportSchema),
+  completionSummary: CompletionSummarySchema,
+  completionMasterSummary: CompletionSummarySchema,
   hltbMainHours: Type.Union([Type.String(), Type.Null()]),
   hltbMainExtraHours: Type.Union([Type.String(), Type.Null()]),
   hltbCompletionistHours: Type.Union([Type.String(), Type.Null()]),

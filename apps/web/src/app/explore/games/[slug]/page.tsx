@@ -11,7 +11,7 @@ import { libraryMetadata } from "../../../../lib/librarySeo";
 import { getGame } from "../../../../lib/data";
 import { httpClient } from "../../../../lib/httpClient";
 import { getLoginHref } from "../../../../lib/oidc";
-import { formatCompletionDuration, type GameCompletionTimes } from "../../../../lib/gameCompletionTimes";
+import { formatCompletionDuration, formatCompletionSummary, completionProviderName, type GameCompletionTimes, type CompletionReport, type CompletionSummary } from "../../../../lib/gameCompletionTimes";
 import { formatDate } from "../../../../lib/formatDate";
 import GameLogs, { type GameLog } from "./GameLogs";
 import { scoreTier } from "../scoreTier";
@@ -29,6 +29,9 @@ type GameDetail = {
   criticScore: number | null;
   criticScoreCount: number | null;
   completionTimes: GameCompletionTimes | null;
+  completionReports?: CompletionReport[];
+  completionSummary?: CompletionSummary | null;
+  completionMasterSummary?: CompletionSummary | null;
   developers: Named[];
   publishers: Named[];
   genres: Named[];
@@ -92,6 +95,10 @@ export default async function Game(props: GameProps) {
   ));
   const year = game.releaseDate?.slice(0, 4) ?? null;
   const durations = game.completionTimes;
+  const completionEstimates = [
+    { label: "Reported finish", summary: game.completionSummary },
+    { label: "Reported mastery", summary: game.completionMasterSummary },
+  ].filter(({ summary }) => summary && summary.kind !== "single");
   const completionCategories = durations ? [
     { label: "To credits", seconds: durations.creditsSeconds },
     { label: "With some extras", seconds: durations.extrasSeconds },
@@ -155,9 +162,28 @@ export default async function Game(props: GameProps) {
           {game.description && <p className={styles.description}>{game.description}</p>}
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Completion time</h2>
-            {durations ? (
-              <>
+            <h2 className={styles.sectionTitle}>Completion reports</h2>
+            {completionEstimates.length > 0 && (
+              <div className={styles.completionEstimates}>
+                {completionEstimates.map(({ label, summary }) => summary ? (
+                  <div key={label}>
+                    <h3 className={styles.completionEstimateLabel}>{label}</h3>
+                    <p className={styles.completionEstimateValue}>{formatCompletionSummary(summary)}</p>
+                    <p className={styles.completionSource}>
+                      {summary.kind === "range" ? "Sources differ. " : summary.kind === "agreement" ? "Average of agreeing reports. " : "Single-source report. "}
+                      {summary.providers.map(completionProviderName).join(" · ")}
+                      {summary.excludedProviders.length > 0 && ` · Outlying ${summary.excludedProviders.map(completionProviderName).join(", ")} report excluded from this estimate.`}
+                    </p>
+                  </div>
+                ) : null)}
+              </div>
+            )}
+            {(game.completionReports?.length ?? 0) > 0 && (
+              <p className={styles.completionSource}>Sources use different player samples and release scopes. Their original measurements are shown below.</p>
+            )}
+            {durations && (
+              <div className={styles.completionReport}>
+                <h3 className={styles.completionReportTitle}>IGDB</h3>
                 <dl className={styles.completionTimes}>
                   {completionCategories.map((category) => (
                     <div key={category.label}>
@@ -171,8 +197,27 @@ export default async function Game(props: GameProps) {
                   {durations.sampleCount < 3 && " Limited sample."}
                   {durations.updatedAt && ` Updated ${formatDate(durations.updatedAt, "en")}.`}
                 </p>
-              </>
-            ) : <p className={styles.completionSource}>IGDB has no usable completion-time submissions for this game.</p>}
+              </div>
+            )}
+            {(game.completionReports ?? []).map((report) => (
+              <div key={report.provider} className={styles.completionReport}>
+                <h3 className={styles.completionReportTitle}>
+                  <a href={report.sourceUrl} target="_blank" rel="noopener noreferrer">{completionProviderName(report.provider)}</a>
+                </h3>
+                <dl className={styles.completionTimes}>
+                  {report.finishSeconds !== null && <div><dt>{report.statistic === "median_finish" ? "Median to one ending" : "To finish"}</dt><dd>{formatCompletionDuration(report.finishSeconds)}</dd></div>}
+                  {report.masterSeconds !== null && <div><dt>To master</dt><dd>{formatCompletionDuration(report.masterSeconds)}</dd></div>}
+                  {report.playtimeSeconds !== null && <div><dt>Average play time</dt><dd>{formatCompletionDuration(report.playtimeSeconds)}</dd></div>}
+                </dl>
+                <p className={styles.completionSource}>
+                  {report.scope}.
+                  {report.sampleCount !== null && ` ${report.sampleCount} play-time ${report.sampleCount === 1 ? "vote" : "votes"}.`}
+                  {report.sampleCount !== null && report.sampleCount < 3 && " Limited sample."}
+                  {` Checked ${formatDate(report.fetchedAt, "en")}.`}
+                </p>
+              </div>
+            ))}
+            {!durations && !(game.completionReports?.length) && <p className={styles.completionSource}>No usable completion reports are available for this game yet.</p>}
           </section>
 
           <section className={styles.section}>

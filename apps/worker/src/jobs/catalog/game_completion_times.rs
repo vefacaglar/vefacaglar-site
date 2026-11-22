@@ -49,6 +49,7 @@ impl JobHandler for GameCompletionTimesHandler {
         command
             .arg("--enable-source-maps")
             .arg(SCRIPT)
+            .env("IGDB_REQUEST_INTERVAL_MS", "1000")
             .current_dir("/app");
         super::run_command_with_spec(ctx, command, &secrets, &super::GAME_COMPLETION_TIMES).await
     }

@@ -16,8 +16,52 @@ export function formatCompletionDuration(seconds: number): string {
 
 export function compactCompletionTime(times: GameCompletionTimes | null | undefined): string | null {
   if (!times) return null;
-  if (times.creditsSeconds !== null) return `${formatCompletionDuration(times.creditsSeconds)} to credits · IGDB`;
-  if (times.extrasSeconds !== null) return `${formatCompletionDuration(times.extrasSeconds)} with extras · IGDB`;
-  if (times.completionistSeconds !== null) return `${formatCompletionDuration(times.completionistSeconds)} to 100% · IGDB`;
+  if (times.creditsSeconds !== null) return `${formatCompletionDuration(times.creditsSeconds)} reported to credits · IGDB`;
+  if (times.extrasSeconds !== null) return `${formatCompletionDuration(times.extrasSeconds)} reported with extras · IGDB`;
+  if (times.completionistSeconds !== null) return `${formatCompletionDuration(times.completionistSeconds)} reported to 100% · IGDB`;
+  return null;
+}
+
+export type CompletionReport = {
+  provider: "backloggd" | "ifdb" | "vndb";
+  sourceUrl: string;
+  scope: string;
+  statistic: "reported" | "median_finish" | "average_playtime";
+  finishSeconds: number | null;
+  masterSeconds: number | null;
+  playtimeSeconds: number | null;
+  sampleCount: number | null;
+  sourceUpdatedAt: string | null;
+  fetchedAt: string;
+};
+export type CompletionSummary = {
+  kind: "single" | "agreement" | "range";
+  estimateSeconds: number | null;
+  lowerSeconds: number;
+  upperSeconds: number;
+  providers: string[];
+  excludedProviders: string[];
+};
+
+export const completionProviderName = (provider: string) => ({ igdb: "IGDB", backloggd: "Backloggd", ifdb: "IFDB", vndb: "VNDB" })[provider] ?? provider;
+
+export function formatCompletionSummary(summary: CompletionSummary): string {
+  if (summary.kind === "range") {
+    return `${formatCompletionDuration(summary.lowerSeconds)}–${formatCompletionDuration(summary.upperSeconds)}`;
+  }
+  return formatCompletionDuration(summary.estimateSeconds!);
+}
+
+export function compactCompletionEstimate(summary: CompletionSummary | null | undefined): string | null {
+  if (!summary) return null;
+  const label = summary.kind === "range" ? "reported range" : "reported finish";
+  return `${formatCompletionSummary(summary)} ${label} · ${summary.providers.map(completionProviderName).join(" + ")}`;
+}
+
+export function compactIndependentCompletion(reports: CompletionReport[] | null | undefined): string | null {
+  for (const report of reports ?? []) {
+    if (report.playtimeSeconds !== null) return `${formatCompletionDuration(report.playtimeSeconds)} average play time · ${completionProviderName(report.provider)}`;
+    if (report.masterSeconds !== null) return `${formatCompletionDuration(report.masterSeconds)} to master · ${completionProviderName(report.provider)}`;
+  }
   return null;
 }

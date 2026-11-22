@@ -628,3 +628,31 @@
   font-size: 12px;
   line-height: 1.6;
 }
+
+.completionEstimates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  padding-bottom: 20px;
+}
+
+.completionEstimateLabel,
+.completionReportTitle {
+  color: var(--text-heading);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+.completionEstimateValue {
+  color: var(--text-heading);
+  font-size: 26px;
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.completionReport {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 20px;
+}

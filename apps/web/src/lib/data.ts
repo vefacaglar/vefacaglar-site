@@ -67,7 +67,8 @@ export const getPublicGames = cache((page: number, q?: string) => {
   return getJson(`/api/games?${params.toString()}`, { cached: false });
 });
 
-export const getGame = cache((slug: string) => getJson(`/api/games/${seg(slug)}`));
+// Background completion reports change outside dashboard cache invalidation.
+export const getGame = cache((slug: string) => getJson(`/api/games/${seg(slug)}`, { cached: false }));
 
 export const getAuthor = cache((username: string) => getJson(`/api/authors/${seg(username)}`));
 

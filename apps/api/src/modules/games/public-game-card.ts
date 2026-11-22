@@ -1,3 +1,4 @@
+import { publicCompletionReports, publicCompletionSummary, publicCompletionMasterSummary } from "../catalog/completion-times/completion-public";
 import { usableCompletionTimes } from "../catalog/completion-times/completion-times-quality";
 import type { GameCard } from "../catalog/games.repository.interface";
 import { publicCriticScore } from "./critic-score";
@@ -8,6 +9,7 @@ import type { PublicGameCard } from "./list/list.schema";
  * Stored IGDB cover URLs, unattributed third-party review scores, and legacy completion durations are never exposed on public endpoints.
  */
 export function publicGameCard(game: GameCard): PublicGameCard {
+  const completionReports = publicCompletionReports(game.completionReports);
   return {
     slug: game.slug,
     title: game.title,
@@ -19,6 +21,9 @@ export function publicGameCard(game: GameCard): PublicGameCard {
     popularityScore: Number.isFinite(game.popularityScore) && game.popularityScore! >= 0 && game.popularityScore! <= 1
       ? game.popularityScore : null,
     completionTimes: usableCompletionTimes(game.completionTimes),
+    completionReports,
+    completionSummary: publicCompletionSummary(game.completionTimes, completionReports),
+    completionMasterSummary: publicCompletionMasterSummary(game.completionTimes, completionReports),
     hltbMainHours: null,
     hltbMainExtraHours: null,
     hltbCompletionistHours: null,

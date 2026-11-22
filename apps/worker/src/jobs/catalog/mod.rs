@@ -55,7 +55,7 @@ const GAME_COMPLETION_TIMES: CliSpec = CliSpec {
     label: "IGDB game completion times",
     phase: "refreshing game completion times",
     interrupted: "Game completion times refresh stopped; the previous complete snapshot remains available",
-    deadline: Some(Duration::from_secs(240)),
+    deadline: Some(Duration::from_secs(600)),
     deadline_yields: false,
     continues: false,
 };

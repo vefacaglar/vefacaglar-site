@@ -2,7 +2,7 @@ import Link from "next/link";
 import { formatReviewScore, selectReviewScores } from "../../app/explore/games/cardMetrics";
 import { scoreTier } from "../../app/explore/games/scoreTier";
 import { localizeHref } from "../../lib/localizeHref";
-import { compactCompletionTime, type GameCompletionTimes } from "../../lib/gameCompletionTimes";
+import { compactCompletionTime, compactCompletionEstimate, compactIndependentCompletion, type GameCompletionTimes, type CompletionSummary, type CompletionReport } from "../../lib/gameCompletionTimes";
 import type { MovieCard } from "../../lib/movies";
 import styles from "./ExploreGrid.module.css";
 
@@ -12,6 +12,8 @@ export interface ExploreGame {
   releaseDate: string | null;
   criticScore?: number | null;
   completionTimes?: GameCompletionTimes | null;
+  completionSummary?: CompletionSummary | null;
+  completionReports?: CompletionReport[];
 }
 
 export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
@@ -38,7 +40,7 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
         const year = isGame ? item.releaseDate?.slice(0, 4) ?? null : item.releaseYear;
         const topScore = isGame ? selectReviewScores(item)[0] : undefined;
         const runtime = !isGame && item.runtimeMinutes !== null ? `${item.runtimeMinutes} min` : null;
-        const duration = isGame ? compactCompletionTime(item.completionTimes) : null;
+        const duration = isGame ? (compactCompletionEstimate(item.completionSummary) ?? compactIndependentCompletion(item.completionReports) ?? compactCompletionTime(item.completionTimes)) : null;
         const hasMeta =
           showKind || Boolean(topScore) || Boolean(runtime) || Boolean(duration) || (year !== null && year !== "");
 

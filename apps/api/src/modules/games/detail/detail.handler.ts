@@ -1,3 +1,4 @@
+import { publicCompletionReports, publicCompletionSummary, publicCompletionMasterSummary } from "../../catalog/completion-times/completion-public";
 import { usableCompletionTimes } from "../../catalog/completion-times/completion-times-quality";
 import { FastifyRequest } from "fastify";
 import { inject, injectable } from "tsyringe";
@@ -16,6 +17,7 @@ export class GetGameHandler {
   async handle(request: FastifyRequest<{ Params: GetGameParams }>): Promise<GameDetailResponse> {
     const game = await this.gamesRepo.findBySlug(request.params.slug);
     if (!game) throw new NotFoundError("Game not found.");
+    const completionReports = publicCompletionReports(game.completionReports);
     const criticScore = publicCriticScore(game.criticScore, game.criticScoreCount);
 
     return {
@@ -27,6 +29,9 @@ export class GetGameHandler {
       criticScore,
       criticScoreCount: criticScore === null ? null : game.criticScoreCount,
       completionTimes: usableCompletionTimes(game.completionTimes),
+      completionReports,
+      completionSummary: publicCompletionSummary(game.completionTimes, completionReports),
+      completionMasterSummary: publicCompletionMasterSummary(game.completionTimes, completionReports),
       hltbMainHours: null,
       hltbMainExtraHours: null,
       hltbCompletionistHours: null,

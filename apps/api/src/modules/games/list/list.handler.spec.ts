@@ -15,6 +15,20 @@ describe("ListGamesHandler", () => {
     handler = new ListGamesHandler(reader, gamesRepo);
   });
 
+  it("publishes an agreeing finish majority through normal public cards", async () => {
+    gamesRepo.listPublic.mockResolvedValue({ items: [{ id: "g-1", slug: "example-adventure", title: "Example adventure",
+      completionTimes: { hastilySeconds: 115 * 3600, normallySeconds: null, completelySeconds: null, sampleCount: 73, sourceUpdatedAt: null },
+      completionReports: [
+        { provider: "backloggd", sourceUrl: "https://backloggd.com/games/example-adventure/", scope: "All editions", finishSeconds: 30 * 3600, fetchedAt: "2026-11-22T00:00:00Z" },
+        { provider: "ifdb", sourceUrl: "https://ifdb.org/viewgame?id=abcdefghijklmnop", scope: "One ending", finishSeconds: 34 * 3600, fetchedAt: "2026-11-22T00:00:00Z" },
+      ],
+    }], total: 1 });
+    const result = await handler.handle({ query: {} } as any);
+    expect(result.items[0].completionSummary).toMatchObject({ kind: "agreement", estimateSeconds: 32 * 3600,
+      providers: ["backloggd", "ifdb"], excludedProviders: ["igdb"] });
+    expect(result.items[0].completionReports.map((row) => row.finishSeconds)).toEqual([30 * 3600, 34 * 3600]);
+  });
+
   it("hydrates completion times from authoritative cards for typed search", async () => {
     reader.searchPublicGames.mockResolvedValue({ items: [{ id: "g-1" }], total: 1 });
     gamesRepo.findPublicCardsByIds.mockResolvedValue([{ id: "g-1", slug: "duration", title: "Duration",
@@ -58,7 +72,7 @@ describe("ListGamesHandler", () => {
     expect(gamesRepo.listPublic).not.toHaveBeenCalled();
     expect(result).toEqual({
       items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", metacriticScore: null, openCriticScore: null, criticScore: 85,
-        popularityScore: null, completionTimes: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null }],
+        popularityScore: null, completionTimes: null, completionReports: [], completionSummary: null, completionMasterSummary: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null }],
       total: 49,
       page: 2,
       limit: 24,

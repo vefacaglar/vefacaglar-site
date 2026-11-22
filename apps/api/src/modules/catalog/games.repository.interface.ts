@@ -12,6 +12,7 @@ export type Game = InferSelectModel<typeof games>;
 export type NewGame = InferInsertModel<typeof games>;
 
 export interface GameWithRelations extends Game {
+  completionReports?: unknown;
   completionTimes?: import("./completion-times/completion-times-quality").CompletionTimesSource | null;
   developers: Developer[];
   publishers: Publisher[];
@@ -90,7 +91,7 @@ export type PopularityWrite = {
 export type GameCard = Pick<Game,
   "id" | "slug" | "title" | "coverImageUrl" | "releaseDate" | "metacriticScore" | "openCriticScore" | "criticScore" | "criticScoreCount" |
   "popularityScore" | "hltbMainHours" | "hltbMainExtraHours" | "hltbCompletionistHours"
-> & { completionTimes?: import("./completion-times/completion-times-quality").CompletionTimesSource | null };
+> & { completionReports?: unknown; completionTimes?: import("./completion-times/completion-times-quality").CompletionTimesSource | null };
 
 export type GameCompanyRole = "developer" | "publisher";
 export type PublicGameCompany = Pick<Developer, "id" | "name" | "slug" | "countryCode"> & {

@@ -57,6 +57,16 @@ export class IgdbClient implements IIgdbClient {
   private token: { value: string; expiresAt: number } | null = null;
   private lastRequestAt = 0;
 
+  async listCompletionIdentities(igdbIds: number[], signal?: AbortSignal): Promise<{ igdbId: number; slug: string }[]> {
+    if (!igdbIds.length) return [];
+    if (igdbIds.length > 500 || igdbIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) throw new Error("Invalid completion identity batch");
+    const rows = await this.query<IgdbGame>(GAMES_URL,
+      `fields id,slug,version_parent,game_type.type; where id=(${[...new Set(igdbIds)].join(",")}) & version_parent=null; limit 500;`, signal);
+    return rows.filter((row) => igdbIds.includes(row.id) && /^[a-z0-9][a-z0-9-]{0,179}$/.test(row.slug) &&
+      (!row.game_type || ALLOWED_GAME_TYPES.has(normalizeTitle(row.game_type.type))))
+      .map((row) => ({ igdbId: row.id, slug: row.slug }));
+  }
+
   async collect(): Promise<import("../completion-times/completion-times.types").GameCompletionTimesRow[]> {
     return collectCompletionTimes((path, body) => this.query<unknown>(`https://api.igdb.com/v4/${path}`, body));
   }
