@@ -38,7 +38,7 @@ struct CliSpec {
     deadline: Option<Duration>,
     /// Yield without retrying when the movie run reaches its outer safety cap.
     deadline_yields: bool,
-    /// Only fixed movie CLIs may request a bounded continuation through
+    /// Only fixed catalog/search CLIs may request a bounded continuation through
     /// `<prefix>result {...}`; every other CLI's output is plain log text.
     continues: bool,
 }

@@ -83,7 +83,7 @@ fn parse_result(line: &str) -> Result<Option<Option<DateTime<Utc>>>> {
     parse_continuation(line, "[catalog:movies] ")
 }
 
-/// Parses `<prefix>result {...}` from a fixed continuing movie CLI (see `CliSpec::continues`).
+/// Parses `<prefix>result {...}` from a fixed continuing catalog/search CLI (see `CliSpec::continues`).
 pub(super) fn parse_continuation(
     line: &str,
     prefix: &str,

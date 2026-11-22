@@ -775,3 +775,144 @@ async fn recurring_conflict_defers_for_different_job_and_skips_for_same_job() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn tv_continuations_finalize_atomically_preserve_keys_and_obey_cancellation() {
+    let _fixture = QUEUE_FIXTURE.lock().await;
+    let Some(pool) = pool().await else {
+        eprintln!("WORKER_TEST_DATABASE_URL not set; skipping TV continuation integration");
+        return;
+    };
+    for (kind, key) in [
+        ("catalog.tv-series.sync", "catalog.tv-series"),
+        ("search.tv-series.sync", "search.tv-series.index"),
+    ] {
+        let registered = format!("test.tv.continuation.{}", Uuid::new_v4());
+        let worker = format!("test-tv-worker-{}", Uuid::new_v4());
+        sqlx::query("INSERT INTO recurring_jobs(id,type,cron) VALUES($1,$2,NULL)")
+            .bind(&registered)
+            .bind(kind)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let original: Uuid = sqlx::query_scalar("INSERT INTO jobs(type,status,payload,concurrency_key,recurring_job_id,max_attempts,locked_by,heartbeat_at,locked_at,started_at,attempts) VALUES($1,'running','{}',$2,$3,5,$4,now(),now(),now(),1) RETURNING id")
+            .bind(kind).bind(key).bind(&registered).bind(&worker).fetch_one(&pool).await.unwrap();
+        let at = Utc::now() + chrono::Duration::minutes(2);
+        assert!(
+            !queue::mark_succeeded_with_continuation(&pool, original, "wrong-owner", "batch", at)
+                .await
+                .unwrap()
+        );
+        assert!(
+            queue::mark_succeeded_with_continuation(
+                &pool,
+                original,
+                &worker,
+                "bounded TV batch",
+                at
+            )
+            .await
+            .unwrap(),
+            "{kind} must finalize instead of silently expiring its lease"
+        );
+        assert!(
+            !queue::mark_succeeded_with_continuation(&pool, original, &worker, "duplicate", at)
+                .await
+                .unwrap()
+        );
+        let status: String = sqlx::query_scalar("SELECT status FROM jobs WHERE id=$1")
+            .bind(original)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(status, "succeeded");
+        let successors: Vec<(Uuid,String,Value,String,i32,DateTime<Utc>)> = sqlx::query_as("SELECT id,type,payload,concurrency_key,max_attempts,run_at FROM jobs WHERE recurring_job_id=$1 AND id<>$2")
+            .bind(&registered).bind(original).fetch_all(&pool).await.unwrap();
+        assert_eq!(successors.len(), 1);
+        let (next, next_kind, payload, next_key, attempts, run_at) = &successors[0];
+        assert_eq!(next_kind, kind);
+        assert_eq!(next_key, key);
+        assert_eq!(payload, &json!({}));
+        assert_eq!(*attempts, 5);
+        assert!((*run_at - at).num_milliseconds().abs() < 2);
+        let mut tx = pool.begin().await.unwrap();
+        assert!(
+            queue::enqueue_in_tx(&mut tx, kind, &json!({}), Some(key), Some(&registered))
+                .await
+                .unwrap()
+                .is_none(),
+            "queued successor must keep its own concurrency key unique"
+        );
+        tx.rollback().await.unwrap();
+        sqlx::query("UPDATE jobs SET status='running',locked_by=$2,heartbeat_at=now(),locked_at=now(),started_at=now(),attempts=1 WHERE id=$1")
+            .bind(next).bind(&worker).execute(&pool).await.unwrap();
+        let constraint = format!("test_tv_no_successor_{}", Uuid::new_v4().simple());
+        sqlx::query(&format!("ALTER TABLE jobs ADD CONSTRAINT {constraint} CHECK(status<>'queued' OR recurring_job_id IS DISTINCT FROM '{registered}') NOT VALID")).execute(&pool).await.unwrap();
+        let rejected =
+            queue::mark_succeeded_with_continuation(&pool, *next, &worker, "must roll back", at)
+                .await;
+        sqlx::query(&format!("ALTER TABLE jobs DROP CONSTRAINT {constraint}"))
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(rejected.is_err());
+        let status: String = sqlx::query_scalar("SELECT status FROM jobs WHERE id=$1")
+            .bind(next)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            status, "running",
+            "successor failure must roll back terminal status"
+        );
+        sqlx::query("UPDATE jobs SET cancel_requested=true WHERE id=$1")
+            .bind(next)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(
+            queue::mark_succeeded_with_continuation(&pool, *next, &worker, "late cancel", at)
+                .await
+                .unwrap()
+        );
+        let status: String = sqlx::query_scalar("SELECT status FROM jobs WHERE id=$1")
+            .bind(next)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(status, "cancelled");
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE recurring_job_id=$1")
+            .bind(&registered)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 2,
+            "late cancellation must not enqueue another successor"
+        );
+        // Neither TV type may continue under the other TV job's lock.
+        let other_key = if kind == "catalog.tv-series.sync" {
+            "search.tv-series.index"
+        } else {
+            "catalog.tv-series"
+        };
+        let mismatched: Uuid = sqlx::query_scalar("INSERT INTO jobs(type,status,concurrency_key,recurring_job_id,locked_by,heartbeat_at) VALUES($1,'running',$2,$3,$4,now()) RETURNING id")
+            .bind(kind).bind(other_key).bind(&registered).bind(&worker).fetch_one(&pool).await.unwrap();
+        assert!(
+            !queue::mark_succeeded_with_continuation(&pool, mismatched, &worker, "wrong key", at)
+                .await
+                .unwrap()
+        );
+        sqlx::query("DELETE FROM jobs WHERE recurring_job_id=$1")
+            .bind(&registered)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM recurring_jobs WHERE id=$1")
+            .bind(&registered)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    pool.close().await;
+}
