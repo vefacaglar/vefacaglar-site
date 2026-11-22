@@ -252,7 +252,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         from ${moviePeople}
         join ${movieCredits} on ${movieCredits.personId} = ${moviePeople.id}
         join ${movies} on ${movies.id} = ${movieCredits.movieId}
-        where ${moviePeople.name} is not null and btrim(${moviePeople.name}) <> '' and ${filter} and ${credited}
+        where ${moviePeople.wikidataId} is not null and ${moviePeople.name} is not null and btrim(${moviePeople.name}) <> '' and ${filter} and ${credited}
         group by ${moviePeople.id}
         order by credit_count desc, ${moviePeople.name}, ${moviePeople.id}
         limit ${limit}
@@ -295,7 +295,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
   async findPublicPersonHeader(wikidataId: string) {
     const [person] = await this.dbProvider.client.select({ id: moviePeople.id, wikidataId: moviePeople.wikidataId, name: moviePeople.name })
       .from(moviePeople).where(eq(moviePeople.wikidataId, wikidataId));
-    return person ?? null;
+    return person?.wikidataId ? { ...person, wikidataId: person.wikidataId } : null;
   }
   async hydrateCatalogPage(ids: string[]) {
     // Hydrate cards and validate the index publication in the same database
@@ -339,7 +339,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     const [credits, companies, genres] = await Promise.all([
       db.select({ statementId: movieCredits.statementId, roleProperty: movieCredits.roleProperty, wikidataId: moviePeople.wikidataId, name: moviePeople.name,
         characterNames: movieCredits.characterNames, qualifiers: movieCredits.qualifiers, rank: movieCredits.rank }).from(movieCredits).innerJoin(moviePeople, eq(moviePeople.id, movieCredits.personId))
-        .where(and(eq(movieCredits.movieId, movie.id), ne(movieCredits.rank, "deprecated"))).orderBy(asc(movieCredits.roleProperty), asc(moviePeople.name), asc(movieCredits.statementId)),
+        .where(and(eq(movieCredits.movieId, movie.id), isNotNull(moviePeople.wikidataId), ne(movieCredits.rank, "deprecated"))).orderBy(asc(movieCredits.roleProperty), asc(moviePeople.name), asc(movieCredits.statementId)),
       db.select({ wikidataId: movieCompanies.wikidataId, name: movieCompanies.name }).from(movieCompanyLinks).innerJoin(movieCompanies, eq(movieCompanies.id, movieCompanyLinks.companyId))
         .where(eq(movieCompanyLinks.movieId, movie.id)).orderBy(asc(movieCompanies.name)),
       db.select({ name: movieGenres.name, slug: movieGenres.slug }).from(movieGenreLinks).innerJoin(movieGenres, eq(movieGenres.id, movieGenreLinks.genreId))
@@ -350,7 +350,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
       ...publicMoviePoster(movie), wikidataId: movie.wikidataId, imdbId: movie.imdbConflict ? null : movie.imdbId, description: movie.description, originalTitle: movie.originalTitle,
       sourceUpdatedAt: movie.sourceModifiedAt?.toISOString() ?? null, genres: genres.map((genre) => ({ ...genre, name: genre.name! })), companies,
       credits: credits.map((credit) => ({ statementId: credit.statementId, role: ({ P161: "cast", P57: "director", P162: "producer" } as const)[credit.roleProperty as "P161" | "P57" | "P162"],
-        wikidataId: credit.wikidataId, name: credit.name, characterNames: [...new Set([...credit.characterNames,
+        wikidataId: credit.wikidataId!, name: credit.name, characterNames: [...new Set([...credit.characterNames,
           ...characterQidsFromQualifiers(credit.qualifiers).map((qid) => characterLabels[qid]?.name).filter((name): name is string => !!name)])], rank: credit.rank as "normal" | "preferred" | "deprecated" })) };
   }
 }

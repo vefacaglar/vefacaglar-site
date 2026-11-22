@@ -98,6 +98,10 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
         firstAired: aired[0] ?? null, lastAired: aired[aired.length - 1] ?? null,
       }).where(eq(tvSeries.id, item.seriesId));
       await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), lte(tvRefreshQueue.requestedAt, item.requestedAt)));
+      await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values(${item.seriesId},${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz)
+        on conflict(series_id) do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
+      await db.execute(sql`update recurring_jobs set next_run_at=least(coalesce(next_run_at,now()),now()) where id='catalog.tv-series.cast.refresh' and enabled and cron is not null`);
+      await db.execute(sql`select pg_notify('jobs','catalog.tv-series.cast.refresh')`);
       await dirtyTvSearch(db, [item.seriesId]);
     });
   }

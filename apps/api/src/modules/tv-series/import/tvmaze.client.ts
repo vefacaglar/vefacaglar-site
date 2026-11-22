@@ -1,4 +1,6 @@
 import { injectable } from "tsyringe";
+import { TvmazeRequestRepository } from "./tvmaze-request.repository";
+import { parseTvCast } from "../cast/tv-cast-normalizer";
 import { parseTvShow, parseTvPage, parseTvHierarchy } from "./tvmaze-normalizer";
 
 export class TvmazeError extends Error {
@@ -6,7 +8,11 @@ export class TvmazeError extends Error {
 }
 @injectable()
 export class TvmazeClient {
-  private lastRequestAt = 0;
+  constructor(private readonly requests: TvmazeRequestRepository) {}
+  async cast(id: number, deadline: number) {
+    if (!Number.isSafeInteger(id) || id<=0) throw new TvmazeError("tvmaze_cast_invalid_show");
+    return parseTvCast(await this.json(`/shows/${id}/cast`, deadline, 8 * 1024 * 1024));
+  }
   async page(page: number, deadline: number) {
     try { return parseTvPage(await this.json(`/shows?page=${page}`, deadline, 3 * 1024 * 1024), page); }
     catch (error) { if (error instanceof TvmazeError && error.status === 404) return null; throw error; }
@@ -35,10 +41,10 @@ export class TvmazeClient {
     }).filter((row) => !lastCheckedAt || row.updatedAt.getTime() >= lastCheckedAt.getTime() - 60000);
   }
   private async json(path: string, deadline: number, maxBytes = 2 * 1024 * 1024): Promise<unknown> {
-    const wait = this.lastRequestAt + 550 - Date.now();
-    if (Date.now() + Math.max(0, wait) >= deadline) throw new TvmazeError("tvmaze_budget_exhausted");
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    this.lastRequestAt = Date.now();
+    const slot = await this.requests.reserve();
+    if (slot.cooldownMs>0) throw new TvmazeError("tvmaze_cooldown_active", null, new Date(Date.now()+slot.cooldownMs));
+    if (Date.now()+slot.waitMs>=deadline) throw new TvmazeError("tvmaze_budget_exhausted");
+    if (slot.waitMs>0) await new Promise((resolve)=>setTimeout(resolve,slot.waitMs));
     let response: Response;
     try { response = await fetch(`https://api.tvmaze.com${path}`, { redirect: "error", headers: {
       "User-Agent": "VefaLibrary/1.0 (+https://vefacaglar.com)", Accept: "application/json",
@@ -49,8 +55,9 @@ export class TvmazeClient {
       const seconds = header === null ? NaN : Number(header);
       const retry = Number.isFinite(seconds) ? Date.now() + seconds * 1000 : Date.parse(header ?? "");
       await response.body?.cancel();
-      throw new TvmazeError(`tvmaze_http_${response.status}`, response.status,
-        new Date(Math.min(Date.now() + 86400_000, Math.max(Date.now() + 60_000, Number.isFinite(retry) ? retry : 0))));
+      const retryAt = new Date(Math.min(Date.now() + 86400_000, Math.max(Date.now() + 60_000, Number.isFinite(retry) ? retry : 0)));
+      if(response.status===429 || response.status>=500) await this.requests.cooldown(retryAt);
+      throw new TvmazeError(`tvmaze_http_${response.status}`, response.status, retryAt);
     }
     if (!response.body || !response.headers.get("content-type")?.includes("json") || Number(response.headers.get("content-length") ?? 0) > maxBytes) {
       await response.body?.cancel(); throw new TvmazeError("tvmaze_invalid_body");
