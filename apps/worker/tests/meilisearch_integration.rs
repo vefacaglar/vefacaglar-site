@@ -378,7 +378,7 @@ async fn movie_and_people_jobs_publish_stable_indexes_from_postgres() {
     .fetch_one(&pool).await.unwrap();
     assert_eq!(
         state,
-        (3, Some("movies_en".into()), None, "ready".into(), true)
+        (4, Some("movies_en".into()), None, "ready".into(), true)
     );
     let public: i64 = sqlx::query_scalar("SELECT count(*) FROM movies m WHERE m.is_film AND m.hydrated_at IS NOT NULL AND m.title IS NOT NULL")
         .fetch_one(&pool).await.unwrap();
