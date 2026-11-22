@@ -1,0 +1,145 @@
+.list, .episodes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item + .item, .episode + .episode {
+  border-top: 1px solid var(--border);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 0;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 0;
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.title {
+  font-size: 15px;
+  color: var(--text-heading);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.card:hover .title {
+  color: var(--accent);
+}
+
+.card:focus-visible, .episodeToggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.year {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.rating {
+  color: var(--text-heading);
+  font-weight: 500;
+}
+
+.attribution {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.attribution p {
+  margin: 0 0 8px;
+}
+
+.attribution a, .sourceLink {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+
+.episodeToggle {
+  cursor: pointer;
+  padding: 16px 0;
+  border-radius: 0;
+}
+
+.episodeToggle::marker {
+  color: var(--muted);
+}
+
+.episodeHeading {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  max-width: calc(100% - 24px);
+}
+
+.episodeNumber {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.episodeName {
+  color: var(--text-heading);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.episodeToggle > .meta {
+  margin: 5px 0 0 26px;
+}
+
+.episodeBody {
+  padding: 0 0 20px 26px;
+}
+
+.summary {
+  margin: 0 0 12px;
+  white-space: pre-line;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.sourceLink {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+@media (max-width: 480px) {
+  .heading {
+    gap: 10px;
+  }
+  .year {
+    max-width: 95px;
+    text-align: right;
+  }
+  .meta {
+    gap: 4px 12px;
+  }
+}

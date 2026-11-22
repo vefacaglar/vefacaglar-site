@@ -4,7 +4,7 @@ import { LIBRARY_NAME, LIBRARY_SECTIONS, libraryMetadata, libraryPreviewImage, l
 describe("constants", () => {
   it("names the library and lists its sections in tab order", () => {
     expect(LIBRARY_NAME).toBe("Vefa Library");
-    expect(LIBRARY_SECTIONS).toEqual(["games", "movies"]);
+    expect(LIBRARY_SECTIONS).toEqual(["games", "movies", "tv-series"]);
   });
 });
 

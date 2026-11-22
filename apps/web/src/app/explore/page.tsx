@@ -5,11 +5,13 @@ import { getPublicGames } from "../../lib/data";
 import { getActiveLanguage } from "../../lib/lang";
 import { libraryMetadata } from "../../lib/librarySeo";
 import { localizeHref } from "../../lib/localizeHref";
+import TvSeriesCards from "../../components/tv-series/TvSeriesCards";
+import { getTvSeriesList } from "../../lib/tvSeries";
 import { getPublicMovies } from "../../lib/movies";
 import { localizedAlternates } from "../../lib/seo";
 import styles from "./explore.module.css";
 
-const DESCRIPTION = "Discover games and movies.";
+const DESCRIPTION = "Discover games, movies, and TV series.";
 const PREVIEW_SIZE = 6;
 
 export async function generateMetadata() {
@@ -22,10 +24,11 @@ export async function generateMetadata() {
 }
 
 export default async function ExplorePage() {
-  const [lang, gamesData, moviesData] = await Promise.all([
+  const [lang, gamesData, moviesData, tvData] = await Promise.all([
     getActiveLanguage(),
     getPublicGames(1),
     getPublicMovies(1),
+    getTvSeriesList(1, undefined, PREVIEW_SIZE),
   ]);
   const games: ExploreGame[] = ((gamesData?.items ?? []) as ExploreGame[])
     .slice(0, PREVIEW_SIZE);
@@ -46,6 +49,13 @@ export default async function ExplorePage() {
         <Link className={styles.viewAll} href={localizeHref("/explore/movies", lang)}>View all movies</Link>
       </div>
       <ExploreGrid games={[]} movies={movies} lang={lang} emptyMessage="No movies are available yet." />
+    </section>
+    <section className={styles.section} aria-labelledby="explore-tv-series">
+      <div className={styles.sectionHeader}>
+        <h2 className={styles.sectionTitle} id="explore-tv-series">TV Series</h2>
+        <Link className={styles.viewAll} href={localizeHref("/explore/tv-series", lang)}>View all TV series</Link>
+      </div>
+      {tvData?.items.length ? <TvSeriesCards series={tvData.items} lang={lang} /> : <p>No TV series are available yet.</p>}
     </section>
   </div>;
 }

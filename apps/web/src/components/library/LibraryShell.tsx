@@ -35,7 +35,7 @@ export default async function LibraryShell({
           {dict.back_to_home} | Explore
         </Link>
 
-        <ExploreNavigation lang={lang} labels={{ games: dict.games, movies: dict.movies }} />
+        <ExploreNavigation lang={lang} labels={{ games: dict.games, movies: dict.movies, "tv-series": "TV Series" }} />
 
         <div className={styles.utility}>
           {user ? (

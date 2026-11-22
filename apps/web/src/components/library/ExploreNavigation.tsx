@@ -7,10 +7,10 @@ import styles from "./LibraryShell.module.css";
 
 export default function ExploreNavigation({ lang, labels }: {
   lang: string;
-  labels: { games: string; movies: string };
+  labels: { games: string; movies: string; "tv-series": string };
 }) {
   const pathname = usePathname() || "/explore";
-  const tabs = (["games", "movies"] as const).map((section) => ({
+  const tabs = (["games", "movies", "tv-series"] as const).map((section) => ({
     href: `/explore/${section}`,
     label: labels[section],
     active: pathname === `/explore/${section}` || pathname.startsWith(`/explore/${section}/`),

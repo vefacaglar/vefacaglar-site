@@ -1,5 +1,6 @@
 const dictionaries = {
   en: {
+    "tv-series": "TV Series",
     blog: "Blog",
     writings: "Latest writings",
     view_all: "View all writings",
@@ -234,6 +235,7 @@ const dictionaries = {
     date_choose: "Choose a date",
   },
   tr: {
+    "tv-series": "TV Series",
     blog: "son yazılar",
     writings: "yazılar",
     view_all: "tüm yazıları gör",

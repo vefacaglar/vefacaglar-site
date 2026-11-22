@@ -1,0 +1,48 @@
+.search {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-heading);
+  background: var(--surface-2);
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.searchInput:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pagination {
+  margin-top: 36px;
+}
+
+.empty {
+  color: var(--muted);
+  padding: 28px 0;
+}
+
+.ranking {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  margin: 28px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.ranking a {
+  color: inherit;
+  text-underline-offset: 3px;
+}

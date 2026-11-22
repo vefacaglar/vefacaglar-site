@@ -8,7 +8,7 @@ export const LIBRARY_NAME = "Vefa Library";
  * dictionary label with the same key, and `app/explore/<key>/layout.tsx`
  * plus an `opengraph-image.tsx`.
  */
-export const LIBRARY_SECTIONS = ["games", "movies"] as const;
+export const LIBRARY_SECTIONS = ["games", "movies", "tv-series"] as const;
 
 export type LibrarySection = (typeof LIBRARY_SECTIONS)[number];
 
