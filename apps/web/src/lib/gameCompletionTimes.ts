@@ -16,9 +16,9 @@ export function formatCompletionDuration(seconds: number): string {
 
 export function compactCompletionTime(times: GameCompletionTimes | null | undefined): string | null {
   if (!times) return null;
-  if (times.creditsSeconds !== null) return `${formatCompletionDuration(times.creditsSeconds)} reported to credits · IGDB`;
-  if (times.extrasSeconds !== null) return `${formatCompletionDuration(times.extrasSeconds)} reported with extras · IGDB`;
-  if (times.completionistSeconds !== null) return `${formatCompletionDuration(times.completionistSeconds)} reported to 100% · IGDB`;
+  if (times.creditsSeconds !== null) return `${formatCompletionDuration(times.creditsSeconds)} reported to credits`;
+  if (times.extrasSeconds !== null) return `${formatCompletionDuration(times.extrasSeconds)} reported with extras`;
+  if (times.completionistSeconds !== null) return `${formatCompletionDuration(times.completionistSeconds)} reported to 100%`;
   return null;
 }
 
@@ -55,13 +55,13 @@ export function formatCompletionSummary(summary: CompletionSummary): string {
 export function compactCompletionEstimate(summary: CompletionSummary | null | undefined): string | null {
   if (!summary) return null;
   const label = summary.kind === "range" ? "reported range" : "reported finish";
-  return `${formatCompletionSummary(summary)} ${label} · ${summary.providers.map(completionProviderName).join(" + ")}`;
+  return `${formatCompletionSummary(summary)} ${label}`;
 }
 
 export function compactIndependentCompletion(reports: CompletionReport[] | null | undefined): string | null {
   for (const report of reports ?? []) {
-    if (report.playtimeSeconds !== null) return `${formatCompletionDuration(report.playtimeSeconds)} average play time · ${completionProviderName(report.provider)}`;
-    if (report.masterSeconds !== null) return `${formatCompletionDuration(report.masterSeconds)} to master · ${completionProviderName(report.provider)}`;
+    if (report.playtimeSeconds !== null) return `${formatCompletionDuration(report.playtimeSeconds)} average play time`;
+    if (report.masterSeconds !== null) return `${formatCompletionDuration(report.masterSeconds)} to master`;
   }
   return null;
 }
