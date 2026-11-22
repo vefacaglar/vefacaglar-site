@@ -23,6 +23,7 @@ pub fn registry(config: &Config) -> Registry {
     registry.register(movie_search::MovieSearchHandler { meilisearch });
     registry.register(catalog::CatalogPopularityHandler);
     registry.register(catalog::game_import::GameImportHandler);
+    registry.register(catalog::game_completion_times::GameCompletionTimesHandler);
     registry.register(catalog::movies::CatalogMoviesHandler);
     registry.register(catalog::movie_popularity::MoviePopularityHandler);
     registry.register(catalog::movie_titles::MovieEnglishTitlesHandler);

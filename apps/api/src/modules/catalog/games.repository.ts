@@ -1,5 +1,6 @@
 import {
   games,
+  gameIgdbCompletionTimes,
   developers,
   publishers,
   genres,
@@ -15,7 +16,7 @@ import {
   gameWikipediaProviderState,
   catalogImportState,
 } from "@vefacaglar/db";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql, type SQL, getTableColumns } from "drizzle-orm";
 import { injectable } from "tsyringe";
 import { DbProvider } from "../../db.provider";
 import type {
@@ -97,6 +98,15 @@ const PUBLIC_CARD_FIELDS = {
   criticScore: games.criticScore,
   criticScoreCount: games.criticScoreCount,
   popularityScore: CURRENT_POPULARITY_SCORE,
+  completionTimes: {
+    // Keep the non-null joined key first so partial metric rows remain hydrated.
+    igdbId: gameIgdbCompletionTimes.igdbId,
+    hastilySeconds: gameIgdbCompletionTimes.hastilySeconds,
+    normallySeconds: gameIgdbCompletionTimes.normallySeconds,
+    completelySeconds: gameIgdbCompletionTimes.completelySeconds,
+    sampleCount: gameIgdbCompletionTimes.sampleCount,
+    sourceUpdatedAt: gameIgdbCompletionTimes.sourceUpdatedAt,
+  },
   hltbMainHours: games.hltbMainHours,
   hltbMainExtraHours: games.hltbMainExtraHours,
   hltbCompletionistHours: games.hltbCompletionistHours,
@@ -287,13 +297,12 @@ export class DrizzleGamesRepository implements IGamesRepository {
 
   async findBySlug(slug: string): Promise<GameWithRelations | null> {
     const [row] = await this.dbProvider.client
-      .select()
+      .select({ game: getTableColumns(games), completionTimes: PUBLIC_CARD_FIELDS.completionTimes })
       .from(games)
-      .where(eq(games.slug, slug))
-      .limit(1);
-
+      .leftJoin(gameIgdbCompletionTimes, eq(games.igdbId, gameIgdbCompletionTimes.igdbId))
+      .where(eq(games.slug, slug)).limit(1);
     if (!row) return null;
-    return this.getGameWithRelations(row);
+    return { ...await this.getGameWithRelations(row.game), completionTimes: row.completionTimes };
   }
 
   async list(filter?: { page?: number; limit?: number; q?: string }): Promise<{ items: GameWithRelations[]; total: number }> {
@@ -412,6 +421,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
       db
         .select(PUBLIC_CARD_FIELDS)
         .from(games)
+        .leftJoin(gameIgdbCompletionTimes, eq(games.igdbId, gameIgdbCompletionTimes.igdbId))
         .where(whereExpr)
         .orderBy(...order)
         .limit(filter.limit)
@@ -423,7 +433,9 @@ export class DrizzleGamesRepository implements IGamesRepository {
   async findPublicCardsByIds(ids: string[]): Promise<GameCard[]> {
     const validIds = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)))].slice(0, 48);
     if (!validIds.length) return [];
-    return this.dbProvider.client.select(PUBLIC_CARD_FIELDS).from(games).where(inArray(games.id, validIds));
+    return this.dbProvider.client.select(PUBLIC_CARD_FIELDS).from(games)
+      .leftJoin(gameIgdbCompletionTimes, eq(games.igdbId, gameIgdbCompletionTimes.igdbId))
+      .where(inArray(games.id, validIds));
   }
 
   /** Companies of one role joined to their game links: the inner join keeps only companies with games. */

@@ -15,6 +15,16 @@ describe("ListGamesHandler", () => {
     handler = new ListGamesHandler(reader, gamesRepo);
   });
 
+  it("hydrates completion times from authoritative cards for typed search", async () => {
+    reader.searchPublicGames.mockResolvedValue({ items: [{ id: "g-1" }], total: 1 });
+    gamesRepo.findPublicCardsByIds.mockResolvedValue([{ id: "g-1", slug: "duration", title: "Duration",
+      completionTimes: { hastilySeconds: 3600, normallySeconds: 5400, completelySeconds: null,
+        sampleCount: 1, sourceUpdatedAt: new Date("2026-11-01T00:00:00Z") } }]);
+    const result = await handler.handle({ query: { q: "duration" } } as any);
+    expect(result.items[0].completionTimes).toEqual({ creditsSeconds: 3600, extrasSeconds: 5400,
+      completionistSeconds: null, sampleCount: 1, source: "IGDB", updatedAt: "2026-11-01T00:00:00.000Z" });
+  });
+
   it("defaults to page 1 and 24 per page", async () => {
     await handler.handle({ query: {} } as any);
     expect(gamesRepo.listPublic).toHaveBeenCalledWith({ page: 1, limit: 24 });
@@ -48,7 +58,7 @@ describe("ListGamesHandler", () => {
     expect(gamesRepo.listPublic).not.toHaveBeenCalled();
     expect(result).toEqual({
       items: [{ slug: "doom", title: "Doom", coverImageUrl: null, releaseDate: "1993-12-10", metacriticScore: null, openCriticScore: null, criticScore: 85,
-        popularityScore: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null }],
+        popularityScore: null, completionTimes: null, hltbMainHours: null, hltbMainExtraHours: null, hltbCompletionistHours: null }],
       total: 49,
       page: 2,
       limit: 24,

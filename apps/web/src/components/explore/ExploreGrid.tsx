@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatReviewScore, selectReviewScores } from "../../app/explore/games/cardMetrics";
 import { scoreTier } from "../../app/explore/games/scoreTier";
 import { localizeHref } from "../../lib/localizeHref";
+import { compactCompletionTime, type GameCompletionTimes } from "../../lib/gameCompletionTimes";
 import type { MovieCard } from "../../lib/movies";
 import styles from "./ExploreGrid.module.css";
 
@@ -10,6 +11,7 @@ export interface ExploreGame {
   title: string;
   releaseDate: string | null;
   criticScore?: number | null;
+  completionTimes?: GameCompletionTimes | null;
 }
 
 export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
@@ -36,8 +38,9 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
         const year = isGame ? item.releaseDate?.slice(0, 4) ?? null : item.releaseYear;
         const topScore = isGame ? selectReviewScores(item)[0] : undefined;
         const runtime = !isGame && item.runtimeMinutes !== null ? `${item.runtimeMinutes} min` : null;
+        const duration = isGame ? compactCompletionTime(item.completionTimes) : null;
         const hasMeta =
-          showKind || Boolean(topScore) || Boolean(runtime) || (year !== null && year !== "");
+          showKind || Boolean(topScore) || Boolean(runtime) || Boolean(duration) || (year !== null && year !== "");
 
         return (
           <li key={`${type}:${item.slug}`} className={styles.item}>
@@ -57,6 +60,7 @@ export default function ExploreGrid({ games, movies, lang, emptyMessage }: {
                       </span>
                     </span>
                   )}
+                  {duration && <span className={styles.meta}>{duration}</span>}
                   {runtime && <span className={styles.meta}>{runtime}</span>}
                   {year !== null && year !== "" && <span className={styles.year}>{year}</span>}
                 </span>

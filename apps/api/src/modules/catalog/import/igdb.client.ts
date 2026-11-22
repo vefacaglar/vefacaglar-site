@@ -1,3 +1,4 @@
+import { collectCompletionTimes } from "../completion-times/igdb-completion-times";
 import { injectable } from "tsyringe";
 import {
   normalizeTitle,
@@ -55,6 +56,10 @@ type IgdbGame = {
 export class IgdbClient implements IIgdbClient {
   private token: { value: string; expiresAt: number } | null = null;
   private lastRequestAt = 0;
+
+  async collect(): Promise<import("../completion-times/completion-times.types").GameCompletionTimesRow[]> {
+    return collectCompletionTimes((path, body) => this.query<unknown>(`https://api.igdb.com/v4/${path}`, body));
+  }
 
   async findGame(query: string): Promise<ImportedGame | null> {
     const results = await this.query(

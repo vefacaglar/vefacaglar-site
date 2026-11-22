@@ -602,3 +602,29 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.completionTimes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  margin: 0 0 12px;
+}
+
+.completionTimes dt {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.completionTimes dd {
+  color: var(--text-heading);
+  font-size: 22px;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.completionSource {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}

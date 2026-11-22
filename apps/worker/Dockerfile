@@ -56,6 +56,7 @@ COPY --from=builder /out/worker /usr/local/bin/worker
 # Executed natively for each buildx platform, including the runtime's Node ABI.
 RUN node --check apps/api/dist/scripts/refresh-popularity.js \
  && node --check apps/api/dist/scripts/import-games.js \
+ && node --check apps/api/dist/scripts/refresh-game-completion-times.js \
  && node --check apps/api/dist/scripts/sync-movies.js \
  && node --check apps/api/dist/scripts/refresh-movie-popularity.js \
  && node --check apps/api/dist/scripts/fix-movie-english-titles.js \

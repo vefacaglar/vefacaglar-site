@@ -23,6 +23,7 @@ const SCRIPT: &str = "/app/apps/api/dist/scripts/refresh-popularity.js";
 const PREFIX: &str = "[catalog:popularity] ";
 const MAX_LINE_BYTES: usize = 4096;
 
+pub mod game_completion_times;
 pub mod game_import;
 pub mod movie_popularity;
 pub mod movie_titles;
@@ -46,6 +47,15 @@ const POPULARITY: CliSpec = CliSpec {
     phase: "refreshing game popularity",
     interrupted: "Catalog refresh stopped; its next attempt will safely rerun the full refresh",
     deadline: None,
+    deadline_yields: false,
+    continues: false,
+};
+const GAME_COMPLETION_TIMES: CliSpec = CliSpec {
+    prefix: "[catalog:completion-times] ",
+    label: "IGDB game completion times",
+    phase: "refreshing game completion times",
+    interrupted: "Game completion times refresh stopped; the previous complete snapshot remains available",
+    deadline: Some(Duration::from_secs(240)),
     deadline_yields: false,
     continues: false,
 };

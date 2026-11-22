@@ -25,6 +25,8 @@ describe("GetGameHandler", () => {
       description: null,
       coverImageUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
       releaseDate: "1993-12-10",
+      completionTimes: { hastilySeconds: 3600, normallySeconds: 5400, completelySeconds: 7200,
+        sampleCount: 5, sourceUpdatedAt: new Date("2026-11-01T00:00:00Z") },
       hltbMainHours: "7.5",
       hltbMainExtraHours: "11.0",
       hltbCompletionistHours: "15.0",
@@ -39,6 +41,8 @@ describe("GetGameHandler", () => {
 
     expect(result.coverImageUrl).toBeNull();
     expect(JSON.stringify(result)).not.toContain("images.igdb.com");
+    expect(result.completionTimes).toMatchObject({ creditsSeconds: 3600, extrasSeconds: 5400,
+      completionistSeconds: 7200, source: "IGDB", sampleCount: 5 });
     expect(result.hltbMainHours).toBeNull();
     expect(result.hltbMainExtraHours).toBeNull();
     expect(result.hltbCompletionistHours).toBeNull();

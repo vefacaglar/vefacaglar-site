@@ -30,6 +30,8 @@ import { DrizzlePlatformsRepository } from "./modules/catalog/platforms.reposito
 import { DrizzleGamesRepository } from "./modules/catalog/games.repository";
 import { IGDB_CLIENT } from "./modules/catalog/import/import.tokens";
 import { IgdbClient } from "./modules/catalog/import/igdb.client";
+import { GAME_COMPLETION_TIMES_CLIENT, GAME_COMPLETION_TIMES_REPOSITORY } from "./modules/catalog/completion-times/completion-times.types";
+import { DrizzleGameCompletionTimesRepository } from "./modules/catalog/completion-times/completion-times.repository";
 import { GameAudienceService } from "./modules/catalog/popularity/game-audience.service";
 import { GameWikipediaAudienceClient } from "./modules/catalog/popularity/wikipedia-audience.client";
 import { PopularityDiscoveryService } from "./modules/catalog/popularity/popularity-discovery.service";
@@ -106,6 +108,8 @@ container.registerSingleton(THEMES_REPOSITORY, DrizzleThemesRepository);
 container.registerSingleton(PLATFORMS_REPOSITORY, DrizzlePlatformsRepository);
 container.registerSingleton(GAMES_REPOSITORY, DrizzleGamesRepository);
 container.registerSingleton(IGDB_CLIENT, IgdbClient);
+container.register(GAME_COMPLETION_TIMES_CLIENT, { useToken: IGDB_CLIENT });
+container.registerSingleton(GAME_COMPLETION_TIMES_REPOSITORY, DrizzleGameCompletionTimesRepository);
 container.registerSingleton(OwnerRankingService);
 container.registerSingleton(GameWikipediaAudienceClient);
 container.register(GameAudienceService, { useClass: GameAudienceService });

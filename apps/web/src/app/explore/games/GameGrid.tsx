@@ -2,6 +2,7 @@ import Link from "next/link";
 import { localizeHref } from "../../../lib/localizeHref";
 import { formatReviewScore, selectReviewScores } from "./cardMetrics";
 import { scoreTier } from "./scoreTier";
+import { compactCompletionTime, type GameCompletionTimes } from "../../../lib/gameCompletionTimes";
 import styles from "./GameGrid.module.css";
 
 export type GameCardItem = {
@@ -10,6 +11,7 @@ export type GameCardItem = {
   coverImageUrl?: string | null;
   releaseDate: string | null;
   criticScore?: number | null;
+  completionTimes?: GameCompletionTimes | null;
 };
 
 export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang: string }) {
@@ -18,7 +20,8 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
       {games.map((game) => {
         const year = game.releaseDate?.slice(0, 4) ?? null;
         const reviews = selectReviewScores(game);
-        const hasMeta = reviews.length > 0 || year !== null;
+        const duration = compactCompletionTime(game.completionTimes);
+        const hasMeta = reviews.length > 0 || year !== null || duration !== null;
 
         return (
           <li key={game.slug} className={styles.item}>
@@ -38,6 +41,7 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
                       ))}
                     </span>
                   )}
+                  {duration && <span className={styles.duration}>{duration}</span>}
                   {year && <span className={styles.year}>{year}</span>}
                 </span>
               )}

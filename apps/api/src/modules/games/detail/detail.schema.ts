@@ -1,4 +1,5 @@
 import { Type, Static } from "@sinclair/typebox";
+import { GameCompletionTimesSchema } from "../../catalog/completion-times/completion-times.schema";
 
 export const GetGameParamsSchema = Type.Object({ slug: Type.String() });
 export type GetGameParams = Static<typeof GetGameParamsSchema>;
@@ -14,6 +15,7 @@ export const GameDetailResponseSchema = Type.Object({
   releaseDate: Type.Union([Type.String(), Type.Null()]),
   criticScore: NullableNumber,
   criticScoreCount: NullableNumber,
+  completionTimes: GameCompletionTimesSchema,
   hltbMainHours: NullableNumber,
   hltbMainExtraHours: NullableNumber,
   hltbCompletionistHours: NullableNumber,

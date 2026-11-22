@@ -11,6 +11,7 @@ import { libraryMetadata } from "../../../../lib/librarySeo";
 import { getGame } from "../../../../lib/data";
 import { httpClient } from "../../../../lib/httpClient";
 import { getLoginHref } from "../../../../lib/oidc";
+import { formatCompletionDuration, type GameCompletionTimes } from "../../../../lib/gameCompletionTimes";
 import { formatDate } from "../../../../lib/formatDate";
 import GameLogs, { type GameLog } from "./GameLogs";
 import { scoreTier } from "../scoreTier";
@@ -27,6 +28,7 @@ type GameDetail = {
   releaseDate: string | null;
   criticScore: number | null;
   criticScoreCount: number | null;
+  completionTimes: GameCompletionTimes | null;
   developers: Named[];
   publishers: Named[];
   genres: Named[];
@@ -89,6 +91,12 @@ export default async function Game(props: GameProps) {
     </Fragment>
   ));
   const year = game.releaseDate?.slice(0, 4) ?? null;
+  const durations = game.completionTimes;
+  const completionCategories = durations ? [
+    { label: "To credits", seconds: durations.creditsSeconds },
+    { label: "With some extras", seconds: durations.extrasSeconds },
+    { label: "100% completion", seconds: durations.completionistSeconds },
+  ].filter((category) => category.seconds !== null) : [];
 
   type Fact = { label: string; text?: string; tags?: string[]; companies?: Named[]; companyRole?: GameCompanyRole };
   const facts: Fact[] = (
@@ -145,6 +153,27 @@ export default async function Game(props: GameProps) {
       <div className={styles.body}>
         <div className={styles.main}>
           {game.description && <p className={styles.description}>{game.description}</p>}
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Completion time</h2>
+            {durations ? (
+              <>
+                <dl className={styles.completionTimes}>
+                  {completionCategories.map((category) => (
+                    <div key={category.label}>
+                      <dt>{category.label}</dt>
+                      <dd>{formatCompletionDuration(category.seconds!)}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className={styles.completionSource}>
+                  Reported averages from {durations.sampleCount} IGDB {durations.sampleCount === 1 ? "submission" : "submissions"}.
+                  {durations.sampleCount < 3 && " Limited sample."}
+                  {durations.updatedAt && ` Updated ${formatDate(durations.updatedAt, "en")}.`}
+                </p>
+              </>
+            ) : <p className={styles.completionSource}>IGDB has no usable completion-time submissions for this game.</p>}
+          </section>
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>{dict.my_logs}</h2>

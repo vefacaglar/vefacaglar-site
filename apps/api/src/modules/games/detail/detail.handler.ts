@@ -1,3 +1,4 @@
+import { usableCompletionTimes } from "../../catalog/completion-times/completion-times-quality";
 import { FastifyRequest } from "fastify";
 import { inject, injectable } from "tsyringe";
 import { GAMES_REPOSITORY } from "../../catalog/catalog.tokens";
@@ -25,6 +26,7 @@ export class GetGameHandler {
       releaseDate: game.releaseDate,
       criticScore,
       criticScoreCount: criticScore === null ? null : game.criticScoreCount,
+      completionTimes: usableCompletionTimes(game.completionTimes),
       hltbMainHours: null,
       hltbMainExtraHours: null,
       hltbCompletionistHours: null,

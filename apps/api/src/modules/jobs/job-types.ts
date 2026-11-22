@@ -24,6 +24,11 @@ const SEARCH_INDEX_CONCURRENCY_KEY = "search.index";
 const EmptyPayloadSchema = Type.Object({}, { additionalProperties: false });
 
 export const JOB_TYPES = {
+  "catalog.games.completion_times.refresh": defineJobType({
+    description: "Refresh the complete official IGDB completion-time snapshot, including category durations, submission counts and source update dates. Runs daily.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.games.completion_times",
+  }),
   "catalog.games.import": defineJobType({
     description: "Collect the IGDB game catalog in ascending ID order, resuming durable progress after interruptions. Runs every six hours for up to 330 minutes.",
     payloadSchema: EmptyPayloadSchema,
