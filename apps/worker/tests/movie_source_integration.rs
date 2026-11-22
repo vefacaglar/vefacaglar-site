@@ -22,7 +22,7 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
     source.start_build(target).await.unwrap();
     sqlx::query("UPDATE movie_search_state SET repair_cursor=NULL,repair_completed_at=NULL WHERE id='movies_en'")
         .execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO movie_popularity_state (id,source_date) VALUES ('enwiki-top-articles-v1',$1) ON CONFLICT (id) DO UPDATE SET source_date=$1")
+    sqlx::query("INSERT INTO movie_popularity_state (id,source_date) VALUES ('enwiki-current-interest-v2',$1) ON CONFLICT (id) DO UPDATE SET source_date=$1")
         .bind(date).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO movies (id,wikidata_id,slug,title,release_year,is_film,hydrated_at,wikipedia_views,wikipedia_source_date) VALUES ($1,$2,$2,'Captured Movie',2011,true,now(),42,$3)")
         .bind(id).bind(&qid).bind(date).execute(&pool).await.unwrap();

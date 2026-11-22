@@ -4,7 +4,7 @@ import { getDictionary } from "../../../dictionaries";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import { libraryMetadata } from "../../../lib/librarySeo";
-import { MOVIE_SUGGESTION_GROUPS, getPublicMovies, searchMoviePeople } from "../../../lib/movies";
+import { MOVIE_SUGGESTION_GROUPS, getMovieRankingNotice, getPublicMovies, searchMoviePeople } from "../../../lib/movies";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
 import MovieSearch from "../../../components/movies/MovieSearch";
 import Pagination from "../../components/Pagination";
@@ -44,6 +44,7 @@ export default async function Movies({ searchParams }: {
     query && page === 1 ? matchingPeople(query) : Promise.resolve({ people: [], order: MOVIE_SUGGESTION_GROUPS }),
   ]);
   const { people } = matches;
+  const rankingNotice = !query ? getMovieRankingNotice(data?.ranking) : null;
   const peopleSection = people.length > 0 && (
     <section key="people" className={styles.section} aria-labelledby="movie-search-people">
       <h2 id="movie-search-people" className={styles.sectionTitle}>{dict.movies_search_people}</h2>
@@ -63,6 +64,10 @@ export default async function Movies({ searchParams }: {
       <LibraryMasthead title={dict.movies} subtitle={dict.movies_catalog_subtitle}>
         <MovieSearch initialQuery={query} placeholder={dict.movies_search_placeholder} />
       </LibraryMasthead>
+      {!query && data && (rankingNotice || data.ranking.mode === "recognition") && <p className={styles.ranking}>
+        {rankingNotice ? <>{data.ranking.windowDays === 3 ? "Recent Wikipedia interest (3 days)" : "Wikipedia interest"} · {rankingNotice.date}. <a href={rankingNotice.sourceUrl}>Source</a></>
+          : "Ordered by Wikipedia language coverage."}
+      </p>}
       {matches.order.map((group) => group === "people" ? peopleSection : titlesSection)}
     </div>
   );

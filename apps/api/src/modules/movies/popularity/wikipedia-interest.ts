@@ -1,4 +1,4 @@
-import { MovieInterestSourceError, type InterestArticle, type InterestProjection, type MovieRanking } from "./popularity.types";
+import { MOVIE_INTEREST_SOURCE_URL, MovieInterestSourceError, type InterestArticle, type InterestProjection, type MovieRanking } from "./popularity.types";
 const DAY = 86_400_000;
 const object = (value: unknown): value is Record<string, any> => !!value && typeof value === "object" && !Array.isArray(value);
 export function utcDay(now = new Date()): string { return now.toISOString().slice(0, 10); }
@@ -20,9 +20,9 @@ export function sourceUrl(day: string): string {
   if (!isSourceDay(day)) throw new Error("invalid_source_date");
   return `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia.org/all-access/${day.replace(/-/g, "/")}`;
 }
-export function movieRanking(day: string | null, now = new Date()): MovieRanking {
-  const isFresh = sourceIsFresh(day, now);
-  return { mode: isFresh ? "wikipedia_interest" : "alphabetical", sourceDate: day, sourceUrl: day && isSourceDay(day) ? sourceUrl(day) : null, isFresh };
+export function movieRanking(day: string | null, now = new Date(), hasObservations = true): MovieRanking {
+  const isFresh = sourceIsFresh(day, now) && hasObservations;
+  return { mode: isFresh ? "wikipedia_interest" : "recognition", sourceDate: day, sourceUrl: day && isSourceDay(day) ? MOVIE_INTEREST_SOURCE_URL : null, isFresh, windowDays: 3 };
 }
 export function snapshotDisposition(incoming: string, accepted: string | null, now = new Date()): "publish" | "unchanged" {
   if (!isSourceDay(incoming) || incoming >= utcDay(now)) throw new Error("invalid_observation_day");
@@ -132,9 +132,41 @@ export function assertCompleteProjection(projection: InterestProjection): void {
   if (!isSourceDay(projection.sourceDate) || projection.articleCount !== 1000 || !Number.isInteger(projection.mappedArticleCount) || !Number.isInteger(projection.missingArticleCount)
     || !Number.isInteger(projection.duplicateQidCount) || projection.mappedArticleCount < 0 || projection.missingArticleCount < 0 || projection.duplicateQidCount < 0
     || projection.mappedArticleCount + projection.missingArticleCount !== 1000 || projection.observations.length !== projection.mappedArticleCount - projection.duplicateQidCount) throw new Error("incomplete_movie_interest_projection");
-  const ids = new Set<string>();
-  for (const observation of projection.observations) {
-    if (!/^Q[1-9]\d{0,22}$/.test(observation.wikidataId) || ids.has(observation.wikidataId) || !Number.isSafeInteger(observation.views) || observation.views < 0 || observation.views > 2_147_483_647) throw new Error("invalid_movie_interest_observation");
-    ids.add(observation.wikidataId);
+  for (const observations of [projection.observations, projection.rollingObservations]) {
+    if (!Array.isArray(observations)) throw new Error("invalid_movie_interest_observation");
+    const ids = new Set<string>();
+    for (const observation of observations) {
+      if (!/^Q[1-9]\d{0,22}$/.test(observation.wikidataId) || ids.has(observation.wikidataId) || !Number.isSafeInteger(observation.views) || observation.views < 0 || observation.views > 2_147_483_647) throw new Error("invalid_movie_interest_observation");
+      ids.add(observation.wikidataId);
+    }
   }
+  if (projection.rollingObservations.length > 64) throw new Error("invalid_movie_interest_observation");
+}
+
+export function interestWindowDays(day: string): string[] {
+  if (!isSourceDay(day)) throw new Error("invalid_source_date");
+  const end = Date.parse(day + "T00:00:00Z");
+  return [2, 1, 0].map((offset) => new Date(end - offset * DAY).toISOString().slice(0, 10));
+}
+export function articleViewsUrl(article: string, day: string): URL {
+  if (!isSourceDay(day) || !article.trim() || article.length > 512) throw new Error("invalid_article_observation");
+  const days = interestWindowDays(day);
+  const timestamp = (date: string) => date.replace(/-/g, "") + "00";
+  return new URL(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/user/${encodeURIComponent(article.replace(/ /g, "_"))}/daily/${timestamp(days[0])}/${timestamp(day)}`);
+}
+/** Missing days are unobserved; every accepted film uses the same denominator. */
+export function parseArticleViews(raw: unknown, article: string, day: string): number | null {
+  const bad = () => new MovieInterestSourceError("aqs", "aqs_invalid_article_observation");
+  if (!object(raw) || !Array.isArray(raw.items) || raw.items.length > 3) throw bad();
+  const dates = interestWindowDays(day).map((date) => date.replace(/-/g, "") + "00");
+  const observations = new Map<string, number>();
+  for (const row of raw.items) {
+    if (!object(row) || !["en.wikipedia", "en.wikipedia.org"].includes(row.project) || row.access !== "all-access" || row.agent !== "user"
+      || row.granularity !== "daily" || !dates.includes(row.timestamp) || observations.has(row.timestamp)
+      || typeof row.article !== "string" || normalizeArticleTitle(row.article) !== normalizeArticleTitle(article)
+      || !Number.isSafeInteger(row.views) || row.views < 0 || row.views > 2_147_483_647) throw bad();
+    observations.set(row.timestamp, row.views);
+  }
+  if (observations.size !== 3) return null;
+  return Math.floor(dates.reduce((sum, date, index) => sum + observations.get(date)! * (index + 1), 0) / 6);
 }

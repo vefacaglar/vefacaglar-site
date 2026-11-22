@@ -32,7 +32,7 @@ export function movieSearchParameters(query: MovieSearchQuery, matchYear = !!spl
     // (no attribute or exactness), so relevance comes first and these fields only break its ties.
     sort: typed
       ? query.fresh ? ["interestRecognitionRank:desc", "tieBreakId:asc"] : ["recognitionCount:desc", "tieBreakId:asc"]
-      : query.fresh ? ["interestScore:desc", "titleSort:asc", "tieBreakId:asc"] : ["titleSort:asc", "tieBreakId:asc"],
+      : query.fresh ? ["interestScore:desc", "recognitionCount:desc", "titleSort:asc", "tieBreakId:asc"] : ["recognitionCount:desc", "titleSort:asc", "tieBreakId:asc"],
     // The QID is validated above; quoting keeps it a plain string literal.
     ...(query.personQid ? { filter: `personQids = ${JSON.stringify(query.personQid)}` } : {}),
   };

@@ -1,18 +1,36 @@
 import { injectable } from "tsyringe";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { movies, moviePopularityState, movieSourceState, movieSearchState } from "@vefacaglar/db";
 import { DbProvider } from "../../../db.provider";
 import { MOVIE_SOURCE_ID } from "../import/movie-source.types";
-import { assertCompleteProjection, snapshotDisposition } from "./wikipedia-interest";
+import { assertCompleteProjection, snapshotDisposition, utcDay } from "./wikipedia-interest";
 import { MOVIE_POPULARITY_SOURCE_ID, type IMoviePopularityRepository, type InterestProjection, type MoviePopularityState } from "./popularity.types";
 import { requestMovieSearchSync } from "../search/movie-search-state.repository";
 @injectable()
 export class DrizzleMoviePopularityRepository implements IMoviePopularityRepository {
   constructor(private readonly dbProvider: DbProvider) {}
   async state(): Promise<MoviePopularityState> {
-    await this.dbProvider.client.insert(moviePopularityState).values({ id: MOVIE_POPULARITY_SOURCE_ID }).onConflictDoNothing();
+    await this.dbProvider.client.insert(moviePopularityState).values({ id: MOVIE_POPULARITY_SOURCE_ID,
+      // A new measurement version must still honor an outstanding provider wait.
+      cooldownUntil: sql`(select cooldown_until from ${moviePopularityState} where id='enwiki-top-articles-v1')`,
+    }).onConflictDoNothing();
     const [state] = await this.dbProvider.client.select().from(moviePopularityState).where(eq(moviePopularityState.id, MOVIE_POPULARITY_SOURCE_ID));
     return state;
+  }
+  async interestCandidates(now: Date) {
+    const day = utcDay(now);
+    return this.dbProvider.client.select({ wikidataId: movies.wikidataId, article: movies.enwikiArticle }).from(movies)
+      .where(and(eq(movies.isFilm, true), isNotNull(movies.hydratedAt), isNotNull(movies.title), isNotNull(movies.enwikiArticle),
+        sql`coalesce(${movies.releaseDate}::date, case when ${movies.releaseYear} between 1 and 9999 then make_date(${movies.releaseYear},7,1) end)
+          between (${day}::date-365) and (${day}::date-1)`))
+      .orderBy(sql`${movies.wikipediaLanguageCount} desc nulls last`, desc(movies.releaseYear), movies.id).limit(16)
+      .then((rows) => rows.filter((row): row is { wikidataId: string; article: string } => !!row.article?.trim()));
+  }
+  async knownMovieQids(qids: string[]) {
+    if (!qids.length) return [];
+    return (await this.dbProvider.client.select({ qid: movies.wikidataId }).from(movies)
+      .where(and(inArray(movies.wikidataId, qids), or(isNull(movies.hydratedAt), eq(movies.isFilm, true)))))
+      .map((row) => row.qid);
   }
   async wikidataCooldown(): Promise<Date | null> {
     const [state] = await this.dbProvider.client.select({ cooldown: movieSourceState.cooldownUntil }).from(movieSourceState).where(eq(movieSourceState.id, MOVIE_SOURCE_ID));
@@ -39,10 +57,11 @@ export class DrizzleMoviePopularityRepository implements IMoviePopularityReposit
       await this.state();
       const [state] = await db.select().from(moviePopularityState).where(eq(moviePopularityState.id, MOVIE_POPULARITY_SOURCE_ID)).for("update");
       if (snapshotDisposition(projection.sourceDate, state.sourceDate) === "unchanged") return { status: "unchanged" as const, observedMovieCount: state.observedMovieCount ?? 0 };
-      const qids = projection.observations.map((observation) => observation.wikidataId);
+      const measured = projection.rollingObservations;
+      const qids = measured.map((observation) => observation.wikidataId);
       const known = qids.length ? await db.select({ qid: movies.wikidataId }).from(movies).where(and(inArray(movies.wikidataId, qids), or(isNull(movies.hydratedAt), eq(movies.isFilm, true)))) : [];
       const knownQids = new Set(known.map((movie) => movie.qid));
-      const observations = projection.observations.filter((observation) => knownQids.has(observation.wikidataId));
+      const observations = measured.filter((observation) => knownQids.has(observation.wikidataId));
       // Lock publication state before touching source rows; ledger writes follow
       // movie writes, matching persistMovie's movie -> ledger lock order.
       await db.insert(movieSearchState).values({ id: "movies_en", rankingGeneration: 1 }).onConflictDoUpdate({ target: movieSearchState.id,

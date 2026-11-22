@@ -14,7 +14,7 @@ const storedCard = { slug: "inception-q25188", title: "Inception", releaseDate: 
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Inception.jpg", artist: "Studio", license: "CC0", licenseUrl: null } };
 const card = { ...storedCard, posterImageUrl: null, posterAttribution: null };
 const fallback = { items: [], total: 91, ranking: { mode: "alphabetical", sourceDate: null, sourceUrl: null, isFresh: false } };
-const state = { id: "movies_en", schemaVersion: 3, activeCollection: "movies_en", buildingCollection: null,
+const state = { id: "movies_en", schemaVersion: 4, hasPublicInterest: true, activeCollection: "movies_en", buildingCollection: null,
   bootstrapPhase: "ready", bootstrapCursor: null, rankingGeneration: 2, rankingReady: true,
   publishedSourceDate: "2026-11-06", repairCursor: null, repairCompletedAt: null, updatedAt: new Date() } satisfies MovieSearchState;
 let repo: Record<keyof IMoviesRepository, any>;
@@ -66,7 +66,7 @@ describe("movie catalog handlers using the movie index", () => {
     expect((await list()).total).toBe(91);
   });
   it.each([{ ...state, rankingReady: false }, { ...state, rankingGeneration: 3 },
-    { ...state, activeCollection: "movies_en__v2_b2" }, { ...state, schemaVersion: 4 }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
+    { ...state, activeCollection: "movies_en__v2_b2" }, { ...state, schemaVersion: 5 }, { ...state, publishedSourceDate: "2026-11-05" }])("rejects readiness changes while searching (%j)", async (after) => {
     repo.hydrateCatalogPage.mockResolvedValue({ items: [storedCard], state: after });
     expect((await list()).total).toBe(91);
   });
@@ -88,10 +88,21 @@ describe("movie catalog handlers using the movie index", () => {
     repo.hydrateCatalogPage.mockResolvedValue({ items: [], state: null });
     expect((await list()).total).toBe(91);
   });
-  it("uses alphabetical index ordering once the source date expires", async () => {
+  it("uses recognition ordering once the source date expires", async () => {
     vi.setSystemTime(new Date("2026-11-14T00:00:00Z"));
-    expect((await list()).ranking).toMatchObject({ mode: "alphabetical", isFresh: false });
+    expect((await list()).ranking).toMatchObject({ mode: "recognition", isFresh: false });
     expect(reader.search).toHaveBeenCalledWith(expect.objectContaining({ fresh: false }));
+  });
+  it("uses recognition when a fresh source contains no public observed films", async () => {
+    const empty = { ...state, hasPublicInterest: false };
+    stateRepo.state.mockResolvedValue(empty);
+    repo.hydrateCatalogPage.mockResolvedValue({ items: [storedCard], state: empty });
+    expect((await list()).ranking).toMatchObject({ mode: "recognition", isFresh: false, sourceDate: state.publishedSourceDate });
+    expect(reader.search).toHaveBeenCalledWith(expect.objectContaining({ fresh: false }));
+  });
+  it("falls back if public interest coverage disappears during the request", async () => {
+    repo.hydrateCatalogPage.mockResolvedValue({ items: [storedCard], state: { ...state, hasPublicInterest: false } });
+    expect((await list()).total).toBe(91);
   });
   it("loads a person's filmography from the database without the ranked index", async () => {
     repo.findPublicPerson.mockResolvedValue({ person: { wikidataId: "Q25191", name: "Christopher Nolan" }, items: [{ ...card, roles: ["director"] }], total: 1 });

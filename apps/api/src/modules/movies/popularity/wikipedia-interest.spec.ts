@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { describe, expect, it } from "vitest";
-import { assertCompleteProjection, candidateSourceDays, movieRanking, normalizeArticleTitle, parseTitleMappings, parseTopArticles, projectObservations, snapshotDisposition, sourceIsFresh, titleMappingBatches, titleMappingUrl } from "./wikipedia-interest";
+import { articleViewsUrl, parseArticleViews, assertCompleteProjection, candidateSourceDays, movieRanking, normalizeArticleTitle, parseTitleMappings, parseTopArticles, projectObservations, snapshotDisposition, sourceIsFresh, titleMappingBatches, titleMappingUrl } from "./wikipedia-interest";
 const now = new Date("2026-11-06T01:30:00Z");
 const top = () => ({ items: [{ project: "en.wikipedia", access: "all-access", year: "2026", month: "11", day: "04", articles: Array.from({ length: 1000 }, (_, index) => ({ article: `Article_${index}`, views: 100000 - index, rank: index + 1 })) }] });
 const resolved = (id: string, title: string) => ({ id, type: "item", sitelinks: { enwiki: { site: "enwiki", title } } });
@@ -43,8 +43,8 @@ describe("complete Wikipedia top-article projection", () => {
   });
   it("rejects unaccounted titles while allowing a validated all-missing projection", () => {
     expect(() => projectObservations([{ title: "A", views: 1 }], new Map())).toThrow();
-    expect(() => assertCompleteProjection({ sourceDate: "2026-11-04", observations: [], articleCount: 1000, mappedArticleCount: 0, missingArticleCount: 1000, duplicateQidCount: 0, requests: 21, durationMs: 1 })).not.toThrow();
-    expect(() => assertCompleteProjection({ sourceDate: "2026-11-04", observations: [], articleCount: 999, mappedArticleCount: 0, missingArticleCount: 999, duplicateQidCount: 0, requests: 21, durationMs: 1 })).toThrow();
+    expect(() => assertCompleteProjection({ sourceDate: "2026-11-04", rollingObservations: [], observations: [], articleCount: 1000, mappedArticleCount: 0, missingArticleCount: 1000, duplicateQidCount: 0, requests: 21, durationMs: 1 })).not.toThrow();
+    expect(() => assertCompleteProjection({ sourceDate: "2026-11-04", rollingObservations: [], observations: [], articleCount: 999, mappedArticleCount: 0, missingArticleCount: 999, duplicateQidCount: 0, requests: 21, durationMs: 1 })).toThrow();
   });
   it("bounds encoded URLs and title counts without omitting a long title", () => {
     const titles = Array.from({ length: 100 }, (_, index) => `Article ${index} ${"界".repeat(200)}`);
@@ -72,7 +72,34 @@ describe("source-date and sparse ranking policy", () => {
     expect(sourceIsFresh("2026-10-30", now)).toBe(true);
     expect(sourceIsFresh("2026-10-29", now)).toBe(false);
     expect(sourceIsFresh("2026-11-06", now)).toBe(false);
-    expect(movieRanking("2026-10-29", now)).toMatchObject({ mode: "alphabetical", sourceDate: "2026-10-29", isFresh: false });
-    expect(movieRanking("2026-11-04", now)).toMatchObject({ mode: "wikipedia_interest", isFresh: true, sourceUrl: "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia.org/all-access/2026/11/04" });
+    expect(movieRanking("2026-10-29", now)).toMatchObject({ mode: "recognition", sourceDate: "2026-10-29", isFresh: false });
+    expect(movieRanking("2026-11-04", now)).toMatchObject({ mode: "wikipedia_interest", isFresh: true, sourceUrl: "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html" });
+  });
+});
+
+describe("rolling film pageviews", () => {
+  const rows = () => ["2026111900", "2026112000", "2026112100"].map((timestamp, i) => ({ project: "en.wikipedia",
+    article: "XXX_(2002_film)", access: "all-access", agent: "user", granularity: "daily", timestamp, views: [100, 200, 300][i] }));
+  it("uses comparable human views over exactly three completed UTC days", () => {
+    expect(articleViewsUrl("XXX (2002 film)", "2026-11-21").href).toBe("https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia.org/all-access/user/XXX_(2002_film)/daily/2026111900/2026112100");
+    expect(parseArticleViews({ items: rows() }, "XXX (2002 film)", "2026-11-21")).toBe(233);
+    // Source ordering cannot change the weights.
+    expect(parseArticleViews({ items: rows().reverse() }, "XXX (2002 film)", "2026-11-21")).toBe(233);
+  });
+  it.each([{ agent: "all-agents" }, { timestamp: "2026111800" }, { article: "Another_film" }, { views: -1 }])("rejects mismatched samples (%j)", (patch) => {
+    const items = rows(); items[0] = { ...items[0], ...patch };
+    expect(() => parseArticleViews({ items }, "XXX (2002 film)", "2026-11-21")).toThrow();
+  });
+  it("keeps missing days unobserved and observed zero distinct", () => {
+    expect(parseArticleViews({ items: rows().slice(1) }, "XXX (2002 film)", "2026-11-21")).toBeNull();
+    expect(parseArticleViews({ items: rows().map((row) => ({ ...row, views: 0 })) }, "XXX (2002 film)", "2026-11-21")).toBe(0);
+    expect(() => parseArticleViews({ items: [rows()[0], rows()[0], rows()[2]] }, "XXX (2002 film)", "2026-11-21")).toThrow();
+  });
+  it("requires a bounded, unique rolling projection before publication", () => {
+    const projection = { sourceDate: "2026-11-21", observations: [{ wikidataId: "Q1", views: 1 }], articleCount: 1000,
+      mappedArticleCount: 1, missingArticleCount: 999, duplicateQidCount: 0, requests: 21, durationMs: 1 };
+    expect(() => assertCompleteProjection({ ...projection, rollingObservations: [{ wikidataId: "Q1", views: 2 }, { wikidataId: "Q1", views: 3 }] })).toThrow();
+    expect(() => assertCompleteProjection({ ...projection, rollingObservations: Array.from({ length: 65 }, (_, i) => ({ wikidataId: `Q${i + 2}`, views: 1 })) })).toThrow();
+    expect(() => assertCompleteProjection({ ...projection, rollingObservations: [{ wikidataId: "Q1", views: 0 }] })).not.toThrow();
   });
 });

@@ -30,10 +30,11 @@ export interface MoviePersonPage {
   total: number;
 }
 export interface MovieRanking {
-  mode: "wikipedia_interest" | "alphabetical";
+  mode: "wikipedia_interest" | "recognition" | "alphabetical";
   sourceDate: string | null;
   sourceUrl: string | null;
   isFresh: boolean;
+  windowDays?: 3;
 }
 
 /** Only show an observation when the API identifies a fresh, valid source day. */

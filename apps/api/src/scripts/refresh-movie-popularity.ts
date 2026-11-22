@@ -11,6 +11,7 @@ async function main() {
   try {
     const result = await container.resolve(RefreshMoviePopularityHandler).handle();
     console.log(`${PREFIX} ${result.status}; observation: ${result.sourceDate ?? "none"}; observed catalog films: ${result.observedMovieCount ?? "unknown"}; articles: ${result.articleCount ?? "unknown"}; requests: ${result.requests}`);
+    if (result.additionalObservedMovieCount !== undefined) console.log(`${PREFIX} additional recent-film observations: ${result.additionalObservedMovieCount}; coverage: ${result.additionalErrorCode ?? "complete"}`);
     if (result.nextRetryAt) console.log(`${PREFIX} source cooldown; next retry after ${result.nextRetryAt}`);
   } finally { clearInterval(heartbeat); }
   process.exit(0);

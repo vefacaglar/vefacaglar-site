@@ -37,7 +37,7 @@ use source::{Batch, MovieSource, PgMovieSource, Publication, State};
 /// Stable index uid the API queries; also the state row id.
 pub const ALIAS: &str = "movies_en";
 /// 3 = Meilisearch. Typesense-era state (2) starts a fresh build.
-pub const SCHEMA_VERSION: i32 = 3;
+pub const SCHEMA_VERSION: i32 = 4;
 pub const BATCH_SIZE: usize = 500;
 const BUILD_PREFIX: &str = "movies_en__build_";
 

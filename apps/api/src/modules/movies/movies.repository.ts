@@ -1,11 +1,12 @@
 import { MOVIE_SEARCH_ID } from "./search/movie-search.types";
 import { dirtyMovieSearch } from "./search/movie-search-state.repository";
 import { injectable } from "tsyringe";
-import { and, asc, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql, getTableColumns, type SQL } from "drizzle-orm";
 import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState, movieSearchState } from "@vefacaglar/db";
 import { DbProvider } from "../../db.provider";
-import { MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
-import { sourceUrl, utcDay } from "./popularity/wikipedia-interest";
+import { MOVIE_INTEREST_SOURCE_URL, MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
+import { hasPublicMovieInterestSql } from "./popularity/movie-interest-sql";
+import { utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
 import type { MoviePersonRole } from "./people/detail/detail.schema";
@@ -176,7 +177,8 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
         select (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID}) as source_date
       ), ranking as (
         select source_date, coalesce(source_date < (statement_timestamp() at time zone 'UTC')::date
-          and source_date >= ((statement_timestamp() at time zone 'UTC')::date - 7), false) as is_fresh from source
+          and source_date >= ((statement_timestamp() at time zone 'UTC')::date - 7), false)
+          and ${hasPublicMovieInterestSql(sql`source_date`)} as is_fresh from source
       ), page as (
         select ${movies.id} as id, ${movies.slug} as slug, ${movies.title} as title,
           ${movies.posterImageUrl} as poster_image_url, ${movies.posterAttribution} as poster_attribution,
@@ -184,22 +186,23 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
           ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
           case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
             then ${movies.wikipediaViews} else null end as interest,
+          coalesce(${movies.wikipediaLanguageCount},0) as recognition,
           ${yearMatch} as year_match
         from ${movies} where ${where}
-        order by year_match desc, interest desc nulls last, ${movies.title}, ${movies.id}
+        order by year_match desc, interest desc nulls last, recognition desc, ${movies.title}, ${movies.id}
         limit ${filter.limit} offset ${(filter.page - 1) * filter.limit}
       )
       select coalesce((select jsonb_agg(jsonb_build_object('movieId',id,'slug',slug,'title',title,'releaseDate',release_date,
           'releaseYear',release_year,'runtimeMinutes',runtime_minutes,'posterImageUrl',poster_image_url,'posterAttribution',poster_attribution,
           'posterArticle',poster_article,'posterOrigin',poster_origin,'posterBlockedAt',poster_blocked_at)
-          order by year_match desc,interest desc nulls last,title,id) from page),'[]'::jsonb) as items,
+          order by year_match desc,interest desc nulls last,recognition desc,title,id) from page),'[]'::jsonb) as items,
         (select count(*) from ${movies} where ${where}) as total,
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
         (select is_fresh from ranking) as is_fresh
     `);
     const row = rows[0] as unknown as { items: (MovieCard & { movieId: string; posterArticle: string | null; posterOrigin: string | null; posterBlockedAt: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
-    const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "alphabetical", sourceDate: row.source_date,
-      sourceUrl: row.source_date ? sourceUrl(row.source_date) : null, isFresh: row.is_fresh };
+    const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "recognition", sourceDate: row.source_date,
+      sourceUrl: row.source_date ? MOVIE_INTEREST_SOURCE_URL : null, isFresh: row.is_fresh, windowDays: 3 };
     const items = row.items.map(({ movieId: _movieId, posterArticle, posterOrigin, posterBlockedAt, ...card }) => ({ ...card,
       ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin, posterBlockedAt }) }));
     return { items, movieIds: row.items.map((item) => item.movieId), total: Number(row.total), ranking };
@@ -294,7 +297,7 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     // Hydrate cards and validate the index publication in the same database
     // snapshot, saving a round trip without accepting mixed publications.
     const rows = await this.dbProvider.client.select({
-      state: movieSearchState,
+      state: { ...getTableColumns(movieSearchState), hasPublicInterest: hasPublicMovieInterestSql(sql`${movieSearchState.publishedSourceDate}`) },
       movie: { id: movies.id, slug: movies.slug, title: movies.title,
         releaseDate: movies.releaseDate, releaseYear: movies.releaseYear, runtimeMinutes: movies.runtimeMinutes },
     }).from(movieSearchState).leftJoin(movies, and(publicMovie(), inArray(movies.id, ids)))

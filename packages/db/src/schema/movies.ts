@@ -38,7 +38,7 @@ export const movies = pgTable('movies', {
   failureCount: integer('failure_count').notNull().default(0),
   errorCode: varchar('error_code', { length: 80 }),
   seedPriority: integer('seed_priority').notNull().default(0),
-  // Sparse English Wikipedia top-article observations; null means unobserved.
+  // Current three-day Wikipedia human-view scores; null means unobserved.
   wikipediaViews: integer('wikipedia_views'),
   wikipediaSourceDate: date('wikipedia_source_date'),
   // General recognition proxy: distinct Wikipedia editions, not a rating.

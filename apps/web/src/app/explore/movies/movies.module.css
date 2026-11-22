@@ -9,3 +9,15 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.ranking {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+}
+
+.ranking a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}

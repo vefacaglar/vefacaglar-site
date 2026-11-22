@@ -8,8 +8,8 @@ export const MovieCardSchema = Type.Object({ slug: Type.String(), title: Type.St
     rightsKind: Type.Optional(Type.Literal("reusable")) }), Type.Null()]) });
 export const ListMoviesQuerySchema = Type.Object({ page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 48 })), q: Type.Optional(Type.String({ maxLength: 140 })) });
-export const MovieRankingSchema = Type.Object({ mode: Type.Union([Type.Literal("wikipedia_interest"), Type.Literal("alphabetical")]),
-  sourceDate: nullableString, sourceUrl: nullableString, isFresh: Type.Boolean() });
+export const MovieRankingSchema = Type.Object({ mode: Type.Union([Type.Literal("wikipedia_interest"), Type.Literal("recognition"), Type.Literal("alphabetical")]),
+  sourceDate: nullableString, sourceUrl: nullableString, isFresh: Type.Boolean(), windowDays: Type.Optional(Type.Literal(3)) });
 export const ListMoviesResponseSchema = Type.Object({ items: Type.Array(MovieCardSchema), total: Type.Number(), page: Type.Number(), limit: Type.Number(), totalPages: Type.Number(), ranking: MovieRankingSchema });
 export type MovieCard = Static<typeof MovieCardSchema>;
 export type ListMoviesQuery = Static<typeof ListMoviesQuerySchema>;

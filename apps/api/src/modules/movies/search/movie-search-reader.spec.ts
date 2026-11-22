@@ -18,10 +18,10 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); });
 
 describe("movie index query and fallback policy", () => {
-  it("browses with three stable sort fields and no relevance", () => {
+  it("browses with current interest and recognition before stable title fields and no relevance", () => {
     expect(movieSearchParameters(query)).toEqual({ q: "", attributesToSearchOn: ["title", "originalTitle"], attributesToRetrieve: ["id"],
-      page: 1, hitsPerPage: 21, sort: ["interestScore:desc", "titleSort:asc", "tieBreakId:asc"] });
-    expect(movieSearchParameters({ ...query, fresh: false })).toMatchObject({ sort: ["titleSort:asc", "tieBreakId:asc"] });
+      page: 1, hitsPerPage: 21, sort: ["interestScore:desc", "recognitionCount:desc", "titleSort:asc", "tieBreakId:asc"] });
+    expect(movieSearchParameters({ ...query, fresh: false })).toMatchObject({ sort: ["recognitionCount:desc", "titleSort:asc", "tieBreakId:asc"] });
   });
   it("ranks typed queries by relevance, then measured recognition and current interest", () => {
     expect(movieSearchParameters({ ...query, q: "Star Wars" })).toMatchObject({ q: "Star Wars",

@@ -16,7 +16,7 @@ function ready(state: MovieSearchState | null): state is MovieSearchState & { ac
 }
 function samePublication(before: MovieSearchState, after: MovieSearchState | null): boolean {
   return ready(after) && before.activeCollection === after.activeCollection
-    && before.rankingGeneration === after.rankingGeneration && before.publishedSourceDate === after.publishedSourceDate;
+    && before.rankingGeneration === after.rankingGeneration && before.publishedSourceDate === after.publishedSourceDate && before.hasPublicInterest === after.hasPublicInterest;
 }
 
 @injectable()
@@ -37,7 +37,7 @@ export class MovieCatalogService implements IMovieCatalogService {
     try {
       const before = await this.stateRepo.state();
       if (!ready(before)) return null;
-      const ranking = movieRanking(before.publishedSourceDate);
+      const ranking = movieRanking(before.publishedSourceDate, new Date(), before.hasPublicInterest);
       const selected = await this.reader.search({ ...filter, collection: before.activeCollection,
         fresh: ranking.isFresh });
       if (!selected) return null;
@@ -48,7 +48,7 @@ export class MovieCatalogService implements IMovieCatalogService {
         posterAttribution: null,
       }));
       const after = hydrated.state;
-      if (!samePublication(before, after) || ranking.isFresh !== movieRanking(after?.publishedSourceDate ?? null).isFresh || items.length !== selected.ids.length) return null;
+      if (!samePublication(before, after) || ranking.isFresh !== movieRanking(after?.publishedSourceDate ?? null, new Date(), after?.hasPublicInterest ?? false).isFresh || items.length !== selected.ids.length) return null;
       return { items, total: selected.total, ranking };
     } catch {
       // Index metadata/search errors must not take the canonical catalog offline.
