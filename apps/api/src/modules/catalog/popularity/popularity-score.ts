@@ -1,6 +1,6 @@
 /**
  * IGDB popularity type ids (POST /v4/popularity_types). Values are only
- * comparable within one type, so each is ranked on its own before blending.
+ * comparable within one type, so each is normalized on its own before blending.
  */
 export const POPULARITY_TYPE = {
   VISITS: 1,
@@ -29,60 +29,40 @@ const SIGNAL_KEYS = Object.keys(POPULARITY_WEIGHTS) as PopularitySignalKey[];
 /** A game's raw signal values; a missing (undefined/null) signal is unknown, not zero. */
 export type PopularityInput = {
   id: string;
+  singlePlayer?: boolean;
   signals: Partial<Record<PopularitySignalKey, number | null>>;
 };
 
-/**
- * Percentile rank (0-1) of each value among all values, in input order. Ties
- * share their mid-rank, so equal values always score equally. A single value ranks 1.
- */
-export function percentileRanks(values: number[]): number[] {
-  const n = values.length;
-  if (n === 0) return [];
-  if (n === 1) return [1];
-
-  const order = values.map((_, i) => i).sort((a, b) => values[a] - values[b]);
-  const ranks = new Array<number>(n);
-  for (let start = 0; start < n; ) {
-    let end = start;
-    while (end + 1 < n && values[order[end + 1]] === values[order[start]]) end++;
-    const rank = (start + end) / 2 / (n - 1);
-    for (let k = start; k <= end; k++) ranks[order[k]] = rank;
-    start = end + 1;
-  }
-  return ranks;
-}
+/** A small relative preference only changes games with similar current interest. */
+export const SINGLE_PLAYER_BONUS = 0.05;
 
 /**
- * Blends each game's signals into one 0-1 score: every signal is log1p'd and
- * percentile-ranked across the catalog, then averaged with POPULARITY_WEIGHTS
- * re-normalized over the signals the game actually has. No signals → null.
+ * Normalize each signal against its observed peak, retaining differences in
+ * audience size. Square roots soften extreme peaks without turning a tiny
+ * audience into a near-maximal percentile. Fixed weights bound each signal's
+ * contribution even when the other measurements are unavailable.
  */
 export function computePopularityScores(games: PopularityInput[]): Map<string, number | null> {
-  const ranked = new Map<string, Partial<Record<PopularitySignalKey, number>>>();
-  for (const game of games) ranked.set(game.id, {});
-
-  for (const key of SIGNAL_KEYS) {
-    const present = games.filter((g) => g.signals[key] != null && Number.isFinite(g.signals[key]) && g.signals[key]! >= 0);
-    const ranks = percentileRanks(present.map((g) => Math.log1p(Math.max(0, g.signals[key]!))));
-    present.forEach((g, i) => {
-      // A measured absence of activity stays zero, including an all-zero cohort.
-      ranked.get(g.id)![key] = g.signals[key] === 0 ? 0 : ranks[i];
-    });
+  const peaks: Record<PopularitySignalKey, number> = { visits: 0, playing: 0, steam24hPeak: 0 };
+  for (const game of games) {
+    for (const key of SIGNAL_KEYS) {
+      const value = game.signals[key];
+      if (value != null && Number.isFinite(value) && value >= 0) peaks[key] = Math.max(peaks[key], value);
+    }
   }
 
   const scores = new Map<string, number | null>();
   for (const game of games) {
-    const ranks = ranked.get(game.id)!;
     let weighted = 0;
-    let weightSum = 0;
+    let observed = false;
     for (const key of SIGNAL_KEYS) {
-      const rank = ranks[key];
-      if (rank === undefined) continue;
-      weighted += POPULARITY_WEIGHTS[key] * rank;
-      weightSum += POPULARITY_WEIGHTS[key];
+      const value = game.signals[key];
+      if (value == null || !Number.isFinite(value) || value < 0) continue;
+      observed = true;
+      weighted += POPULARITY_WEIGHTS[key] * (peaks[key] > 0 ? Math.sqrt(value / peaks[key]) : 0);
     }
-    scores.set(game.id, weightSum > 0 ? weighted / weightSum : null);
+    const preference = game.singlePlayer ? 1 + SINGLE_PLAYER_BONUS : 1;
+    scores.set(game.id, observed ? weighted * preference / (1 + SINGLE_PLAYER_BONUS) : null);
   }
   return scores;
 }

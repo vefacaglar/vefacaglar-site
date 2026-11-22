@@ -3,6 +3,8 @@ import { Type, Static } from "@sinclair/typebox";
 export const RefreshPopularityResponseSchema = Type.Object({
   /** Games linked to IGDB that were considered. */
   gameCount: Type.Number(),
+  /** Missing current leaders added to the catalog during this run. */
+  discoveredCount: Type.Number(),
   /** IGDB popularity primitives stored. */
   signalCount: Type.Number(),
   /** Games that ended up with a non-null score. */

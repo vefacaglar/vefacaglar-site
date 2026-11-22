@@ -1,22 +1,15 @@
 import "reflect-metadata";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { PopularityDiscoveryService } from "./popularity-discovery.service";
+import type { ImportGameHandler } from "../import/import.handler";
 import type { OwnerRankingService } from "./owner-ranking.service";
 import { RefreshPopularityHandler } from "./popularity.handler";
-import { computePopularityScores, percentileRanks, type PopularityInput } from "./popularity-score";
+import { computePopularityScores, type PopularityInput } from "./popularity-score";
 import type { IGamesRepository } from "../games.repository.interface";
 import type { IIgdbClient } from "../import/import.types";
 import type { IEventBus } from "../../../shared/events/event-bus";
 
 const at = (iso: string) => new Date(iso);
-
-describe("percentileRanks", () => {
-  it("ranks values in input order and gives ties their shared mid-rank", () => {
-    expect(percentileRanks([30, 10, 20])).toEqual([1, 0, 0.5]);
-    expect(percentileRanks([5, 5, 1])).toEqual([0.75, 0.75, 0]);
-    expect(percentileRanks([42])).toEqual([1]);
-    expect(percentileRanks([])).toEqual([]);
-  });
-});
 
 describe("computePopularityScores", () => {
   it("does not invent current interest from historical ratings or reviews", () => {
@@ -33,8 +26,8 @@ describe("computePopularityScores", () => {
       { id: "current", signals: { visits: 1000, playing: 1, steam24hPeak: 1 } },
       { id: "other", signals: { visits: 10, playing: 1000, steam24hPeak: 1000 } },
     ]);
-    expect(scores.get("current")).toBeCloseTo(0.7);
-    expect(scores.get("other")).toBeCloseTo(0.3);
+    expect(scores.get("current")).toBeCloseTo((0.7 + 0.3 / Math.sqrt(1000)) / 1.05);
+    expect(scores.get("other")).toBeCloseTo(0.37 / 1.05);
   });
 
   it("ranks recent interest above an older game with enormous lifetime counters", () => {
@@ -42,19 +35,35 @@ describe("computePopularityScores", () => {
       { id: "old", signals: { visits: 1, playing: 1, steam24hPeak: 1, played: 1e9, ratingCount: 1e9 } } as unknown as PopularityInput,
       { id: "recent", signals: { visits: 100, playing: 10, steam24hPeak: 10 } },
     ]);
-    expect(scores.get("recent")).toBe(1);
-    expect(scores.get("old")).toBe(0);
+    expect(scores.get("recent")).toBeCloseTo(1 / 1.05);
+    expect(scores.get("old")).toBeCloseTo((0.07 + 0.3 / Math.sqrt(10)) / 1.05);
   });
 
-  it("reweights missing current signals instead of treating them as zero", () => {
+  it("bounds missing-signal contributions and preserves audience-size differences", () => {
     const scores = computePopularityScores([
       { id: "visits", signals: { visits: 500 } },
       { id: "both", signals: { visits: 100, playing: 10 } },
       { id: "playing", signals: { playing: 1000 } },
     ]);
-    expect(scores.get("visits")).toBe(1);
-    expect(scores.get("both")).toBe(0);
-    expect(scores.get("playing")).toBe(1);
+    expect(scores.get("visits")).toBeCloseTo(0.7 / 1.05);
+    expect(scores.get("both")).toBeCloseTo((0.7 * Math.sqrt(0.2) + 0.02) / 1.05);
+    expect(scores.get("playing")).toBeCloseTo(0.2 / 1.05);
+  });
+
+  it("gives single-player only a small relative edge while popularity gaps win", () => {
+    const scores = computePopularityScores([
+      { id: "sp", singlePlayer: true, signals: { visits: 95 } },
+      { id: "close", signals: { visits: 100 } },
+      { id: "popular", signals: { visits: 120 } },
+      { id: "unknown", singlePlayer: true, signals: {} },
+      { id: "zero", singlePlayer: true, signals: { visits: 0 } },
+      { id: "steam", signals: { steam24hPeak: 1_000_000 } },
+    ]);
+    expect(scores.get("sp")!).toBeGreaterThan(scores.get("close")!);
+    expect(scores.get("popular")!).toBeGreaterThan(scores.get("sp")!);
+    expect(scores.get("steam")).toBeCloseTo(0.1 / 1.05);
+    expect(scores.get("unknown")).toBeNull();
+    expect(scores.get("zero")).toBe(0);
   });
 
   it("keeps measured zero activity at zero, including a single-game or all-zero cohort", () => {
@@ -75,7 +84,7 @@ describe("computePopularityScores", () => {
       { id: "valid", signals: { visits: 5 } },
     ]);
     expect(scores.get("invalid")).toBeNull();
-    expect(scores.get("valid")).toBe(1);
+    expect(scores.get("valid")).toBeCloseTo(0.7 / 1.05);
   });
 });
 
@@ -84,6 +93,7 @@ describe("RefreshPopularityHandler", () => {
   let igdb: Record<keyof IIgdbClient, any>;
   let eventBus: Record<keyof IEventBus, any>;
   let handler: RefreshPopularityHandler;
+  let discovery: { discover: ReturnType<typeof vi.fn> };
   let ownerRanking: { backfillGameModes: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
@@ -98,7 +108,7 @@ describe("RefreshPopularityHandler", () => {
     igdb = {
       findGame: vi.fn(), listGames: vi.fn(),
       listPopularity: vi.fn().mockResolvedValue([
-        { igdbId: 999, popularityType: 1, value: 50_000, calculatedAt: null },
+        { igdbId: 999, popularityType: 1, value: 1000, calculatedAt: null },
         { igdbId: 1, popularityType: 1, value: 1000, calculatedAt: at("2026-11-01T00:00:00Z") },
         { igdbId: 2, popularityType: 1, value: 10, calculatedAt: at("2026-11-01T00:00:00Z") },
         { igdbId: 2, popularityType: 1, value: 99_999, calculatedAt: at("2026-10-01T00:00:00Z") },
@@ -107,8 +117,9 @@ describe("RefreshPopularityHandler", () => {
     };
     eventBus = { publish: vi.fn().mockResolvedValue(undefined), subscribe: vi.fn() };
     ownerRanking = { backfillGameModes: vi.fn().mockResolvedValue({ checkedCount: 0, status: "complete" }) };
+    discovery = { discover: vi.fn().mockResolvedValue(0) };
     handler = new RefreshPopularityHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient,
-      eventBus as unknown as IEventBus, ownerRanking as unknown as OwnerRankingService);
+      eventBus as unknown as IEventBus, ownerRanking as unknown as OwnerRankingService, discovery as unknown as PopularityDiscoveryService);
   });
 
 
@@ -120,15 +131,15 @@ describe("RefreshPopularityHandler", () => {
     const result = await handler.handle();
     expect(gamesRepo.writePopularity.mock.calls[0][0]).toMatchObject({
       recommendationVersion: "owner-taste-v1",
-      recommendationScores: [{ id: "g-a", score: 1 }, { id: "g-b", score: 0 }, { id: "g-c", score: 0 }],
+      recommendationScores: [{ id: "g-a", score: 0.895 }, { id: "g-b", score: expect.closeTo(0.35 * 0.7 * 0.1 / 1.05) }, { id: "g-c", score: 0 }],
     });
     expect(result).toMatchObject({ recommendationScoredCount: 3, gameModesCheckedCount: 500, gameModesStatus: "budget" });
   });
 
   it("reindexes a changed taste score even when current interest is unchanged", async () => {
     const sources = await gamesRepo.listPopularitySources();
-    Object.assign(sources[0], { popularityScore: 1, recommendationScore: 0.35, hasRpg: true, gameModeIds: [1] });
-    Object.assign(sources[1], { popularityScore: 0, recommendationScore: 0 });
+    Object.assign(sources[0], { popularityScore: 0.7, recommendationScore: 0.35, hasRpg: true, gameModeIds: [1] });
+    Object.assign(sources[1], { popularityScore: 0.7 * 0.1 / 1.05, recommendationScore: 0.35 * 0.7 * 0.1 / 1.05 });
     Object.assign(sources[2], { popularityScore: null, recommendationScore: 0 });
     await handler.handle();
     expect(eventBus.publish).toHaveBeenCalledWith(expect.objectContaining({ gameIds: ["g-a"] }), { throwOnError: undefined });
@@ -138,7 +149,7 @@ describe("RefreshPopularityHandler", () => {
     ownerRanking.backfillGameModes.mockResolvedValue({ checkedCount: 0, status: "unavailable" });
     const result = await handler.handle();
     expect(result.gameModesStatus).toBe("unavailable");
-    expect(gamesRepo.writePopularity.mock.calls[0][0].recommendationScores[0]).toEqual({ id: "g-a", score: 0.35 });
+    expect(gamesRepo.writePopularity.mock.calls[0][0].recommendationScores[0].score).toBeCloseTo(0.35 * 0.7 / 1.05);
   });
 
   it("fetches current types globally and matches the returned game ids locally", async () => {
@@ -150,7 +161,7 @@ describe("RefreshPopularityHandler", () => {
       { gameId: "g-a", popularityType: 1, value: 1000, calculatedAt: at("2026-11-01T00:00:00Z") },
       { gameId: "g-b", popularityType: 1, value: 10, calculatedAt: at("2026-11-01T00:00:00Z") },
     ]);
-    expect(write.scores).toEqual([{ id: "g-a", score: 1 }, { id: "g-b", score: 0 }, { id: "g-c", score: null }]);
+    expect(write.scores).toEqual([{ id: "g-a", score: 0.7 / 1.05 }, { id: "g-b", score: 0.7 * 0.1 / 1.05 }, { id: "g-c", score: null }]);
   });
 
   it("reindexes changed games and reports counts", async () => {
@@ -159,11 +170,12 @@ describe("RefreshPopularityHandler", () => {
     expect(result).toMatchObject({ gameCount: 3, signalCount: 2, scoredCount: 2, reindexedCount: 3 });
   });
 
-  it("does not fetch or write for an empty catalog", async () => {
+  it("can discover games even when the catalog starts empty", async () => {
     gamesRepo.listPopularitySources.mockResolvedValue([]);
     const result = await handler.handle();
     expect(result).toMatchObject({ gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0 });
-    expect(igdb.listPopularity).not.toHaveBeenCalled();
+    expect(igdb.listPopularity).toHaveBeenCalled();
+    expect(discovery.discover).toHaveBeenCalled();
     expect(gamesRepo.writePopularity).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
@@ -194,6 +206,58 @@ describe("RefreshPopularityHandler", () => {
     expect(gamesRepo.writePopularity.mock.calls[0][0].scores).toEqual([
       { id: "g-a", score: 0 }, { id: "g-b", score: null }, { id: "g-c", score: null },
     ]);
+  });
+
+  it("discovers missing leaders through the canonical importer before scoring them", async () => {
+    const importer = { importPage: vi.fn().mockResolvedValue([{ status: "created" }]) };
+    igdb.listGamesByIds = vi.fn().mockResolvedValue([{ igdbId: 999, title: "New remake" }]);
+    importer.importPage.mockImplementation(async () => {
+      const sources = await gamesRepo.listPopularitySources();
+      sources.push({ id: "new", igdbId: 999, popularityScore: null, gameModeIds: [1] });
+      return [{ status: "created" }];
+    });
+    const realDiscovery = new PopularityDiscoveryService(igdb as unknown as IIgdbClient, importer as unknown as ImportGameHandler);
+    handler = new RefreshPopularityHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient,
+      eventBus as unknown as IEventBus, ownerRanking as unknown as OwnerRankingService, realDiscovery);
+    const result = await handler.handle();
+    expect(igdb.listGamesByIds).toHaveBeenCalledWith([999], expect.any(AbortSignal));
+    expect(importer.importPage).toHaveBeenCalledWith([{ igdbId: 999, title: "New remake" }]);
+    expect(result.discoveredCount).toBe(1);
+    expect(gamesRepo.writePopularity.mock.calls[0][0].scores).toContainEqual({ id: "new", score: 0.7 });
+  });
+
+  it("bounds discovery to current leaders and never reimports known identities", async () => {
+    const primitives = Array.from({ length: 400 }, (_, i) => ({ igdbId: i + 1, popularityType: 1, value: 500 - i, calculatedAt: null }));
+    igdb.listPopularity.mockResolvedValue(primitives);
+    igdb.listGamesByIds = vi.fn().mockResolvedValue([]);
+    const importer = { importPage: vi.fn() };
+    const realDiscovery = new PopularityDiscoveryService(igdb as unknown as IIgdbClient, importer as unknown as ImportGameHandler);
+    handler = new RefreshPopularityHandler(gamesRepo as unknown as IGamesRepository, igdb as unknown as IIgdbClient,
+      eventBus as unknown as IEventBus, ownerRanking as unknown as OwnerRankingService, realDiscovery);
+    await handler.handle();
+    const ids = igdb.listGamesByIds.mock.calls[0][0];
+    expect(ids).toHaveLength(197);
+    expect(ids).not.toContain(1);
+    expect(ids).not.toContain(201);
+    expect(importer.importPage).not.toHaveBeenCalled();
+  });
+
+  it("keeps scores intact when discovery fails and retries discovery on the next run", async () => {
+    discovery.discover.mockRejectedValueOnce(new Error("hydration unavailable"));
+    await expect(handler.handle()).rejects.toThrow("hydration unavailable");
+    expect(gamesRepo.writePopularity).not.toHaveBeenCalled();
+    await handler.handle();
+    expect(discovery.discover).toHaveBeenCalledTimes(2);
+    expect(gamesRepo.writePopularity).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes against leaders outside the local catalog", async () => {
+    igdb.listPopularity.mockResolvedValue([
+      { igdbId: 999, popularityType: 1, value: 100_000, calculatedAt: null },
+      { igdbId: 1, popularityType: 1, value: 10, calculatedAt: null },
+    ]);
+    await handler.handle();
+    expect(gamesRepo.writePopularity.mock.calls[0][0].scores[0].score).toBeCloseTo(0.7 * 0.01 / 1.05);
   });
 
   it("propagates strict indexing failure and repairs unchanged persisted scores on a rerun", async () => {

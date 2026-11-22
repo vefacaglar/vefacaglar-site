@@ -40,6 +40,8 @@ export interface IIgdbClient {
   findGame(query: string): Promise<ImportedGame | null>;
   /** Walks the whole IGDB catalog in id order, one page per call. */
   listGames(afterId: number, options?: { minRatings?: number }): Promise<ImportedGamePage>;
+  /** At most 500 explicit canonical game ids, using the bulk importer's eligibility rules. */
+  listGamesByIds(igdbIds: number[], signal?: AbortSignal): Promise<ImportedGame[]>;
   /**
    * All popularity primitives of the given types, globally keyset-paginated by
    * primitive id. The caller matches them to its catalog. No partial result is returned.

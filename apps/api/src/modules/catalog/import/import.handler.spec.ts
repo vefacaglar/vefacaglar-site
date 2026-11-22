@@ -272,6 +272,23 @@ describe("ImportGameHandler", () => {
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 
+  it("reloads committed identities when retrying a failed planned insert", async () => {
+    gamesRepo.writeImportPage.mockRejectedValueOnce(new Error("connection reset"));
+    await expect(handler.importPage([igdbGame])).rejects.toThrow("connection reset");
+    const result = await handler.importPage([igdbGame]);
+    expect(result[0].status).toBe("created");
+    expect(gamesRepo.loadCatalogIndex).toHaveBeenCalledTimes(2);
+    expect(lastWrite().newGames).toHaveLength(1);
+  });
+
+  it("keeps a remake separate from the original when their release years differ", async () => {
+    withIndexedGame({ title: "The same title", slug: "original", igdbId: 10, releaseDate: "1998-11-21" });
+    const result = await handler.importPage([{ ...igdbGame, title: "The same title", slug: "new-remake", releaseDate: "2026-11-05" }]);
+    expect(result[0].status).toBe("created");
+    expect(lastWrite().gameUpdates).toEqual([]);
+    expect(lastWrite().newGames[0].releaseDate).toBe("2026-11-05");
+  });
+
   it("reports failed when IGDB throws", async () => {
     igdb.findGame.mockRejectedValue(new Error("IGDB search failed: 401"));
 

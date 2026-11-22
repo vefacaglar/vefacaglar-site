@@ -152,12 +152,23 @@ export class ImportGameHandler {
       results.push(result);
     }
 
-    if (options.dryRun) return results;
+    if (options.dryRun) {
+      this.gameIndex = null;
+      return results;
+    }
 
-    const outcome = await this.gamesRepo.writeImportPage(write);
+    let outcome: Awaited<ReturnType<IGamesRepository["writeImportPage"]>>;
+    try {
+      outcome = await this.gamesRepo.writeImportPage(write);
+    } catch (error) {
+      // Planning adds identities eagerly; a retry must reload committed identities.
+      this.gameIndex = null;
+      throw error;
+    }
     const inserted = new Set(outcome.insertedGameIds);
     for (const [id, result] of newGameResults) {
       if (inserted.has(id)) continue;
+      this.gameIndex = null;
       result.status = "skipped";
       result.notes = ["slug or IGDB id was taken by another game meanwhile"];
     }

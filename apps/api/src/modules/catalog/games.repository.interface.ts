@@ -125,7 +125,7 @@ export interface IGamesRepository {
   ): Promise<string[]>;
 
   /**
-   * Public listing, including announced games. Without `q`, owner taste first, then current interest;
+   * Public listing, including announced games. Without `q`, current interest with a small single-player preference;
    * with `q`, title matches ranked exact > prefix > substring, then the same order.
    */
   /** Fresh public card fields for at most one search page; no relations or administrative data. */
@@ -156,7 +156,7 @@ export interface IGamesRepository {
   /** Every game linked to IGDB, with what the popularity refresh needs. */
   listPopularitySources(): Promise<PopularitySource[]>;
   findOwnerRankingSource(gameId: string): Promise<OwnerRankingSource | null>;
-  /** Relevant unchecked/stale games, current-interest keyset order, at most 500. */
+  /** Unchecked/stale games, current-interest keyset order, at most 500. */
   listGameModeCandidates(cursor: GameModeCursor | null, limit: number, staleBefore: Date): Promise<GameModeCandidate[]>;
   /** null modes record an omitted-id attempt without erasing previously known modes. */
   writeGameModes(updates: { id: string; gameModeIds: number[] | null }[], checkedAt: Date): Promise<void>;

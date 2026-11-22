@@ -384,9 +384,8 @@ export class DrizzleGamesRepository implements IGamesRepository {
         ? sql`exists (select 1 from ${gamePublishers} where ${gamePublishers.gameId} = ${games.id} and ${gamePublishers.publisherId} = ${company.id})`
         : undefined;
     const whereExpr = and(pattern ? ilike(games.title, `%${pattern}%`) : undefined, companyMatch);
-    // Matches games_recommendation_score_idx. Before the first refresh, null recommendations retain interest order.
+    // Current interest includes the bounded single-player preference in its stored score.
     const popularOrder = [
-      sql`${games.recommendationScore} desc nulls last`,
       sql`${games.popularityScore} desc nulls last`,
       asc(games.title),
       asc(games.id),
@@ -565,7 +564,6 @@ export class DrizzleGamesRepository implements IGamesRepository {
     }).from(games).where(and(
       isNotNull(games.igdbId),
       or(isNull(games.gameModesCheckedAt), lt(games.gameModesCheckedAt, staleBefore)),
-      or(OWNER_METADATA.hasAction, OWNER_METADATA.hasRpg, OWNER_METADATA.hasOpenWorld),
       after
     )).orderBy(sql`${games.popularityScore} desc nulls last`, asc(games.id))
       .limit(Math.max(1, Math.min(500, Math.trunc(limit))));

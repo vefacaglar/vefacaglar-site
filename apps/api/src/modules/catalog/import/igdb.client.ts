@@ -80,6 +80,21 @@ export class IgdbClient implements IIgdbClient {
     };
   }
 
+  async listGamesByIds(igdbIds: number[], signal?: AbortSignal): Promise<ImportedGame[]> {
+    if (igdbIds.length === 0) return [];
+    if (igdbIds.length > PAGE_SIZE || igdbIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+      throw new Error("Invalid IGDB game batch");
+    }
+    const ids = [...new Set(igdbIds)];
+    const rows = await this.query(GAMES_URL,
+      `${FIELDS} where id = (${ids.join(",")}) & version_parent = null & parent_game = null; limit ${PAGE_SIZE};`, signal);
+    if (!Array.isArray(rows) || rows.some((game) => !ids.includes(game.id) || !game.name || !game.slug)) {
+      throw new Error("IGDB returned an invalid game batch");
+    }
+    return rows.filter((game) => !game.game_type || ALLOWED_GAME_TYPES.has(normalizeTitle(game.game_type.type)))
+      .map((game) => this.toImportedGame(game));
+  }
+
   async listPopularity(popularityTypes: number[]): Promise<PopularityPrimitive[]> {
     return readPopularityPages(popularityTypes, (query) => this.query<unknown>(POPULARITY_URL, query));
   }

@@ -30,6 +30,7 @@ import { DrizzlePlatformsRepository } from "./modules/catalog/platforms.reposito
 import { DrizzleGamesRepository } from "./modules/catalog/games.repository";
 import { IGDB_CLIENT } from "./modules/catalog/import/import.tokens";
 import { IgdbClient } from "./modules/catalog/import/igdb.client";
+import { PopularityDiscoveryService } from "./modules/catalog/popularity/popularity-discovery.service";
 import { OwnerRankingService } from "./modules/catalog/popularity/owner-ranking.service";
 import { GAME_LOGS_REPOSITORY } from "./modules/games/games.tokens";
 import { DrizzleGameLogsRepository } from "./modules/games/game-logs.repository";
@@ -99,6 +100,7 @@ container.registerSingleton(PLATFORMS_REPOSITORY, DrizzlePlatformsRepository);
 container.registerSingleton(GAMES_REPOSITORY, DrizzleGamesRepository);
 container.registerSingleton(IGDB_CLIENT, IgdbClient);
 container.registerSingleton(OwnerRankingService);
+container.register(PopularityDiscoveryService, { useClass: PopularityDiscoveryService });
 container.registerSingleton(GAME_LOGS_REPOSITORY, DrizzleGameLogsRepository);
 container.registerSingleton(GAME_COMMUNITY_REPOSITORY, DrizzleGameCommunityRepository);
 container.registerSingleton(MOVIE_COMMUNITY_REPOSITORY, DrizzleMovieCommunityRepository);

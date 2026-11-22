@@ -34,7 +34,7 @@ async function main() {
   }
   console.log(
     `[catalog:popularity] done in ${(result.durationMs / 1000).toFixed(1)}s: ` +
-      `${result.gameCount} games, ${result.signalCount} signals, ` +
+      `${result.gameCount} games (${result.discoveredCount} discovered), ${result.signalCount} signals, ` +
       `${result.scoredCount} interest scores, ${result.recommendationScoredCount} owner scores, ${result.reindexedCount} reindexed; ` +
       `game modes ${result.gameModesStatus}: ${result.gameModesCheckedCount} checked`
   );

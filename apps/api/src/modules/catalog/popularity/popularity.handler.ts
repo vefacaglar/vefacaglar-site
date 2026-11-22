@@ -12,6 +12,7 @@ import {
   REFRESHED_POPULARITY_TYPES,
   type PopularityInput,
 } from "./popularity-score";
+import { PopularityDiscoveryService } from "./popularity-discovery.service";
 import { OwnerRankingService } from "./owner-ranking.service";
 import { ownerRankingBreakdown } from "./owner-ranking";
 import { OWNER_RANKING_CONFIG } from "./owner-ranking.config";
@@ -31,45 +32,60 @@ export class RefreshPopularityHandler {
     @inject(GAMES_REPOSITORY) private readonly gamesRepo: IGamesRepository,
     @inject(IGDB_CLIENT) private readonly igdb: IIgdbClient,
     @inject(EVENT_BUS) private readonly eventBus: IEventBus,
-    private readonly ownerRanking: OwnerRankingService
+    private readonly ownerRanking: OwnerRankingService,
+    private readonly discovery: PopularityDiscoveryService
   ) {}
 
   async handle(options: { requireSearchSync?: boolean } = {}): Promise<RefreshPopularityResponse> {
     const startedAt = Date.now();
-    const modes = await this.ownerRanking.backfillGameModes();
-    const sources = await this.gamesRepo.listPopularitySources();
-    if (sources.length === 0) {
-      return { gameCount: 0, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
-    }
-    const gameIdByIgdbId = new Map(sources.map((s) => [s.igdbId, s.id]));
-
+    let sources = await this.gamesRepo.listPopularitySources();
     const primitives = await this.igdb.listPopularity(REFRESHED_POPULARITY_TYPES);
-
-    // One row per game and type; if IGDB ever returns several, the latest calculation wins.
+    // Deduplicate before discovery and normalization so old calculations cannot inflate leaders.
+    const latest = new Map<string, (typeof primitives)[number]>();
+    for (const primitive of primitives) {
+      if (!REFRESHED_POPULARITY_TYPES.includes(primitive.popularityType) || !Number.isFinite(primitive.value) || primitive.value < 0) continue;
+      const key = `${primitive.igdbId}:${primitive.popularityType}`;
+      const previous = latest.get(key);
+      if (!previous || (previous.calculatedAt?.getTime() ?? 0) <= (primitive.calculatedAt?.getTime() ?? 0)) latest.set(key, primitive);
+    }
+    if (latest.size === 0) throw new Error("IGDB returned no current popularity data; existing scores were kept");
+    const currentPrimitives = [...latest.values()];
+    const discoveredCount = await this.discovery.discover(currentPrimitives, new Set(sources.map((source) => source.igdbId)));
+    const modes = await this.ownerRanking.backfillGameModes();
+    // Discovery and mode hydration must participate in this run's score calculation.
+    sources = await this.gamesRepo.listPopularitySources();
+    if (sources.length === 0) {
+      return { gameCount: 0, discoveredCount, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
+    }
+    const gameIdByIgdbId = new Map(sources.map((source) => [source.igdbId, source.id]));
     const signalsByKey = new Map<string, PopularitySignal>();
-    for (const p of primitives) {
-      const gameId = gameIdByIgdbId.get(p.igdbId);
-      if (!gameId || !REFRESHED_POPULARITY_TYPES.includes(p.popularityType) || !Number.isFinite(p.value) || p.value < 0) continue;
-      const key = `${gameId}:${p.popularityType}`;
-      const current = signalsByKey.get(key);
-      if (current && (current.calculatedAt?.getTime() ?? 0) > (p.calculatedAt?.getTime() ?? 0)) continue;
-      signalsByKey.set(key, { gameId, popularityType: p.popularityType, value: p.value, calculatedAt: p.calculatedAt });
+    for (const primitive of currentPrimitives) {
+      const gameId = gameIdByIgdbId.get(primitive.igdbId);
+      if (!gameId) continue;
+      signalsByKey.set(`${gameId}:${primitive.popularityType}`, {
+        gameId, popularityType: primitive.popularityType, value: primitive.value, calculatedAt: primitive.calculatedAt,
+      });
     }
     const signals = [...signalsByKey.values()];
     if (signals.length === 0) {
       throw new Error("IGDB returned no current popularity data for this catalog; existing scores were kept");
     }
 
-    const valueOf = (gameId: string, type: number) => signalsByKey.get(`${gameId}:${type}`)?.value ?? null;
-    const inputs: PopularityInput[] = sources.map((s) => ({
-      id: s.id,
-      signals: {
-        visits: valueOf(s.id, POPULARITY_TYPE.VISITS),
-        playing: valueOf(s.id, POPULARITY_TYPE.PLAYING),
-        steam24hPeak: valueOf(s.id, POPULARITY_TYPE.STEAM_24H_PEAK_PLAYERS),
-      },
-    }));
-    const scoreById = computePopularityScores(inputs);
+    // Normalize against the complete provider population, independent of catalog coverage.
+    const inputsByIgdbId = new Map<number, PopularityInput>();
+    const singlePlayerIds = new Set(sources.filter((source) => source.gameModeIds?.includes(OWNER_RANKING_CONFIG.singlePlayerMode)).map((source) => source.igdbId));
+    const signalKeys = new Map<number, "visits" | "playing" | "steam24hPeak">([
+      [POPULARITY_TYPE.VISITS, "visits"], [POPULARITY_TYPE.PLAYING, "playing"], [POPULARITY_TYPE.STEAM_24H_PEAK_PLAYERS, "steam24hPeak"],
+    ]);
+    for (const primitive of currentPrimitives) {
+      const input = inputsByIgdbId.get(primitive.igdbId) ?? {
+        id: String(primitive.igdbId), singlePlayer: singlePlayerIds.has(primitive.igdbId), signals: {},
+      };
+      input.signals[signalKeys.get(primitive.popularityType)!] = primitive.value;
+      inputsByIgdbId.set(primitive.igdbId, input);
+    }
+    const scoresByIgdbId = computePopularityScores([...inputsByIgdbId.values()]);
+    const scoreById = new Map(sources.map((source) => [source.id, scoresByIgdbId.get(String(source.igdbId)) ?? null]));
     const scores = sources.map((s) => ({ id: s.id, score: scoreById.get(s.id) ?? null }));
 
     const recommendationScores = sources.map((source) => ({
@@ -104,6 +120,7 @@ export class RefreshPopularityHandler {
 
     return {
       gameCount: sources.length,
+      discoveredCount,
       signalCount: signals.length,
       scoredCount: scores.filter((s) => s.score !== null).length,
       reindexedCount: changedIds.length,
