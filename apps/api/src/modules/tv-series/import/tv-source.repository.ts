@@ -70,7 +70,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       const db = this.dbProvider.client;
       const incomingSeasons = snapshot.seasons.map((row) => row.id), incomingEpisodes = snapshot.episodes.map((row) => row.id);
       if (incomingSeasons.length && (await db.select({ id: tvSeasons.id }).from(tvSeasons).where(and(inArray(tvSeasons.id, incomingSeasons), ne(tvSeasons.seriesId, item.seriesId))).limit(1)).length) throw new Error("tvmaze_season_identity_collision");
-      if (incomingEpisodes.length && (await db.select({ id: tvEpisodes.id }).from(tvEpisodes).where(and(inArray(tvEpisodes.id, incomingEpisodes), ne(tvEpisodes.seriesId, item.seriesId))).limit(1)).length) throw new Error("tvmaze_episode_identity_collision");
+      if (incomingEpisodes.length && (await db.select({ id: tvEpisodes.id }).from(tvEpisodes).where(and(sql`${tvEpisodes.id}=any(${`{${incomingEpisodes.join(",")}}`}::int[])`, ne(tvEpisodes.seriesId, item.seriesId))).limit(1)).length) throw new Error("tvmaze_episode_identity_collision");
       const [existing] = await db.select({ episodeCount: tvSeries.episodeCount, specialCount: tvSeries.specialCount }).from(tvSeries).where(eq(tvSeries.id, item.seriesId));
       if (existing && existing.episodeCount + existing.specialCount > 0 && !snapshot.episodes.length) throw new Error("tvmaze_empty_hierarchy_regression");
       await this.writeShows([snapshot.show], at, false);
@@ -89,7 +89,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       }
       const episodeIds = snapshot.episodes.map((row) => row.id);
       const seasonIds = snapshot.seasons.map((row) => row.id);
-      await db.delete(tvEpisodes).where(and(eq(tvEpisodes.seriesId, item.seriesId), episodeIds.length ? notInArray(tvEpisodes.id, episodeIds) : undefined));
+      await db.delete(tvEpisodes).where(and(eq(tvEpisodes.seriesId, item.seriesId), episodeIds.length ? sql`${tvEpisodes.id}<>all(${`{${episodeIds.join(",")}}`}::int[])` : undefined));
       await db.delete(tvSeasons).where(and(eq(tvSeasons.seriesId, item.seriesId), seasonIds.length ? notInArray(tvSeasons.id, seasonIds) : undefined));
       const aired = snapshot.episodes.filter((episode) => episode.airdate && episode.airdate <= at.toISOString().slice(0, 10) && (!episode.airstamp || episode.airstamp <= at))
         .map((episode) => episode.airdate!).sort();
