@@ -6,6 +6,7 @@ import { localizeHref } from "../../../../lib/localizeHref";
 import { libraryMetadata } from "../../../../lib/librarySeo";
 import TvAttribution from "../../../../components/tv-series/TvAttribution";
 import TvEpisodes from "../../../../components/tv-series/TvEpisodes";
+import TvCast from "../../../../components/tv-series/TvCast";
 import { getSessionUser } from "../../../../lib/session";
 import { getMyTvPreferences, type TvPreferences as Preferences } from "../../../../lib/tvPreferences";
 import { getLoginHref } from "../../../../lib/oidc";
@@ -73,6 +74,12 @@ export default async function TvSeriesDetailPage({ params }: Props) {
           </span>
         </Link>
       </li>)}</ul>
+    </section>
+    <section className={styles.section} aria-labelledby="tv-cast">
+      <h2 id="tv-cast">Cast</h2>
+      {series.castStatus === "pending" && <p className={styles.note}>Cast details are being added.</p>}
+      {series.castStatus === "complete" && series.cast.length === 0 && <p className={styles.note}>No cast has been reported.</p>}
+      <TvCast cast={series.cast} lang={lang} />
     </section>
     {series.orphanSpecials.length > 0 && <section className={styles.section} aria-labelledby="tv-specials">
       <h2 id="tv-specials">Other specials</h2>

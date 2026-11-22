@@ -143,3 +143,8 @@
     gap: 4px 12px;
   }
 }
+
+.meta > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

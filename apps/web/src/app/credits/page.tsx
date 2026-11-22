@@ -8,7 +8,7 @@ export default function DataCredits() {
     <h1>Data credits</h1>
     <section>
       <h2>TVmaze</h2>
-      <p>TV series, seasons, episodes, summaries and TVmaze ratings come from the <a href="https://www.tvmaze.com/api">TVmaze API</a>. The data is shared under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, with summaries converted to plain text. Source links are included on series and episode pages.</p>
+      <p>TV series, seasons, episodes, cast, person details, summaries and TVmaze ratings come from the <a href="https://www.tvmaze.com/api">TVmaze API</a>. The data is shared under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, with summaries converted to plain text. Source links are included on series and episode pages.</p>
     </section>
     <section>
       <h2>TMDB</h2>

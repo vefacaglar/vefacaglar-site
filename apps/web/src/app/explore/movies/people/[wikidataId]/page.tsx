@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getDictionary } from "../../../../../dictionaries";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect, unstable_rethrow } from "next/navigation";
 import LibraryMasthead from "../../../../../components/library/LibraryMasthead";
 import MovieCards from "../../../../../components/movies/MovieCards";
 import { getActiveLanguage } from "../../../../../lib/lang";
@@ -8,6 +8,7 @@ import { libraryMetadata } from "../../../../../lib/librarySeo";
 import { localizeHref } from "../../../../../lib/localizeHref";
 import { getMoviePerson, moviePersonHref, type MoviePersonPage } from "../../../../../lib/movies";
 import { localizedAlternates } from "../../../../../lib/seo";
+import { resolvePerson, personHref } from "../../../../../lib/people";
 import styles from "./person.module.css";
 
 type Props = {
@@ -33,6 +34,10 @@ export async function generateMetadata({ params }: Props) {
 export default async function MoviePerson({ params }: Props) {
   const [{ wikidataId }, lang] = await Promise.all([params, getActiveLanguage()]);
   const dict = getDictionary(lang);
+  let canonicalId: string | null = null;
+  try { canonicalId = (await resolvePerson(wikidataId))?.id ?? null; }
+  catch (error) { unstable_rethrow(error); }
+  if (canonicalId) permanentRedirect(localizeHref(personHref(canonicalId), lang));
   let data: MoviePersonPage | null;
   try {
     data = await getMoviePerson(wikidataId);

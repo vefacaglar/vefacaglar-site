@@ -22,10 +22,15 @@ export interface TvEpisode {
   id: number; isSpecial: boolean; number: number | null; name: string | null; summary: string | null; type: string | null;
   airdate: string | null; airstamp: string | null; runtimeMinutes: number | null; rating: number | null; sourceUrl: string;
 }
+export interface TvCastPerson {
+  personId: string; name: string | null;
+  roles: { characterId: number; name: string | null; self: boolean | null; voice: boolean | null; order: number }[];
+  sourceUrl: string;
+}
 export interface TvSeriesDetail extends TvSeriesCard {
   language: string | null; type: string | null; runtimeMinutes: number | null; officialSite: string | null;
   network: string | null; firstAired: string | null; lastAired: string | null; updatedAt: string; hierarchyUpdatedAt: string | null; hierarchyStatus: "pending" | "complete";
-  seasons: TvSeason[]; orphanSpecials: TvEpisode[];
+  seasons: TvSeason[]; orphanSpecials: TvEpisode[]; castStatus: "pending" | "complete"; castUpdatedAt: string | null; cast: TvCastPerson[];
 }
 export interface TvSeasonDetail {
   series: { id: number; title: string }; season: TvSeason; episodes: TvEpisode[];
