@@ -46,6 +46,21 @@ export const JOB_TYPES = {
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),
+  "catalog.tv-series.sync": defineJobType({
+    description: "Synchronize the TVmaze TV catalog, seasons and episodes in bounded resumable batches. Ratings are provided by TVmaze.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.tv-series",
+  }),
+  "catalog.tv-series.popularity.refresh": defineJobType({
+    description: "Refresh current TV popularity from complete TMDB daily snapshots and recent Wikipedia top-page interest using verified TVmaze identities.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.tv-series.popularity",
+  }),
+  "search.tv-series.sync": defineJobType({
+    description: "Publish the dedicated TV series search index from canonical catalog and complete current popularity snapshots.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "search.tv-series.index",
+  }),
   "search.movies.sync": defineJobType({
     description: "Synchronize the public movie index with durable bootstrap, changed-film upserts, deletions, and complete interest ranking publication.",
     payloadSchema: EmptyPayloadSchema,

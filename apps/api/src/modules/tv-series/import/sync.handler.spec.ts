@@ -37,6 +37,22 @@ describe("SyncTvSeriesHandler", () => {
     expect(result.failed).toBe(1);
     expect(result.hydrated).toBe(1);
   });
+  it("persists catalog-page provider backoff before retrying", async () => {
+    const { handler, repository, client } = setup();
+    client.page.mockRejectedValueOnce(new TvmazeError("tvmaze_http_429", 429));
+    await expect(handler.handle()).rejects.toThrow("tvmaze_http_429");
+    expect(repository.cooldown).toHaveBeenCalledOnce();
+    expect(repository.indexPage).not.toHaveBeenCalled();
+  });
+  it("leaves the current title queued when the bounded request budget ends", async () => {
+    const { handler, repository, client } = setup();
+    repository.state.mockResolvedValue({ indexComplete: true, updatesCheckedAt: new Date() });
+    repository.candidates.mockResolvedValueOnce([{ seriesId: 1, requestedAt: new Date() }]);
+    client.hierarchy.mockRejectedValueOnce(new TvmazeError("tvmaze_budget_exhausted"));
+    await handler.handle();
+    expect(repository.failure).not.toHaveBeenCalled();
+    expect(repository.missing).not.toHaveBeenCalled();
+  });
   it("backs off the provider and never deletes snapshots after rate limiting", async () => {
     const { handler, repository, client } = setup();
     repository.candidates.mockResolvedValueOnce([{ seriesId: 1, requestedAt: new Date() }]);

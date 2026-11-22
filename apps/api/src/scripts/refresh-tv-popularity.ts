@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { config } from "dotenv";
-config({ quiet: true });
+import { resolve } from "node:path";
+config({ path: resolve(__dirname, "../../../../.env"), quiet: true });
 import { container } from "../container";
 import { RefreshTvPopularityHandler } from "../modules/tv-series/popularity/refresh.handler";
 const prefix = "[catalog:tv-interest] ";

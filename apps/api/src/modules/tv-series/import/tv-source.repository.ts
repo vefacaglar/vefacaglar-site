@@ -1,5 +1,5 @@
 import { injectable } from "tsyringe";
-import { and, eq, inArray, notInArray, lte, sql } from "drizzle-orm";
+import { and, eq, ne, inArray, notInArray, lte, sql } from "drizzle-orm";
 import { tvSeries, tvGenres, tvSeriesGenres, tvSeasons, tvEpisodes, tvSourceState, tvRefreshQueue, tvPopularityScores, tvPopularityState } from "@vefacaglar/db";
 import { DbProvider } from "../../../db.provider";
 import { dirtyTvSearch } from "../tv-dirty";
@@ -68,6 +68,9 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       snapshot.episodes.some((row) => row.seriesId !== item.seriesId)) throw new Error("tvmaze_hierarchy_identity_mismatch");
     await this.dbProvider.transaction(async () => {
       const db = this.dbProvider.client;
+      const incomingSeasons = snapshot.seasons.map((row) => row.id), incomingEpisodes = snapshot.episodes.map((row) => row.id);
+      if (incomingSeasons.length && (await db.select({ id: tvSeasons.id }).from(tvSeasons).where(and(inArray(tvSeasons.id, incomingSeasons), ne(tvSeasons.seriesId, item.seriesId))).limit(1)).length) throw new Error("tvmaze_season_identity_collision");
+      if (incomingEpisodes.length && (await db.select({ id: tvEpisodes.id }).from(tvEpisodes).where(and(inArray(tvEpisodes.id, incomingEpisodes), ne(tvEpisodes.seriesId, item.seriesId))).limit(1)).length) throw new Error("tvmaze_episode_identity_collision");
       const [existing] = await db.select({ episodeCount: tvSeries.episodeCount, specialCount: tvSeries.specialCount }).from(tvSeries).where(eq(tvSeries.id, item.seriesId));
       if (existing && existing.episodeCount + existing.specialCount > 0 && !snapshot.episodes.length) throw new Error("tvmaze_empty_hierarchy_regression");
       await this.writeShows([snapshot.show], at, false);

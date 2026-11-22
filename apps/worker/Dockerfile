@@ -60,6 +60,9 @@ RUN node --check apps/api/dist/scripts/refresh-popularity.js \
  && node --check apps/api/dist/scripts/sync-movies.js \
  && node --check apps/api/dist/scripts/refresh-movie-popularity.js \
  && node --check apps/api/dist/scripts/fix-movie-english-titles.js \
+ && node --check apps/api/dist/scripts/sync-tv-series.js \
+ && node --check apps/api/dist/scripts/refresh-tv-popularity.js \
+ && node --check apps/api/dist/scripts/sync-tv-search.js \
  && node -e "require('./apps/api/dist/container.js')"
 ENV NODE_ENV=production \
     NODE_OPTIONS=--max-old-space-size=2048 \

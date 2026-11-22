@@ -352,12 +352,29 @@ jobs:
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0022_giant_sprite.sql
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0023_magical_storm.sql
           # Exercise the dedicated movie source SQL against its generated schema.
-          for migration in 0027_movies_catalog 0030_massive_chameleon 0031_right_tyrannus 0032_tired_serpent_society 0033_chunky_baron_strucker 0036_mute_nova 0042_absurd_puppet_master 0047_free_dorian_gray 0048_huge_wallflower 0049_natural_network 0050_living_miek 0052_lyrical_chat 0053_hesitant_beast; do
+          for migration in 0027_movies_catalog 0030_massive_chameleon 0031_right_tyrannus 0032_tired_serpent_society 0033_chunky_baron_strucker 0036_mute_nova 0042_absurd_puppet_master 0047_free_dorian_gray 0048_huge_wallflower 0049_natural_network 0050_living_miek 0052_lyrical_chat 0053_hesitant_beast 0054_equal_emma_frost; do
             psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "../../packages/db/drizzle/$migration.sql"
           done
 
       - name: Test
         run: cargo test --locked
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install TV integration dependencies
+        working-directory: .
+        run: |
+          npm install --global pnpm@11.2.2
+          pnpm install --frozen-lockfile --filter api...
+          pnpm --filter @vefacaglar/db exec tsc
+      - name: Check TV canonical writes and Meilisearch publication
+        working-directory: apps/api
+        env:
+          TV_TEST_DATABASE_URL: ${{ env.WORKER_TEST_DATABASE_URL }}
+          TV_TEST_MEILISEARCH_URL: ${{ env.WORKER_TEST_MEILISEARCH_URL }}
+          TV_TEST_MEILISEARCH_API_KEY: ${{ env.WORKER_TEST_MEILISEARCH_API_KEY }}
+        run: pnpm exec ts-node --transpile-only src/scripts/check-tv-integration.ts
 
       - name: Check deployment scripts
         working-directory: .

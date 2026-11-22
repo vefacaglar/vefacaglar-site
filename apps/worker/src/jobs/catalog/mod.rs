@@ -28,6 +28,7 @@ pub mod game_import;
 pub mod movie_popularity;
 pub mod movie_titles;
 pub mod movies;
+pub mod tv_series;
 
 struct CliSpec {
     prefix: &'static str,
@@ -85,6 +86,33 @@ const MOVIE_POPULARITY: CliSpec = CliSpec {
     deadline: Some(Duration::from_secs(480)),
     deadline_yields: false,
     continues: false,
+};
+const TV_CATALOG: CliSpec = CliSpec {
+    prefix: "[catalog:tv-series] ",
+    label: "TV series catalog",
+    phase: "synchronizing TV series",
+    interrupted: "TV series import stopped; committed page and hierarchy progress resumes on its next run",
+    deadline: Some(Duration::from_secs(210)),
+    deadline_yields: false,
+    continues: true,
+};
+const TV_POPULARITY: CliSpec = CliSpec {
+    prefix: "[catalog:tv-interest] ",
+    label: "TV series current popularity",
+    phase: "refreshing TV series popularity",
+    interrupted: "TV popularity refresh stopped; its previous complete snapshot remains available",
+    deadline: Some(Duration::from_secs(210)),
+    deadline_yields: false,
+    continues: false,
+};
+const TV_SEARCH: CliSpec = CliSpec {
+    prefix: "[search:tv-series] ",
+    label: "TV series search",
+    phase: "synchronizing the TV series search index",
+    interrupted: "TV search stopped; the last published index remains available and its staged build resumes",
+    deadline: Some(Duration::from_secs(210)),
+    deadline_yields: false,
+    continues: true,
 };
 const MOVIE_TITLES: CliSpec = CliSpec {
     prefix: "[catalog:movie-titles] ",

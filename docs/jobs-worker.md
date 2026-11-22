@@ -263,3 +263,7 @@ Backloggd considers a rotating pool of the current 512 leaders, with at most 32 
 The API computes finish and mastery summaries from the applicable source reports. Each provider contributes one estimate per metric. Two estimates agree when their difference is at most the larger of one minute or twenty percent of the smaller estimate. A unique, pairwise-compatible strict majority is averaged, with excluded providers retained in the response and original values visible in game details. Tied camps, overlapping non-transitive clusters and missing majorities produce a qualified range. Average play-time measurements remain in their own source category. Typed search, ordinary browsing and details hydrate these fields directly from PostgreSQL.
 
 Provider references are [Backloggd Terms](https://backloggd.com/about/terms-of-service/), [Backloggd robots policy](https://backloggd.com/robots.txt), [IFDB JSON search](https://ifdb.org/api/search), [IFDB median finish definition](https://ifdb.org/news?item=150), and [VNDB Kana fields and usage](https://api.vndb.org/kana).
+
+## TV series jobs
+
+The independent `catalog.tv-series.sync`, `catalog.tv-series.popularity.refresh`, and `search.tv-series.sync` registrations import normalized TVmaze shows/seasons/episodes, publish verified daily popularity, and maintain the dedicated TV index. Their enabled UTC schedules, initial run order, source licensing, bounded continuation and recovery behavior are documented in [TV series catalog](tv-series.md). They share no concurrency key or index with game/movie jobs.

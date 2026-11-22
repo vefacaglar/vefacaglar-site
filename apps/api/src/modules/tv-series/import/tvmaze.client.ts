@@ -14,9 +14,15 @@ export class TvmazeClient {
   async hierarchy(id: number, deadline: number) {
     const show = parseTvShow(await this.json(`/shows/${id}`, deadline));
     if (show.id !== id) throw new TvmazeError("tvmaze_show_identity_mismatch");
-    const episodes = await this.json(`/shows/${id}/episodes?specials=1`, deadline, 32 * 1024 * 1024);
-    const seasons = await this.json(`/shows/${id}/seasons`, deadline, 4 * 1024 * 1024);
-    return parseTvHierarchy(show, seasons, episodes);
+    try {
+      const episodes = await this.json(`/shows/${id}/episodes?specials=1`, deadline, 32 * 1024 * 1024);
+      const seasons = await this.json(`/shows/${id}/seasons`, deadline, 4 * 1024 * 1024);
+      return parseTvHierarchy(show, seasons, episodes);
+    } catch (error) {
+      // Only the canonical show endpoint can prove a show was removed.
+      if (error instanceof TvmazeError && error.status === 404) throw new TvmazeError("tvmaze_incomplete_hierarchy");
+      throw error;
+    }
   }
   async updates(lastCheckedAt: Date | null, deadline: number) {
     const age = lastCheckedAt ? Date.now() - lastCheckedAt.getTime() : Infinity;
@@ -44,7 +50,7 @@ export class TvmazeClient {
       const retry = Number.isFinite(seconds) ? Date.now() + seconds * 1000 : Date.parse(header ?? "");
       await response.body?.cancel();
       throw new TvmazeError(`tvmaze_http_${response.status}`, response.status,
-        new Date(Math.max(Date.now() + 60_000, Number.isFinite(retry) ? retry : 0)));
+        new Date(Math.min(Date.now() + 86400_000, Math.max(Date.now() + 60_000, Number.isFinite(retry) ? retry : 0))));
     }
     if (!response.body || !response.headers.get("content-type")?.includes("json") || Number(response.headers.get("content-length") ?? 0) > maxBytes) {
       await response.body?.cancel(); throw new TvmazeError("tvmaze_invalid_body");
@@ -61,7 +67,7 @@ export class TvmazeClient {
         parts.push(part.value);
       }
       return JSON.parse(Buffer.concat(parts).toString("utf8"));
-    } catch (error) { if (error instanceof TvmazeError) throw error; throw new TvmazeError("tvmaze_invalid_json"); }
+    } catch (error) { if (error instanceof TvmazeError) throw error; throw new TvmazeError(Date.now() >= deadline ? "tvmaze_budget_exhausted" : "tvmaze_invalid_json"); }
     finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
   }
 }
