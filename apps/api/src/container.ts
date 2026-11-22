@@ -87,6 +87,8 @@ import { TV_POPULARITY_REPOSITORY } from "./modules/tv-series/popularity/tv-popu
 import { DrizzleTvPopularityRepository } from "./modules/tv-series/popularity/tv-popularity.repository";
 import { TV_INDEX_REPOSITORY, DrizzleTvIndexRepository } from "./modules/tv-series/search-sync/tv-index.repository";
 import { TV_SERIES_REPOSITORY } from "./modules/tv-series/tv-series.repository.interface";
+import { TV_DASHBOARD_REPOSITORY } from "./modules/tv-series/dashboard/tv-dashboard.repository.interface";
+import { DrizzleTvDashboardRepository } from "./modules/tv-series/dashboard/tv-dashboard.repository";
 import { DrizzleTvSeriesRepository } from "./modules/tv-series/tv-series.repository";
 import { TV_SERIES_CATALOG_SERVICE, TvSeriesCatalogService } from "./modules/tv-series/search/tv-series-catalog.service";
 import { TV_SERIES_SEARCH_READER, MeilisearchTvSeriesSearchReader } from "./modules/tv-series/search/tv-series-search.reader";
@@ -98,6 +100,7 @@ container.registerSingleton(TV_SOURCE_REPOSITORY, DrizzleTvSourceRepository);
 container.registerSingleton(TV_POPULARITY_REPOSITORY, DrizzleTvPopularityRepository);
 container.registerSingleton(TV_INDEX_REPOSITORY, DrizzleTvIndexRepository);
 container.registerSingleton(TV_SERIES_REPOSITORY, DrizzleTvSeriesRepository);
+container.registerSingleton(TV_DASHBOARD_REPOSITORY, DrizzleTvDashboardRepository);
 container.registerSingleton(TV_SERIES_CATALOG_SERVICE, TvSeriesCatalogService);
 container.registerSingleton(TV_SERIES_SEARCH_READER, MeilisearchTvSeriesSearchReader);
 container.registerSingleton(MOVIE_CATALOG_SERVICE, MovieCatalogService);

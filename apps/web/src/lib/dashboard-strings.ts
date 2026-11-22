@@ -8,6 +8,7 @@ const dashboardStrings = {
       packages: "Packages",
       games: "Games",
       movies: "Movies",
+      "tv-series": "TV Series",
       jobs: "Jobs",
     },
   },
