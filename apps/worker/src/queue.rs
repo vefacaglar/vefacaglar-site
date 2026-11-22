@@ -12,6 +12,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::context::Progress;
+use crate::jobs::catalog::tv_series::JOB_TYPES as TV_JOB_TYPES;
 
 /// Seconds without a heartbeat after which a running job is considered lost.
 pub const STALE_AFTER_SECS: i64 = 60;
@@ -283,15 +284,14 @@ pub async fn mark_succeeded(
     log: &str,
 ) -> sqlx::Result<bool> {
     let mut tx = pool.begin().await?;
-    // Preserve a movie cancellation that arrives between the final heartbeat
-    // and process exit, as the former continuation finalizer already did.
-    let status: Option<String> = sqlx::query_scalar(&format!(
-        "UPDATE jobs SET status = CASE WHEN type = 'catalog.movies.sync' AND cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
+    // Read cancellation during finalization, including after the child exits.
+    let status: Option<(String, String)> = sqlx::query_as(&format!(
+        "UPDATE jobs SET status = CASE WHEN (type = 'catalog.movies.sync' OR type = ANY($3)) AND cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
          finished_at = now(), checkpoint = NULL, error = NULL, cancel_requested = false, updated_at = now() \
-         WHERE {HELD_BY_ME} RETURNING status"
+         WHERE {HELD_BY_ME} RETURNING status, type"
     ))
-    .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;
-    let Some(status) = status else {
+    .bind(job_id).bind(worker_id).bind(TV_JOB_TYPES.as_slice()).fetch_optional(&mut *tx).await?;
+    let Some((status, job_type)) = status else {
         tx.rollback().await?;
         return Ok(false);
     };
@@ -304,7 +304,11 @@ pub async fn mark_succeeded(
             LogLevel::Info
         },
         if status == "cancelled" {
-            "cancelled before movie sync finalization"
+            if job_type == "catalog.movies.sync" {
+                "cancelled before movie sync finalization"
+            } else {
+                "cancelled before TV job finalization"
+            }
         } else {
             log
         },
@@ -315,7 +319,8 @@ pub async fn mark_succeeded(
     Ok(true)
 }
 
-/// Continuing title and search batches use new job IDs without consuming retries.
+/// Existing movie title/search batches retain their legacy continuation protocol.
+/// TV and newly designed jobs are excluded from this allowlist.
 /// The held row is terminal and its successor exists in the same commit;
 /// retrying finalization cannot enqueue a second one.
 #[derive(sqlx::FromRow)]
@@ -342,7 +347,7 @@ pub async fn mark_succeeded_with_continuation(
     let row: Option<ContinuationRow> = sqlx::query_as(&format!(
         "UPDATE jobs SET status = CASE WHEN cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
          finished_at = now(), checkpoint = NULL, error = NULL, updated_at = now() \
-         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.english_titles' AND concurrency_key = 'catalog.movies.english_titles') OR (type = 'search.movies.sync' AND concurrency_key IN ('search.index', 'search.movies.index')) OR (type = 'catalog.tv-series.cast.refresh' AND concurrency_key = 'catalog.tv-series.cast') OR (type = 'catalog.tv-series.sync' AND concurrency_key = 'catalog.tv-series') OR (type = 'search.tv-series.sync' AND concurrency_key = 'search.tv-series.index')) \
+         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.english_titles' AND concurrency_key = 'catalog.movies.english_titles') OR (type = 'search.movies.sync' AND concurrency_key IN ('search.index', 'search.movies.index'))) \
          RETURNING type AS job_type, payload, concurrency_key, recurring_job_id, max_attempts, created_by, cancel_requested"
     ))
     .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;
@@ -441,6 +446,7 @@ pub async fn requeue_for_shutdown(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FailureResult {
     Retrying,
+    Cancelled,
     Failed,
     Lost,
 }
@@ -459,12 +465,12 @@ pub async fn mark_failed(
     let mut tx = pool.begin().await?;
     let row: Option<(String,)> = sqlx::query_as(&format!(
         "UPDATE jobs SET \
-             status = CASE WHEN NOT $5 AND attempts < max_attempts THEN 'queued' ELSE 'failed' END, \
-             run_at = CASE WHEN NOT $5 AND attempts < max_attempts THEN now() + make_interval(secs => $4) ELSE run_at END, \
-             finished_at = CASE WHEN NOT $5 AND attempts < max_attempts THEN NULL ELSE now() END, \
+             status = CASE WHEN cancel_requested AND type = ANY($6) THEN 'cancelled' WHEN NOT $5 AND attempts < max_attempts THEN 'queued' ELSE 'failed' END, \
+             run_at = CASE WHEN cancel_requested AND type = ANY($6) THEN run_at WHEN NOT $5 AND attempts < max_attempts THEN now() + make_interval(secs => $4) ELSE run_at END, \
+             finished_at = CASE WHEN cancel_requested AND type = ANY($6) THEN now() WHEN NOT $5 AND attempts < max_attempts THEN NULL ELSE now() END, \
              locked_by = CASE WHEN NOT $5 AND attempts < max_attempts THEN NULL ELSE locked_by END, \
              locked_at = CASE WHEN NOT $5 AND attempts < max_attempts THEN NULL ELSE locked_at END, \
-             error = $3, updated_at = now() \
+             error = CASE WHEN cancel_requested AND type = ANY($6) THEN NULL ELSE $3 END, updated_at = now() \
          WHERE {HELD_BY_ME} RETURNING status"
     ))
     .bind(job_id)
@@ -472,10 +478,12 @@ pub async fn mark_failed(
     .bind(error)
     .bind(retry_in.as_secs_f64())
     .bind(permanent)
+    .bind(TV_JOB_TYPES.as_slice())
     .fetch_optional(&mut *tx)
     .await?;
     let result = match row.as_ref().map(|r| r.0.as_str()) {
         Some("queued") => FailureResult::Retrying,
+        Some("cancelled") => FailureResult::Cancelled,
         Some(_) => FailureResult::Failed,
         None => {
             tx.rollback().await?;
@@ -483,11 +491,22 @@ pub async fn mark_failed(
         }
     };
     let message = match result {
+        FailureResult::Cancelled => "cancelled while the TV child stopped".to_string(),
         FailureResult::Retrying => format!("failed: {error}; retrying in {}s", retry_in.as_secs()),
         _ if permanent => format!("failed permanently: {error}"),
         _ => format!("failed: {error}"),
     };
-    insert_log_tx(&mut tx, job_id, LogLevel::Error, &message).await?;
+    insert_log_tx(
+        &mut tx,
+        job_id,
+        if result == FailureResult::Cancelled {
+            LogLevel::Warn
+        } else {
+            LogLevel::Error
+        },
+        &message,
+    )
+    .await?;
     notify_tx(&mut tx, JOB_EVENTS_CHANNEL, job_id).await?;
     tx.commit().await?;
     Ok(result)

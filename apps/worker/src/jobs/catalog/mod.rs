@@ -38,8 +38,8 @@ struct CliSpec {
     deadline: Option<Duration>,
     /// Yield without retrying when the movie run reaches its outer safety cap.
     deadline_yields: bool,
-    /// Only fixed catalog/search CLIs may request a bounded continuation through
-    /// `<prefix>result {...}`; every other CLI's output is plain log text.
+    /// Legacy movie title batches may request a continuation. New jobs keep
+    /// ordinary batches inside the same job ID.
     continues: bool,
 }
 const POPULARITY: CliSpec = CliSpec {
@@ -92,25 +92,25 @@ const TV_CAST: CliSpec = CliSpec {
     label: "TV series main cast",
     phase: "refreshing shared TV cast identities",
     interrupted: "TV cast refresh stopped; completed snapshots remain available and queued titles resume",
-    deadline: Some(Duration::from_secs(210)),
+    deadline: None,
     deadline_yields: false,
-    continues: true,
+    continues: false,
 };
 const TV_CATALOG: CliSpec = CliSpec {
     prefix: "[catalog:tv-series] ",
     label: "TV series catalog",
     phase: "synchronizing TV series",
     interrupted: "TV series import stopped; committed page and hierarchy progress resumes on its next run",
-    deadline: Some(Duration::from_secs(210)),
+    deadline: None,
     deadline_yields: false,
-    continues: true,
+    continues: false,
 };
 const TV_POPULARITY: CliSpec = CliSpec {
     prefix: "[catalog:tv-interest] ",
     label: "TV series current popularity",
     phase: "refreshing TV series popularity",
     interrupted: "TV popularity refresh stopped; its previous complete snapshot remains available",
-    deadline: Some(Duration::from_secs(210)),
+    deadline: None,
     deadline_yields: false,
     continues: false,
 };
@@ -119,9 +119,9 @@ const TV_SEARCH: CliSpec = CliSpec {
     label: "TV series search",
     phase: "synchronizing the TV series search index",
     interrupted: "TV search stopped; the last published index remains available and its staged build resumes",
-    deadline: Some(Duration::from_secs(210)),
+    deadline: None,
     deadline_yields: false,
-    continues: true,
+    continues: false,
 };
 const MOVIE_TITLES: CliSpec = CliSpec {
     prefix: "[catalog:movie-titles] ",

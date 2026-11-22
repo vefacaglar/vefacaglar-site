@@ -377,17 +377,19 @@ impl Worker {
                 let delay = retry_delay(attempt);
                 let result =
                     queue::mark_failed(pool, job_id, worker_id, &message, delay, permanent).await;
-                let cause: &(dyn std::error::Error + 'static) = error.as_ref();
-                let stack = crate::telemetry::application_stack(error.backtrace());
-                tracing::error!(
-                    application_event = "job_attempt_failed",
-                    %job_id,
-                    ?result,
-                    error = cause,
-                    error_chain = %message,
-                    origin_stack = stack.as_deref(),
-                    "job attempt failed"
-                );
+                if !matches!(&result, Ok(queue::FailureResult::Cancelled)) {
+                    let cause: &(dyn std::error::Error + 'static) = error.as_ref();
+                    let stack = crate::telemetry::application_stack(error.backtrace());
+                    tracing::error!(
+                        application_event = "job_attempt_failed",
+                        %job_id,
+                        ?result,
+                        error = cause,
+                        error_chain = %message,
+                        origin_stack = stack.as_deref(),
+                        "job attempt failed"
+                    );
+                }
                 result.map(|_| ())
             }
         };

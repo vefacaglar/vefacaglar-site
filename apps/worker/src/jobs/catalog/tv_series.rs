@@ -6,6 +6,12 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::path::Path;
 use tokio::process::Command;
+pub const JOB_TYPES: [&str; 4] = [
+    "catalog.tv-series.sync",
+    "catalog.tv-series.cast.refresh",
+    "catalog.tv-series.popularity.refresh",
+    "search.tv-series.sync",
+];
 pub struct TvCatalogHandler;
 pub struct TvCastHandler;
 pub struct TvPopularityHandler;
@@ -45,12 +51,23 @@ async fn run(
         .filter_map(|key| std::env::var(key).ok())
         .filter(|value| !value.is_empty())
         .collect::<Vec<_>>();
+    let command = node_command(ctx, script);
+    let result = super::run_command_with_spec(ctx, command, &secrets, spec).await;
+    if ctx.should_stop() {
+        Ok(JobOutcome::Interrupted)
+    } else {
+        result
+    }
+}
+fn node_command(ctx: &JobContext, script: &str) -> Command {
     let mut command = Command::new("/usr/local/bin/node");
     command
         .arg("--enable-source-maps")
         .arg(script)
-        .current_dir("/app");
-    super::run_command_with_spec(ctx, command, &secrets, spec).await
+        .current_dir("/app")
+        .env("VEFA_JOB_ID", ctx.job_id().to_string())
+        .env("VEFA_JOB_WORKER_ID", ctx.worker_id());
+    command
 }
 macro_rules! tv_handler {
     ($name:ident, $kind:literal, $key:literal, $file:literal, $spec:ident, $search:expr) => {
@@ -111,21 +128,12 @@ mod tests {
     use super::*;
     use serde_json::json;
     #[test]
-    fn isolated_locks_empty_payload_and_bounded_continuations() {
+    fn isolated_locks_empty_payload_and_single_run_policies() {
         assert_eq!(TvCatalogHandler.job_type(), "catalog.tv-series.sync");
         assert_eq!(TvCastHandler.job_type(), "catalog.tv-series.cast.refresh");
         assert_eq!(
             TvCastHandler.concurrency_key(&json!({})),
             Some("catalog.tv-series.cast".into())
-        );
-        assert!(
-            super::super::movies::parse_continuation(
-                r#"[catalog:tv-cast] result {"hasMore":true,"progressMade":true,"nextRunAt":null}"#,
-                super::super::TV_CAST.prefix
-            )
-            .unwrap()
-            .unwrap()
-            .is_some()
         );
         assert_eq!(
             TvSearchHandler.concurrency_key(&json!({})),
@@ -135,11 +143,57 @@ mod tests {
             TvCatalogHandler.concurrency_key(&json!({})),
             TvPopularityHandler.concurrency_key(&json!({}))
         );
-        for payload in [json!(null), json!([]), json!({"id":1})] {
+        for payload in [json!(null), json!([]), json!({"id": 1})] {
             assert!(validate_payload(&payload).is_err());
         }
         assert!(validate_payload(&json!({})).is_ok());
-        assert!(super::super::movies::parse_continuation(r#"[catalog:tv-series] result {"hasMore":true,"progressMade":true,"nextRunAt":null}"#, super::super::TV_CATALOG.prefix).unwrap().unwrap().is_some());
-        assert!(super::super::movies::parse_continuation(r#"[search:tv-series] result {"hasMore":false,"progressMade":true,"nextRunAt":null}"#, super::super::TV_SEARCH.prefix).unwrap().is_some());
+        for spec in [
+            &super::super::TV_CATALOG,
+            &super::super::TV_CAST,
+            &super::super::TV_POPULARITY,
+            &super::super::TV_SEARCH,
+        ] {
+            assert!(
+                spec.deadline.is_none(),
+                "TV jobs can run across hours or days"
+            );
+            assert!(!spec.deadline_yields);
+            assert!(!spec.continues, "TV output cannot create another job ID");
+        }
+    }
+    #[tokio::test]
+    async fn node_receives_the_stable_job_and_lease_owner() {
+        use crate::context::JobFlags;
+        use crate::queue::ClaimedJob;
+        use std::sync::Arc;
+        use tokio_util::sync::CancellationToken;
+        use uuid::Uuid;
+        let id = Uuid::new_v4();
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://fixture@127.0.0.1/unused")
+            .unwrap();
+        let ctx = JobContext::new(
+            ClaimedJob {
+                id,
+                job_type: JOB_TYPES[0].into(),
+                payload: json!({}),
+                checkpoint: None,
+                attempts: 2,
+                max_attempts: 3,
+                cancel_requested: false,
+            },
+            pool,
+            "fixture-worker".into(),
+            CancellationToken::new(),
+            Arc::new(JobFlags::default()),
+        );
+        let command = node_command(&ctx, "/app/apps/api/dist/scripts/sync-tv-series.js");
+        let env = command
+            .as_std()
+            .get_envs()
+            .map(|(key, value)| (key.to_str().unwrap(), value.unwrap().to_str().unwrap()))
+            .collect::<std::collections::HashMap<_, _>>();
+        assert_eq!(env["VEFA_JOB_ID"], id.to_string());
+        assert_eq!(env["VEFA_JOB_WORKER_ID"], "fixture-worker");
     }
 }

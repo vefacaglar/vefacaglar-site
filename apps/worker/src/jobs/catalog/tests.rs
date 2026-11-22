@@ -244,3 +244,37 @@ async fn movie_interest_output_cannot_create_a_catalog_continuation() {
         .unwrap();
     assert_eq!(result, JobOutcome::Completed);
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn tv_completion_output_never_requests_another_job() {
+    for spec in [&TV_CATALOG, &TV_CAST, &TV_POPULARITY, &TV_SEARCH] {
+        let io = FakeIo::default();
+        let script = format!(
+            "printf '{}result {{\"hasMore\":true,\"progressMade\":true,\"nextRunAt\":null}}\\n'",
+            spec.prefix
+        );
+        assert_eq!(
+            run_command_with_spec(&io, shell(&script), &[], spec)
+                .await
+                .unwrap(),
+            JobOutcome::Completed
+        );
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn cancellation_stops_a_tv_child_without_waiting_for_its_lifetime() {
+    let io = FakeIo::default();
+    let stop = async {
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        io.stop.store(true, Ordering::SeqCst);
+    };
+    let run = run_command_with_spec(&io, shell("exec sleep 600"), &[], &TV_CATALOG);
+    let (result, ()) =
+        tokio::time::timeout(Duration::from_secs(3), async { tokio::join!(run, stop) })
+            .await
+            .unwrap();
+    assert_eq!(result.unwrap(), JobOutcome::Interrupted);
+}

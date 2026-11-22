@@ -11,7 +11,8 @@ use crate::context::JobContext;
 pub enum JobOutcome {
     /// All work is done; the job becomes `succeeded` and its checkpoint is cleared.
     Completed,
-    /// A bounded catalog or search batch committed progress; finish and enqueue one later run atomically.
+    /// Existing movie-only continuation protocol. New or redesigned jobs must
+    /// finish ordinary batches internally under their original job ID.
     CompletedWithContinuation {
         run_at: chrono::DateTime<chrono::Utc>,
     },

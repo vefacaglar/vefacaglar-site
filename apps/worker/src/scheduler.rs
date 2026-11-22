@@ -10,6 +10,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::cron::Schedule;
 use crate::handler::Registry;
+use crate::jobs::catalog::tv_series::JOB_TYPES as TV_JOB_TYPES;
 use crate::queue;
 
 #[derive(Debug, sqlx::FromRow)]
@@ -78,14 +79,6 @@ pub fn classify_conflict(
     job_type: &str,
     active_holder: Option<&queue::ActiveConcurrencyHolder>,
 ) -> ConflictAction {
-    // TV source commits can arrive while a bounded TV job is active. Keep this
-    // wake-up pending; its durable work may have arrived after the active scan.
-    if matches!(
-        job_type,
-        "catalog.tv-series.sync" | "catalog.tv-series.cast.refresh" | "search.tv-series.sync"
-    ) {
-        return ConflictAction::DeferOtherActive;
-    }
     match active_holder {
         Some(holder)
             if holder.recurring_job_id.as_deref() == Some(recurring_job_id)
@@ -143,6 +136,12 @@ async fn dispatch_row(
             let concurrency_key = registry
                 .get(&row.job_type)
                 .and_then(|h| h.concurrency_key(&row.payload));
+            if TV_JOB_TYPES.contains(&row.job_type.as_str())
+                && let Some(key) = concurrency_key.as_deref()
+                && skip_tv_occurrence(tx, &row, key, next_run_at).await?
+            {
+                return Ok(());
+            }
             let job_id = queue::enqueue_in_tx(
                 tx,
                 &row.job_type,
@@ -204,6 +203,63 @@ async fn dispatch_row(
     Ok(())
 }
 
+/// Draining generations do not run the scheduler. A long run can cover several
+/// due times before the replacement worker gets its first scheduler tick.
+fn finished_run_covers_occurrence(
+    cron: &str,
+    due: DateTime<Utc>,
+    finished: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> bool {
+    finished >= due
+        && finished <= now
+        && Schedule::parse(cron)
+            .and_then(|schedule| schedule.next_after(finished))
+            .is_ok_and(|next| next > now)
+}
+
+async fn skip_tv_occurrence(
+    tx: &mut Transaction<'_, Postgres>,
+    row: &DueRecurring,
+    key: &str,
+    next_run_at: DateTime<Utc>,
+) -> sqlx::Result<bool> {
+    // Lock a present holder so its finalization cannot slip between the overlap
+    // check and enqueue. A queued retry also reserves this daily occurrence.
+    let holder: Option<queue::ActiveConcurrencyHolder> = sqlx::query_as(
+        "SELECT type, recurring_job_id FROM jobs WHERE concurrency_key = $1 \
+         AND status IN ('queued','running') LIMIT 1 FOR NO KEY UPDATE",
+    )
+    .bind(key)
+    .fetch_optional(&mut **tx)
+    .await?;
+    let skip = if let Some(holder) = holder {
+        classify_conflict(&row.id, &row.job_type, Some(&holder)) == ConflictAction::SkipSameActive
+    } else {
+        let last_finished: Option<DateTime<Utc>> = sqlx::query_scalar(
+            "SELECT finished_at FROM jobs WHERE concurrency_key = $1 \
+             AND (type = $2 OR recurring_job_id = $3) AND status IN ('succeeded','failed','cancelled') \
+             AND finished_at >= $4 ORDER BY finished_at DESC LIMIT 1",
+        ).bind(key).bind(&row.job_type).bind(&row.id).bind(row.next_run_at)
+            .fetch_optional(&mut **tx).await?;
+        match (row.cron.as_deref(), row.next_run_at, last_finished) {
+            (Some(cron), Some(due), Some(finished)) => {
+                finished_run_covers_occurrence(cron, due, finished, Utc::now())
+            }
+            _ => false,
+        }
+    };
+    if skip {
+        sqlx::query("UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1")
+            .bind(&row.id)
+            .bind(next_run_at)
+            .execute(&mut **tx)
+            .await?;
+        tracing::info!(recurring_job_id = %row.id, %next_run_at, "skipped recurring run: same TV run covers this occurrence");
+    }
+    Ok(skip)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,6 +296,35 @@ mod tests {
                 next_run_at: next_day
             }
         );
+    }
+
+    #[test]
+    fn a_finished_long_run_covers_missed_occurrences_only_until_the_next_cron() {
+        let due = Utc.with_ymd_and_hms(2026, 5, 8, 3, 0, 0).unwrap();
+        assert!(finished_run_covers_occurrence(
+            "0 3 * * *",
+            due,
+            at(4, 0),
+            at(5, 0)
+        ));
+        assert!(!finished_run_covers_occurrence(
+            "0 3 * * *",
+            due,
+            at(2, 0),
+            at(5, 0)
+        ));
+        assert!(!finished_run_covers_occurrence(
+            "0 3 * * *",
+            at(6, 0),
+            at(4, 0),
+            at(5, 0)
+        ));
+        assert!(!finished_run_covers_occurrence(
+            "0 3 * * *",
+            due,
+            at(6, 0),
+            at(5, 0)
+        ));
     }
 
     #[test]
@@ -325,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    fn tv_source_demand_survives_the_same_active_bounded_job() {
+    fn tv_daily_runs_skip_while_the_same_long_job_is_active() {
         for kind in [
             "catalog.tv-series.sync",
             "catalog.tv-series.cast.refresh",
@@ -334,7 +419,7 @@ mod tests {
             let active = holder(kind, Some(kind));
             assert_eq!(
                 classify_conflict(kind, kind, Some(&active)),
-                ConflictAction::DeferOtherActive
+                ConflictAction::SkipSameActive
             );
         }
     }

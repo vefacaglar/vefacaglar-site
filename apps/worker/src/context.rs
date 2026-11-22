@@ -85,6 +85,10 @@ impl JobContext {
         self.job.id
     }
 
+    pub fn worker_id(&self) -> &str {
+        &self.worker_id
+    }
+
     pub fn attempt(&self) -> i32 {
         self.job.attempts
     }
