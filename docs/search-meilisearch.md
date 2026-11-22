@@ -127,7 +127,7 @@ failed delete after a swap is retried.
 
 | Index | Ready when |
 | --- | --- |
-| `movies_en` | `movie_search_state`: `schema_version = 3`, `bootstrap_phase = 'ready'`, `ranking_ready`, `active_collection = 'movies_en'` |
+| `movies_en` | `movie_search_state`: `schema_version = 4`, `bootstrap_phase = 'ready'`, `ranking_ready`, `active_collection = 'movies_en'` |
 | `movie_people_en` | `movie_people_search_state`: `schema_version = 2`, `active_collection = 'movie_people_en'` |
 | games family | the index exists |
 
@@ -154,7 +154,7 @@ restores missing documents and deletes orphans (documents without a source
 row). The indexed ids are read before the source ids, so a document created
 while the sync runs is never taken for an orphan. So the first sync after the
 cutover builds everything, and later syncs heal drift. `search.movies.sync` builds `movies_en` and `movie_people_en`
-on its own schedule (`*/5 * * * *`), enabled by default via migration `0046_schedule_popularity_jobs` (unless disabled with a non-default schedule).
+on its daily schedule (`50 7 * * *` UTC), with source changes retained for that campaign. Migration `0047_free_dorian_gray` upgrades the old five-minute default and preserves custom schedules and enabled status.
 
 
 ## API keys

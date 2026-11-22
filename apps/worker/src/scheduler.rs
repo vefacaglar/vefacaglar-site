@@ -12,8 +12,6 @@ use crate::cron::Schedule;
 use crate::handler::Registry;
 use crate::queue;
 
-const MOVIE_SEARCH_SYNC: &str = "search.movies.sync";
-
 #[derive(Debug, sqlx::FromRow)]
 struct DueRecurring {
     id: String,
@@ -65,9 +63,6 @@ pub fn decide(
 /// for a due recurring job (pure, for testing).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictAction {
-    /// Movie search due times also carry source-change demand; keep `next_run_at`
-    /// unchanged while any search/retry/bounded continuation owns the key.
-    DeferMovieDemand,
     /// The same recurring job (by `recurring_job_id` or `type`) is already
     /// queued or running: advance `next_run_at` so a long-running job does not
     /// stack back-to-back duplicate runs.
@@ -79,14 +74,10 @@ pub enum ConflictAction {
 }
 
 pub fn classify_conflict(
-    movie_demand: bool,
     recurring_job_id: &str,
     job_type: &str,
     active_holder: Option<&queue::ActiveConcurrencyHolder>,
 ) -> ConflictAction {
-    if movie_demand {
-        return ConflictAction::DeferMovieDemand;
-    }
     match active_holder {
         Some(holder)
             if holder.recurring_job_id.as_deref() == Some(recurring_job_id)
@@ -117,36 +108,12 @@ pub async fn tick(pool: &PgPool, registry: &Registry) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Source commits mark this registration due and notify `jobs`. Run before
-/// every claim so notifications, polling and job completion all drain demand.
-pub async fn dispatch_movie_search(pool: &PgPool, registry: &Registry) -> sqlx::Result<()> {
-    if registry.get(MOVIE_SEARCH_SYNC).is_none() {
-        return Ok(());
-    }
-    let mut tx = pool.begin().await?;
-    let row: Option<DueRecurring> = sqlx::query_as(
-        "SELECT id, type, cron, payload, next_run_at FROM recurring_jobs \
-         WHERE id=$1 AND type=$1 AND enabled AND cron IS NOT NULL \
-           AND (next_run_at IS NULL OR next_run_at <= now()) \
-         FOR NO KEY UPDATE SKIP LOCKED",
-    )
-    .bind(MOVIE_SEARCH_SYNC)
-    .fetch_optional(&mut *tx)
-    .await?;
-    if let Some(row) = row {
-        dispatch_row(&mut tx, registry, row).await?;
-    }
-    tx.commit().await?;
-    Ok(())
-}
-
 async fn dispatch_row(
     tx: &mut Transaction<'_, Postgres>,
     registry: &Registry,
     row: DueRecurring,
 ) -> sqlx::Result<()> {
-    let movie_demand = row.id == MOVIE_SEARCH_SYNC && row.job_type == MOVIE_SEARCH_SYNC;
-    if movie_demand && registry.get(MOVIE_SEARCH_SYNC).is_none() {
+    if registry.get(&row.job_type).is_none() {
         return Ok(());
     }
     match decide(row.cron.as_deref(), row.next_run_at, Utc::now()) {
@@ -190,28 +157,12 @@ async fn dispatch_row(
                     tracing::info!(recurring_job_id = %row.id, %job_id, %next_run_at, "enqueued recurring job");
                 }
                 None => {
-                    // Movie due times also carry source-change requests.
-                    // Keep them pending while another search/retry/bounded
-                    // continuation owns the key; never shorten its run_at.
-                    let active_holder = if movie_demand {
-                        None
-                    } else if let Some(key) = concurrency_key.as_deref() {
+                    let active_holder = if let Some(key) = concurrency_key.as_deref() {
                         queue::active_concurrency_holder_in_tx(tx, key).await?
                     } else {
                         None
                     };
-                    match classify_conflict(
-                        movie_demand,
-                        &row.id,
-                        &row.job_type,
-                        active_holder.as_ref(),
-                    ) {
-                        ConflictAction::DeferMovieDemand => {
-                            tracing::info!(
-                                recurring_job_id = %row.id,
-                                "deferred recurring run: movie search demand kept pending while concurrency key is active"
-                            );
-                        }
+                    match classify_conflict(&row.id, &row.job_type, active_holder.as_ref()) {
                         ConflictAction::SkipSameActive => {
                             sqlx::query(
                                 "UPDATE recurring_jobs SET next_run_at = $2, updated_at = now() WHERE id = $1",
@@ -305,24 +256,6 @@ mod tests {
     }
 
     #[test]
-    fn movie_demand_conflict_always_defers() {
-        let same = holder(MOVIE_SEARCH_SYNC, Some(MOVIE_SEARCH_SYNC));
-        let other = holder("search.sync", Some("search.sync"));
-        assert_eq!(
-            classify_conflict(true, MOVIE_SEARCH_SYNC, MOVIE_SEARCH_SYNC, Some(&same)),
-            ConflictAction::DeferMovieDemand
-        );
-        assert_eq!(
-            classify_conflict(true, MOVIE_SEARCH_SYNC, MOVIE_SEARCH_SYNC, Some(&other)),
-            ConflictAction::DeferMovieDemand
-        );
-        assert_eq!(
-            classify_conflict(true, MOVIE_SEARCH_SYNC, MOVIE_SEARCH_SYNC, None),
-            ConflictAction::DeferMovieDemand
-        );
-    }
-
-    #[test]
     fn same_recurring_job_active_skips() {
         let same_recurring = holder(
             "catalog.popularity.refresh",
@@ -330,7 +263,6 @@ mod tests {
         );
         assert_eq!(
             classify_conflict(
-                false,
                 "catalog.popularity.refresh",
                 "catalog.popularity.refresh",
                 Some(&same_recurring),
@@ -341,7 +273,6 @@ mod tests {
         let matching_id = holder("other.type", Some("custom.recurring"));
         assert_eq!(
             classify_conflict(
-                false,
                 "custom.recurring",
                 "catalog.popularity.refresh",
                 Some(&matching_id)
@@ -355,7 +286,6 @@ mod tests {
         let manual_same = holder("catalog.popularity.refresh", None);
         assert_eq!(
             classify_conflict(
-                false,
                 "catalog.popularity.refresh",
                 "catalog.popularity.refresh",
                 Some(&manual_same),
@@ -366,10 +296,9 @@ mod tests {
 
     #[test]
     fn different_job_holding_shared_key_defers() {
-        let movie_sync = holder(MOVIE_SEARCH_SYNC, Some(MOVIE_SEARCH_SYNC));
+        let movie_sync = holder("search.movies.sync", Some("search.movies.sync"));
         assert_eq!(
             classify_conflict(
-                false,
                 "catalog.popularity.refresh",
                 "catalog.popularity.refresh",
                 Some(&movie_sync),
@@ -379,7 +308,6 @@ mod tests {
         let manual_reindex = holder("search.reindex", None);
         assert_eq!(
             classify_conflict(
-                false,
                 "catalog.popularity.refresh",
                 "catalog.popularity.refresh",
                 Some(&manual_reindex),
@@ -392,7 +320,6 @@ mod tests {
     fn vanished_holder_defers() {
         assert_eq!(
             classify_conflict(
-                false,
                 "catalog.popularity.refresh",
                 "catalog.popularity.refresh",
                 None,

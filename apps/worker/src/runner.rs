@@ -139,13 +139,6 @@ impl Worker {
                 break;
             }
             let claimed = if *admission == Mode::Active {
-                if let Err(e) = scheduler::dispatch_movie_search(&self.pool, &self.registry).await {
-                    tracing::error!(
-                        application_event = "movie_search_dispatch_failed",
-                        error = &e as &dyn std::error::Error,
-                        "failed to dispatch requested movie search synchronization"
-                    );
-                }
                 queue::claim(&self.pool, &self.config.worker_id, types).await
             } else {
                 Ok(None)
