@@ -365,6 +365,13 @@
       "when": 1795369357546,
       "tag": "0051_clever_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795369918279,
+      "tag": "0052_lyrical_chat",
+      "breakpoints": true
     }
   ]
 }
