@@ -23,14 +23,18 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
         const year = game.releaseDate?.slice(0, 4) ?? null;
         const reviews = selectReviewScores(game);
         const duration = compactCompletionEstimate(game.completionSummary) ?? compactIndependentCompletion(game.completionReports) ?? compactCompletionTime(game.completionTimes);
-        const hasMeta = reviews.length > 0 || year !== null || duration !== null;
+        const hasMeta = reviews.length > 0 || duration !== null;
 
         return (
           <li key={game.slug} className={styles.item}>
             <Link href={localizeHref(`/explore/games/${game.slug}`, lang)} className={styles.card}>
-              <span className={styles.title}>{game.title}</span>
+              <span className={styles.heading}>
+                <span className={styles.title}>{game.title}</span>
+                {year && <span className={styles.year}>{year}</span>}
+              </span>
               {hasMeta && (
                 <span className={styles.meta}>
+                  {duration && <span className={styles.duration}>{duration}</span>}
                   {reviews.length > 0 && (
                     <span className={styles.ratings}>
                       {reviews.map(({ source, value }) => (
@@ -43,8 +47,6 @@ export default function GameGrid({ games, lang }: { games: GameCardItem[]; lang:
                       ))}
                     </span>
                   )}
-                  {duration && <span className={styles.duration}>{duration}</span>}
-                  {year && <span className={styles.year}>{year}</span>}
                 </span>
               )}
             </Link>

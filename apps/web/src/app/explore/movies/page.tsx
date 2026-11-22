@@ -66,6 +66,7 @@ export default async function Movies({ searchParams }: {
       <LibraryMasthead title={dict.movies} subtitle={dict.movies_catalog_subtitle}>
         <MovieSearch initialQuery={query} placeholder={dict.movies_search_placeholder} />
       </LibraryMasthead>
+      {matches.order.map((group) => group === "people" ? peopleSection : titlesSection)}
       {audienceSources.length > 0 && <p className={styles.ranking}>
         {data?.ranking.mode === "combined_popularity" ? "Current popularity" : "Current audience interest"}
         {audienceSources.map((source) => <span key={source.provider}> · <a href={source.href}>{source.label}</a> {source.window}</span>)}
@@ -75,7 +76,6 @@ export default async function Movies({ searchParams }: {
         {rankingNotice ? <>{data.ranking.windowDays === 3 ? "Recent Wikipedia interest (3 days)" : "Wikipedia interest"} · {rankingNotice.date}. <a href={rankingNotice.sourceUrl}>Source</a></>
           : "Ordered by Wikipedia language coverage."}
       </p>}
-      {matches.order.map((group) => group === "people" ? peopleSection : titlesSection)}
     </div>
   );
 }
