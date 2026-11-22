@@ -10,6 +10,7 @@ import * as gamesSchema from './schema/games';
 import * as tvSeriesSchema from './schema/tv-series';
 import * as peopleSchema from './schema/people';
 import * as tvCastSchema from './schema/tv-cast';
+import * as tvJobCampaignsSchema from './schema/tv-job-campaigns';
 import * as tvPreferencesSchema from './schema/tv-series-preferences';
 import * as completionTimesSchema from './schema/game-completion-times';
 import * as completionSourcesSchema from './schema/game-completion-sources';
@@ -29,6 +30,7 @@ export * from './schema/games';
 export * from './schema/tv-series';
 export * from './schema/people';
 export * from './schema/tv-cast';
+export * from './schema/tv-job-campaigns';
 export * from './schema/tv-series-preferences';
 export * from './schema/game-completion-times';
 export * from './schema/game-completion-sources';
@@ -48,6 +50,7 @@ export const schema = {
   ...tvSeriesSchema,
   ...peopleSchema,
   ...tvCastSchema,
+  ...tvJobCampaignsSchema,
   ...tvPreferencesSchema,
   ...completionTimesSchema,
   ...completionSourcesSchema,
