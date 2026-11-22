@@ -48,7 +48,7 @@ async fn claim_checkpoint_fail_reap_cycle() {
     let mut listener = PgListener::connect_with(&pool).await.unwrap();
     listener.listen("job_events").await.unwrap();
 
-    let claimed = queue::claim(&pool, &worker_id, &types)
+    let claimed = queue::claim(&pool, &worker_id, &types, 2)
         .await
         .unwrap()
         .expect("claimed");
@@ -60,7 +60,7 @@ async fn claim_checkpoint_fail_reap_cycle() {
         .unwrap();
     assert_eq!(event.payload(), job_id.to_string());
     assert!(
-        queue::claim(&pool, &worker_id, &types)
+        queue::claim(&pool, &worker_id, &types, 2)
             .await
             .unwrap()
             .is_none()
@@ -344,9 +344,9 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
     .await
     .unwrap();
     let (a, b, c) = tokio::join!(
-        queue::claim(&pool, "capacity-a", &types),
-        queue::claim(&pool, "capacity-b", &types),
-        queue::claim(&pool, "capacity-c", &types),
+        queue::claim(&pool, "capacity-a", &types, 2),
+        queue::claim(&pool, "capacity-b", &types, 2),
+        queue::claim(&pool, "capacity-c", &types, 2),
     );
     let admitted = [a.unwrap(), b.unwrap(), c.unwrap()];
     assert_eq!(admitted.iter().flatten().count(), 2);
@@ -357,7 +357,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
     .fetch_all(&pool)
     .await
     .unwrap();
-    assert_eq!(running.len() as i64, queue::MAX_RUNNING_JOBS);
+    assert_eq!(running.len() as i64, 2);
     let queued_type: String =
         sqlx::query_scalar("SELECT type FROM jobs WHERE type=ANY($1) AND status='queued' LIMIT 1")
             .bind(&types)
@@ -366,7 +366,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
             .unwrap();
     // Capacity includes running types this particular worker cannot handle.
     assert!(
-        queue::claim(&pool, "capacity-other-type", &[queued_type])
+        queue::claim(&pool, "capacity-other-type", &[queued_type], 2)
             .await
             .unwrap()
             .is_none()
@@ -377,7 +377,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
         .await
         .unwrap();
     assert!(
-        queue::claim(&pool, "capacity-wait", &types)
+        queue::claim(&pool, "capacity-wait", &types, 2)
             .await
             .unwrap()
             .is_none()
@@ -387,13 +387,13 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
             .await
             .unwrap()
     );
-    let replacement = queue::claim(&pool, "capacity-after-cancel", &types)
+    let replacement = queue::claim(&pool, "capacity-after-cancel", &types, 2)
         .await
         .unwrap()
         .unwrap();
     assert!(ids.contains(&replacement.id));
     assert!(
-        queue::claim(&pool, "capacity-still-full", &types)
+        queue::claim(&pool, "capacity-still-full", &types, 2)
             .await
             .unwrap()
             .is_none()
@@ -404,7 +404,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
             .await
             .unwrap()
     );
-    let fourth = queue::claim(&pool, "capacity-fourth", &types)
+    let fourth = queue::claim(&pool, "capacity-fourth", &types, 2)
         .await
         .unwrap()
         .unwrap();
@@ -442,7 +442,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
         FailureResult::Retrying
     );
     assert!(
-        queue::claim(&pool, "capacity-backoff", &types)
+        queue::claim(&pool, "capacity-backoff", &types, 2)
             .await
             .unwrap()
             .is_none()
@@ -452,7 +452,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
         .execute(&pool)
         .await
         .unwrap();
-    let resumed = queue::claim(&pool, "capacity-resumed", &types)
+    let resumed = queue::claim(&pool, "capacity-resumed", &types, 2)
         .await
         .unwrap()
         .unwrap();
@@ -463,7 +463,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
         .await
         .unwrap();
     assert!(queue::reap_stale(&pool).await.unwrap().contains(&fourth.id));
-    let recovered = queue::claim(&pool, "capacity-recovered", &types)
+    let recovered = queue::claim(&pool, "capacity-recovered", &types, 2)
         .await
         .unwrap()
         .unwrap();
@@ -480,7 +480,7 @@ async fn global_capacity_serializes_claimers_and_releases_only_finished_leases()
         .unwrap()
     );
     assert!(
-        queue::claim(&pool, "capacity-restarted", &types)
+        queue::claim(&pool, "capacity-restarted", &types, 2)
             .await
             .unwrap()
             .is_some()
@@ -520,7 +520,7 @@ async fn active_keys_stay_unique_and_pruning_preserves_live_workers_and_history(
             .is_none()
     );
     tx.commit().await.unwrap();
-    let claimed = queue::claim(&pool, &active, std::slice::from_ref(&prefix))
+    let claimed = queue::claim(&pool, &active, std::slice::from_ref(&prefix), 2)
         .await
         .unwrap()
         .unwrap();

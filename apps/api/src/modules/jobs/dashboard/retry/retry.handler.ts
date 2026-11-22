@@ -22,8 +22,9 @@ export class RetryJobHandler {
       throw new BadRequestError("err_job_invalid_state");
     }
 
-    if (job.concurrencyKey) {
-      const active = await this.jobsRepo.findActiveByConcurrencyKey(job.concurrencyKey);
+    const concurrencyKey = job.type === "search.movies.sync" ? "search.movies.index" : job.concurrencyKey;
+    if (concurrencyKey) {
+      const active = await this.jobsRepo.findActiveByConcurrencyKey(concurrencyKey);
       if (active) {
         throw new ConflictError("err_job_already_active");
       }

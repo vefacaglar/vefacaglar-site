@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActiveStatus, isJobFilter, JOB_FILTERS, LOG_PAGE_SIZE } from "./types";
+import { isActiveStatus, isJobFilter, JOB_FILTERS, LOG_PAGE_SIZE, hasConcurrencyConflict, type RecurringJob } from "./types";
 
 describe("isActiveStatus", () => {
   it("is true only for queued and running", () => {
@@ -29,5 +29,18 @@ describe("isJobFilter", () => {
 describe("LOG_PAGE_SIZE", () => {
   it("matches the API's log page size", () => {
     expect(LOG_PAGE_SIZE).toBe(200);
+  });
+});
+
+
+const registration = (id: string, concurrencyKey: string | null) => ({ id, concurrencyKey }) as RecurringJob;
+
+describe("registered job concurrency", () => {
+  it("blocks only another registration with the same non-null key", () => {
+    const games = registration("catalog.popularity.refresh", "search.index");
+    expect(hasConcurrencyConflict(games, registration("search.sync", "search.index"))).toBe(true);
+    expect(hasConcurrencyConflict(games, registration("search.movies.sync", "search.movies.index"))).toBe(false);
+    expect(hasConcurrencyConflict(games, games)).toBe(false);
+    expect(hasConcurrencyConflict(registration("a", null), registration("b", null))).toBe(false);
   });
 });

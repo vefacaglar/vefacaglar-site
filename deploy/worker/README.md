@@ -1,9 +1,11 @@
 # Worker deployment through GitHub
 
 The background jobs worker (`apps/worker`, Rust; spec in
-[`docs/jobs-worker.md`](../../docs/jobs-worker.md)) runs as two Docker
-containers on the same VPS as the API. Each process executes one job; a database
-claim gate admits at most two running jobs across all worker instances. GitHub Actions
+[`docs/jobs-worker.md`](../../docs/jobs-worker.md)) runs as one Docker
+container on the same VPS as the API. It executes independent jobs asynchronously.
+`WORKER_CONCURRENCY` sets its slots and the managed global admission target,
+defaulting to 4. Set a positive integer in the `WORKER_ENV` secret (or deployed
+`worker.env`) and deploy to change it. The compose environment preserves this value. GitHub Actions
 (`.github/workflows/ci-deploy.yml`, worker jobs) checks formatting, clippy and tests, then
 builds amd64 and arm64 images on separate native runners. The amd64 VPS deploy
 pins its architecture's immutable digest as soon as that build succeeds; it
@@ -24,20 +26,22 @@ an otherwise successful image publication or deployment.
 
 Worker deploys use blue/green generations without a public endpoint. Each
 release creates a private `generations/g<id>/` directory containing an immutable
-image digest, Compose configuration and environment snapshot. Two candidate
-containers first start in **standby**: they register and heartbeat normally but
-neither claim jobs nor schedule recurring jobs. The deploy probes
+image digest, Compose configuration and environment snapshot. One candidate
+container first starts in **standby**: it registers and heartbeats normally but
+does not claim jobs or schedule recurring jobs. The deploy probes
 `worker --deployment-protocol` without configuration or networking and requires
 protocol `1`, healthy containers and acknowledged standby before handover.
 
 The old generation's restart policy becomes `no`, and its durable admission file
 is atomically changed to **drain**. The worker acknowledges drain only after any
 in-flight claim has settled. It stops taking new work, keeps heartbeats running,
-and finishes its current job normally before exiting successfully. Deployment
+and finishes all current jobs normally before exiting successfully. Deployment
 drain never cancels the job or starts the SIGTERM shutdown deadline. The new
 generation becomes **active** only after old containers acknowledge drain or
-exit successfully. The shared database gate keeps the total at two running jobs
-across both generations, so new workers use capacity as retiring jobs finish.
+exit successfully. The new generation counts retiring jobs against its configured target. Lowering
+the target waits for existing work to finish. Increasing it admits more independent
+jobs while retirees finish. Every unmanaged worker sharing the queue must use
+the same limit.
 The workflow does not wait for long jobs to finish. Retired containers and their
 environment snapshots are retained; deployment never deletes a draining
 container's files. A restarted retiree reads the persisted drain file and exits
@@ -137,10 +141,11 @@ evaluated before the environment is entered).
 | `WORKER_DEPLOY_ENABLED` | `true` to enable deployment |
 | `WORKER_DOCKER_NETWORK` | Optional; falls back to `API_DOCKER_NETWORK`, then `databases_default` |
 | `WORKER_RUST_LOG` | Optional `RUST_LOG` filter, e.g. `info,worker=debug` |
-| `WORKER_ID` | Ignored by managed Compose; replicas always use unique automatic IDs |
+| `WORKER_CONCURRENCY` | Positive number of concurrent jobs, default `4`; set in `WORKER_ENV` |
+| `WORKER_ID` | Ignored by managed Compose; generations always use unique automatic IDs |
 | `WORKER_DB_POOL_MAX` | Optional Postgres pool size (default `5`) |
 
-Managed Compose explicitly overrides `WORKER_ID` to an empty value, so replicas
+Managed Compose explicitly overrides `WORKER_ID` to an empty value, so generations
 always use distinct container-hostname-plus-PID identities. A fixed ID is only
 appropriate for a separately managed worker with a unique identity.
 
@@ -152,7 +157,7 @@ Logs are JSON lines on stdout, collected by the VPS log shipper
 ([application logs](../../docs/application-logs.md)); no log settings are needed.
 
 The daily popularity refresh (`catalog.popularity.refresh`, scheduled at `52 6 * * *` UTC and enabled by default by migration `0046_schedule_popularity_jobs`, while preserving any administrator-customized cron) is a registered job in the site's Jobs dashboard, not a GitHub schedule. Configure the two IGDB secrets (`IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET`) before deploying or running it. Its Node child inherits the worker's `MEILISEARCH_URL` and `MEILISEARCH_API_KEY`.
-The maintenance process has a 2 GiB JavaScript heap budget by default
+Each maintenance child process has a 2 GiB JavaScript heap budget by default
 (`NODE_OPTIONS=--max-old-space-size=2048`). This is not a container RSS limit;
 allow room for Node's other allocations and the Rust worker. The Compose
 service has no memory limit. A larger catalog may require tuning this setting

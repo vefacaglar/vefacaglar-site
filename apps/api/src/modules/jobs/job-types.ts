@@ -44,7 +44,7 @@ export const JOB_TYPES = {
   "search.movies.sync": defineJobType({
     description: "Synchronize the public movie index with durable bootstrap, changed-film upserts, deletions, and complete interest ranking publication.",
     payloadSchema: EmptyPayloadSchema,
-    concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
+    concurrencyKey: () => "search.movies.index",
   }),
   "catalog.movies.sync": defineJobType({
     description:

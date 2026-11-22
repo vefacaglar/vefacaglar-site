@@ -23,9 +23,11 @@ class PrepareDeployTest(unittest.TestCase):
         return directory
 
     def test_writes_bundle(self):
-        bundle = self.run_prepare({**BASE, "WORKER_ENV": "RUST_LOG=debug\n# comment\n"})
+        bundle = self.run_prepare({**BASE, "WORKER_ENV": "RUST_LOG=debug\nWORKER_CONCURRENCY=6\n# comment\n"})
         env = (bundle / "worker.env").read_text()
         self.assertIn("RUST_LOG=debug\n", env)
+        self.assertIn("WORKER_CONCURRENCY=6\n", env)
+        self.assertNotIn("WORKER_CONCURRENCY:", (bundle / "compose.yml").read_text())
         self.assertIn("MEILISEARCH_URL=http://meilisearch:7700\n", env)
         self.assertIn("MEILISEARCH_API_KEY=key$with spaces\n", env)
         self.assertEqual(
@@ -67,6 +69,9 @@ class PrepareDeployTest(unittest.TestCase):
             {"WORKER_IMAGE": "ghcr.io/x/y:latest"},
             {"WORKER_DOCKER_NETWORK": "bad network"},
             {"WORKER_ENV": "not a setting"},
+            {"WORKER_ENV": "WORKER_CONCURRENCY=0"},
+            {"WORKER_ENV": "WORKER_CONCURRENCY=-1"},
+            {"WORKER_ENV": "WORKER_CONCURRENCY=many"},
             {"WORKER_ENV": "A=1\nA=2"},
         ):
             with self.subTest(override=override), self.assertRaises(ValueError):

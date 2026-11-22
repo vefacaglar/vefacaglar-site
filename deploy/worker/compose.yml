@@ -1,11 +1,11 @@
-# Each replica runs one job; the database admits at most two running jobs.
+# One process executes WORKER_CONCURRENCY jobs (default 4).
 # Every deployment has a separate Compose project and durable admission mode.
 services:
   worker:
     image: ${WORKER_IMAGE:?Set WORKER_IMAGE to the published image digest}
     restart: unless-stopped
     deploy:
-      replicas: 2
+      replicas: 1
     init: true
     env_file:
       - path: ./worker.env
@@ -15,7 +15,7 @@ services:
       WORKER_HEALTH_FILE: /tmp/worker-health
       WORKER_CONTROL_FILE: /run/worker-control/mode
       WORKER_CONTROL_STATUS_FILE: /tmp/worker-control-status
-      # Override fixed ids from worker.env: replicas need separate leases.
+      # Generate a fresh lease identity for each deployment generation.
       WORKER_ID: ""
     labels:
       io.vefacaglar.worker.managed: "1"

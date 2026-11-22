@@ -13,8 +13,10 @@ dashboard (apps/web) ──HTTP──▶ api (apps/api) ──INSERT + pg_notify
 Search jobs include `search.reindex` (full rebuild), `search.sync` (heal
 missing or outdated indexes), and `search.movies.sync` (movie and people
 indexes). Game and movie catalog maintenance also runs as registered jobs.
-`search.reindex`, `search.sync`, `search.movies.sync`, and
-`catalog.popularity.refresh` share the `search.index` concurrency key. See
+`search.reindex`, `search.sync`, and `catalog.popularity.refresh` share the
+`search.index` concurrency key. `search.movies.sync` has a separate
+`search.movies.index` key. An active movie sync remains unique by type across
+legacy and current keys during deployment; bounded successors use the current key. See
 [search](search-meilisearch.md), [movie search](movie-search.md), and
 [movie catalog](movies-catalog.md) for each job’s scope and schedule.
 
@@ -57,17 +59,21 @@ Migration `packages/db/drizzle/0023_magical_storm.sql` originally seeded `search
 `cron = '15 7 * * *'`, payload `{}`, initially disabled, and `0030_massive_chameleon.sql` / `0033_chunky_baron_strucker.sql` registered `catalog.movies.popularity.refresh` (manual-only, disabled) and `search.movies.sync` (`*/5 * * * *`, disabled). Migration `0046_schedule_popularity_jobs.sql` enables the default schedules: `catalog.movies.popularity.refresh` daily at `50 5 * * *` UTC, `catalog.popularity.refresh` daily at `52 6 * * *` UTC (updating unscheduled or default `15 7 * * *` rows), and `search.movies.sync` at its default `*/5 * * * *` UTC cron, while preserving any administrator-customized cron expressions. Configure `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` in the worker environment for `catalog.popularity.refresh`. A null `next_run_at` causes the worker to compute the next occurrence on the next scheduler tick.
 
 ### `workers`
-`id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`. Online = `last_seen_at` within 30 s. Maintenance removes rows last seen more than one hour ago, except workers still holding a running job. Jobs/logs retain their history independently of worker rows.
+`id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`, `concurrency integer`, `active_jobs integer` (both null for older worker versions). Online = `last_seen_at` within 30 s. Maintenance removes rows last seen more than one hour ago, except workers still holding a running job. Jobs/logs retain their history independently of worker rows.
 
 ## Worker semantics (`apps/worker`)
 
-Every process executes one job at a time. Production runs two replicas. Claims
+One production process runs independent handlers asynchronously. `WORKER_CONCURRENCY`
+sets its slots and managed deployment admission target, defaulting to **4**. Set a
+positive integer in `WORKER_ENV` / `worker.env` and deploy to change it. Claims
 share a transaction advisory lock and count all running jobs from a fresh READ
-COMMITTED snapshot, enforcing a global maximum of two even if extra workers
-connect. Cancellation requests continue using capacity until the job actually
-leaves `running`; queued retries and continuations do not consume a slot. The
-admission lock is released before the handler runs. Existing concurrency keys
-still limit which jobs may coexist.
+COMMITTED snapshot, including retiring generations. A lower target waits for
+already-running jobs to finish. Deployment acknowledges old-generation drain
+before activating the new configuration. Unmanaged workers sharing the same
+database must use the same target. Cancellation continues using capacity until
+the job actually leaves `running`; queued retries and continuations use no slot.
+Each active handler has separate cancellation flags, lease heartbeats and finalization.
+The dashboard shows active jobs and configured slots for each current worker.
 
 Managed generations read `WORKER_CONTROL_FILE` from a read-only bind-mounted
 control directory. `standby` workers register and heartbeat but do not dispatch,
@@ -79,11 +85,11 @@ The control status acknowledgement is serialized with in-flight claims.
 `worker --control-status` reads the local acknowledgement.
 
 Deployment drain is independent of job cancellation and OS shutdown. A draining
-worker keeps its job heartbeat, lets the already claimed handler and finalization
+worker keeps every job heartbeat, lets all admitted handlers and finalizations
 finish naturally, then exits successfully. There is no drain deadline, task abort
 or subprocess cancellation. A persisted drained generation cannot claim again
 after restart. Candidate generations remain healthy in standby until admitted;
-draining and active generations share the same global two-running-job gate.
+draining and active generations share the new generation’s configured global admission target.
 
 - **Claim**: `UPDATE jobs SET status='running', locked_by=$id, locked_at=now(), heartbeat_at=now(), started_at=coalesce(started_at, now()), attempts=attempts+1, updated_at=now() WHERE id = (SELECT id FROM jobs WHERE status='queued' AND run_at<=now() ORDER BY run_at, created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`.
 - **Wake-up**: `LISTEN jobs` (payload = job id) plus a 5 s poll fallback.
@@ -201,12 +207,12 @@ Response headers: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Contr
 
 ## Deployment
 
-The worker runs as two active Docker replicas on the same VPS as the API, joined
-to the database network. Managed replicas use unique automatic worker IDs.
+The worker runs as one active Docker container on the same VPS as the API, joined
+to the database network. Managed generations use unique automatic worker IDs.
 Deployments use immutable generation configurations: health-check the candidate
 in standby, persistently drain previous generations without stopping their jobs,
 then activate the candidate. Old generations may remain in the background until
-their work finishes; the database still permits at most two running jobs overall.
+their work finishes; the active generation applies its configurable admission target.
 Rollback uses a fresh standby generation through the same protocol. Retired
 containers have restart disabled before drain and are cleaned up only after exit.
 Legacy images without the control protocol require a separate verified idle

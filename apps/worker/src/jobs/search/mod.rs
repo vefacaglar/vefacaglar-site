@@ -37,9 +37,8 @@ use crate::telemetry::log_safe;
 pub const BATCH_SIZE: usize = 500;
 /// Info log every N batches (10 000 documents) within an index.
 pub const LOG_EVERY_BATCHES: u64 = 20;
-/// Shared by every job that writes search indexes: both search jobs, the
-/// movie search job and the game popularity refresh (must match the API's
-/// job-type allowlist).
+/// Shared by generic game/facet/post indexing and game popularity refresh.
+/// Must match the API job-type allowlist.
 pub const CONCURRENCY_KEY: &str = "search.index";
 
 /// Writes one batch and waits for Meilisearch to index it. A rejected batch

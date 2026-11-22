@@ -99,6 +99,7 @@ describe("ListRecurringJobsHandler", () => {
       lastJobId: "22222222-2222-4222-8222-222222222222",
     });
     expect(item.description).toMatch(/reindex/i);
+    expect(item.concurrencyKey).toBe("search.index");
     expect(item.currentJob).toMatchObject({ id: "22222222-2222-4222-8222-222222222222", status: "running", progress: { processed: 10, total: 100 } });
     expect(item.lastJob).toMatchObject({ id: "33333333-3333-4333-8333-333333333333", status: "succeeded", finishedAt: "2026-01-01T04:00:00.000Z" });
   });
@@ -111,6 +112,12 @@ describe("ListRecurringJobsHandler", () => {
     const [item] = (await handler.handle()).items;
 
     expect(item).toMatchObject({ id: "legacy", cron: "0 3 * * *", description: null, currentJob: null, lastJob: null });
+  });
+
+  it("exposes a separate movie index key", async () => {
+    mockRepo.listRecurringOverview.mockResolvedValue([{ recurring: recurringRow({ id: "search.movies.sync", type: "search.movies.sync" }), currentJob: null, lastJob: null }]);
+    const [item] = (await handler.handle()).items;
+    expect(item.concurrencyKey).toBe("search.movies.index");
   });
 
   it("describes search.sync", async () => {

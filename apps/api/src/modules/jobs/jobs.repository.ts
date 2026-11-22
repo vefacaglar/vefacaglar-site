@@ -89,7 +89,10 @@ export class DrizzleJobsRepository implements IJobsRepository {
     const [row] = await this.dbProvider.client
       .select()
       .from(jobs)
-      .where(and(eq(jobs.concurrencyKey, concurrencyKey), inArray(jobs.status, ACTIVE_STATUSES)))
+      .where(and(
+        sql`(${jobs.concurrencyKey} = ${concurrencyKey} or (${concurrencyKey} = 'search.movies.index' and ${jobs.type} = 'search.movies.sync'))`,
+        inArray(jobs.status, ACTIVE_STATUSES),
+      ))
       .limit(1);
     return row ?? null;
   }
@@ -107,11 +110,8 @@ export class DrizzleJobsRepository implements IJobsRepository {
       const [row] = await this.dbProvider.client
         .insert(jobs)
         .values(values)
-        // Targets the partial unique index on `concurrency_key` (active jobs only).
-        .onConflictDoNothing({
-          target: jobs.concurrencyKey,
-          where: sql`status in ('queued', 'running')`,
-        })
+        // Both active key uniqueness and the legacy/current movie type guard apply.
+        .onConflictDoNothing()
         .returning();
       if (!row) return null;
 
@@ -164,6 +164,7 @@ export class DrizzleJobsRepository implements IJobsRepository {
         .update(jobs)
         .set({
           status: "queued",
+          concurrencyKey: sql`CASE WHEN ${jobs.type} = 'search.movies.sync' THEN 'search.movies.index' ELSE ${jobs.concurrencyKey} END`,
           attempts: 0,
           cancelRequested: false,
           runAt: now,

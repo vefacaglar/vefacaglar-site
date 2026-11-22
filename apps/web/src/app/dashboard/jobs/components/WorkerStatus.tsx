@@ -33,6 +33,7 @@ export default function WorkerStatus({ workers, now }: { workers: Worker[] | nul
             <span title={absoluteTime(w.lastSeenAt)}>
               {ds.jobs.worker.lastSeen.replace("{when}", relativeTime(w.lastSeenAt, now))}
             </span>
+            {w.concurrency != null && ` · ${w.activeJobs ?? 0}/${w.concurrency} jobs running`}
             {w.version && ` · v${w.version}`}
           </span>
         </div>

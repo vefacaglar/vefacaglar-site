@@ -60,6 +60,8 @@ export function toWorker(row: JobWorker, now: Date): WorkerResponse {
   return {
     id: row.id,
     hostname: row.hostname,
+    concurrency: row.concurrency ?? null,
+    activeJobs: row.activeJobs ?? null,
     version: row.version,
     startedAt: row.startedAt.toISOString(),
     lastSeenAt: row.lastSeenAt.toISOString(),

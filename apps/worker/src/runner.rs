@@ -1,7 +1,8 @@
-//! The worker process: claims jobs one at a time, runs their handler and
+//! The worker process: claims jobs up to its configured capacity, runs handlers and
 //! finalizes them; side tasks keep heartbeats, LISTEN wake-ups, the reaper and
 //! the scheduler going.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
@@ -11,7 +12,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use sqlx::postgres::PgListener;
 use tokio::sync::{Mutex, Notify};
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -42,6 +43,7 @@ struct ActiveJob {
     flags: Arc<JobFlags>,
 }
 
+#[derive(Clone)]
 pub struct Worker {
     pool: PgPool,
     config: Config,
@@ -49,7 +51,7 @@ pub struct Worker {
     shutdown: CancellationToken,
     started_at: DateTime<Utc>,
     version: String,
-    active: Arc<Mutex<Option<ActiveJob>>>,
+    active: Arc<Mutex<HashMap<Uuid, ActiveJob>>>,
     wake: Arc<Notify>,
     admission: Arc<Mutex<Mode>>,
 }
@@ -69,7 +71,7 @@ impl Worker {
             shutdown,
             started_at: Utc::now(),
             version: crate::version(),
-            active: Arc::new(Mutex::new(None)),
+            active: Arc::new(Mutex::new(HashMap::new())),
             wake: Arc::new(Notify::new()),
             admission: Arc::new(Mutex::new(mode)),
         }
@@ -89,6 +91,7 @@ impl Worker {
             worker_id = %self.config.worker_id,
             version = %self.version,
             job_types = ?types,
+            concurrency = self.config.concurrency,
             "worker starting"
         );
 
@@ -98,6 +101,8 @@ impl Worker {
             &self.config.hostname,
             &self.version,
             self.started_at,
+            self.config.concurrency,
+            0,
         )
         .await?;
         if let Err(e) = health::write_heartbeat(&self.config.health_file) {
@@ -108,8 +113,8 @@ impl Worker {
             );
         }
 
-        // Side tasks stop on `tasks_stop`, which is cancelled only after the
-        // current job has been finalized, so heartbeats continue meanwhile.
+        // Side tasks stop on `tasks_stop`, which is cancelled only after
+        // all admitted jobs have been finalized, so heartbeats continue meanwhile.
         let tasks_stop = CancellationToken::new();
         let side_tasks = vec![
             self.spawn_heartbeat(tasks_stop.clone()),
@@ -130,16 +135,27 @@ impl Worker {
     }
 
     async fn claim_loop(&self, types: &[String]) {
+        let mut running = JoinSet::new();
         let mut db_errors: u32 = 0;
-        while !self.shutdown.is_cancelled() {
-            // The control monitor uses this same lock before acknowledging
-            // drain, so the acknowledgement fences any in-flight claim.
+        loop {
+            // Acknowledged drain fences every in-flight claim, while admitted
+            // tasks keep their leases until all handlers finish.
             let admission = self.admission.lock().await;
-            if *admission == Mode::Drain {
+            let accepting = !self.shutdown.is_cancelled()
+                && *admission != Mode::Drain
+                && control::requested(self.config.control_file.as_deref()) != Mode::Drain;
+            if !accepting {
+                drop(admission);
                 break;
             }
-            let claimed = if *admission == Mode::Active {
-                queue::claim(&self.pool, &self.config.worker_id, types).await
+            let claimed = if *admission == Mode::Active && running.len() < self.config.concurrency {
+                queue::claim(
+                    &self.pool,
+                    &self.config.worker_id,
+                    types,
+                    self.config.concurrency,
+                )
+                .await
             } else {
                 Ok(None)
             };
@@ -147,28 +163,33 @@ impl Worker {
             match claimed {
                 Ok(Some(job)) => {
                     db_errors = 0;
-                    self.run_job(job).await;
+                    let worker = self.clone();
+                    running.spawn(async move { worker.run_job(job).await });
                     continue;
                 }
                 Ok(None) => db_errors = 0,
-                Err(e) => {
+                Err(error) => {
                     db_errors = db_errors.saturating_add(1);
-                    tracing::error!(
-                        application_event = "job_claim_failed",
-                        error = &e as &dyn std::error::Error,
-                        "failed to claim a job"
-                    );
+                    tracing::error!(application_event = "job_claim_failed", %error, "failed to claim a job");
                 }
             }
-            let wait = if db_errors > 0 {
-                POLL_INTERVAL * db_errors.min(6)
-            } else {
-                POLL_INTERVAL
-            };
+            let wait = POLL_INTERVAL * db_errors.clamp(1, 6);
             tokio::select! {
                 _ = self.shutdown.cancelled() => break,
-                _ = self.wake.notified() => {}
-                _ = tokio::time::sleep(wait) => {}
+                _ = self.wake.notified() => {},
+                joined = running.join_next(), if !running.is_empty() => {
+                    if let Some(Err(error)) = joined {
+                        tracing::error!(application_event = "job_runner_panicked", %error, "job runner task failed");
+                    }
+                },
+                _ = tokio::time::sleep(wait) => {},
+            }
+        }
+        // Drain does not cancel handlers. SIGTERM reaches every job through the
+        // shared shutdown token and each handler has its own shutdown deadline.
+        while let Some(result) = running.join_next().await {
+            if let Err(error) = result {
+                tracing::error!(application_event = "job_runner_panicked", %error, "job runner task failed");
             }
         }
     }
@@ -229,10 +250,13 @@ impl Worker {
         };
 
         let flags = Arc::new(JobFlags::default());
-        *self.active.lock().await = Some(ActiveJob {
-            id: job_id,
-            flags: flags.clone(),
-        });
+        self.active.lock().await.insert(
+            job_id,
+            ActiveJob {
+                id: job_id,
+                flags: flags.clone(),
+            },
+        );
 
         let resuming = job.checkpoint.as_ref().is_some_and(|c| !c.is_null());
         let attempt = job.attempts;
@@ -270,6 +294,8 @@ impl Worker {
             },
             _ = deadline => {
                 task.abort();
+                // Reap cancellation before releasing the queue lease/slot.
+                let _ = task.await;
                 None
             }
         };
@@ -280,7 +306,7 @@ impl Worker {
         } else {
             self.finalize(&ctx, result, attempt, elapsed).await;
         }
-        *self.active.lock().await = None;
+        self.active.lock().await.remove(&job_id);
     }
 
     async fn finalize(
@@ -385,8 +411,9 @@ impl Worker {
                     _ = stop.cancelled() => break,
                     _ = ticker.tick() => {}
                 }
-                let current = active.lock().await.clone();
-                if let Some(job) = current {
+                let current: Vec<_> = active.lock().await.values().cloned().collect();
+                let active_count = current.len();
+                for job in current {
                     match queue::heartbeat_job(&pool, job.id, &config.worker_id).await {
                         Ok(held) => job.flags.apply(held),
                         Err(e) => {
@@ -400,6 +427,8 @@ impl Worker {
                     &config.hostname,
                     &version,
                     started_at,
+                    config.concurrency,
+                    active_count,
                 )
                 .await
                 {

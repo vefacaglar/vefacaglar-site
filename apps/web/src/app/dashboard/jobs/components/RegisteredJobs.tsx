@@ -1,5 +1,7 @@
 "use client";
 
+import { hasConcurrencyConflict } from "../types";
+
 import React, { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -306,7 +308,7 @@ export default function RegisteredJobs({ items, now: serverNow }: { items: Recur
         <RegisteredJobCard
           key={view.item.id}
           view={view}
-          blockedBy={views.find((v) => v.current && v.item.id !== view.item.id) ?? null}
+          blockedBy={views.find((v) => v.current && hasConcurrencyConflict(view.item, v.item)) ?? null}
           runningElsewhere={anyActive}
           now={now}
           onLive={onLive}

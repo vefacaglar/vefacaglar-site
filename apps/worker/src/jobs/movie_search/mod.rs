@@ -104,7 +104,7 @@ impl JobHandler for MovieSearchHandler {
         "search.movies.sync"
     }
     fn concurrency_key(&self, _payload: &Value) -> Option<String> {
-        Some(super::search::CONCURRENCY_KEY.into())
+        Some("search.movies.index".into())
     }
     async fn run(&self, ctx: &JobContext) -> Result<JobOutcome> {
         super::search::full::validate_payload(ctx.payload())

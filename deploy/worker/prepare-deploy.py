@@ -40,6 +40,10 @@ def collect(environ):
             if any(character in value for character in ("\r", "\n", "\0")):
                 raise ValueError(f"{key} must be a single-line value")
             values[key] = value
+    if "WORKER_CONCURRENCY" in values:
+        concurrency = values["WORKER_CONCURRENCY"]
+        if not re.fullmatch(r"[0-9]+", concurrency) or not 1 <= int(concurrency) <= 2147483647:
+            raise ValueError("WORKER_CONCURRENCY must be a positive integer")
     for key in REQUIRED:
         if not values.get(key, "").strip():
             raise ValueError(f"Set {key} as a GitHub secret or include it in WORKER_ENV")

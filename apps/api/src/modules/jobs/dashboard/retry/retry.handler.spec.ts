@@ -96,6 +96,15 @@ describe("RetryJobHandler", () => {
     expect(mockRepo.requeue).not.toHaveBeenCalled();
   });
 
+  it("checks the current movie key when retrying a job from the preceding release", async () => {
+    mockRepo.findById.mockResolvedValue(jobRow({ type: "search.movies.sync", status: "failed", concurrencyKey: "search.index" }));
+    mockRepo.findActiveByConcurrencyKey.mockResolvedValue(null);
+    mockRepo.requeue.mockResolvedValue(jobRow({ type: "search.movies.sync", concurrencyKey: "search.movies.index" }));
+    await handler.handle(request("id"));
+    expect(mockRepo.findActiveByConcurrencyKey).toHaveBeenCalledWith("search.movies.index");
+    expect(mockRepo.requeue).toHaveBeenCalledWith("id");
+  });
+
   it("skips the concurrency check for jobs without a key", async () => {
     mockRepo.findById.mockResolvedValue(jobRow({ status: "failed", concurrencyKey: null }));
     mockRepo.requeue.mockResolvedValue(jobRow({ status: "queued", concurrencyKey: null }));

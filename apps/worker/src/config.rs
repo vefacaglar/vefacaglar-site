@@ -54,6 +54,8 @@ impl MeilisearchConfig {
 pub struct Config {
     pub database_url: String,
     pub db_pool_max: u32,
+    /// Per-process slots and the managed deployment global admission target.
+    pub concurrency: usize,
     pub worker_id: String,
     pub hostname: String,
     pub health_file: PathBuf,
@@ -93,8 +95,10 @@ impl Config {
             Some(raw) => raw.parse().map_err(ConfigError::InvalidPoolSize)?,
             None => 5,
         };
+        let concurrency = parse_concurrency(std::env::var("WORKER_CONCURRENCY").ok().as_deref())?;
         Ok(Self {
             database_url,
+            concurrency,
             db_pool_max,
             worker_id,
             hostname,
@@ -109,10 +113,23 @@ impl Config {
     }
 }
 
+pub fn parse_concurrency(value: Option<&str>) -> Result<usize, ConfigError> {
+    match value {
+        None => Ok(4),
+        Some(raw) => raw
+            .parse::<usize>()
+            .ok()
+            .filter(|value| *value > 0 && i32::try_from(*value).is_ok())
+            .ok_or(ConfigError::InvalidConcurrency),
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("DATABASE_URL is required")]
     MissingDatabaseUrl,
+    #[error("WORKER_CONCURRENCY must be a positive integer")]
+    InvalidConcurrency,
     #[error("WORKER_DB_POOL_MAX must be an unsigned integer")]
     InvalidPoolSize(#[source] std::num::ParseIntError),
 }
@@ -120,6 +137,15 @@ pub enum ConfigError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn concurrency_defaults_and_overrides() {
+        assert_eq!(parse_concurrency(None).unwrap(), 4);
+        assert_eq!(parse_concurrency(Some("6")).unwrap(), 6);
+        for value in ["0", "-1", "four", ""] {
+            assert!(parse_concurrency(Some(value)).is_err());
+        }
+    }
 
     fn s(v: &str) -> Option<String> {
         Some(v.to_string())

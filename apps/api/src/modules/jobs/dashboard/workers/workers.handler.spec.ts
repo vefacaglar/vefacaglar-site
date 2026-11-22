@@ -38,6 +38,14 @@ describe("ListWorkersHandler", () => {
     vi.useRealTimers();
   });
 
+  it("returns configured capacity and simultaneous jobs from current worker heartbeats", async () => {
+    mockRepo.listWorkers.mockResolvedValue([{
+      id: "w-4", hostname: "vps", version: "current", concurrency: 4, activeJobs: 2,
+      startedAt: new Date("2026-01-01T10:00:00Z"), lastSeenAt: new Date("2026-01-01T12:00:00Z"),
+    }]);
+    expect((await handler.handle()).items[0]).toMatchObject({ concurrency: 4, activeJobs: 2, online: true });
+  });
+
   it("marks workers seen less than 30 seconds ago as online", async () => {
     const startedAt = new Date("2026-01-01T10:00:00.000Z");
     mockRepo.listWorkers.mockResolvedValue([
@@ -55,6 +63,8 @@ describe("ListWorkersHandler", () => {
     ]);
     expect(result.items[0]).toEqual({
       id: "w-1",
+      concurrency: null,
+      activeJobs: null,
       hostname: "vps",
       version: "0.1.0",
       startedAt: "2026-01-01T10:00:00.000Z",

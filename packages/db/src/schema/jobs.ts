@@ -61,6 +61,9 @@ export const jobs = pgTable('jobs', {
 }, (table) => ({
   statusRunAtIdx: index('jobs_status_run_at_idx').on(table.status, table.runAt),
   typeCreatedAtIdx: index('jobs_type_created_at_idx').on(table.type, table.createdAt.desc()),
+  activeMovieSyncIdx: uniqueIndex('jobs_active_movie_sync_idx')
+    .on(table.type)
+    .where(sql`${table.status} in ('queued', 'running') and ${table.type} = 'search.movies.sync'`),
   activeConcurrencyKeyIdx: uniqueIndex('jobs_active_concurrency_key_idx')
     .on(table.concurrencyKey)
     .where(sql`${table.status} in ('queued', 'running')`),
@@ -83,5 +86,8 @@ export const workers = pgTable('workers', {
   hostname: text('hostname').notNull(),
   version: text('version').notNull(),
   startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull(),
+  /** Null for workers from releases before configurable concurrency. */
+  concurrency: integer('concurrency'),
+  activeJobs: integer('active_jobs'),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true, mode: 'date' }).notNull(),
 });

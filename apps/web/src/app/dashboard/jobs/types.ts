@@ -47,6 +47,7 @@ export type JobList = { items: JobSummary[]; total: number; page: number; limit:
  * jobs; `currentJob` is the queued/running run, `lastJob` the most recent run.
  */
 export type RecurringJob = {
+  concurrencyKey?: string | null;
   id: string;
   type: string;
   cron: string | null;
@@ -61,6 +62,8 @@ export type RecurringJob = {
 };
 
 export type Worker = {
+  concurrency: number | null;
+  activeJobs: number | null;
   id: string;
   hostname: string;
   version: string;
@@ -83,4 +86,9 @@ export const JOB_FILTERS: JobFilter[] = ["processing", "succeeded", "failed", "c
 
 export function isJobFilter(value: string | undefined): value is JobFilter {
   return !!value && (JOB_FILTERS as string[]).includes(value);
+}
+
+/** Independent registrations can queue even while all worker slots are occupied. */
+export function hasConcurrencyConflict(a: RecurringJob, b: RecurringJob): boolean {
+  return a.id !== b.id && !!a.concurrencyKey && a.concurrencyKey === b.concurrencyKey;
 }

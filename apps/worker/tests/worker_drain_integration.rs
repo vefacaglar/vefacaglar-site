@@ -43,6 +43,7 @@ fn config(directory: &Path, id: &str) -> Config {
     Config {
         database_url: String::new(),
         db_pool_max: 10,
+        concurrency: 2,
         worker_id: id.into(),
         hostname: "drain-fixture".into(),
         health_file: directory.join(format!("{id}.health")),
@@ -332,6 +333,248 @@ async fn drain_acknowledgement_waits_for_an_inflight_claim_and_never_claims_agai
             .await
             .unwrap();
     assert_eq!(states, vec![("queued".into(), 0), ("succeeded".into(), 1)]);
+    sqlx::query("DELETE FROM jobs WHERE type=$1")
+        .bind(kind)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM workers WHERE id=$1")
+        .bind(&config.worker_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    pool.close().await;
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+struct Multitask {
+    kind: &'static str,
+    started: Arc<AtomicUsize>,
+    release: CancellationToken,
+}
+
+#[async_trait]
+impl JobHandler for Multitask {
+    fn job_type(&self) -> &'static str {
+        self.kind
+    }
+    async fn run(&self, ctx: &JobContext) -> anyhow::Result<JobOutcome> {
+        self.started.fetch_add(1, Ordering::SeqCst);
+        assert!(
+            ctx.payload().get("panic").is_none(),
+            "fixture handler panic"
+        );
+        loop {
+            if ctx.should_stop() {
+                return Ok(JobOutcome::Interrupted);
+            }
+            tokio::select! {
+                _ = self.release.cancelled() => return Ok(JobOutcome::Completed),
+                _ = tokio::time::sleep(Duration::from_millis(25)) => {},
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn one_process_runs_four_jobs_refills_a_cancelled_slot_and_drains_all() {
+    let _fixture = DRAIN_FIXTURE.lock().await;
+    let Ok(url) = std::env::var("WORKER_TEST_DATABASE_URL") else {
+        return;
+    };
+    let pool = PgPoolOptions::new()
+        .max_connections(12)
+        .connect(&url)
+        .await
+        .unwrap();
+    let kind: &'static str =
+        Box::leak(format!("test.multitask.{}", Uuid::new_v4()).into_boxed_str());
+    let directory = std::env::temp_dir().join(kind);
+    std::fs::create_dir_all(&directory).unwrap();
+    let mut config = config(&directory, kind);
+    config.concurrency = 4;
+    std::fs::write(config.control_file.as_ref().unwrap(), "active").unwrap();
+    let ids: Vec<Uuid> = sqlx::query_scalar(
+        "INSERT INTO jobs(type) SELECT $1 FROM generate_series(1,5) RETURNING id",
+    )
+    .bind(kind)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let started = Arc::new(AtomicUsize::new(0));
+    let release = CancellationToken::new();
+    let mut handlers = Registry::new();
+    handlers.register(Multitask {
+        kind,
+        started: started.clone(),
+        release: release.clone(),
+    });
+    let task = tokio::spawn(
+        Worker::new(
+            pool.clone(),
+            config.clone(),
+            handlers,
+            CancellationToken::new(),
+        )
+        .run(),
+    );
+    wait_count(&started, 4).await;
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    assert_eq!(started.load(Ordering::SeqCst), 4);
+    let rows: Vec<(Uuid, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT id,locked_by,heartbeat_at FROM jobs WHERE type=$1 AND status='running'",
+    )
+    .bind(kind)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(rows.len(), 4);
+    assert!(rows.iter().all(|row| row.1 == config.worker_id));
+    sqlx::query("UPDATE jobs SET cancel_requested=true WHERE id=$1")
+        .bind(rows[0].0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(14), async {
+        while started.load(Ordering::SeqCst) < 5 {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("cancelling one job frees a slot while the other three continue");
+    for (id, _, before) in &rows[1..] {
+        let after: chrono::DateTime<chrono::Utc> =
+            sqlx::query_scalar("SELECT heartbeat_at FROM jobs WHERE id=$1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(after > *before, "every concurrent job must heartbeat");
+    }
+    let cancelled: String = sqlx::query_scalar("SELECT status FROM jobs WHERE id=$1")
+        .bind(rows[0].0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(cancelled, "cancelled");
+    // Lowering the target never preempts admitted jobs and blocks more claims.
+    assert!(
+        worker::queue::claim(&pool, "smaller-generation", &[kind.into()], 2)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    std::fs::write(config.control_file.as_ref().unwrap(), "drain").unwrap();
+    wait_mode(&config, Mode::Drain).await;
+    assert!(!task.is_finished());
+    release.cancel();
+    tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    let statuses: Vec<String> = sqlx::query_scalar("SELECT status FROM jobs WHERE type=$1")
+        .bind(kind)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        statuses
+            .iter()
+            .filter(|status| *status == "succeeded")
+            .count(),
+        4
+    );
+    assert_eq!(
+        statuses
+            .iter()
+            .filter(|status| *status == "cancelled")
+            .count(),
+        1
+    );
+    sqlx::query("DELETE FROM jobs WHERE id=ANY($1)")
+        .bind(ids)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM workers WHERE id=$1")
+        .bind(&config.worker_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    pool.close().await;
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[tokio::test]
+async fn handler_panic_releases_its_slot_without_interrupting_another_job() {
+    let _fixture = DRAIN_FIXTURE.lock().await;
+    let Ok(url) = std::env::var("WORKER_TEST_DATABASE_URL") else {
+        return;
+    };
+    let pool = PgPool::connect(&url).await.unwrap();
+    let kind: &'static str =
+        Box::leak(format!("test.panic-isolation.{}", Uuid::new_v4()).into_boxed_str());
+    let directory = std::env::temp_dir().join(kind);
+    std::fs::create_dir_all(&directory).unwrap();
+    let config = config(&directory, kind);
+    std::fs::write(config.control_file.as_ref().unwrap(), "active").unwrap();
+    sqlx::query(
+        "INSERT INTO jobs(type,payload,max_attempts) VALUES ($1,'{\"panic\":true}',1),($1,'{}',1)",
+    )
+    .bind(kind)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let started = Arc::new(AtomicUsize::new(0));
+    let release = CancellationToken::new();
+    let mut handlers = Registry::new();
+    handlers.register(Multitask {
+        kind,
+        started: started.clone(),
+        release: release.clone(),
+    });
+    let task = tokio::spawn(
+        Worker::new(
+            pool.clone(),
+            config.clone(),
+            handlers,
+            CancellationToken::new(),
+        )
+        .run(),
+    );
+    wait_count(&started, 2).await;
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let failed: i64 =
+                sqlx::query_scalar("SELECT count(*) FROM jobs WHERE type=$1 AND status='failed'")
+                    .bind(kind)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            if failed == 1 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let running: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM jobs WHERE type=$1 AND status='running'")
+            .bind(kind)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(running, 1);
+    std::fs::write(config.control_file.as_ref().unwrap(), "drain").unwrap();
+    wait_mode(&config, Mode::Drain).await;
+    release.cancel();
+    tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
     sqlx::query("DELETE FROM jobs WHERE type=$1")
         .bind(kind)
         .execute(&pool)

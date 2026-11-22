@@ -152,10 +152,10 @@ class Deployment:
         self.docker.compose(generation, "pull", "--quiet")
         if not self.docker.capable((generation / "image").read_text().strip()):
             raise DeploymentError("Worker image does not support deployment protocol 1")
-        self.docker.compose(generation, "up", "--detach", "--scale", "worker=2", "--wait", "--wait-timeout", "180")
+        self.docker.compose(generation, "up", "--detach", "--scale", "worker=1", "--wait", "--wait-timeout", "180")
         containers = self.members(generation)
-        if len(containers) != 2:
-            raise DeploymentError("Expected two standby workers")
+        if len(containers) != 1:
+            raise DeploymentError("Expected one standby worker")
         self.await_mode(containers, "standby")
         return containers
 
@@ -226,7 +226,7 @@ class Deployment:
             print("Worker generation active: " + candidate.name + "; retiring jobs continue in background")
         except Exception:
             # Never stop a candidate: activation may have succeeded before disconnection.
-            # Durable drain is safe whether it has zero or one job per process.
+            # Durable drain is safe whether it has any number of active jobs.
             candidates = self.members(candidate)
             try:
                 self.drain(candidates)

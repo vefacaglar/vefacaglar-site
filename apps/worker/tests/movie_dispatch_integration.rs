@@ -18,7 +18,7 @@ impl JobHandler for MovieSync {
         MOVIE_SYNC
     }
     fn concurrency_key(&self, _: &Value) -> Option<String> {
-        Some("search.index".into())
+        Some("search.movies.index".into())
     }
     async fn run(&self, _: &JobContext) -> anyhow::Result<JobOutcome> {
         Ok(JobOutcome::Completed)
@@ -80,7 +80,7 @@ async fn daily_movie_schedule_preserves_continuations_without_extra_runs() {
         .await
         .unwrap();
 
-    let blocker: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,concurrency_key,run_at) VALUES ('test.movie-schedule-blocker','search.index',now()+interval '2 minutes') RETURNING id")
+    let blocker: Uuid = sqlx::query_scalar("INSERT INTO jobs (type,concurrency_key,run_at) VALUES ('test.movie-schedule-blocker','search.movies.index',now()+interval '2 minutes') RETURNING id")
         .fetch_one(&pool).await.unwrap();
     scheduler::tick(&pool, &registry).await.unwrap();
     assert_eq!(due(&pool).await, requested);
@@ -102,8 +102,23 @@ async fn daily_movie_schedule_preserves_continuations_without_extra_runs() {
     assert!(tomorrow > Utc::now());
     assert_eq!(tomorrow.format("%H:%M").to_string(), "07:50");
 
-    sqlx::query("UPDATE jobs SET status='running',locked_by='schedule-test',attempts=1,heartbeat_at=now() WHERE id=$1")
+    // A job admitted by the preceding release still has the legacy key.
+    sqlx::query("UPDATE jobs SET status='running',concurrency_key='search.index',locked_by='schedule-test',attempts=1,heartbeat_at=now() WHERE id=$1")
         .bind(original).execute(&pool).await.unwrap();
+    let mut duplicate = pool.begin().await.unwrap();
+    assert!(
+        queue::enqueue_in_tx(
+            &mut duplicate,
+            MOVIE_SYNC,
+            &serde_json::json!({}),
+            Some("search.movies.index"),
+            Some(MOVIE_SYNC)
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    duplicate.rollback().await.unwrap();
     // A bounded continuation can finalize while the scheduler owns its non-key lock.
     let mut schedule_lock = pool.begin().await.unwrap();
     sqlx::query("SELECT id FROM recurring_jobs WHERE id=$1 FOR NO KEY UPDATE")
@@ -129,6 +144,26 @@ async fn daily_movie_schedule_preserves_continuations_without_extra_runs() {
     );
     schedule_lock.commit().await.unwrap();
     let continuation = jobs(&pool).await[1];
+    let key: String = sqlx::query_scalar("SELECT concurrency_key FROM jobs WHERE id=$1")
+        .bind(continuation)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(key, "search.movies.index");
+    let mut independent = pool.begin().await.unwrap();
+    assert!(
+        queue::enqueue_in_tx(
+            &mut independent,
+            "test.independent-game-search",
+            &serde_json::json!({}),
+            Some("search.index"),
+            None
+        )
+        .await
+        .unwrap()
+        .is_some()
+    );
+    independent.rollback().await.unwrap();
     scheduler::tick(&pool, &registry).await.unwrap();
     assert_eq!(due(&pool).await, tomorrow);
     let persisted: DateTime<Utc> = sqlx::query_scalar("SELECT run_at FROM jobs WHERE id=$1")

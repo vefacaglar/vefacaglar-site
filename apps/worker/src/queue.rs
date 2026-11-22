@@ -16,8 +16,6 @@ use crate::context::Progress;
 /// Seconds without a heartbeat after which a running job is considered lost.
 pub const STALE_AFTER_SECS: i64 = 60;
 
-/// Shared by every worker process connected to this queue database.
-pub const MAX_RUNNING_JOBS: i64 = 2;
 /// Transaction lock reserved for admitting jobs into the running state.
 const CLAIM_LOCK_KEY: i64 = 0x6a6f_6263_6c61_696d;
 
@@ -64,6 +62,7 @@ pub async fn claim(
     pool: &PgPool,
     worker_id: &str,
     types: &[String],
+    concurrency: usize,
 ) -> sqlx::Result<Option<ClaimedJob>> {
     let mut tx = pool.begin().await?;
     // A waiting claim needs a fresh snapshot after the preceding claim commits,
@@ -78,7 +77,7 @@ pub async fn claim(
     let running: i64 = sqlx::query_scalar("SELECT count(*) FROM jobs WHERE status = 'running'")
         .fetch_one(&mut *tx)
         .await?;
-    if running >= MAX_RUNNING_JOBS {
+    if running >= concurrency as i64 {
         tx.commit().await?;
         return Ok(None);
     }
@@ -343,7 +342,7 @@ pub async fn mark_succeeded_with_continuation(
     let row: Option<ContinuationRow> = sqlx::query_as(&format!(
         "UPDATE jobs SET status = CASE WHEN cancel_requested THEN 'cancelled' ELSE 'succeeded' END, \
          finished_at = now(), checkpoint = NULL, error = NULL, updated_at = now() \
-         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.english_titles' AND concurrency_key = 'catalog.movies.english_titles') OR (type = 'search.movies.sync' AND concurrency_key = 'search.index')) \
+         WHERE {HELD_BY_ME} AND ((type = 'catalog.movies.english_titles' AND concurrency_key = 'catalog.movies.english_titles') OR (type = 'search.movies.sync' AND concurrency_key IN ('search.index', 'search.movies.index'))) \
          RETURNING type AS job_type, payload, concurrency_key, recurring_job_id, max_attempts, created_by, cancel_requested"
     ))
     .bind(job_id).bind(worker_id).fetch_optional(&mut *tx).await?;
@@ -381,7 +380,11 @@ pub async fn mark_succeeded_with_continuation(
             &mut tx,
             &job_type,
             &payload,
-            key.as_deref(),
+            if job_type == "search.movies.sync" {
+                Some("search.movies.index")
+            } else {
+                key.as_deref()
+            },
             recurring_id.as_deref(),
         )
         .await?
@@ -526,17 +529,21 @@ pub async fn upsert_worker(
     hostname: &str,
     version: &str,
     started_at: chrono::DateTime<chrono::Utc>,
+    concurrency: usize,
+    active_jobs: usize,
 ) -> sqlx::Result<()> {
     sqlx::query(
-        "INSERT INTO workers (id, hostname, version, started_at, last_seen_at) \
-         VALUES ($1, $2, $3, $4, now()) \
+        "INSERT INTO workers (id, hostname, version, started_at, last_seen_at, concurrency, active_jobs) \
+         VALUES ($1, $2, $3, $4, now(), $5, $6) \
          ON CONFLICT (id) DO UPDATE SET hostname = EXCLUDED.hostname, version = EXCLUDED.version, \
-             started_at = EXCLUDED.started_at, last_seen_at = now()",
+             started_at = EXCLUDED.started_at, last_seen_at = now(), concurrency = EXCLUDED.concurrency, active_jobs = EXCLUDED.active_jobs",
     )
     .bind(worker_id)
     .bind(hostname)
     .bind(version)
     .bind(started_at)
+    .bind(concurrency as i32)
+    .bind(active_jobs as i32)
     .execute(pool)
     .await?;
     Ok(())
@@ -570,7 +577,7 @@ pub async fn active_concurrency_holder_in_tx(
 ) -> sqlx::Result<Option<ActiveConcurrencyHolder>> {
     sqlx::query_as(
         "SELECT type, recurring_job_id FROM jobs \
-         WHERE concurrency_key = $1 AND status IN ('queued', 'running') \
+         WHERE (concurrency_key = $1 OR ($1 = 'search.movies.index' AND type = 'search.movies.sync')) AND status IN ('queued', 'running') \
          LIMIT 1",
     )
     .bind(concurrency_key)

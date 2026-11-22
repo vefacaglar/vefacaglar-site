@@ -37,7 +37,7 @@ class Docker:
     def compose(self, generation, *args, **kwargs):
         self.events.append((args[0], generation.name))
         if args[0] == "up":
-            for number in range(2):
+            for number in range(1):
                 name = generation.name + str(number)
                 self.containers[name] = {
                     "Config": {"Labels": {module.MANAGED: "1", module.GENERATION: generation.name}},

@@ -80,6 +80,12 @@ impl StartupError {
                     "WORKER_DB_POOL_MAX must be an unsigned integer.".into(),
                 );
             }
+            Self::Config(ConfigError::InvalidConcurrency) => {
+                return (
+                    "invalid_worker_concurrency".into(),
+                    "WORKER_CONCURRENCY must be a positive integer.".into(),
+                );
+            }
             Self::Connect(error) => ("Could not connect to Postgres", error),
             Self::Register(error) => ("Could not register the worker in Postgres", error),
         };

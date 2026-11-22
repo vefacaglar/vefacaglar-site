@@ -53,6 +53,7 @@ export const JobLogSchema = Type.Object({
 export type JobLogResponse = Static<typeof JobLogSchema>;
 
 export const RecurringJobSchema = Type.Object({
+  concurrencyKey: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   id: Type.String(),
   type: Type.String(),
   /** 5-field cron (UTC); null = registered job that only runs on demand. */
@@ -66,6 +67,8 @@ export const RecurringJobSchema = Type.Object({
 export type RecurringJobResponse = Static<typeof RecurringJobSchema>;
 
 export const WorkerSchema = Type.Object({
+  concurrency: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+  activeJobs: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
   id: Type.String(),
   hostname: Type.String(),
   version: Type.String(),
