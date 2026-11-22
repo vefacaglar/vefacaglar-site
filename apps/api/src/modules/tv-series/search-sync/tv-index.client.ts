@@ -29,6 +29,7 @@ export class TvIndexClient {
     }
     throw new Error("tv_index_task_timeout");
   }
+  async exists(index:string){this.owned(index);return !!await this.request(`/indexes/${index}`);}
   async configure(index: string) {
     this.owned(index);
     if (!await this.request(`/indexes/${index}`)) await this.task(await this.request("/indexes", "POST", { uid: index, primaryKey: "id" }));

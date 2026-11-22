@@ -5,17 +5,22 @@ import { TV_INDEX_REPOSITORY, type ITvIndexRepository } from "./tv-index.reposit
 export class SyncTvIndexHandler {
   constructor(private readonly client: TvIndexClient, @inject(TV_INDEX_REPOSITORY) private readonly repository: ITvIndexRepository) {}
   async handle(progress: (message: string) => void = () => {}) {
-    if (!await this.repository.needed()) return { documents: 0, hasMore: false, progressMade: false, nextRunAt: null };
-    const deadline = Date.now() + 120000;
-    let state = await this.repository.start(), documents = 0, batches = 0;
+    if (!await this.repository.needed()) return { published:false, documents: 0, hasMore: false, progressMade: false };
+    let deadline = Date.now() + 120000;
+    let state = await this.repository.start(), documents = 0, batches = 0,published=false;
     const index = state.buildIndex!;
-    if (state.phase !== "swap") await this.client.configure(index);
+    if (state.phase !== "swap") {
+      if((state.scanCursor!==null||state.phase!=="scan")&&!await this.client.exists(index))throw new Error("tv_index_staged_build_missing");
+      await this.client.configure(index);
+    }
+    deadline=Date.now()+120000;
     while (Date.now() + 30000 < deadline && batches < 40) {
+      await this.repository.assertLease();
       if (state.phase === "scan") {
         const page = await this.repository.page(state.scanCursor, 1000);
         await this.client.documents(index, page.documents);
         const cursor = page.ids.at(-1) ?? state.scanCursor;
-        await this.repository.advance(index, cursor, !page.ids.length);
+        await this.repository.advance(index, cursor, !page.ids.length,page.ids.length);
         documents += page.documents.length; batches++;
         progress(`Index scan documents=${documents} cursor=${cursor ?? 0}`);
       } else if (state.phase === "dirty") {
@@ -36,18 +41,20 @@ export class SyncTvIndexHandler {
         await this.client.settleSwap();
         if (await this.client.marker("tv_series_en") !== state.buildToken) {
           await this.client.documents(index, [{ id: 0, kind: "metadata", buildToken: state.buildToken }]);
+          await this.repository.assertLease();
           await this.client.swap(index);
         }
         if (await this.client.marker("tv_series_en") !== state.buildToken) throw new Error("tv_index_swap_marker_mismatch");
         await this.repository.finishSwap(index);
         // This UID now refers to the replaced live index, never the new live one.
         await this.client.discard(index).catch(() => {});
+        published=true;
         progress("Published complete TV series index");
         break;
       } else throw new Error("tv_index_phase_invalid");
       state = await this.repository.state();
     }
     const hasMore = await this.repository.needed();
-    return { documents, hasMore, progressMade: batches > 0 || state.phase === "swap", nextRunAt: hasMore ? new Date(Date.now() + 30000).toISOString() : null };
+    return { published, documents, hasMore, progressMade: batches > 0 || state.phase === "swap" };
   }
 }

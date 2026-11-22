@@ -6,7 +6,7 @@ import type { ITvIndexRepository } from "./tv-index.repository";
 function setup(phase = "swap") {
   const state: any = { phase, buildIndex: "tv_series_en__1234567890123_abcdef123456", buildToken: "abcdef123456", scanCursor: null };
   const repository: Record<keyof ITvIndexRepository, any> = {
-    state: vi.fn().mockImplementation(async () => state), start: vi.fn().mockResolvedValue(state), page: vi.fn(), advance: vi.fn(), dirty: vi.fn().mockResolvedValue([]), documents: vi.fn(), acknowledge: vi.fn(), prepareSwap: vi.fn().mockResolvedValue(null), finishSwap: vi.fn().mockImplementation(async () => { state.phase = "ready"; }), needed: vi.fn().mockResolvedValueOnce(true).mockResolvedValue(false),
+    assertLease:vi.fn(),state: vi.fn().mockImplementation(async () => state), start: vi.fn().mockResolvedValue(state), page: vi.fn(), advance: vi.fn(), dirty: vi.fn().mockResolvedValue([]), documents: vi.fn(), acknowledge: vi.fn(), prepareSwap: vi.fn().mockResolvedValue(null), finishSwap: vi.fn().mockImplementation(async () => { state.phase = "ready"; }), needed: vi.fn().mockResolvedValueOnce(true).mockResolvedValue(false),
   };
   const client = { configure: vi.fn(), documents: vi.fn(), remove: vi.fn(), marker: vi.fn().mockResolvedValue(state.buildToken), swap: vi.fn(), settleSwap: vi.fn(), discard: vi.fn().mockResolvedValue(undefined) };
   return { repository, client, state, handler: new SyncTvIndexHandler(client as unknown as TvIndexClient, repository) };

@@ -1,3 +1,4 @@
+import { guardTvCampaign } from "../daily/tv-campaign";
 import { injectable } from "tsyringe";
 import { eq, sql } from "drizzle-orm";
 import { tvPopularityState, tvPopularityScores, tvSeries, tvRefreshQueue } from "@vefacaglar/db";
@@ -38,11 +39,9 @@ export class DrizzleTvPopularityRepository implements ITvPopularityRepository {
         select p.series_id,100,${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz from ${tvPopularityScores} p
         left join ${tvSeries} t on t.id=p.series_id where p.series_id in (${sql.join(hot.map((row) => sql`${row.seriesId}`), sql`,`)})
         and (t.id is null or not t.hierarchy_complete or t.hierarchy_updated_at<${new Date(at.getTime() - 86400_000).toISOString()}::timestamptz)
-        on conflict(series_id) do update set priority=100,requested_at=excluded.requested_at,due_at=excluded.due_at returning series_id`);
-      // Source demand must survive an importer already holding its independent key.
-      await db.execute(sql`update recurring_jobs set next_run_at=least(coalesce(next_run_at,now()),now()) where id='catalog.tv-series.sync' and enabled and cron is not null`);
-      await db.execute(sql`select pg_notify('jobs','tv-series')`);
+        on conflict(series_id) do update set priority=100,requested_at=greatest(tv_refresh_queue.requested_at+interval '1 microsecond',clock_timestamp(),excluded.requested_at),due_at=excluded.due_at returning series_id`);
       const accepted = new Set(snapshot.scores.map((row) => row.seriesId));
+      await guardTvCampaign(db,true);
       return { generation, matched: all.filter((row) => accepted.has(row.id)).length, queued: queued.length };
     });
   }

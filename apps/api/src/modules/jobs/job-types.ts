@@ -47,12 +47,12 @@ export const JOB_TYPES = {
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),
   "catalog.tv-series.cast.refresh": defineJobType({
-    description: "Refresh official TVmaze main cast and verified shared actor identities in fair bounded batches; retain previous snapshots on provider failure.",
+    description: "Refresh one finite daily cohort of TVmaze main cast and verified shared actor identities under one job, with bounded provider I/O and durable resume.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "catalog.tv-series.cast",
   }),
   "catalog.tv-series.sync": defineJobType({
-    description: "Synchronize the TVmaze TV catalog, seasons and episodes in bounded resumable batches. Ratings are provided by TVmaze.",
+    description: "Synchronize one finite daily TVmaze catalog and due season/episode cohort under one durable job. Ratings are provided by TVmaze.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "catalog.tv-series",
   }),
@@ -62,7 +62,7 @@ export const JOB_TYPES = {
     concurrencyKey: () => "catalog.tv-series.popularity",
   }),
   "search.tv-series.sync": defineJobType({
-    description: "Publish the dedicated TV series search index from canonical catalog and complete current popularity snapshots.",
+    description: "Publish one complete daily TV search snapshot under one job; newer external changes remain pending for the next daily run.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "search.tv-series.index",
   }),

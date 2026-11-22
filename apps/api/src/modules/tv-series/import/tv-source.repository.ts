@@ -1,5 +1,6 @@
+import { currentTvCampaign, guardTvCampaign, finishTvCampaignItem, tvCampaignCandidates, tvCampaignHasMore } from "../daily/tv-campaign";
 import { injectable } from "tsyringe";
-import { and, eq, ne, inArray, notInArray, lte, sql } from "drizzle-orm";
+import { and, eq, ne, inArray, notInArray, lte, lt, sql } from "drizzle-orm";
 import { tvSeries, tvGenres, tvSeriesGenres, tvSeasons, tvEpisodes, tvSourceState, tvRefreshQueue, tvPopularityScores, tvPopularityState } from "@vefacaglar/db";
 import { DbProvider } from "../../../db.provider";
 import { dirtyTvSearch } from "../tv-dirty";
@@ -12,8 +13,12 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
     let [state] = await this.dbProvider.client.select().from(tvSourceState).where(eq(tvSourceState.id, "tvmaze"));
     if (!state) throw new Error("tv_source_state_missing_migration");
     if (state.indexComplete && state.catalogCompletedAt && state.catalogCompletedAt.getTime() < now.getTime() - 30 * 86400_000) {
-      [state] = await this.dbProvider.client.update(tvSourceState).set({ nextPage: 0, indexComplete: false, indexStartedAt: now })
-        .where(eq(tvSourceState.id, "tvmaze")).returning();
+      state=await this.dbProvider.transaction(async()=>{
+        const db=this.dbProvider.client;
+        await guardTvCampaign(db,true);
+        await db.update(tvSourceState).set({nextPage:0,indexComplete:false,indexStartedAt:now}).where(and(eq(tvSourceState.id,"tvmaze"),eq(tvSourceState.indexComplete,true),lt(tvSourceState.catalogCompletedAt,new Date(now.getTime()-30*86400_000))));
+        const[row]=await db.select().from(tvSourceState).where(eq(tvSourceState.id,"tvmaze"));return row;
+      });
     }
     return state;
   }
@@ -23,6 +28,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       if (!state || state.nextPage !== page || state.indexComplete) throw new Error("tv_catalog_cursor_changed");
       await this.writeShows(shows, at);
       await this.dbProvider.client.update(tvSourceState).set({ nextPage: page + 1 }).where(eq(tvSourceState.id, "tvmaze"));
+      await guardTvCampaign(this.dbProvider.client,true);
     });
   }
   async completeIndex(at: Date) {
@@ -35,8 +41,9 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       await db.execute(sql`insert into ${tvRefreshQueue}(series_id,requested_at,due_at)
         select id,${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz from ${tvSeries}
         where is_deleted=false and last_seen_at<${state.indexStartedAt.toISOString()}::timestamptz
-        on conflict(series_id) do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
+        on conflict(series_id) do update set requested_at=greatest(tv_refresh_queue.requested_at+interval '1 microsecond',clock_timestamp(),excluded.requested_at),due_at=excluded.due_at`);
       await db.update(tvSourceState).set({ indexComplete: true, catalogCompletedAt: at }).where(eq(tvSourceState.id, "tvmaze"));
+      await guardTvCampaign(db,true);
     });
   }
   async updates(rows: { id: number; updatedAt: Date }[], at: Date) {
@@ -46,14 +53,16 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
         await db.insert(tvRefreshQueue).values(rows.slice(offset, offset + 500).map((row) => ({ seriesId: row.id, sourceUpdatedAt: row.updatedAt, requestedAt: at })))
           .onConflictDoUpdate({ target: tvRefreshQueue.seriesId, set: {
             sourceUpdatedAt: sql`greatest(${tvRefreshQueue.sourceUpdatedAt},excluded.source_updated_at)`,
-            requestedAt: sql`greatest(${tvRefreshQueue.requestedAt},excluded.requested_at)`, dueAt: at,
+            requestedAt: sql`greatest(${tvRefreshQueue.requestedAt}+interval '1 microsecond',clock_timestamp(),excluded.requested_at)`, dueAt: at,
           } });
       }
       await db.update(tvSourceState).set({ updatesCheckedAt: at }).where(eq(tvSourceState.id, "tvmaze"));
+      await guardTvCampaign(db,true);
     });
   }
   async candidates(limit: number, now: Date): Promise<TvRefreshItem[]> {
     const db = this.dbProvider.client;
+    const cohort = await this.dbProvider.transaction(()=>tvCampaignCandidates(this.dbProvider.client,"catalog",limit)); if(cohort) return cohort;
     const popular = await db.execute(sql`select q.series_id,q.requested_at::text as requested_at from ${tvRefreshQueue} q
       left join ${tvPopularityScores} p on p.series_id=q.series_id where q.due_at<=${now.toISOString()}::timestamptz
       order by q.priority desc, p.score desc nulls last,q.requested_at,q.series_id limit ${Math.ceil(limit / 2)}`);
@@ -99,10 +108,9 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       }).where(eq(tvSeries.id, item.seriesId));
       await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), sql`${tvRefreshQueue.requestedAt}<=${item.requestedAt instanceof Date?item.requestedAt.toISOString():item.requestedAt}::timestamptz`));
       await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values(${item.seriesId},${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz)
-        on conflict(series_id) do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
-      await db.execute(sql`update recurring_jobs set next_run_at=least(coalesce(next_run_at,now()),now()) where id='catalog.tv-series.cast.refresh' and enabled and cron is not null`);
-      await db.execute(sql`select pg_notify('jobs','catalog.tv-series.cast.refresh')`);
+        on conflict(series_id) do update set requested_at=greatest(tv_cast_queue.requested_at+interval '1 microsecond',clock_timestamp(),excluded.requested_at),due_at=excluded.due_at`);
       await dirtyTvSearch(db, [item.seriesId]);
+      await finishTvCampaignItem(db,item.seriesId);
     });
   }
   async missing(item: TvRefreshItem, _at: Date) {
@@ -111,16 +119,21 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       const rows = await db.update(tvSeries).set({ isDeleted: true }).where(eq(tvSeries.id, item.seriesId)).returning({ id: tvSeries.id });
       await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), sql`${tvRefreshQueue.requestedAt}<=${item.requestedAt instanceof Date?item.requestedAt.toISOString():item.requestedAt}::timestamptz`));
       if (rows.length) await dirtyTvSearch(db, [item.seriesId]);
+      await finishTvCampaignItem(db,item.seriesId);
     });
   }
   async failure(item: TvRefreshItem, code: string, retryAt: Date) {
+    await this.dbProvider.transaction(async()=>{
     await this.dbProvider.client.update(tvRefreshQueue).set({ failureCount: sql`${tvRefreshQueue.failureCount}+1`, errorCode: code.slice(0, 64), dueAt: retryAt })
       .where(eq(tvRefreshQueue.seriesId, item.seriesId));
+    await finishTvCampaignItem(this.dbProvider.client,item.seriesId,true);
+    });
   }
   async cooldown(until: Date) {
     await this.dbProvider.client.update(tvSourceState).set({ cooldownUntil: until }).where(eq(tvSourceState.id, "tvmaze"));
   }
   async hasMore(now: Date) {
+    const cohort=await tvCampaignHasMore(this.dbProvider.client); if(cohort!==null && currentTvCampaign()?.stage!=="discover")return cohort;
     const [state] = await this.dbProvider.client.select().from(tvSourceState).where(eq(tvSourceState.id, "tvmaze"));
     if (!state?.indexComplete) return true;
     const [row] = await this.dbProvider.client.select({ id: tvRefreshQueue.seriesId }).from(tvRefreshQueue).where(lte(tvRefreshQueue.dueAt, now)).limit(1);
@@ -154,7 +167,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
         return !old || !old.complete || (show.sourceUpdatedAt && (!old.sourceUpdatedAt || show.sourceUpdatedAt > old.sourceUpdatedAt));
       });
       if (changed.length) await db.insert(tvRefreshQueue).values(changed.map((show) => ({ seriesId: show.id, requestedAt: at, sourceUpdatedAt: show.sourceUpdatedAt })))
-        .onConflictDoUpdate({ target: tvRefreshQueue.seriesId, set: { requestedAt: at, sourceUpdatedAt: sql`excluded.source_updated_at`, dueAt: at } });
+        .onConflictDoUpdate({ target: tvRefreshQueue.seriesId, set: { requestedAt: sql`greatest(${tvRefreshQueue.requestedAt}+interval '1 microsecond',clock_timestamp(),excluded.requested_at)`, sourceUpdatedAt: sql`excluded.source_updated_at`, dueAt: at } });
     }
     if (queue) {
       const castChanges = shows.filter(show => {
@@ -163,9 +176,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       });
       if (castChanges.length) {
         await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values ${sql.join(castChanges.map(show => sql`(${show.id},${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz)`), sql`,`) }
-          on conflict(series_id) do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
-        await db.execute(sql`update recurring_jobs set next_run_at=least(coalesce(next_run_at,now()),now()) where id='catalog.tv-series.cast.refresh' and enabled and cron is not null`);
-        await db.execute(sql`select pg_notify('jobs','catalog.tv-series.cast.refresh')`);
+          on conflict(series_id) do update set requested_at=greatest(tv_cast_queue.requested_at+interval '1 microsecond',clock_timestamp(),excluded.requested_at),due_at=excluded.due_at`);
       }
     }
     await dirtyTvSearch(db, ids);

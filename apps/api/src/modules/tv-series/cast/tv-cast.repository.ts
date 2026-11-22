@@ -1,3 +1,4 @@
+import { guardTvCampaign, finishTvCampaignItem, tvCampaignCandidates, tvCampaignHasMore } from "../daily/tv-campaign";
 import { injectable } from "tsyringe";
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import { tvCast, tvCastQueue, tvCastState, tvSeries, moviePeople, moviePersonSources, moviePersonAliases, movieCredits } from "@vefacaglar/db";
@@ -14,13 +15,17 @@ export class DrizzleTvCastRepository implements ITvCastRepository {
     await this.dbProvider.client.update(tvCastState).set({identityMap:rows,identitiesCheckedAt:at}).where(eq(tvCastState.id,"tvmaze"));
   }
   async prepare(now:Date) {
+    await this.dbProvider.transaction(async()=>{
     await this.dbProvider.client.execute(sql`insert into ${tvCastQueue}(series_id,requested_at,due_at)
       select id,${now.toISOString()}::timestamptz,${now.toISOString()}::timestamptz from ${tvSeries} where not is_deleted and hierarchy_complete
       and (not cast_complete or cast_updated_at<${new Date(now.getTime()-7*86400_000).toISOString()}::timestamptz) on conflict(series_id) do nothing`);
     await this.dbProvider.client.execute(sql`delete from ${tvCastQueue} q using ${tvSeries} t where t.id=q.series_id and t.is_deleted`);
+    await guardTvCampaign(this.dbProvider.client,true);
+    });
   }
   async candidates(limit:number,now:Date):Promise<TvCastItem[]> {
     const db=this.dbProvider.client;
+    const cohort=await this.dbProvider.transaction(()=>tvCampaignCandidates(this.dbProvider.client,"cast",limit));if(cohort)return cohort;
     const hot=await db.execute(sql`select q.series_id,q.requested_at::text as requested_at,t.source_url from ${tvCastQueue} q join ${tvSeries} t on t.id=q.series_id
       where q.due_at<=${now.toISOString()}::timestamptz and not t.is_deleted order by t.popularity_score desc nulls last,q.requested_at,q.series_id limit ${Math.ceil(limit/2)}`);
     const hotIds=hot.map(row=>Number(row.series_id));
@@ -58,6 +63,7 @@ export class DrizzleTvCastRepository implements ITvCastRepository {
       for(let offset=0;offset<rows.length;offset+=250)await db.insert(tvCast).values(rows.slice(offset,offset+250).map(row=>({seriesId:item.seriesId,personId:people.get(row.person.externalId)!,characterId:row.characterId,characterName:row.characterName,characterSourceUrl:row.characterSourceUrl,castOrder:row.castOrder,self:row.self,voice:row.voice,sourceUrl:item.sourceUrl,fetchedAt:at})));
       await db.update(tvSeries).set({castComplete:true,castUpdatedAt:at}).where(eq(tvSeries.id,item.seriesId));
       await db.delete(tvCastQueue).where(and(eq(tvCastQueue.seriesId,item.seriesId),sql`${tvCastQueue.requestedAt}<=${item.requestedAt instanceof Date?item.requestedAt.toISOString():item.requestedAt}::timestamptz`));
+      await finishTvCampaignItem(db,item.seriesId);
       return {people:people.size,matched,merged};
     });
   }
@@ -99,9 +105,13 @@ export class DrizzleTvCastRepository implements ITvCastRepository {
     await db.insert(moviePersonAliases).values({aliasId:former,personId:target}).onConflictDoUpdate({target:moviePersonAliases.aliasId,set:{personId:target}});
   }
   async failure(item:TvCastItem,code:string,retryAt:Date) {
+    await this.dbProvider.transaction(async()=>{
     await this.dbProvider.client.update(tvCastQueue).set({failureCount:sql`${tvCastQueue.failureCount}+1`,errorCode:code.slice(0,64),dueAt:retryAt}).where(eq(tvCastQueue.seriesId,item.seriesId));
+    await finishTvCampaignItem(this.dbProvider.client,item.seriesId,true);
+    });
   }
   async hasMore(now:Date) {
+    const cohort=await tvCampaignHasMore(this.dbProvider.client);if(cohort!==null)return cohort;
     const [row]=await this.dbProvider.client.select({id:tvCastQueue.seriesId}).from(tvCastQueue).where(lte(tvCastQueue.dueAt,now)).limit(1);return!!row;
   }
 }

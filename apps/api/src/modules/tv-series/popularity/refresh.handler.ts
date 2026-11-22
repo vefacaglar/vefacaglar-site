@@ -6,7 +6,8 @@ import { TV_POPULARITY_REPOSITORY, type ITvPopularityRepository } from "./tv-pop
 export class RefreshTvPopularityHandler {
   constructor(private readonly client: TvPopularityClient, @inject(TV_POPULARITY_REPOSITORY) private readonly repository: ITvPopularityRepository) {}
   async handle(progress: (message: string) => void = () => {}) {
-    const deadline = Date.now() + 150000, now = new Date(), state = await this.repository.state();
+    // Each provider request retains its timeout/size bounds; a complete snapshot has no aggregate lifetime cap.
+    const deadline = Infinity, now = new Date(), state = await this.repository.state();
     if (state.cooldownUntil && state.cooldownUntil > now) throw new Error("tv_popularity_cooldown_active");
     try {
       let identities;
