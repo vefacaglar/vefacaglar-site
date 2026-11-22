@@ -1,7 +1,7 @@
 import { inject, injectable } from "tsyringe";
 import type { IMoviesRepository, MoviePersonResult } from "../movies.repository.interface";
 import { MOVIES_REPOSITORY } from "../movies.tokens";
-import { movieRanking } from "../popularity/wikipedia-interest";
+import { audienceRanking } from "../popularity/audience-ranking";
 import { MOVIE_SEARCH_READER, isOwnedMovieCollection, type IMovieSearchReader } from "./movie-search-reader";
 import { MOVIE_SEARCH_SCHEMA_VERSION, MOVIE_SEARCH_STATE_REPOSITORY, type IMovieSearchStateRepository, type MovieSearchState } from "./movie-search.types";
 
@@ -16,7 +16,7 @@ function ready(state: MovieSearchState | null): state is MovieSearchState & { ac
 }
 function samePublication(before: MovieSearchState, after: MovieSearchState | null): boolean {
   return ready(after) && before.activeCollection === after.activeCollection
-    && before.rankingGeneration === after.rankingGeneration && before.publishedSourceDate === after.publishedSourceDate && before.hasPublicInterest === after.hasPublicInterest;
+    && before.rankingGeneration === after.rankingGeneration && before.publishedSourceDate === after.publishedSourceDate && before.hasPublicInterest === after.hasPublicInterest && JSON.stringify(before.sourceDetails) === JSON.stringify(after.sourceDetails);
 }
 
 @injectable()
@@ -37,7 +37,7 @@ export class MovieCatalogService implements IMovieCatalogService {
     try {
       const before = await this.stateRepo.state();
       if (!ready(before)) return null;
-      const ranking = movieRanking(before.publishedSourceDate, new Date(), before.hasPublicInterest);
+      const ranking = audienceRanking(before.sourceDetails, before.hasPublicInterest);
       const selected = await this.reader.search({ ...filter, collection: before.activeCollection,
         fresh: ranking.isFresh });
       if (!selected) return null;
@@ -48,7 +48,7 @@ export class MovieCatalogService implements IMovieCatalogService {
         posterAttribution: null,
       }));
       const after = hydrated.state;
-      if (!samePublication(before, after) || ranking.isFresh !== movieRanking(after?.publishedSourceDate ?? null, new Date(), after?.hasPublicInterest ?? false).isFresh || items.length !== selected.ids.length) return null;
+      if (!samePublication(before, after) || ranking.isFresh !== audienceRanking(after?.sourceDetails ?? null, after?.hasPublicInterest ?? false).isFresh || items.length !== selected.ids.length) return null;
       return { items, total: selected.total, ranking };
     } catch {
       // Index metadata/search errors must not take the canonical catalog offline.

@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import styles from "./movies.module.css";
 import { getDictionary } from "../../../dictionaries";
 import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import { libraryMetadata } from "../../../lib/librarySeo";
-import { MOVIE_SUGGESTION_GROUPS, getMovieRankingNotice, getPublicMovies, searchMoviePeople } from "../../../lib/movies";
+import { MOVIE_SUGGESTION_GROUPS, getMovieAudienceSources, getMovieRankingNotice, getPublicMovies, searchMoviePeople } from "../../../lib/movies";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
 import MovieSearch from "../../../components/movies/MovieSearch";
 import Pagination from "../../components/Pagination";
@@ -44,6 +45,7 @@ export default async function Movies({ searchParams }: {
     query && page === 1 ? matchingPeople(query) : Promise.resolve({ people: [], order: MOVIE_SUGGESTION_GROUPS }),
   ]);
   const { people } = matches;
+  const audienceSources = !query ? getMovieAudienceSources(data?.ranking) : [];
   const rankingNotice = !query ? getMovieRankingNotice(data?.ranking) : null;
   const peopleSection = people.length > 0 && (
     <section key="people" className={styles.section} aria-labelledby="movie-search-people">
@@ -64,7 +66,12 @@ export default async function Movies({ searchParams }: {
       <LibraryMasthead title={dict.movies} subtitle={dict.movies_catalog_subtitle}>
         <MovieSearch initialQuery={query} placeholder={dict.movies_search_placeholder} />
       </LibraryMasthead>
-      {!query && data && (rankingNotice || data.ranking.mode === "recognition") && <p className={styles.ranking}>
+      {audienceSources.length > 0 && <p className={styles.ranking}>
+        {data?.ranking.mode === "combined_popularity" ? "Current popularity" : "Current audience interest"}
+        {audienceSources.map((source) => <span key={source.provider}> · <a href={source.href}>{source.label}</a> {source.window}</span>)}
+        {" · "}<Link href="/credits">Data credits</Link>
+      </p>}
+      {!query && data && !audienceSources.length && (rankingNotice || data.ranking.mode === "recognition") && <p className={styles.ranking}>
         {rankingNotice ? <>{data.ranking.windowDays === 3 ? "Recent Wikipedia interest (3 days)" : "Wikipedia interest"} · {rankingNotice.date}. <a href={rankingNotice.sourceUrl}>Source</a></>
           : "Ordered by Wikipedia language coverage."}
       </p>}

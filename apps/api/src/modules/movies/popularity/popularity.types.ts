@@ -1,3 +1,4 @@
+import type { AudienceSourceSummary } from "./audience.types";
 export const MOVIE_POPULARITY_REPOSITORY = Symbol("MoviePopularityRepository");
 export const WIKIPEDIA_INTEREST_CLIENT = Symbol("WikipediaInterestClient");
 export const MOVIE_INTEREST_SOURCE_URL = "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html";
@@ -22,7 +23,7 @@ export type MoviePopularityState = {
   articleCount: number | null; mappedArticleCount: number | null; missingArticleCount: number | null;
   duplicateQidCount: number | null; observedMovieCount: number | null;
 };
-export type MovieRanking = { mode: "wikipedia_interest" | "recognition" | "alphabetical"; sourceDate: string | null; sourceUrl: string | null; isFresh: boolean; windowDays?: 3 };
+export type MovieRanking = { mode: "wikipedia_interest" | "combined_popularity" | "tmdb_popularity" | "netflix_views" | "recognition" | "alphabetical"; sourceDate: string | null; sourceUrl: string | null; isFresh: boolean; windowDays?: 3; sources?: AudienceSourceSummary[] };
 export interface IMoviePopularityRepository {
   state(): Promise<MoviePopularityState>;
   wikidataCooldown(): Promise<Date | null>;

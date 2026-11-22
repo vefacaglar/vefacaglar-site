@@ -22,9 +22,9 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
     source.start_build(target).await.unwrap();
     sqlx::query("UPDATE movie_search_state SET repair_cursor=NULL,repair_completed_at=NULL WHERE id='movies_en'")
         .execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO movie_popularity_state (id,source_date) VALUES ('enwiki-current-interest-v2',$1) ON CONFLICT (id) DO UPDATE SET source_date=$1")
+    sqlx::query("INSERT INTO movie_popularity_state (id,source_date) VALUES ('movie-audience-v1',$1) ON CONFLICT (id) DO UPDATE SET source_date=$1")
         .bind(date).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO movies (id,wikidata_id,slug,title,release_year,is_film,hydrated_at,wikipedia_views,wikipedia_source_date) VALUES ($1,$2,$2,'Captured Movie',2011,true,now(),42,$3)")
+    sqlx::query("INSERT INTO movies (id,wikidata_id,slug,title,release_year,is_film,hydrated_at,popularity_score,popularity_source_date) VALUES ($1,$2,$2,'Captured Movie',2011,true,now(),42,$3)")
         .bind(id).bind(&qid).bind(date).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO movie_people (id,wikidata_id,name) VALUES ($1,$2,'Person')")
         .bind(person)
@@ -106,7 +106,7 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
     // Cast the interest score before multiplication: valid int32 observations
     // must not overflow PostgreSQL int32 or JavaScript's safe integer range.
     sqlx::query(
-        "UPDATE movies SET wikipedia_views=2147483647,wikipedia_language_count=999999 WHERE id=$1",
+        "UPDATE movies SET popularity_score=2147483647,wikipedia_language_count=999999 WHERE id=$1",
     )
     .bind(id)
     .execute(&pool)

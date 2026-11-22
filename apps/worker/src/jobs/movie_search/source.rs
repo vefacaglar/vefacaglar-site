@@ -81,7 +81,7 @@ const PUBLIC: &str = "m.is_film = true AND m.hydrated_at IS NOT NULL AND m.title
 const CAPTURE: &str = r#"
 , snapshot AS (
     SELECT ranking_generation,
-      (SELECT source_date FROM movie_popularity_state WHERE id='enwiki-current-interest-v2') AS source_date
+      (SELECT source_date FROM movie_popularity_state WHERE id='movie-audience-v1') AS source_date
     FROM movie_search_state WHERE id='movies_en'
 ), documents AS (
     SELECT l.movie_id, l.requested_revision,
@@ -92,11 +92,11 @@ const CAPTURE: &str = r#"
           'personQids', ARRAY(SELECT DISTINCT p.wikidata_id::text
             FROM movie_credits c JOIN movie_people p ON p.id=c.person_id
             WHERE c.movie_id=m.id AND c.rank <> 'deprecated' ORDER BY p.wikidata_id::text),
-          'interestScore', CASE WHEN m.wikipedia_source_date=s.source_date
-            THEN coalesce(m.wikipedia_views,-1) ELSE -1 END,
+          'interestScore', CASE WHEN m.popularity_source_date=s.source_date
+            THEN coalesce(m.popularity_score,-1) ELSE -1 END,
           'recognitionCount', coalesce(m.wikipedia_language_count,0),
-          'interestRecognitionRank', ((CASE WHEN m.wikipedia_source_date=s.source_date
-            THEN coalesce(m.wikipedia_views,-1) ELSE -1 END)::bigint+1)*1000000::bigint
+          'interestRecognitionRank', ((CASE WHEN m.popularity_source_date=s.source_date
+            THEN coalesce(m.popularity_score,-1) ELSE -1 END)::bigint+1)*1000000::bigint
             + coalesce(m.wikipedia_language_count,0),
           'titleSort', lower(m.title), 'tieBreakId', l.movie_id::text))
       END AS document
@@ -143,7 +143,7 @@ async fn publishable(
       SELECT schema_version=$2 AND bootstrap_phase IN ('replay','ready')
         AND coalesce(building_collection,active_collection)=$1
         AND ranking_generation=$3
-        AND (SELECT source_date FROM movie_popularity_state WHERE id='enwiki-current-interest-v2') IS NOT DISTINCT FROM $4::date
+        AND (SELECT source_date FROM movie_popularity_state WHERE id='movie-audience-v1') IS NOT DISTINCT FROM $4::date
         AND NOT EXISTS (SELECT 1 FROM movie_search_sync
           WHERE requested_revision>applied_revision OR (s.building_collection IS NOT NULL AND indexed_collection IS DISTINCT FROM $1))
       FROM movie_search_state s WHERE id='movies_en'

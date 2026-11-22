@@ -69,10 +69,10 @@ const MOVIES: CliSpec = CliSpec {
 };
 const MOVIE_POPULARITY: CliSpec = CliSpec {
     prefix: "[catalog:movie-interest] ",
-    label: "Movie Wikipedia interest",
-    phase: "refreshing movie Wikipedia interest",
+    label: "Movie audience popularity",
+    phase: "refreshing movie audience popularity",
     interrupted: "Movie interest refresh stopped; the previous snapshot remains available",
-    deadline: Some(Duration::from_secs(150)),
+    deadline: Some(Duration::from_secs(480)),
     deadline_yields: false,
     continues: false,
 };

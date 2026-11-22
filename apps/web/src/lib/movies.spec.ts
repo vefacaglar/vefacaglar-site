@@ -4,7 +4,7 @@ vi.mock("react", () => ({ cache: (fn: unknown) => fn }));
 vi.mock("./httpClient", () => ({ httpClient: { get: vi.fn() } }));
 
 import { httpClient } from "./httpClient";
-import { getMovie, getMovieSuggestions, getMoviePerson, getMovieRankingNotice, getPublicMovies, moviePageNumber, moviePersonHref, searchMoviePeople } from "./movies";
+import { getMovie, getMovieSuggestions, getMoviePerson, getMovieAudienceSources, getMovieRankingNotice, getPublicMovies, moviePageNumber, moviePersonHref, searchMoviePeople } from "./movies";
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -116,5 +116,24 @@ describe("movie ranking source notice", () => {
     for (const sourceUrl of [null, "javascript:alert(1)", "https://wikimedia.org.evil.example/", "https://user:pass@wikimedia.org/api/rest_v1/metrics/pageviews/foo"]) {
       expect(getMovieRankingNotice({ ...ranking, sourceUrl })?.sourceUrl).toBe(expected);
     }
+  });
+});
+
+
+describe("current movie audience source notices", () => {
+  const source = { provider: "tmdb" as const, sourceDate: "2026-11-22", windowStart: "2026-11-22",
+    expiresAt: "2026-11-25T00:00:00Z", sourceUrl: "javascript:unsafe", observedCount: 500, matchedCount: 438 };
+  const ranking = { mode: "combined_popularity" as const, sourceDate: "2026-11-22", sourceUrl: null, isFresh: true, sources: [source] };
+  it("uses canonical source links and shows the actual date window", () => {
+    expect(getMovieAudienceSources(ranking)).toEqual([{ provider: "tmdb", label: "TMDB popularity",
+      href: "https://developer.themoviedb.org/docs/daily-id-exports", window: "2026-11-22" }]);
+    expect(getMovieAudienceSources({ ...ranking, sources: [{ ...source, provider: "netflix", windowStart: "2026-11-09", sourceDate: "2026-11-15" }] })[0])
+      .toMatchObject({ label: "Netflix film views", window: "2026-11-09–2026-11-15" });
+  });
+  it("suppresses stale, unmatched and malformed source notices", () => {
+    expect(getMovieAudienceSources({ ...ranking, isFresh: false })).toEqual([]);
+    expect(getMovieAudienceSources({ ...ranking, sources: [{ ...source, matchedCount: 0 }] })).toEqual([]);
+    expect(getMovieAudienceSources({ ...ranking, sources: [{ ...source, sourceDate: "2026-02-29" }] })).toEqual([]);
+    expect(getMovieAudienceSources(undefined)).toEqual([]);
   });
 });

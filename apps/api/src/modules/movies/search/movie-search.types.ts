@@ -1,8 +1,9 @@
+import type { AudienceSourceSummary } from "../popularity/audience.types";
 import type { moviePeopleSearchState, movieSearchState } from "@vefacaglar/db";
 export const MOVIE_SEARCH_STATE_REPOSITORY = Symbol("MovieSearchStateRepository");
 export const MOVIE_SEARCH_ID = "movies_en";
 export const MOVIE_SEARCH_SCHEMA_VERSION = 4;
-export type MovieSearchState = typeof movieSearchState.$inferSelect & { hasPublicInterest: boolean };
+export type MovieSearchState = typeof movieSearchState.$inferSelect & { hasPublicInterest: boolean; sourceDetails: AudienceSourceSummary[] | null };
 export interface IMovieSearchStateRepository { state(): Promise<MovieSearchState | null> }
 
 export const MOVIE_PEOPLE_SEARCH_STATE_REPOSITORY = Symbol("MoviePeopleSearchStateRepository");

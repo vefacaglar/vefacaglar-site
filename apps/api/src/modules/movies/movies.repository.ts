@@ -4,8 +4,10 @@ import { injectable } from "tsyringe";
 import { and, asc, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, lte, ne, or, sql, getTableColumns, type SQL } from "drizzle-orm";
 import { movies, moviePeople, movieCompanies, movieGenres, movieEntityLabels, movieCredits, movieCompanyLinks, movieGenreLinks, movieSourceState, moviePopularityState, movieSearchState } from "@vefacaglar/db";
 import { DbProvider } from "../../db.provider";
-import { MOVIE_INTEREST_SOURCE_URL, MOVIE_POPULARITY_SOURCE_ID, type MovieRanking } from "./popularity/popularity.types";
-import { hasPublicMovieInterestSql } from "./popularity/movie-interest-sql";
+import { MOVIE_POPULARITY_SOURCE_ID } from "./popularity/popularity.types";
+import { audienceSourceDetailsSql, audienceSourcesFreshSql, hasPublicMovieInterestSql } from "./popularity/movie-interest-sql";
+import { audienceRanking } from "./popularity/audience-ranking";
+import { MOVIE_AUDIENCE_SOURCE_ID, type AudienceSourceSummary } from "./popularity/audience.types";
 import { utcDay } from "./popularity/wikipedia-interest";
 import type { MovieCard } from "./list/list.schema";
 import type { IMoviesRepository, MovieSourceState } from "./movies.repository.interface";
@@ -58,6 +60,9 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
   hydrationCandidates(limit: number, now: Date) {
     return this.dbProvider.client.select({ id: movies.id, wikidataId: movies.wikidataId, sourceRevision: movies.sourceRevision }).from(movies)
       .where(and(isNull(movies.hydratedAt), due(now))).orderBy(
+        sql`case when ${movies.popularitySourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_AUDIENCE_SOURCE_ID})
+          and ${movies.popularitySourceDate} >= (${utcDay(now)}::date - 7)
+          then ${movies.popularityScore} else null end desc nulls last`,
         sql`case when ${movies.wikipediaSourceDate} = (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID})
           and ${movies.wikipediaSourceDate} < ${utcDay(now)}::date
           and ${movies.wikipediaSourceDate} >= (${utcDay(now)}::date - 7)
@@ -174,18 +179,18 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     // concurrent publication cannot expose date A with ordered observations B.
     const rows = await this.dbProvider.client.execute(sql`
       with source as (
-        select (select source_date from ${moviePopularityState} where id=${MOVIE_POPULARITY_SOURCE_ID}) as source_date
+        select (select source_date from ${moviePopularityState} where id=${MOVIE_AUDIENCE_SOURCE_ID}) as source_date,
+          (select source_details from ${moviePopularityState} where id=${MOVIE_AUDIENCE_SOURCE_ID}) as source_details
       ), ranking as (
-        select source_date, coalesce(source_date < (statement_timestamp() at time zone 'UTC')::date
-          and source_date >= ((statement_timestamp() at time zone 'UTC')::date - 7), false)
+        select source_date, source_details, ${audienceSourcesFreshSql(sql`source_details`)}
           and ${hasPublicMovieInterestSql(sql`source_date`)} as is_fresh from source
       ), page as (
         select ${movies.id} as id, ${movies.slug} as slug, ${movies.title} as title,
           ${movies.posterImageUrl} as poster_image_url, ${movies.posterAttribution} as poster_attribution,
           ${movies.enwikiArticle} as poster_article, ${movies.posterResolvedFrom} as poster_origin, ${movies.posterBlockedAt} as poster_blocked_at,
           ${movies.releaseDate} as release_date, ${movies.releaseYear} as release_year, ${movies.runtimeMinutes} as runtime_minutes,
-          case when (select is_fresh from ranking) and ${movies.wikipediaSourceDate} = (select source_date from ranking)
-            then ${movies.wikipediaViews} else null end as interest,
+          case when (select is_fresh from ranking) and ${movies.popularitySourceDate} = (select source_date from ranking)
+            then ${movies.popularityScore} else null end as interest,
           coalesce(${movies.wikipediaLanguageCount},0) as recognition,
           ${yearMatch} as year_match
         from ${movies} where ${where}
@@ -198,11 +203,10 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
           order by year_match desc,interest desc nulls last,recognition desc,title,id) from page),'[]'::jsonb) as items,
         (select count(*) from ${movies} where ${where}) as total,
         (select to_char(source_date,'YYYY-MM-DD') from ranking) as source_date,
-        (select is_fresh from ranking) as is_fresh
+        (select is_fresh from ranking) as is_fresh, (select source_details from ranking) as source_details, statement_timestamp() as checked_at
     `);
-    const row = rows[0] as unknown as { items: (MovieCard & { movieId: string; posterArticle: string | null; posterOrigin: string | null; posterBlockedAt: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean };
-    const ranking: MovieRanking = { mode: row.is_fresh ? "wikipedia_interest" : "recognition", sourceDate: row.source_date,
-      sourceUrl: row.source_date ? MOVIE_INTEREST_SOURCE_URL : null, isFresh: row.is_fresh, windowDays: 3 };
+    const row = rows[0] as unknown as { items: (MovieCard & { movieId: string; posterArticle: string | null; posterOrigin: string | null; posterBlockedAt: string | null })[]; total: string | number; source_date: string | null; is_fresh: boolean; source_details: AudienceSourceSummary[] | null; checked_at: Date | string };
+    const ranking = audienceRanking(row.source_details, row.is_fresh, new Date(row.checked_at));
     const items = row.items.map(({ movieId: _movieId, posterArticle, posterOrigin, posterBlockedAt, ...card }) => ({ ...card,
       ...publicMoviePoster({ ...card, enwikiArticle: posterArticle, posterResolvedFrom: posterOrigin, posterBlockedAt }) }));
     return { items, movieIds: row.items.map((item) => item.movieId), total: Number(row.total), ranking };
@@ -297,7 +301,8 @@ export class DrizzleMoviesRepository implements IMoviesRepository {
     // Hydrate cards and validate the index publication in the same database
     // snapshot, saving a round trip without accepting mixed publications.
     const rows = await this.dbProvider.client.select({
-      state: { ...getTableColumns(movieSearchState), hasPublicInterest: hasPublicMovieInterestSql(sql`${movieSearchState.publishedSourceDate}`) },
+      state: { ...getTableColumns(movieSearchState), hasPublicInterest: hasPublicMovieInterestSql(sql`${movieSearchState.publishedSourceDate}`),
+        sourceDetails: audienceSourceDetailsSql(sql`${movieSearchState.publishedSourceDate}`) },
       movie: { id: movies.id, slug: movies.slug, title: movies.title,
         releaseDate: movies.releaseDate, releaseYear: movies.releaseYear, runtimeMinutes: movies.runtimeMinutes },
     }).from(movieSearchState).leftJoin(movies, and(publicMovie(), inArray(movies.id, ids)))

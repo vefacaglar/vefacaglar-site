@@ -1,7 +1,7 @@
 import { injectable } from "tsyringe";
-import { MoviePopularityService } from "./popularity.service";
+import { MovieAudienceService } from "./audience.service";
 @injectable()
 export class RefreshMoviePopularityHandler {
-  constructor(private readonly service: MoviePopularityService) {}
+  constructor(private readonly service: MovieAudienceService) {}
   handle() { return this.service.refresh(); }
 }

@@ -1,0 +1,7 @@
+.credits { max-width: 46rem; line-height: 1.7; }
+.credits h1 { color: var(--text-heading); margin-bottom: 2.5rem; }
+.credits section + section { margin-top: 2.5rem; }
+.credits h2 { color: var(--text-heading); font-size: 1.1rem; }
+.credits p { color: var(--muted); }
+.credits a { color: var(--text); text-underline-offset: 0.2em; }
+.logo { display: block; width: 8rem; height: auto; margin: 1rem 0; }

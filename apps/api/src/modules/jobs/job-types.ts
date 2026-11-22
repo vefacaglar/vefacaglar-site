@@ -54,7 +54,7 @@ export const JOB_TYPES = {
   }),
   "catalog.movies.popularity.refresh": defineJobType({
     description:
-      "Refresh movie interest using films appearing among the most-viewed English Wikipedia articles. This is article interest, not film viewership or ratings.",
+      "Refresh current movie popularity from TMDB daily popularity exports, Netflix weekly global film views and recent Wikipedia interest. Each run reports source dates, coverage and retained-source failures.",
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => "catalog.movies.popularity",
   }),

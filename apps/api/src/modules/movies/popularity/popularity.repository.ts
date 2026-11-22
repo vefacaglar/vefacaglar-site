@@ -1,6 +1,6 @@
 import { injectable } from "tsyringe";
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { movies, moviePopularityState, movieSourceState, movieSearchState } from "@vefacaglar/db";
+import { movies, moviePopularityState, movieSourceState } from "@vefacaglar/db";
 import { DbProvider } from "../../../db.provider";
 import { MOVIE_SOURCE_ID } from "../import/movie-source.types";
 import { assertCompleteProjection, snapshotDisposition, utcDay } from "./wikipedia-interest";
@@ -61,12 +61,7 @@ export class DrizzleMoviePopularityRepository implements IMoviePopularityReposit
       const known = qids.length ? await db.select({ qid: movies.wikidataId }).from(movies).where(and(inArray(movies.wikidataId, qids), or(isNull(movies.hydratedAt), eq(movies.isFilm, true)))) : [];
       const knownQids = new Set(known.map((movie) => movie.qid));
       const observations = measured.filter((observation) => knownQids.has(observation.wikidataId));
-      // Lock publication state before touching source rows; ledger writes follow
-      // movie writes, matching persistMovie's movie -> ledger lock order.
-      await db.insert(movieSearchState).values({ id: "movies_en", rankingGeneration: 1 }).onConflictDoUpdate({ target: movieSearchState.id,
-        set: { rankingGeneration: sql`${movieSearchState.rankingGeneration}+1`, rankingReady: false, updatedAt: new Date() } });
-      const affected = await db.select({ id: movies.id }).from(movies).where(or(isNotNull(movies.wikipediaViews), isNotNull(movies.wikipediaSourceDate),
-        qids.length ? inArray(movies.wikidataId, qids) : undefined));
+      // Raw Wikipedia evidence is independent of the combined ranking publication.
       await db.update(movies).set({ wikipediaViews: null, wikipediaSourceDate: null }).where(or(isNotNull(movies.wikipediaViews), isNotNull(movies.wikipediaSourceDate)));
       let observedMovieCount = 0;
       for (let offset = 0; offset < observations.length; offset += 500) {
@@ -75,17 +70,11 @@ export class DrizzleMoviePopularityRepository implements IMoviePopularityReposit
           from (values ${values}) v(qid,views) where ${movies.wikidataId}=v.qid and (${movies.hydratedAt} is null or ${movies.isFilm}=true) returning ${movies.id}`);
         observedMovieCount += written.length;
       }
-      for (let offset = 0; offset < affected.length; offset += 500) {
-        const values = sql.join(affected.slice(offset, offset + 500).map((movie) => sql`(${movie.id}::uuid)`), sql`, `);
-        await db.execute(sql`insert into movie_search_sync (movie_id) values ${values}
-          on conflict (movie_id) do update set requested_revision=movie_search_sync.requested_revision+1,dirty_at=now()`);
-      }
       await db.update(moviePopularityState).set({ sourceDate: projection.sourceDate, publishedAt: new Date(), lastAttemptAt: new Date(), failureCount: 0, errorCode: null,
         cooldownUntil: sql`case when ${moviePopularityState.cooldownUntil} <= clock_timestamp() then null else ${moviePopularityState.cooldownUntil} end`,
         articleCount: projection.articleCount, mappedArticleCount: projection.mappedArticleCount, missingArticleCount: projection.missingArticleCount,
         duplicateQidCount: projection.duplicateQidCount, observedMovieCount,
       }).where(eq(moviePopularityState.id, MOVIE_POPULARITY_SOURCE_ID));
-      // Also request publication when no movie rows changed: its generation did.
       return { status: "published" as const, observedMovieCount };
     });
   }

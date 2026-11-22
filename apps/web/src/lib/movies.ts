@@ -30,11 +30,26 @@ export interface MoviePersonPage {
   total: number;
 }
 export interface MovieRanking {
-  mode: "wikipedia_interest" | "recognition" | "alphabetical";
+  mode: "wikipedia_interest" | "combined_popularity" | "tmdb_popularity" | "netflix_views" | "recognition" | "alphabetical";
   sourceDate: string | null;
   sourceUrl: string | null;
   isFresh: boolean;
   windowDays?: 3;
+  sources?: { provider: "tmdb" | "netflix" | "wikipedia"; sourceDate: string; windowStart: string;
+    expiresAt: string; sourceUrl: string; observedCount: number; matchedCount: number }[];
+}
+
+/** Canonical source links avoid exposing raw feed/download URLs in the interface. */
+export function getMovieAudienceSources(ranking: MovieRanking | null | undefined) {
+  if (!ranking?.isFresh || !["combined_popularity", "tmdb_popularity", "netflix_views"].includes(ranking.mode)) return [];
+  const labels = { tmdb: "TMDB popularity", netflix: "Netflix film views", wikipedia: "Wikipedia interest" } as const;
+  const links = { tmdb: "https://developer.themoviedb.org/docs/daily-id-exports",
+    netflix: "https://www.netflix.com/tudum/top10", wikipedia: "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html" };
+  return (ranking.sources ?? []).filter((source) => source.provider in labels && source.matchedCount > 0
+    && !!parseDateKey(source.sourceDate) && !!parseDateKey(source.windowStart)).map((source) => ({
+      provider: source.provider, label: labels[source.provider], href: links[source.provider],
+      window: source.windowStart === source.sourceDate ? source.sourceDate : `${source.windowStart}–${source.sourceDate}`,
+    }));
 }
 
 /** Only show an observation when the API identifies a fresh, valid source day. */

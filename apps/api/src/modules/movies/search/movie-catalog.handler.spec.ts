@@ -14,7 +14,11 @@ const storedCard = { slug: "inception-q25188", title: "Inception", releaseDate: 
     sourceUrl: "https://commons.wikimedia.org/wiki/File:Inception.jpg", artist: "Studio", license: "CC0", licenseUrl: null } };
 const card = { ...storedCard, posterImageUrl: null, posterAttribution: null };
 const fallback = { items: [], total: 91, ranking: { mode: "alphabetical", sourceDate: null, sourceUrl: null, isFresh: false } };
-const state = { id: "movies_en", schemaVersion: 4, hasPublicInterest: true, activeCollection: "movies_en", buildingCollection: null,
+const sourceDetails = [{ provider: "tmdb" as const, sourceDate: "2026-11-06", windowStart: "2026-11-06",
+  expiresAt: "2026-11-09T00:00:00Z", sourceUrl: "https://files.tmdb.org/p/exports/movie_ids_11_06_2026.json.gz", observedCount: 500, matchedCount: 400 },
+{ provider: "wikipedia" as const, sourceDate: "2026-11-06", windowStart: "2026-11-04", expiresAt: "2026-11-14T00:00:00Z",
+  sourceUrl: "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html", observedCount: 64, matchedCount: 64 }];
+const state = { sourceDetails, id: "movies_en", schemaVersion: 4, hasPublicInterest: true, activeCollection: "movies_en", buildingCollection: null,
   bootstrapPhase: "ready", bootstrapCursor: null, rankingGeneration: 2, rankingReady: true,
   publishedSourceDate: "2026-11-06", repairCursor: null, repairCompletedAt: null, updatedAt: new Date() } satisfies MovieSearchState;
 let repo: Record<keyof IMoviesRepository, any>;
@@ -42,7 +46,7 @@ describe("movie catalog handlers using the movie index", () => {
     expect(browse.items).toEqual([card]);
     expect(JSON.stringify(browse.items)).not.toContain("wikimedia.org");
     expect(browse.total).toBe(22); expect(browse.totalPages).toBe(2);
-    expect(browse.ranking.mode).toBe("wikipedia_interest");
+    expect(browse.ranking.mode).toBe("combined_popularity");
     await list({ q: " Inception " });
     expect(reader.search).toHaveBeenLastCalledWith(expect.objectContaining({ q: "Inception" }));
     expect(repo.hydrateCatalogPage).toHaveBeenCalledWith([id]);
