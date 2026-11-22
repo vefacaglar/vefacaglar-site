@@ -55,9 +55,14 @@
 }
 
 .viewToggleBtnActive {
-  background: var(--border);
-  color: var(--text-heading);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
+}
+
+.viewToggleBtnActive:hover {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .viewToggleBtn:hover:not(.viewToggleBtnActive) {

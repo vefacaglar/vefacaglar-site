@@ -1,5 +1,6 @@
 /* Canonical palette and typeface tokens. The host loads its preferred font source. */
 :root {
+  color-scheme: dark;
   --bg: #23211f; /* Subtle warm charcoal site background */
   --text: #eaeaea; /* Crisp, premium off-white text for supreme contrast */
   --text-heading: #ffffff; /* Brilliant pure white headings */

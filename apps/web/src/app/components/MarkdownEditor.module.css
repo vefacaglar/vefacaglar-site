@@ -80,8 +80,13 @@
 
 .tabActive {
   composes: tab;
-  color: var(--text-heading);
-  background: var(--border);
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.tabActive:hover {
+  color: var(--on-accent);
+  background: var(--accent);
 }
 
 .tabInactive {
