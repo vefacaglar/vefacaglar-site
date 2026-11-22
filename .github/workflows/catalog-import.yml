@@ -1,75 +1,36 @@
-name: Catalog import
+name: Catalog import checkpoint export
 
-# Crawls the IGDB catalog into the games database. Each run works for up to
-# ~5.5 hours (GitHub's job limit is 6) and saves its position, so the first
-# full crawl spreads over several runs; after that each run only picks up
-# games added to IGDB since the last one.
+# One-time cutover bridge. The worker takes over catalog collection after the
+# cached cursor has been exported and seeded into its durable database state.
 on:
-  schedule:
-    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Never run two crawls at once; a scheduled run waits for the current one.
 concurrency:
   group: catalog-import
   cancel-in-progress: false
 
 jobs:
-  import:
+  export:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
-    environment: api-production
-    env:
-      # Runs on GitHub's runners, so it needs a publicly reachable URL; the API's
-      # DATABASE_URL points at the internal Docker hostname instead.
-      DATABASE_URL: ${{ secrets.CATALOG_IMPORT_DATABASE_URL || secrets.DATABASE_URL }}
-      IGDB_CLIENT_ID: ${{ secrets.IGDB_CLIENT_ID }}
-      IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
     steps:
-      - name: Check required import secrets
-        shell: bash
-        run: |
-          missing=0
-          for name in DATABASE_URL IGDB_CLIENT_ID IGDB_CLIENT_SECRET; do
-            if [[ -z "${!name}" ]]; then
-              echo "::error::Set $name in this repository's Actions secrets or the api-production environment."
-              missing=1
-            fi
-          done
-          exit "$missing"
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm --filter @vefacaglar/db build
-
-      # Cache entries are immutable, so every run saves a new key and the next
-      # run restores the most recent one by prefix.
       - name: Restore crawl progress
         uses: actions/cache/restore@v4
         with:
           path: apps/api/.catalog-import-state.json
-          key: catalog-import-state-${{ github.run_id }}
+          key: catalog-import-state-cutover-${{ github.run_id }}
           restore-keys: catalog-import-state-
-
-      - name: Import games
-        run: pnpm --filter api catalog:import --all --max-minutes 330
-
-      - name: Save crawl progress
-        if: always()
-        uses: actions/cache/save@v4
+          fail-on-cache-miss: true
+      - name: Validate crawl progress
+        run: |
+          node -e 'const fs = require("fs"); const p = "apps/api/.catalog-import-state.json"; const s = JSON.parse(fs.readFileSync(p, "utf8")); if (!Number.isSafeInteger(s.lastId) || s.lastId < 0) throw new Error("Invalid catalog cursor"); fs.writeFileSync(p, JSON.stringify({ lastId: s.lastId })); console.log(`Catalog cursor: ${s.lastId}`);'
+      - name: Export crawl progress
+        uses: actions/upload-artifact@v4
         with:
+          name: catalog-import-checkpoint
           path: apps/api/.catalog-import-state.json
-          key: catalog-import-state-${{ github.run_id }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
