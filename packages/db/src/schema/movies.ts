@@ -41,6 +41,10 @@ export const movies = pgTable('movies', {
   // Current three-day Wikipedia human-view scores; null means unobserved.
   wikipediaViews: integer('wikipedia_views'),
   wikipediaSourceDate: date('wikipedia_source_date'),
+  // Fixed-weight current audience score, independent of raw Wikipedia measurements.
+  popularityScore: integer('popularity_score'),
+  popularitySourceDate: date('popularity_source_date'),
+  popularitySourceMask: integer('popularity_source_mask'),
   // General recognition proxy: distinct Wikipedia editions, not a rating.
   wikipediaLanguageCount: integer('wikipedia_language_count'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
@@ -156,6 +160,7 @@ export const moviePopularityState = pgTable('movie_popularity_state', {
   missingArticleCount: integer('missing_article_count'),
   duplicateQidCount: integer('duplicate_qid_count'),
   observedMovieCount: integer('observed_movie_count'),
+  sourceDetails: jsonb('source_details').$type<unknown[]>(),
 });
 
 /** Dedicated movie search ownership and durable bootstrap/ranking publication. */
@@ -202,3 +207,22 @@ export const moviePeopleSearchState = pgTable('movie_people_search_state', {
   publishedAt: timestamp('published_at', { withTimezone: true, mode: 'date' }),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
+
+/** Last accepted bounded provider evidence, retained independently through outages. */
+export const movieAudienceSources = pgTable('movie_audience_sources', {
+  provider: varchar('provider', { length: 16 }).primaryKey(),
+  snapshot: jsonb('snapshot').$type<unknown>(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true, mode: 'date' }),
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true, mode: 'date' }),
+  cooldownUntil: timestamp('cooldown_until', { withTimezone: true, mode: 'date' }),
+  failureCount: integer('failure_count').notNull().default(0),
+  errorCode: varchar('error_code', { length: 80 }),
+});
+
+/** Provider identity evidence is cached, including explicit misses, without changing movie facts. */
+export const movieAudienceIdentities = pgTable('movie_audience_identities', {
+  provider: varchar('provider', { length: 16 }).notNull(),
+  externalId: text('external_id').notNull(),
+  wikidataId: varchar('wikidata_id', { length: 24 }),
+  checkedAt: timestamp('checked_at', { withTimezone: true, mode: 'date' }).notNull(),
+}, (table) => ({ pk: primaryKey({ columns: [table.provider, table.externalId] }) }));
