@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index, doublePrecision, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, char, timestamp, decimal, integer, boolean, primaryKey, date, index, doublePrecision, jsonb, bigint } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 
@@ -35,6 +35,7 @@ export const games = pgTable('games', {
   // 0-1 blend of popularity signals, computed by the popularity refresh; null when the game has none.
   popularityScore: doublePrecision('popularity_score'),
   popularityUpdatedAt: timestamp('popularity_updated_at', { withTimezone: true, mode: 'date' }),
+  popularityVersion: varchar('popularity_version', { length: 64 }),
   // Owner-taste recommendation, separate from current interest. Filled by the catalog refresh.
   recommendationScore: doublePrecision('recommendation_score'),
   recommendationVersion: varchar('recommendation_version', { length: 64 }),
@@ -284,6 +285,21 @@ export const gamePopularitySignals = pgTable('game_popularity_signals', {
 }, (table) => ({
   pk: primaryKey({ columns: [table.gameId, table.popularityType] }),
 }));
+
+// Bounded current human attention and its preceding four-week baseline.
+export const gameWikipediaInterest = pgTable('game_wikipedia_interest', {
+  gameId: uuid('game_id').primaryKey().references(() => games.id, { onDelete: 'cascade' }),
+  article: text('article').notNull(),
+  sourceDate: date('source_date').notNull(),
+  currentViews: bigint('current_views', { mode: 'number' }).notNull(),
+  baselineViews: bigint('baseline_views', { mode: 'number' }).notNull(),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true, mode: 'date' }).notNull(),
+});
+
+export const gameWikipediaProviderState = pgTable('game_wikipedia_provider_state', {
+  id: varchar('id', { length: 32 }).primaryKey(),
+  cooldownUntil: timestamp('cooldown_until', { withTimezone: true, mode: 'date' }),
+});
 
 // Optional HowLongToBeat engagement snapshots. Missing counts are unknown, not zero.
 export const gameHltbPopularity = pgTable('game_hltb_popularity', {
