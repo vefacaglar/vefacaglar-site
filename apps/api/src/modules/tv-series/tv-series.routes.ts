@@ -7,7 +7,12 @@ import { GetTvSeriesHandler } from "./detail/detail.handler";
 import { GetTvSeriesParamsSchema, TvSeriesDetailSchema, type GetTvSeriesParams } from "./detail/detail.schema";
 import { GetTvSeasonHandler } from "./season/season.handler";
 import { GetTvSeasonParamsSchema, TvSeasonDetailSchema, type GetTvSeasonParams } from "./season/season.schema";
+import { tvPreferencesRoutes } from "./preferences/preferences.routes";
 export async function tvSeriesRoutes(app: FastifyInstance) {
+  await app.register(tvPreferencesRoutes);
+  await app.register(tvSeriesPublicRoutes);
+}
+async function tvSeriesPublicRoutes(app: FastifyInstance) {
   app.addHook("onSend", async (_request, reply, payload) => {
     reply.header("Link", '<https://www.tvmaze.com>; rel="author", <https://creativecommons.org/licenses/by-sa/4.0/>; rel="license"');
     return payload;

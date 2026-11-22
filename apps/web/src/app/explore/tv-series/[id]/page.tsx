@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { getTvSeries, tvSeriesId, tvSeriesYears, tvSeasonName, tvCount, tvDate, tvRating } from "../../../../lib/tvSeries";
 import { getActiveLanguage } from "../../../../lib/lang";
 import { localizeHref } from "../../../../lib/localizeHref";
 import { libraryMetadata } from "../../../../lib/librarySeo";
 import TvAttribution from "../../../../components/tv-series/TvAttribution";
 import TvEpisodes from "../../../../components/tv-series/TvEpisodes";
+import { getSessionUser } from "../../../../lib/session";
+import { getMyTvPreferences, type TvPreferences as Preferences } from "../../../../lib/tvPreferences";
+import { getLoginHref } from "../../../../lib/oidc";
+import TvPreferences from "./TvPreferences";
 import styles from "../tv-detail.module.css";
 type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props) {
@@ -16,8 +20,14 @@ export async function generateMetadata({ params }: Props) {
 export default async function TvSeriesDetailPage({ params }: Props) {
   const id = tvSeriesId((await params).id);
   if (id === null) notFound();
-  const [series, lang] = await Promise.all([getTvSeries(id), getActiveLanguage()]);
+  const [series, lang, user] = await Promise.all([getTvSeries(id), getActiveLanguage(), getSessionUser()]);
   if (!series) notFound();
+  let preferences: Preferences | null = null;
+  let preferencesUnavailable = false;
+  if (user) {
+    try { preferences = await getMyTvPreferences(id); }
+    catch (error) { unstable_rethrow(error); preferencesUnavailable = true; }
+  }
   const rating = tvRating(series.rating);
   return <article className={styles.detail}>
     <header className={styles.header}>
@@ -40,6 +50,14 @@ export default async function TvSeriesDetailPage({ params }: Props) {
       {tvDate(series.lastAired ?? series.ended) && <div><dt>Last aired</dt><dd>{tvDate(series.lastAired ?? series.ended)}</dd></div>}
       {series.officialSite && <div><dt>Website</dt><dd><a href={series.officialSite}>Official site ↗</a></dd></div>}
     </dl>}
+    {preferences && user ? <TvPreferences key={`${user.id}:${series.id}`} seriesId={series.id} initial={preferences} />
+      : <section className={styles.section} aria-labelledby="tv-your-preferences">
+        <h2 id="tv-your-preferences">Your rating and note</h2>
+        {preferencesUnavailable ? <>
+          <p className={styles.note}>Your saved rating and note are temporarily unavailable.</p>
+          <a className="btnGhost" href={localizeHref(`/explore/tv-series/${series.id}`, lang)}>Try again</a>
+        </> : <Link className="btnAccent" href={getLoginHref(localizeHref(`/explore/tv-series/${series.id}`, lang))}>Sign in to rate and add a personal note</Link>}
+      </section>}
     <section className={styles.section} aria-labelledby="tv-seasons">
       <h2 id="tv-seasons">Seasons</h2>
       {series.hierarchyStatus === "pending" && <p className={styles.note}>Season and episode details are being added.</p>}
