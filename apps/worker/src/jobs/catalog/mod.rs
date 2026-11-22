@@ -87,6 +87,15 @@ const MOVIE_POPULARITY: CliSpec = CliSpec {
     deadline_yields: false,
     continues: false,
 };
+const TV_CAST: CliSpec = CliSpec {
+    prefix: "[catalog:tv-cast] ",
+    label: "TV series main cast",
+    phase: "refreshing shared TV cast identities",
+    interrupted: "TV cast refresh stopped; completed snapshots remain available and queued titles resume",
+    deadline: Some(Duration::from_secs(210)),
+    deadline_yields: false,
+    continues: true,
+};
 const TV_CATALOG: CliSpec = CliSpec {
     prefix: "[catalog:tv-series] ",
     label: "TV series catalog",

@@ -352,7 +352,7 @@ jobs:
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0022_giant_sprite.sql
           psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f ../../packages/db/drizzle/0023_magical_storm.sql
           # Exercise the dedicated movie source SQL against its generated schema.
-          for migration in 0027_movies_catalog 0030_massive_chameleon 0031_right_tyrannus 0032_tired_serpent_society 0033_chunky_baron_strucker 0036_mute_nova 0042_absurd_puppet_master 0047_free_dorian_gray 0048_huge_wallflower 0049_natural_network 0050_living_miek 0052_lyrical_chat 0053_hesitant_beast 0054_equal_emma_frost 0055_purple_lionheart; do
+          for migration in 0027_movies_catalog 0030_massive_chameleon 0031_right_tyrannus 0032_tired_serpent_society 0033_chunky_baron_strucker 0036_mute_nova 0039_chubby_lenny_balinger 0040_friendly_kat_farrell 0042_absurd_puppet_master 0047_free_dorian_gray 0048_huge_wallflower 0049_natural_network 0050_living_miek 0052_lyrical_chat 0053_hesitant_beast 0054_equal_emma_frost 0055_purple_lionheart 0056_cheerful_human_torch; do
             psql "$WORKER_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f "../../packages/db/drizzle/$migration.sql"
           done
 
@@ -374,7 +374,9 @@ jobs:
           TV_TEST_DATABASE_URL: ${{ env.WORKER_TEST_DATABASE_URL }}
           TV_TEST_MEILISEARCH_URL: ${{ env.WORKER_TEST_MEILISEARCH_URL }}
           TV_TEST_MEILISEARCH_API_KEY: ${{ env.WORKER_TEST_MEILISEARCH_API_KEY }}
-        run: pnpm exec ts-node --transpile-only src/scripts/check-tv-integration.ts
+        run: |
+          pnpm exec ts-node --transpile-only src/scripts/check-tv-integration.ts
+          pnpm exec ts-node --transpile-only src/scripts/check-tv-cast-integration.ts
 
       - name: Check deployment scripts
         working-directory: .

@@ -228,7 +228,7 @@ impl PeopleSource for PgPeopleSource {
             JOIN movie_credits c ON c.person_id=p.id AND c.rank <> 'deprecated'
             JOIN movies m ON m.id=c.movie_id
               AND m.is_film = true AND m.hydrated_at IS NOT NULL AND m.title IS NOT NULL
-            WHERE p.id=i.id AND p.name IS NOT NULL AND btrim(p.name) <> ''
+            WHERE p.id=i.id AND p.wikidata_id IS NOT NULL AND p.name IS NOT NULL AND btrim(p.name) <> ''
             GROUP BY p.id
           ) d ON true ORDER BY i.id
         "#,

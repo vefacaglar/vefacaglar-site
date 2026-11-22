@@ -91,7 +91,7 @@ const CAPTURE: &str = r#"
           'releaseYear', m.release_year::text,
           'personQids', ARRAY(SELECT DISTINCT p.wikidata_id::text
             FROM movie_credits c JOIN movie_people p ON p.id=c.person_id
-            WHERE c.movie_id=m.id AND c.rank <> 'deprecated' ORDER BY p.wikidata_id::text),
+            WHERE c.movie_id=m.id AND c.rank <> 'deprecated' AND p.wikidata_id IS NOT NULL ORDER BY p.wikidata_id::text),
           'interestScore', CASE WHEN m.popularity_source_date=s.source_date
             THEN coalesce(m.popularity_score,-1) ELSE -1 END,
           'recognitionCount', coalesce(m.wikipedia_language_count,0),

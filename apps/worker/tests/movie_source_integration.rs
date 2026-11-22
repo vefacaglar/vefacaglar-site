@@ -3,6 +3,7 @@
 use chrono::NaiveDate;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
+use worker::jobs::movie_search::people::{PeopleSource, PgPeopleSource};
 use worker::jobs::movie_search::source::{MovieSource, PgMovieSource};
 
 #[tokio::test]
@@ -36,6 +37,30 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
         sqlx::query("INSERT INTO movie_credits (movie_id,person_id,statement_id,role_property,rank) VALUES ($1,$2,$3,'P161',$4)")
             .bind(id).bind(person).bind(statement).bind(rank).execute(&pool).await.unwrap();
     }
+    let tv_only = Uuid::new_v4();
+    sqlx::query("INSERT INTO movie_people(id,name) VALUES($1,'TV-only identity without Wikidata')")
+        .bind(tv_only)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO movie_credits(movie_id,person_id,statement_id,role_property,rank) VALUES($1,$2,'nullable-tv-person','P161','normal')").bind(id).bind(tv_only).execute(&pool).await.unwrap();
+    let people = PgPeopleSource { pool: pool.clone() }
+        .scan(None, 10000)
+        .await
+        .unwrap();
+    assert!(
+        people
+            .docs
+            .iter()
+            .any(|doc| doc["id"] == person.to_string())
+    );
+    assert!(
+        !people
+            .docs
+            .iter()
+            .any(|doc| doc["id"] == tv_only.to_string()),
+        "movie-only people index must not publish a nullable TV-only identity"
+    );
     let scan = source.scan(None, 500).await.unwrap();
     let captured = scan.rows.iter().find(|row| row.id == id).unwrap().clone();
     let doc = captured.document.as_ref().unwrap();
@@ -176,6 +201,11 @@ async fn durable_movie_capture_ack_publication_and_tombstones() {
         .unwrap();
     sqlx::query("DELETE FROM movie_people WHERE id=$1")
         .bind(person)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM movie_people WHERE id=$1")
+        .bind(tv_only)
         .execute(&pool)
         .await
         .unwrap();

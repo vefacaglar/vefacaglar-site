@@ -80,7 +80,10 @@ pub fn classify_conflict(
 ) -> ConflictAction {
     // TV source commits can arrive while a bounded TV job is active. Keep this
     // wake-up pending; its durable work may have arrived after the active scan.
-    if matches!(job_type, "catalog.tv-series.sync" | "search.tv-series.sync") {
+    if matches!(
+        job_type,
+        "catalog.tv-series.sync" | "catalog.tv-series.cast.refresh" | "search.tv-series.sync"
+    ) {
         return ConflictAction::DeferOtherActive;
     }
     match active_holder {
@@ -323,7 +326,11 @@ mod tests {
 
     #[test]
     fn tv_source_demand_survives_the_same_active_bounded_job() {
-        for kind in ["catalog.tv-series.sync", "search.tv-series.sync"] {
+        for kind in [
+            "catalog.tv-series.sync",
+            "catalog.tv-series.cast.refresh",
+            "search.tv-series.sync",
+        ] {
             let active = holder(kind, Some(kind));
             assert_eq!(
                 classify_conflict(kind, kind, Some(&active)),

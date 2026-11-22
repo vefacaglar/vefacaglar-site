@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::path::Path;
 use tokio::process::Command;
 pub struct TvCatalogHandler;
+pub struct TvCastHandler;
 pub struct TvPopularityHandler;
 pub struct TvSearchHandler;
 fn validate_payload(payload: &Value) -> Result<()> {
@@ -74,6 +75,14 @@ macro_rules! tv_handler {
     };
 }
 tv_handler!(
+    TvCastHandler,
+    "catalog.tv-series.cast.refresh",
+    "catalog.tv-series.cast",
+    "refresh-tv-cast.js",
+    TV_CAST,
+    false
+);
+tv_handler!(
     TvCatalogHandler,
     "catalog.tv-series.sync",
     "catalog.tv-series",
@@ -104,6 +113,20 @@ mod tests {
     #[test]
     fn isolated_locks_empty_payload_and_bounded_continuations() {
         assert_eq!(TvCatalogHandler.job_type(), "catalog.tv-series.sync");
+        assert_eq!(TvCastHandler.job_type(), "catalog.tv-series.cast.refresh");
+        assert_eq!(
+            TvCastHandler.concurrency_key(&json!({})),
+            Some("catalog.tv-series.cast".into())
+        );
+        assert!(
+            super::super::movies::parse_continuation(
+                r#"[catalog:tv-cast] result {"hasMore":true,"progressMade":true,"nextRunAt":null}"#,
+                super::super::TV_CAST.prefix
+            )
+            .unwrap()
+            .unwrap()
+            .is_some()
+        );
         assert_eq!(
             TvSearchHandler.concurrency_key(&json!({})),
             Some("search.tv-series.index".into())

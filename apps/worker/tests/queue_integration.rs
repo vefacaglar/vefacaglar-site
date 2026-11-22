@@ -785,6 +785,7 @@ async fn tv_continuations_finalize_atomically_preserve_keys_and_obey_cancellatio
     };
     for (kind, key) in [
         ("catalog.tv-series.sync", "catalog.tv-series"),
+        ("catalog.tv-series.cast.refresh", "catalog.tv-series.cast"),
         ("search.tv-series.sync", "search.tv-series.index"),
     ] {
         let registered = format!("test.tv.continuation.{}", Uuid::new_v4());

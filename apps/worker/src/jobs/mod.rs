@@ -28,6 +28,7 @@ pub fn registry(config: &Config) -> Registry {
     registry.register(catalog::movie_popularity::MoviePopularityHandler);
     registry.register(catalog::movie_titles::MovieEnglishTitlesHandler);
     registry.register(catalog::tv_series::TvCatalogHandler);
+    registry.register(catalog::tv_series::TvCastHandler);
     registry.register(catalog::tv_series::TvPopularityHandler);
     registry.register(catalog::tv_series::TvSearchHandler);
     registry

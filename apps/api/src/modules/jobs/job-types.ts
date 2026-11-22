@@ -46,6 +46,11 @@ export const JOB_TYPES = {
     payloadSchema: EmptyPayloadSchema,
     concurrencyKey: () => SEARCH_INDEX_CONCURRENCY_KEY,
   }),
+  "catalog.tv-series.cast.refresh": defineJobType({
+    description: "Refresh official TVmaze main cast and verified shared actor identities in fair bounded batches; retain previous snapshots on provider failure.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.tv-series.cast",
+  }),
   "catalog.tv-series.sync": defineJobType({
     description: "Synchronize the TVmaze TV catalog, seasons and episodes in bounded resumable batches. Ratings are provided by TVmaze.",
     payloadSchema: EmptyPayloadSchema,

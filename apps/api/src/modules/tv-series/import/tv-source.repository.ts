@@ -156,6 +156,18 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
       if (changed.length) await db.insert(tvRefreshQueue).values(changed.map((show) => ({ seriesId: show.id, requestedAt: at, sourceUpdatedAt: show.sourceUpdatedAt })))
         .onConflictDoUpdate({ target: tvRefreshQueue.seriesId, set: { requestedAt: at, sourceUpdatedAt: sql`excluded.source_updated_at`, dueAt: at } });
     }
+    if (queue) {
+      const castChanges = shows.filter(show => {
+        const old = previousById.get(show.id);
+        return !old || (show.sourceUpdatedAt && (!old.sourceUpdatedAt || show.sourceUpdatedAt > old.sourceUpdatedAt));
+      });
+      if (castChanges.length) {
+        await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values ${sql.join(castChanges.map(show => sql`(${show.id},${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz)`), sql`,`) }
+          on conflict(series_id) do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
+        await db.execute(sql`update recurring_jobs set next_run_at=least(coalesce(next_run_at,now()),now()) where id='catalog.tv-series.cast.refresh' and enabled and cron is not null`);
+        await db.execute(sql`select pg_notify('jobs','catalog.tv-series.cast.refresh')`);
+      }
+    }
     await dirtyTvSearch(db, ids);
   }
 }

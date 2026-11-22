@@ -267,3 +267,5 @@ Provider references are [Backloggd Terms](https://backloggd.com/about/terms-of-s
 ## TV series jobs
 
 The independent `catalog.tv-series.sync`, `catalog.tv-series.popularity.refresh`, and `search.tv-series.sync` registrations import normalized TVmaze shows/seasons/episodes, publish verified daily popularity, and maintain the dedicated TV index. Their enabled UTC schedules, initial run order, source licensing, bounded continuation and recovery behavior are documented in [TV series catalog](tv-series.md). They share no concurrency key or index with game/movie jobs.
+
+`catalog.tv-series.cast.refresh` additionally enriches official show-level main cast, reuses verified shared movie people, and preserves UUID aliases when a later identity proof merges a TV-only person. It has its own bounded continuation key and a shared TVmaze provider gate with catalog sync. See [TV cast identity and rollout notes](tv-series.md#main-cast-and-shared-actor-profiles).
