@@ -24,6 +24,7 @@ import { gameRelationsRoutes } from "./modules/catalog/relations.routes";
 import { packagesRoutes } from "./modules/packages/packages.routes";
 import { jobsRoutes } from "./modules/jobs/jobs.routes";
 import { moviesRoutes } from "./modules/movies/movies.routes";
+import { tvSeriesRoutes } from "./modules/tv-series/tv-series.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
 import { translateError } from "./shared/localization";
@@ -174,6 +175,7 @@ app.register(packagesRoutes, { prefix: "/api/packages" });
 app.register(publicGamesRoutes, { prefix: "/api/games" });
 app.register(jobsRoutes, { prefix: "/api/jobs" });
 app.register(moviesRoutes, { prefix: "/api/movies" });
+app.register(tvSeriesRoutes, { prefix: "/api/tv-series" });
 
 export default async function handler(req: any, res: any) {
   await app.ready();

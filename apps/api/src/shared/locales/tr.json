@@ -19,6 +19,8 @@
   "err_job_invalid_payload": "Geçersiz iş verisi.",
   "err_job_invalid_state": "Bu işlem, işin mevcut durumunda yapılamaz.",
   "err_job_invalid_cron": "Geçersiz cron ifadesi. Standart 5 alanlı bir ifade kullanın (dakika saat gün ay haftanın-günü).",
+  "err_tv_series_not_found": "TV series not found.",
+  "err_tv_season_not_found": "TV season not found.",
   "err_movie_not_found": "Film bulunamadı.",
   "err_movie_watch_comment": "Keep your comment within 2,000 characters.",
   "err_movie_watch_date": "Choose a valid calendar date.",

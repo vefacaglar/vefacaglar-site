@@ -81,9 +81,17 @@ import { DrizzleMovieAudienceRepository } from "./modules/movies/popularity/audi
 import { MOVIE_ENGLISH_TITLE_REPOSITORY } from "./modules/movies/english-titles/english-titles.types";
 import { DrizzleMovieEnglishTitleRepository } from "./modules/movies/english-titles/english-titles.repository";
 
+import { TV_SERIES_REPOSITORY } from "./modules/tv-series/tv-series.repository.interface";
+import { DrizzleTvSeriesRepository } from "./modules/tv-series/tv-series.repository";
+import { TV_SERIES_CATALOG_SERVICE, TvSeriesCatalogService } from "./modules/tv-series/search/tv-series-catalog.service";
+import { TV_SERIES_SEARCH_READER, MeilisearchTvSeriesSearchReader } from "./modules/tv-series/search/tv-series-search.reader";
+
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
 container.registerSingleton(MOVIES_REPOSITORY, DrizzleMoviesRepository);
+container.registerSingleton(TV_SERIES_REPOSITORY, DrizzleTvSeriesRepository);
+container.registerSingleton(TV_SERIES_CATALOG_SERVICE, TvSeriesCatalogService);
+container.registerSingleton(TV_SERIES_SEARCH_READER, MeilisearchTvSeriesSearchReader);
 container.registerSingleton(MOVIE_CATALOG_SERVICE, MovieCatalogService);
 container.registerSingleton(MOVIE_SEARCH_READER, MeilisearchMovieSearchReader);
 container.registerSingleton(MOVIE_SEARCH_STATE_REPOSITORY, DrizzleMovieSearchStateRepository);

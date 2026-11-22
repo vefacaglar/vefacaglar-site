@@ -19,6 +19,8 @@
   "err_job_invalid_payload": "Invalid job payload.",
   "err_job_invalid_state": "This action is not allowed in the job's current state.",
   "err_job_invalid_cron": "Invalid cron expression. Use a standard 5-field expression (minute hour day month weekday).",
+  "err_tv_series_not_found": "TV series not found.",
+  "err_tv_season_not_found": "TV season not found.",
   "err_movie_not_found": "Movie not found.",
   "err_movie_watch_comment": "Keep your comment within 2,000 characters.",
   "err_movie_watch_date": "Choose a valid calendar date.",
