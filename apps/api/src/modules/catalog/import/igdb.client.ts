@@ -67,8 +67,8 @@ export class IgdbClient implements IIgdbClient {
   }
 
   async listGames(afterId: number, options: { minRatings?: number } = {}): Promise<ImportedGamePage> {
-    // Editions (version_parent) and DLC/expansions (parent_game) belong to a main game.
-    const where = [`id > ${afterId}`, "version_parent = null", "parent_game = null"];
+    // Editions share their base game. Remakes can have parent_game, so eligibility follows game_type.
+    const where = [`id > ${afterId}`, "version_parent = null"];
     if (options.minRatings) where.push(`total_rating_count >= ${options.minRatings}`);
 
     const results = await this.query(GAMES_URL, `${FIELDS} where ${where.join(" & ")}; sort id asc; limit ${PAGE_SIZE};`);
@@ -87,7 +87,7 @@ export class IgdbClient implements IIgdbClient {
     }
     const ids = [...new Set(igdbIds)];
     const rows = await this.query(GAMES_URL,
-      `${FIELDS} where id = (${ids.join(",")}) & version_parent = null & parent_game = null; limit ${PAGE_SIZE};`, signal);
+      `${FIELDS} where id = (${ids.join(",")}) & version_parent = null; limit ${PAGE_SIZE};`, signal);
     if (!Array.isArray(rows) || rows.some((game) => !ids.includes(game.id) || !game.name || !game.slug)) {
       throw new Error("IGDB returned an invalid game batch");
     }
