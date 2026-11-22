@@ -2,6 +2,7 @@ import { Type, Static } from "@sinclair/typebox";
 
 export const RefreshPopularityResponseSchema = Type.Object({
   rankingVersion: Type.String(),
+  seriesAdjustedCount: Type.Number(),
   audienceCount: Type.Number(),
   audienceRequests: Type.Number(),
   audienceStatus: Type.Union([Type.Literal("complete"), Type.Literal("partial"), Type.Literal("unavailable")]),

@@ -14,14 +14,13 @@ import {
   REFRESHED_POPULARITY_TYPES,
   type PopularityInput,
 } from "./popularity-score";
+import { diversifySeriesHead } from "./series-balance";
 import { GameAudienceService } from "./game-audience.service";
 import { PopularityDiscoveryService } from "./popularity-discovery.service";
 import { OwnerRankingService } from "./owner-ranking.service";
 import { ownerRankingBreakdown } from "./owner-ranking";
 import { OWNER_RANKING_CONFIG } from "./owner-ranking.config";
 import type { RefreshPopularityResponse } from "./popularity.schema";
-
-const SCORE_EPSILON = 1e-9;
 
 /**
  * Pulls current IGDB interest signals, stores those belonging to the catalog,
@@ -60,7 +59,7 @@ export class RefreshPopularityHandler {
     // Discovery and mode hydration must participate in this run's score calculation.
     sources = await this.gamesRepo.listPopularitySources();
     if (sources.length === 0) {
-      return { rankingVersion: POPULARITY_RANKING_VERSION, audienceCount: 0, audienceRequests: 0, audienceStatus: "complete", gameCount: 0, discoveredCount, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
+      return { rankingVersion: POPULARITY_RANKING_VERSION, seriesAdjustedCount: 0, audienceCount: 0, audienceRequests: 0, audienceStatus: "complete", gameCount: 0, discoveredCount, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
     }
     const audience = await this.audienceService.prepare(currentPrimitives, sources);
     const gameIdByIgdbId = new Map(sources.map((source) => [source.igdbId, source.id]));
@@ -92,7 +91,9 @@ export class RefreshPopularityHandler {
       inputsByIgdbId.set(primitive.igdbId, input);
     }
     const scoresByIgdbId = computePopularityScores([...inputsByIgdbId.values()]);
-    const scoreById = new Map(sources.map((source) => [source.id, scoresByIgdbId.get(String(source.igdbId)) ?? null]));
+    const baseScores = new Map(sources.map((source) => [source.id, scoresByIgdbId.get(String(source.igdbId)) ?? null]));
+    const scoreById = diversifySeriesHead(baseScores, new Map(sources.map((source) => [source.id, audience.metadata.get(source.igdbId)?.primarySeriesId ?? null])));
+    const seriesAdjustedCount = sources.filter((source) => baseScores.get(source.id) !== scoreById.get(source.id)).length;
     const scores = sources.map((s) => ({ id: s.id, score: scoreById.get(s.id) ?? null }));
 
     const recommendationScores = sources.map((source) => ({
@@ -142,6 +143,7 @@ export class RefreshPopularityHandler {
 
     return {
       rankingVersion: POPULARITY_RANKING_VERSION,
+      seriesAdjustedCount,
       audienceCount: audience.audience.size, audienceRequests: audience.requests, audienceStatus: audience.status,
       gameCount: sources.length,
       discoveredCount,
@@ -157,6 +159,5 @@ export class RefreshPopularityHandler {
 }
 
 function scoreChanged(before: number | null, after: number | null): boolean {
-  if (before === null || after === null) return before !== after;
-  return Math.abs(before - after) > SCORE_EPSILON;
+  return before !== after;
 }

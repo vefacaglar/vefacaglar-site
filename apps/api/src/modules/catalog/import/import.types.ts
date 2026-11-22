@@ -38,7 +38,7 @@ export type PopularityPrimitive = {
   calculatedAt: Date | null;
 };
 
-export type GameRankingMetadata = GameFormatEvidence & { igdbId: number; wikipediaArticle: string | null };
+export type GameRankingMetadata = GameFormatEvidence & { igdbId: number; wikipediaArticle: string | null; primarySeriesId: number | null };
 
 export interface IIgdbClient {
   findGame(query: string): Promise<ImportedGame | null>;

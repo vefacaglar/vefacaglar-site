@@ -1,6 +1,6 @@
 # Game catalog ranking
 
-The default public game list favors currently active campaign and solo games. The ranking version is `current-campaign-interest-v2`, stored on `games.popularity_version` and reported by the registered `catalog.popularity.refresh` job.
+The default public game list favors currently active campaign and solo games. The ranking version is `current-campaign-interest-v3`, stored on `games.popularity_version` and reported by the registered `catalog.popularity.refresh` job.
 
 ## Current evidence
 
@@ -31,6 +31,12 @@ Exact IGDB taxonomy concepts and game modes provide format evidence. The ranking
 Ongoing evidence includes MMO and battle-royale modes, explicit never-ending or esports/ranked-play taxonomy, and the combined user-generated-content plus game-creator tags with multiplayer support. An incidental creation tag, mod support, or sandbox theme alone does not classify a game as ongoing. Campaign evidence uses exact campaign/story-rich/linear-play/endings taxonomy or storyline evidence with single-player support. Single-player-only mode is recognized independently of missing narrative fields. Every measured format retains a positive score, allowing strong current demand to overcome affinity.
 
 Verified single-player support retains the separate, gentle 5% relative preference. The final score is normalized to 0–1. Review totals, game length, release age, private activity, titles, identifiers, and franchise quotas do not enter the algorithm. IGDB completion-time observations were evaluated and omitted because sparse submissions and outliers did not reliably establish campaign format.
+
+## Light series balance
+
+After computing evidence scores, the job diversifies the first 60 positive ranked entries. It uses only a unique most-specific official IGDB Series collection ID, resolved from typed collection memberships and parent-child relations. Ambiguous or missing series memberships stay neutral. Names, publishers, and broader universes do not establish a series.
+
+The first two entries from a series keep their evidence scores. Subsequent entries receive factors of 0.90, 0.80, 0.70, then a 0.65 floor. Strong later entries can still rank highly. The job stores the effective ordering in the canonical score once for the whole catalog. The tail remains unchanged, and head scores stay strictly above its boundary. A tied boundary block is preserved intact; tiny numeric separation keeps internal ties deterministic. This makes pagination use one global ordering across pages and leaves typed-search relevance intact.
 
 ## Bounded operation and fallback
 

@@ -92,7 +92,7 @@ export class IgdbClient implements IIgdbClient {
     if (igdbIds.length > PAGE_SIZE || igdbIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) throw new Error("Invalid IGDB ranking batch");
     const ids = [...new Set(igdbIds)];
     const rows = await this.query<unknown>(GAMES_URL,
-      `fields id,game_modes,keywords.name,storyline,websites.url; where id=(${ids.join(",")}); limit ${PAGE_SIZE};`, signal);
+      `fields id,game_modes,keywords.name,storyline,websites.url,collections.id,collections.type,collections.as_child_relations.parent_collection; where id=(${ids.join(",")}); limit ${PAGE_SIZE};`, signal);
     return parseRankingMetadata(rows, ids);
   }
 

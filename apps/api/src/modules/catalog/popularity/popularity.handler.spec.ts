@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { diversifySeriesHead, SERIES_BALANCE_HEAD_SIZE } from "./series-balance";
 import { RefreshPopularityHandler } from "./popularity.handler";
 import { computePopularityScores, gameFormatAffinity, POPULARITY_RANKING_VERSION, type PopularityInput, type GameFormatEvidence } from "./popularity-score";
 import { GameAudienceService, type GameAudienceResult } from "./game-audience.service";
@@ -134,7 +135,7 @@ describe("verified game source windows", () => {
   });
 
   it("leaves omitted metadata unknown and rejects unsolicited or duplicate identities", () => {
-    expect(parseRankingMetadata([{ id: 1 }], [1, 2])).toEqual([{ igdbId: 1, gameModeIds: null, keywordNames: [], hasStoryline: false, wikipediaArticle: null }]);
+    expect(parseRankingMetadata([{ id: 1 }], [1, 2])).toEqual([{ igdbId: 1, gameModeIds: null, keywordNames: [], hasStoryline: false, wikipediaArticle: null, primarySeriesId: null }]);
     expect(() => parseRankingMetadata([{ id: 3 }], [1])).toThrow();
     expect(() => parseRankingMetadata([{ id: 1 }, { id: 1 }], [1, 2])).toThrow();
   });
@@ -143,6 +144,73 @@ describe("verified game source windows", () => {
     const values = [primitive(5, 5, 100), primitive(3, 3, 100), primitive(4, 4, 100), primitive(1, 1, 100), primitive(2, 1, 100)];
     expect(popularityCandidateIds(values)).toEqual([1, 3, 4, 5, 2]);
     expect(popularityCandidateIds([...values].reverse())).toEqual(popularityCandidateIds(values));
+  });
+});
+
+describe("light global series balance", () => {
+  const sorted = (scores: Map<string, number | null>) => [...scores].sort((left, right) => (right[1] ?? -1) - (left[1] ?? -1) || left[0].localeCompare(right[0], "en"));
+
+  it("leaves the first two strong siblings intact and progressively discounts later ones", () => {
+    const scores = new Map([["a", 1], ["b", 0.99], ["c", 0.95], ["d", 0.90], ["e", 0.85], ["f", 0.80], ["other", 0.88]]);
+    const series = new Map(["a", "b", "c", "d", "e", "f"].map((id) => [id, 10]));
+    const result = diversifySeriesHead(scores, series);
+    expect(result.get("a")).toBe(1);
+    expect(result.get("b")).toBe(0.99);
+    expect(result.get("c")).toBeCloseTo(0.95 * 0.90);
+    expect(result.get("d")).toBeCloseTo(0.90 * 0.80);
+    expect(result.get("e")).toBeCloseTo(0.85 * 0.70);
+    expect(result.get("f")).toBeCloseTo(0.80 * 0.65);
+    expect(result.get("other")).toBe(0.88);
+    expect(sorted(result).slice(0, 4).map(([id]) => id)).toEqual(["a", "b", "other", "c"]);
+  });
+
+  it("allows a strong third sibling to remain high and keeps missing series neutral", () => {
+    const scores = new Map([["a", 1], ["b", 0.99], ["c", 0.98], ["other", 0.70]]);
+    expect(sorted(diversifySeriesHead(scores, new Map([["a", 1], ["b", 1], ["c", 1]]))).slice(0, 3).map(([id]) => id)).toEqual(["a", "b", "c"]);
+    expect(diversifySeriesHead(scores, new Map())).toEqual(scores);
+    expect(diversifySeriesHead(scores, new Map([["a", 1], ["b", 2], ["c", 3]]))).toEqual(scores);
+  });
+
+  it("keeps the tail unchanged and prevents undiscounted tail siblings from undoing head ordering", () => {
+    const rows: [string, number][] = Array.from({ length: 70 }, (_, index) => [`g-${String(index).padStart(3, "0")}`, 1 - index * 0.01]);
+    const scores = new Map(rows);
+    const result = diversifySeriesHead(scores, new Map(rows.map(([id]) => [id, 1])));
+    const ranked = sorted(result);
+    for (const [id, score] of rows.slice(SERIES_BALANCE_HEAD_SIZE)) expect(result.get(id)).toBe(score);
+    expect(ranked.slice(0, SERIES_BALANCE_HEAD_SIZE).every(([id]) => rows.slice(0, SERIES_BALANCE_HEAD_SIZE).some(([source]) => source === id))).toBe(true);
+    expect(ranked[SERIES_BALANCE_HEAD_SIZE - 1][1]!).toBeGreaterThan(rows[SERIES_BALANCE_HEAD_SIZE][1]);
+    for (let index = 1; index < SERIES_BALANCE_HEAD_SIZE; index++) expect(ranked[index - 1][1]!).toBeGreaterThan(ranked[index][1]!);
+    const pages = [ranked.slice(0, 21), ranked.slice(21, 42), ranked.slice(42, 63)].flat().map(([id]) => id);
+    expect(new Set(pages).size).toBe(pages.length);
+  });
+
+  it("is deterministic for internal ties and preserves a tied boundary block", () => {
+    const rows: [string, number][] = [["a", 1], ["b", 0.99], ["c", 0.90], ["tie", 0.81],
+      ...Array.from({ length: 65 }, (_, index): [string, number] => [`tail-${index}`, 0.50])];
+    const series = new Map([["a", 10], ["b", 10], ["c", 10]]);
+    const result = diversifySeriesHead(new Map(rows), series);
+    expect(result).toEqual(diversifySeriesHead(new Map([...rows].reverse()), series));
+    expect(result.get("c")).toBeGreaterThan(result.get("tie")!);
+    for (const [id, score] of rows.slice(4)) expect(result.get(id)).toBe(score);
+  });
+
+  it("preserves scores when a numerically flat head cannot encode strict ordering safely", () => {
+    const rows: [string, number][] = Array.from({ length: 61 }, (_, index) => [`g-${index}`, index === 60 ? 1 - Number.EPSILON : 1]);
+    const scores = new Map(rows);
+    expect(diversifySeriesHead(scores, new Map(rows.map(([id]) => [id, 1])))).toEqual(scores);
+  });
+
+  it("uses typed official collection relations and leaves unrelated or ambiguous memberships unknown", () => {
+    const collection = { id: 7, type: 1 };
+    const specific = { id: 20, type: 1, as_child_relations: [{ parent_collection: 7 }] };
+    const parse = (collections: unknown[]) => parseRankingMetadata([{ id: 1, collections }], [1])[0].primarySeriesId;
+    expect(parse([collection, specific])).toBe(20);
+    expect(parse([specific, collection])).toBe(20);
+    expect(parse([{ id: 8, type: 1 }, collection])).toBeNull();
+    expect(parse([{ id: 8, type: 2 }])).toBeNull();
+    expect(parse([])).toBeNull();
+    expect(() => parse([collection, collection])).toThrow("Duplicate");
+    expect(parseRankingMetadata([{ id: 1, collection: 123, franchise: 456, publisher: 789 }], [1])[0].primarySeriesId).toBeNull();
   });
 });
 
@@ -193,6 +261,19 @@ describe("RefreshPopularityHandler", () => {
     expect(write().scores[0].score).toBeCloseTo(0.35 * 0.65 * 0.85 / 1.05);
     expect(result).toMatchObject({ rankingVersion: POPULARITY_RANKING_VERSION, gameCount: 3, scoredCount: 2, audienceStatus: "unavailable" });
     expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ gameIds: ["g-a", "g-b", "g-c"] }), { throwOnError: undefined });
+  });
+
+  it("persists the diversified canonical score and publishes those effective values", async () => {
+    igdb.listPopularity.mockResolvedValue([primitive(1, 1, 100), primitive(2, 1, 90), primitive(3, 1, 80),
+      primitive(1, 3, 10), primitive(2, 3, 10), primitive(3, 3, 10)]);
+    const metadata = new Map([1, 2, 3].map((id) => [id, { igdbId: id, ...evidence({ gameModeIds: [1] }), wikipediaArticle: null, primarySeriesId: 7 }]));
+    audienceService.prepare.mockResolvedValue({ metadata, audience: new Map(), requests: 0, candidateCount: 3, status: "complete" });
+    const result = await handler.handle();
+    const bases = computePopularityScores([100, 90, 80].map((visits, index) => ({ id: String(index + 1), signals: { visits, playing: 10 }, singlePlayer: true, format: metadata.get(index + 1) })));
+    expect(write().scores.find((row: any) => row.id === "g-c").score).toBeCloseTo(bases.get("3")! * 0.90);
+    expect(result.seriesAdjustedCount).toBe(1);
+    expect(write().rankingVersion).toBe("current-campaign-interest-v3");
+    expect(events.publish).toHaveBeenCalledWith(expect.objectContaining({ gameIds: expect.arrayContaining(["g-c"]) }), { throwOnError: undefined });
   });
 
   it("keeps old scores if global source pagination or metadata fails", async () => {

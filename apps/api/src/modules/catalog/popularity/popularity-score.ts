@@ -1,7 +1,7 @@
 /** Current provider observations. Values are comparable only within one type. */
 export const POPULARITY_TYPE = { VISITS: 1, PLAYING: 3, PLAYED: 4, STEAM_24H_PEAK_PLAYERS: 5 } as const;
 export const REFRESHED_POPULARITY_TYPES: number[] = Object.values(POPULARITY_TYPE);
-export const POPULARITY_RANKING_VERSION = "current-campaign-interest-v2";
+export const POPULARITY_RANKING_VERSION = "current-campaign-interest-v3";
 export const POPULARITY_MAX_AGE_MS = 72 * 60 * 60 * 1000;
 export const SINGLE_PLAYER_BONUS = 0.05;
 const CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
