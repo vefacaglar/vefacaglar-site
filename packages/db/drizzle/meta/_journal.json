@@ -379,6 +379,13 @@
       "when": 1795372462012,
       "tag": "0053_hesitant_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795376351276,
+      "tag": "0054_equal_emma_frost",
+      "breakpoints": true
     }
   ]
 }
