@@ -2,9 +2,9 @@ import Link from "next/link";
 import LibraryMasthead from "../../../components/library/LibraryMasthead";
 import TvSeriesCards from "../../../components/tv-series/TvSeriesCards";
 import TvAttribution from "../../../components/tv-series/TvAttribution";
+import TvSeriesSearch from "../../../components/tv-series/TvSeriesSearch";
 import Pagination from "../../components/Pagination";
 import { getActiveLanguage } from "../../../lib/lang";
-import { localizeHref } from "../../../lib/localizeHref";
 import { getTvSeriesList, tvPage } from "../../../lib/tvSeries";
 import { libraryMetadata } from "../../../lib/librarySeo";
 import styles from "./tv-series.module.css";
@@ -16,11 +16,7 @@ export default async function TvSeriesPage({ searchParams }: { searchParams: Pro
   const [lang, data] = await Promise.all([getActiveLanguage(), getTvSeriesList(page, q || undefined)]);
   return <div>
     <LibraryMasthead title="TV Series" subtitle="Discover series, seasons, and episodes.">
-      <form action={localizeHref("/explore/tv-series", lang)} role="search" className={styles.search}>
-        {lang !== "en" && <input type="hidden" name="lang" value={lang} />}
-        <input type="search" name="q" defaultValue={q} maxLength={140} placeholder="Search TV series" aria-label="Search TV series" className={styles.searchInput} />
-        <button type="submit" className="btnGhost">Search</button>
-      </form>
+      <TvSeriesSearch initialQuery={q} />
     </LibraryMasthead>
     {data?.items.length ? <>
       <TvSeriesCards series={data.items} lang={lang} />
