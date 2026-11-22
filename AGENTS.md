@@ -95,6 +95,7 @@ For `apps/api`, follow the **Feature Folder** / **Handler Pattern** (similar to 
 
 Hangfire-style background jobs; the full spec is [docs/jobs-worker.md](docs/jobs-worker.md).
 
+- **One job owns its work.** Every new or redesigned job must finish its assigned workload end to end under the same `jobs.id`. Keep pagination and batches internal to that run. Never enqueue a successor job or change another registration's schedule to hand off ordinary remaining work. Independent tasks use their own explicit schedules. Persist checkpoints, retry transient failures within the job, honor cancellation, and resume that same ID after interruption. Existing legacy chains are not a template for new designs.
 - **Worker**: `apps/worker` (Rust) claims and runs jobs (LISTEN/poll, heartbeat, checkpoint/resume, cancel, retries, recurring scheduler). Not part of `pnpm dev`; run it with `pnpm --filter worker worker:dev`.
 - **Tables**: `jobs`, `job_logs`, `recurring_jobs`, `workers` — Drizzle schema in `packages/db/src/schema/jobs.ts`. Postgres is the only queue (no Redis).
 - **API**: `apps/api/src/modules/jobs` (admin-only `/api/jobs/dashboard/...`). Enqueue = INSERT + `pg_notify('jobs', id)` + `pg_notify('job_events', id)` in one `this.dbProvider.transaction`.

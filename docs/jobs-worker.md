@@ -63,6 +63,28 @@ Migration `0050_living_miek` moves only the previous default movie popularity cr
 ### `workers`
 `id text pk` (worker id), `hostname text not null`, `version text not null`, `started_at timestamptz not null`, `last_seen_at timestamptz not null`, `concurrency integer`, `active_jobs integer` (both null for older worker versions). Online = `last_seen_at` within 30 s. Maintenance removes rows last seen more than one hour ago, except workers still holding a running job. Jobs/logs retain their history independently of worker rows.
 
+## Work ownership
+
+Every new or redesigned job owns its assigned work end to end under one `jobs.id`.
+Pagination and batching happen inside the run. Ordinary remaining work must never
+be handed to a successor job or trigger a change to another registration's
+`next_run_at`. Independent import, ranking, enrichment and search tasks run from
+their own explicit schedules. Durable checkpoints, transient retry, cancellation
+and resuming the same ID after shutdown or lease recovery are supported.
+
+TV catalog, cast and search runs persist their finite work membership and progress
+in `tv_job_campaigns` / `tv_job_campaign_items`. Their Node children receive
+`VEFA_JOB_ID` and `VEFA_JOB_WORKER_ID`; campaign writes are fenced by the held job
+lease. Internal batch sizes bound individual writes, not the total run lifetime.
+The Rust TV CLI policies have no total runtime deadline and cannot request
+successor creation. Individual provider requests still have deadlines and shared
+rate limits. A run may span hours or days while its heartbeat remains healthy.
+
+The existing movie English-title and movie-search continuation paths retain their
+legacy behavior in this TV-focused change. They are not an approved template for
+new or redesigned jobs. Ordinary movie catalog sync keeps its existing runtime
+policy. No other domain's runtime or schedule is changed by the TV lifecycle fix.
+
 ## Worker semantics (`apps/worker`)
 
 One production process runs independent handlers asynchronously. `WORKER_CONCURRENCY`
@@ -104,6 +126,7 @@ draining and active generations share the new generation’s configured global a
 - **Failure**: error → if `attempts < max_attempts`, `status='queued'`, `run_at = now() + 30s * 2^(attempts-1)`, checkpoint kept; else `status='failed'`, `finished_at=now()`. `error` holds the message; a log line is written.
 - **Success**: `status='succeeded'`, `finished_at=now()`, `checkpoint=null`.
 - **Scheduler**: every 30 s, lock due `recurring_jobs` (`enabled AND cron IS NOT NULL AND (next_run_at IS NULL OR next_run_at <= now())`, `FOR UPDATE SKIP LOCKED`) — rows with `cron IS NULL` are manual-only and must be ignored entirely (`cron` is nullable, so decode it as an optional value); if `next_run_at` is null just compute it; otherwise insert a job (respecting `concurrency_key`). If a different job holding the same `concurrency_key` is currently active, `scheduler.rs` defers the recurring job by leaving `next_run_at` pending instead of advancing it and skipping the day/slot; once enqueued, it sets `last_enqueued_at`, `last_job_id`, and the next `next_run_at`. Invalid cron → log and skip.
+- **Long TV schedules**: a queued retry or running job of the same type/key consumes its due occurrence, so the scheduler advances to the next future cron without adding another run. A TV run that finishes while its old generation is draining also covers missed occurrences until the next cron boundary. Genuine later downtime still collapses into one catch-up run. The worker does not mutate or erase older job history during this handover.
 - **Seeding**: none in the worker. Registered jobs are seeded by the DB migration (see `recurring_jobs`); the old built-in `search.reindex.daily` (cron `0 3 * * *`) is gone.
 - **Extensibility**: a `JobHandler` trait + registry; adding a job type = one module implementing the trait + one registration line. Handlers get a context with `progress()`, `log()`, `checkpoint()`, `should_stop()` (shutdown or cancel).
 
@@ -266,6 +289,6 @@ Provider references are [Backloggd Terms](https://backloggd.com/about/terms-of-s
 
 ## TV series jobs
 
-The independent `catalog.tv-series.sync`, `catalog.tv-series.popularity.refresh`, and `search.tv-series.sync` registrations import normalized TVmaze shows/seasons/episodes, publish verified daily popularity, and maintain the dedicated TV index. Their enabled UTC schedules, initial run order, source licensing, bounded continuation and recovery behavior are documented in [TV series catalog](tv-series.md). They share no concurrency key or index with game/movie jobs.
+The independent `catalog.tv-series.sync`, `catalog.tv-series.popularity.refresh`, and `search.tv-series.sync` registrations import normalized TVmaze shows/seasons/episodes, publish verified daily popularity, and maintain the dedicated TV index. Their enabled UTC schedules, initial run order, source licensing, same-ID internal batching and recovery behavior are documented in [TV series catalog](tv-series.md). They share no concurrency key or index with game/movie jobs.
 
-`catalog.tv-series.cast.refresh` additionally enriches official show-level main cast, reuses verified shared movie people, and preserves UUID aliases when a later identity proof merges a TV-only person. It has its own bounded continuation key and a shared TVmaze provider gate with catalog sync. See [TV cast identity and rollout notes](tv-series.md#main-cast-and-shared-actor-profiles).
+`catalog.tv-series.cast.refresh` additionally enriches official show-level main cast, reuses verified shared movie people, and preserves UUID aliases when a later identity proof merges a TV-only person. It has an independent concurrency key and runs internal batches under one durable job ID, sharing the TVmaze provider gate with catalog sync. See [TV cast identity and rollout notes](tv-series.md#main-cast-and-shared-actor-profiles).
