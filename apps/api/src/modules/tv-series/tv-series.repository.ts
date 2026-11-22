@@ -44,12 +44,12 @@ export class DrizzleTvSeriesRepository implements ITvSeriesRepository {
     if (q && !/[\p{L}\p{N}]/u.test(q)) return { items: [], total: 0, ranking: publication.ranking };
     const titleMatch = q ? sql`strpos(lower(${tvSeries.name}), lower(${q})) > 0` : undefined;
     const where = and(eq(tvSeries.isDeleted, false), titleMatch);
-    const score = publication.ranking.isFresh
-      ? sql`case when ${tvSeries.popularityGeneration} = ${publication.generation} then coalesce(${tvSeries.popularityScore}, 0) else 0 end`
-      : sql`0`;
+    const order = publication.ranking.isFresh
+      ? [sql`case when ${tvSeries.popularityGeneration} = ${publication.generation} then coalesce(${tvSeries.popularityScore}, 0) else 0 end desc`, sql`lower(${tvSeries.name}) asc`, asc(tvSeries.id)]
+      : [sql`lower(${tvSeries.name}) asc`, asc(tvSeries.id)];
     const [rows, totals] = await Promise.all([
       this.dbProvider.client.select().from(tvSeries).where(where)
-        .orderBy(sql`${score} desc`, sql`lower(${tvSeries.name}) asc`, asc(tvSeries.id)).limit(filter.limit).offset((filter.page - 1) * filter.limit),
+        .orderBy(...order).limit(filter.limit).offset((filter.page - 1) * filter.limit),
       this.dbProvider.client.select({ total: sql<number>`count(*)::int` }).from(tvSeries).where(where),
     ]);
     return { items: await this.cards(rows), total: totals[0]?.total ?? 0, ranking: publication.ranking };
