@@ -85,6 +85,16 @@ describe("ImportGameHandler", () => {
     gamesRepo.findByIds.mockResolvedValue([{ ...existingGame, ...indexed, ...record }]);
   };
 
+  it("writes raw page progress even when every source was filtered out", async () => {
+    await handler.importPage([], { crawlProgress: { afterId: 500, lastId: 1000 } });
+    expect(lastWrite()).toMatchObject({ newGames: [], crawlProgress: { afterId: 500, lastId: 1000 } });
+  });
+
+  it("never commits dry-run crawl progress", async () => {
+    await handler.importPage([igdbGame], { dryRun: true, crawlProgress: { afterId: 0, lastId: 500 } });
+    expect(gamesRepo.writeImportPage).not.toHaveBeenCalled();
+  });
+
   it("returns not_found when IGDB has no match", async () => {
     igdb.findGame.mockResolvedValue(null);
 

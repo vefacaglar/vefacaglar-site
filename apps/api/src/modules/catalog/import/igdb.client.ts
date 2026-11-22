@@ -118,7 +118,9 @@ export class IgdbClient implements IIgdbClient {
       const res = await fetch(url, { method: "POST", headers: await this.authHeaders(requestSignal), body, signal: requestSignal });
       // 429 means we went over 4 req/s; back off briefly and retry.
       if (res.status === 429 && attempt < 5) {
-        await sleep(1000 * (attempt + 1), signal);
+        const retryAfterSeconds = Number(res.headers.get("retry-after"));
+        const providerDelay = Number.isFinite(retryAfterSeconds) ? retryAfterSeconds * 1000 : 0;
+        await sleep(Math.min(60_000, Math.max(providerDelay, 1000 * 2 ** attempt)), signal);
         continue;
       }
       if (!res.ok) throw new Error(`IGDB request failed: ${res.status} ${await res.text()}`);
@@ -128,7 +130,9 @@ export class IgdbClient implements IIgdbClient {
 
   /** Spaces requests out so callers never exceed IGDB's 4 req/s limit. */
   private async throttle(): Promise<void> {
-    const wait = this.lastRequestAt + MIN_REQUEST_INTERVAL_MS - Date.now();
+    const configured = Number(process.env.IGDB_REQUEST_INTERVAL_MS);
+    const interval = Number.isFinite(configured) ? Math.max(MIN_REQUEST_INTERVAL_MS, Math.min(configured, 10_000)) : MIN_REQUEST_INTERVAL_MS;
+    const wait = this.lastRequestAt + interval - Date.now();
     if (wait > 0) await sleep(wait);
     this.lastRequestAt = Date.now();
   }

@@ -321,3 +321,10 @@ export const hltbProviderState = pgTable('hltb_provider_state', {
   nextRequestAt: timestamp('next_request_at', { withTimezone: true, mode: 'date' }).notNull(),
   cooldownUntil: timestamp('cooldown_until', { withTimezone: true, mode: 'date' }),
 });
+
+// Durable raw IGDB ID cursor, committed with each imported page.
+export const catalogImportState = pgTable('catalog_import_state', {
+  id: varchar('id', { length: 32 }).primaryKey(),
+  lastId: integer('last_id').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});

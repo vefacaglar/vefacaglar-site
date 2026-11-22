@@ -11,6 +11,7 @@ import {
   gamePlatforms,
   gameThemes,
   gamePopularitySignals,
+  catalogImportState,
 } from "@vefacaglar/db";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql, type SQL } from "drizzle-orm";
 import { injectable } from "tsyringe";
@@ -624,9 +625,26 @@ export class DrizzleGamesRepository implements IGamesRepository {
     });
   }
 
+  async readImportCursor(): Promise<number> {
+    const [state] = await this.dbProvider.client.select({ lastId: catalogImportState.lastId })
+      .from(catalogImportState).where(eq(catalogImportState.id, "igdb"));
+    return state?.lastId ?? 0;
+  }
+
   async writeImportPage(write: CatalogImportWrite): Promise<CatalogImportWriteResult> {
     return this.dbProvider.transaction(async () => {
       const db = this.dbProvider.client;
+
+      if (write.crawlProgress) {
+        const { afterId, lastId } = write.crawlProgress;
+        if (!Number.isSafeInteger(afterId) || !Number.isSafeInteger(lastId) || afterId < 0 || lastId <= afterId) {
+          throw new Error("Invalid catalog crawl progress");
+        }
+        await db.insert(catalogImportState).values({ id: "igdb" }).onConflictDoNothing();
+        const [state] = await db.select().from(catalogImportState)
+          .where(eq(catalogImportState.id, "igdb")).for("update");
+        if (state.lastId !== afterId) throw new Error("Catalog cursor changed; retry from committed progress");
+      }
 
       // Queries without a data dependency are issued together: postgres.js
       // pipelines them on the transaction's connection, so a page pays a few
@@ -682,6 +700,10 @@ export class DrizzleGamesRepository implements IGamesRepository {
         }
       }));
 
+      if (write.crawlProgress) {
+        await db.update(catalogImportState).set({ lastId: write.crawlProgress.lastId, updatedAt: new Date() })
+          .where(eq(catalogImportState.id, "igdb"));
+      }
       return { insertedGameIds, lookups };
     });
   }

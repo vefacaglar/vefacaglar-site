@@ -24,6 +24,11 @@ const SEARCH_INDEX_CONCURRENCY_KEY = "search.index";
 const EmptyPayloadSchema = Type.Object({}, { additionalProperties: false });
 
 export const JOB_TYPES = {
+  "catalog.games.import": defineJobType({
+    description: "Collect the IGDB game catalog in ascending ID order, resuming durable progress after interruptions. Runs every six hours for up to 330 minutes.",
+    payloadSchema: EmptyPayloadSchema,
+    concurrencyKey: () => "catalog.games.import",
+  }),
   "search.reindex": defineJobType({
     description:
       "Full search reindex: builds new timestamped collections for games, catalog facets, and posts (movies have a dedicated sync), loads all documents, then swaps all aliases at once and deletes the old collections.",

@@ -4,6 +4,11 @@ name: Catalog import checkpoint export
 # cached cursor has been exported and seeded into its durable database state.
 on:
   workflow_dispatch:
+    inputs:
+      seed_database:
+        description: Seed the migrated disabled worker registration from the restored checkpoint
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +20,7 @@ concurrency:
 jobs:
   export:
     runs-on: ubuntu-latest
+    environment: api-production
     steps:
       - name: Restore crawl progress
         uses: actions/cache/restore@v4
@@ -34,3 +40,25 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
+      - name: Seed the worker checkpoint
+        if: inputs.seed_database
+        env:
+          DATABASE_URL: ${{ secrets.CATALOG_IMPORT_DATABASE_URL || secrets.DATABASE_URL }}
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL"
+          cursor=$(node -e 'const s = require("./apps/api/.catalog-import-state.json"); if (!Number.isSafeInteger(s.lastId) || s.lastId < 0) throw new Error("Invalid cursor"); console.log(s.lastId)')
+          psql "$DATABASE_URL" --no-psqlrc --set ON_ERROR_STOP=1 --set last_id="$cursor" <<'SQL'
+          BEGIN;
+          SELECT id FROM recurring_jobs WHERE id='catalog.games.import' FOR UPDATE;
+          UPDATE catalog_import_state SET last_id=:'last_id'::integer,updated_at=now()
+          WHERE id='igdb' AND last_id IN (0, :'last_id'::integer)
+            AND EXISTS (SELECT 1 FROM recurring_jobs WHERE id='catalog.games.import' AND type='catalog.games.import' AND enabled=false)
+            AND NOT EXISTS (SELECT 1 FROM jobs WHERE type='catalog.games.import');
+          SELECT 1 / CASE WHEN EXISTS (
+            SELECT 1 FROM catalog_import_state WHERE id='igdb' AND last_id=:'last_id'::integer
+          ) AND EXISTS (
+            SELECT 1 FROM recurring_jobs WHERE id='catalog.games.import' AND type='catalog.games.import' AND enabled=false
+          ) AND NOT EXISTS (SELECT 1 FROM jobs WHERE type='catalog.games.import') THEN 1 ELSE 0 END AS checkpoint_verified;
+          COMMIT;
+          SQL

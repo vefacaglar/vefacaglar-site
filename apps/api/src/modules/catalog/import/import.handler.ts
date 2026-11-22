@@ -22,6 +22,7 @@ import {
 
 export type ImportOptions = {
   dryRun?: boolean;
+  crawlProgress?: { afterId: number; lastId: number };
 };
 
 export type ImportStatus = "created" | "updated" | "skipped" | "not_found" | "failed";
@@ -110,6 +111,7 @@ export class ImportGameHandler {
       newGames: [],
       gameUpdates: [],
       links: byLookupKind(() => []),
+      crawlProgress: options.crawlProgress,
     };
     const results: ImportResult[] = [];
     const newGameResults = new Map<string, ImportResult>();

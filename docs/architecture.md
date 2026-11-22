@@ -69,8 +69,8 @@ semantics, see [jobs-worker.md](jobs-worker.md).
 images, and applies pending migrations on `main` when an API image is built
 and API or worker deployment is enabled. The web,
 API and worker are deployed through their respective Docker workflows behind
-Caddy. `.github/workflows/catalog-import.yml` schedules the IGDB import every six
-hours. See the [web](../deploy/web/README.md), [API](../deploy/api/README.md)
+Caddy. The registered `catalog.games.import` worker job collects the IGDB catalog every six
+hours with an atomic database cursor. See the [web](../deploy/web/README.md), [API](../deploy/api/README.md)
 and [worker](../deploy/worker/README.md) deployment guides for current rollout,
 configuration and recovery details.
 

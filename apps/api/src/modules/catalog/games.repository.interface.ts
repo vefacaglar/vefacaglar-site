@@ -33,6 +33,7 @@ export type CatalogImportWrite = {
   gameUpdates: { id: string; patch: Partial<NewGame> }[];
   /** Game-to-lookup links by lookup slug; links that already exist are kept. */
   links: Record<CatalogLookupKind, { gameId: string; slug: string }[]>;
+  crawlProgress?: { afterId: number; lastId: number };
 };
 
 export type CatalogImportWriteResult = {
@@ -166,6 +167,7 @@ export interface IGamesRepository {
   writePopularity(write: PopularityWrite): Promise<void>;
 
   /** Bulk-writes one import page in a single transaction. Publishes no events. */
+  readImportCursor(): Promise<number>;
   writeImportPage(write: CatalogImportWrite): Promise<CatalogImportWriteResult>;
 
   linkDeveloper(gameId: string, developerId: string): Promise<void>;

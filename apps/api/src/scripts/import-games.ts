@@ -8,6 +8,8 @@ dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 import { container } from "../container";
 import { ImportGameHandler, type ImportOptions, type ImportResult, type ImportStatus } from "../modules/catalog/import/import.handler";
 import { IGDB_CLIENT } from "../modules/catalog/import/import.tokens";
+import { GAMES_REPOSITORY } from "../modules/catalog/catalog.tokens";
+import type { IGamesRepository } from "../modules/catalog/games.repository.interface";
 import type { IIgdbClient } from "../modules/catalog/import/import.types";
 
 // IGDB requests are throttled to stay under its 4 req/s limit.
@@ -26,12 +28,14 @@ options:
   --min-ratings N  --all only: skip games with fewer than N IGDB ratings
   --max N          --all only: stop after N games
   --max-minutes N  --all only: stop cleanly after N minutes (for CI job time limits)
-  --restart        --all only: ignore saved progress and start from the beginning`;
+  --restart        --all only: ignore saved file progress and start from the beginning
+  --database-cursor --all only: use atomic database progress (worker mode)`;
 
 type Args = {
   titles: string[];
   all: boolean;
   restart: boolean;
+  databaseCursor: boolean;
   minRatings?: number;
   max?: number;
   maxMinutes?: number;
@@ -44,7 +48,7 @@ function usage(): never {
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { titles: [], all: false, restart: false, options: {} };
+  const args: Args = { titles: [], all: false, restart: false, databaseCursor: false, options: {} };
   const numberArg = (value: string | undefined): number => {
     const n = Number(value);
     if (!Number.isInteger(n) || n < 0) usage();
@@ -58,6 +62,7 @@ function parseArgs(argv: string[]): Args {
       case "--skip-hltb": break;
       case "--all": args.all = true; break;
       case "--restart": args.restart = true; break;
+      case "--database-cursor": args.databaseCursor = true; break;
       case "--min-ratings": args.minRatings = numberArg(argv[++i]); break;
       case "--max": args.max = numberArg(argv[++i]); break;
       case "--max-minutes": args.maxMinutes = numberArg(argv[++i]); break;
@@ -76,6 +81,7 @@ function parseArgs(argv: string[]): Args {
 
   args.titles = [...new Set(args.titles)];
   if (args.all === (args.titles.length > 0)) usage();
+  if (args.databaseCursor && (!args.all || args.restart || args.options.dryRun)) usage();
   return args;
 }
 
@@ -97,7 +103,9 @@ async function importTitles(handler: ImportGameHandler, args: Args, counts: Reco
 
 function readState(): number {
   try {
-    return (JSON.parse(fs.readFileSync(STATE_FILE, "utf8")) as { lastId: number }).lastId;
+    const { lastId } = JSON.parse(fs.readFileSync(STATE_FILE, "utf8")) as { lastId: number };
+    if (!Number.isSafeInteger(lastId) || lastId < 0) throw new Error("Invalid saved catalog cursor");
+    return lastId;
   } catch {
     return 0;
   }
@@ -107,7 +115,8 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
   const igdb = container.resolve<IIgdbClient>(IGDB_CLIENT);
   // Dry runs never persist progress, so they always start where the real crawl is.
   const persist = !args.options.dryRun;
-  let afterId = args.restart ? 0 : readState();
+  const repo = container.resolve<IGamesRepository>(GAMES_REPOSITORY);
+  let afterId = args.databaseCursor ? await repo.readImportCursor() : args.restart ? 0 : readState();
   let processed = 0;
   const deadline = args.maxMinutes === undefined ? Infinity : Date.now() + args.maxMinutes * 60_000;
   const limitReached = () => (args.max !== undefined && processed >= args.max) || Date.now() >= deadline;
@@ -123,15 +132,23 @@ async function crawlCatalog(handler: ImportGameHandler, args: Args, counts: Reco
     // The whole page is written in one transaction. If that throws, the error
     // ends the run before progress is saved, so the next run retries this page.
     const games = args.max === undefined ? page.games : page.games.slice(0, args.max - processed);
-    const results = await handler.importPage(games, args.options);
-    for (const result of results) logResult(result, counts);
+    const fullPage = games.length === page.games.length;
+    const results = await handler.importPage(games, { ...args.options,
+      ...(args.databaseCursor && fullPage ? { crawlProgress: { afterId, lastId: page.lastId } } : {}),
+    });
+    if (args.databaseCursor) {
+      for (const result of results) counts[result.status]++;
+      console.log(`[catalog:import] page afterId=${afterId} lastId=${page.lastId} eligible=${games.length} totals=${JSON.stringify(counts)}`);
+    } else {
+      for (const result of results) logResult(result, counts);
+    }
     processed += games.length;
 
     // Progress is saved per finished page; a page cut short by --max is re-run
     // next time, which is safe because already-imported games come back as "skipped".
     if (games.length === page.games.length) {
       afterId = page.lastId;
-      if (persist) fs.writeFileSync(STATE_FILE, JSON.stringify({ lastId: afterId }));
+      if (persist && !args.databaseCursor) fs.writeFileSync(STATE_FILE, JSON.stringify({ lastId: afterId }));
     }
     await sleep(IGDB_PAGE_DELAY_MS);
   }

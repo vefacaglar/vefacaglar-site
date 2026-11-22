@@ -217,3 +217,13 @@ Image: `ghcr.io/<repo>-worker`, built and deployed by
 `RUST_LOG`. Logs are JSON lines on stdout ([application logs](application-logs.md)).
 
 Local: `pnpm --filter worker worker:dev` (deliberately not part of `pnpm dev`). Check the configured database and service URLs first; the worker can run jobs against them.
+
+## Game catalog collection
+
+`catalog.games.import` replaces the former GitHub Actions collector. Its registered cron is `0 */6 * * *` UTC, payload `{}`, and concurrency key `catalog.games.import`. Each run invokes the existing canonical importer for up to 330 minutes. It scans ascending raw IGDB IDs, keeps curated fields, imports eligible remakes, publishes the existing incremental search events, and resumes from `catalog_import_state.id = 'igdb'`. A page and its raw cursor commit together through `DbProvider`; even a page with no eligible games advances. A failed page rolls back both. An overlapping process with an outdated cursor fails before writes.
+
+The worker uses the same IGDB and Meilisearch environment as popularity refresh. Collection limits itself to one provider request per second and uses bounded exponential backoff on IGDB 429 responses (including Retry-After). The independent concurrency key permits search and popularity jobs to continue; provider-wide throttling can still delay concurrent runs. Cancellation kills and reaps the Node child while its independent worker heartbeat stays active. The next attempt resumes the last committed page.
+
+Migration `0047_free_dorian_gray` creates zero progress and a disabled six-hour registration. For existing production, restore the old Actions checkpoint and seed it once while the registration is disabled and no importer run exists, then enable it in Registered jobs. Fresh installations can enable immediately to scan idempotently from zero. Never infer progress from `MAX(games.igdb_id)` because targeted popularity discovery may have inserted higher IDs. The temporary manual-only checkpoint bridge is removed after the production transfer.
+
+The same migration changes the old five-minute `search.movies.sync` default to `50 7 * * *` UTC. Source changes persist dirty revisions without moving this schedule. One daily/manual campaign may have bounded continuation jobs until its index is complete.
