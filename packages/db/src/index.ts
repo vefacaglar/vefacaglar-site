@@ -8,6 +8,8 @@ import * as sessionsSchema from './schema/sessions';
 import * as localizationsSchema from './schema/localizations';
 import * as gamesSchema from './schema/games';
 import * as tvSeriesSchema from './schema/tv-series';
+import * as peopleSchema from './schema/people';
+import * as tvCastSchema from './schema/tv-cast';
 import * as tvPreferencesSchema from './schema/tv-series-preferences';
 import * as completionTimesSchema from './schema/game-completion-times';
 import * as completionSourcesSchema from './schema/game-completion-sources';
@@ -25,6 +27,8 @@ export * from './schema/sessions';
 export * from './schema/localizations';
 export * from './schema/games';
 export * from './schema/tv-series';
+export * from './schema/people';
+export * from './schema/tv-cast';
 export * from './schema/tv-series-preferences';
 export * from './schema/game-completion-times';
 export * from './schema/game-completion-sources';
@@ -42,6 +46,8 @@ export const schema = {
   ...localizationsSchema,
   ...gamesSchema,
   ...tvSeriesSchema,
+  ...peopleSchema,
+  ...tvCastSchema,
   ...tvPreferencesSchema,
   ...completionTimesSchema,
   ...completionSourcesSchema,

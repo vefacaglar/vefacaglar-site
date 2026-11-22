@@ -11,6 +11,8 @@ export const tvSeries = pgTable("tv_series", {
   network: text("network"), webChannel: text("web_channel"),
   rating: doublePrecision("rating"), sourceUrl: text("source_url").notNull(), officialSite: text("official_site"),
   isDeleted: boolean("is_deleted").notNull().default(false),
+  castComplete: boolean("cast_complete").notNull().default(false),
+  castUpdatedAt: timestamp("cast_updated_at", { withTimezone: true, mode: "date" }),
   hierarchyComplete: boolean("hierarchy_complete").notNull().default(false),
   hierarchyUpdatedAt: timestamp("hierarchy_updated_at", { withTimezone: true, mode: "date" }),
   seasonCount: integer("season_count").notNull().default(0),
@@ -52,6 +54,7 @@ export const tvSourceState = pgTable("tv_source_state", {
   indexStartedAt: timestamp("index_started_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   catalogCompletedAt: timestamp("catalog_completed_at", { withTimezone: true, mode: "date" }),
   updatesCheckedAt: timestamp("updates_checked_at", { withTimezone: true, mode: "date" }),
+  nextRequestAt: timestamp("next_request_at", { withTimezone: true, mode: "date" }),
   cooldownUntil: timestamp("cooldown_until", { withTimezone: true, mode: "date" }),
 });
 export const tvRefreshQueue = pgTable("tv_refresh_queue", {

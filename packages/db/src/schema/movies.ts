@@ -70,7 +70,7 @@ export const movies = pgTable('movies', {
 
 export const moviePeople = pgTable('movie_people', {
   id: uuid('id').primaryKey().defaultRandom(),
-  wikidataId: varchar('wikidata_id', { length: 24 }).notNull().unique(),
+  wikidataId: varchar('wikidata_id', { length: 24 }).unique(),
   name: text('name'),
   labelCheckedAt: timestamp('label_checked_at', { withTimezone: true, mode: 'date' }),
 }, (table) => ({
