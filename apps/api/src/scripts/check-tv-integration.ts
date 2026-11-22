@@ -47,6 +47,25 @@ async function main() {
     await repository.updates([{ id: 1, updatedAt: new Date() }], new Date());
     await repository.hierarchy({ seriesId: 1, requestedAt: new Date(Date.now() - 60000) }, hierarchy, new Date());
     assert.equal((await db.execute(sql`select count(*)::int n from tv_refresh_queue where series_id=1`))[0].n, 1);
+    // Hierarchy refresh and confirmed-404 acknowledgements use the same
+    // lossless timestamp contract as cast, including sub-millisecond races.
+    const stamp="2026-11-22 21:00:00.123456+00";
+    await db.execute(sql`update tv_refresh_queue set requested_at=${stamp}::timestamptz,due_at=now()-interval '1 second' where series_id=1`);
+    const micro=(await repository.candidates(10000,new Date())).find(row=>row.seriesId===1)!;
+    assert.equal(typeof micro.requestedAt,"string");
+    assert.ok(String(micro.requestedAt).includes(".123456"));
+    await db.execute(sql`update tv_refresh_queue set requested_at=requested_at+interval '1 microsecond' where series_id=1`);
+    await repository.hierarchy(micro,hierarchy,new Date());
+    assert.equal((await db.execute(sql`select count(*)::int n from tv_refresh_queue where series_id=1`))[0].n,1);
+    const nextMicro=(await repository.candidates(10000,new Date())).find(row=>row.seriesId===1)!;
+    assert.ok(String(nextMicro.requestedAt).includes(".123457"));
+    await repository.hierarchy(nextMicro,hierarchy,new Date());
+    assert.ok(!(await repository.candidates(10000,new Date())).some(row=>row.seriesId===1));
+    await db.execute(sql`insert into tv_refresh_queue(series_id,requested_at,due_at)values(1,${stamp}::timestamptz,now()-interval '1 second')`);
+    const missing=(await repository.candidates(10000,new Date())).find(row=>row.seriesId===1)!;
+    await repository.missing(missing,new Date());
+    assert.equal((await db.execute(sql`select count(*)::int n from tv_refresh_queue where series_id=1`))[0].n,0);
+    await repository.hierarchy({seriesId:1,requestedAt:new Date()},hierarchy,new Date());
     const otherShow = { ...show, id: 2, name: "Other series", sourceUrl: "https://www.tvmaze.com/shows/2/other" };
     await assert.rejects(() => repository.hierarchy({ seriesId: 2, requestedAt: new Date() }, {
       show: otherShow, seasons: [{ ...hierarchy.seasons[0], id: 20, seriesId: 2 }],
@@ -82,7 +101,7 @@ async function main() {
     await handler.handle();
     const after = await fetch(process.env.MEILISEARCH_URL + "/indexes/tv_series_en/search", { method: "POST", headers: { Authorization: `Bearer ${process.env.MEILISEARCH_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ q: "Fixture", filter: 'kind = "series"', page: 1, hitsPerPage: 10 }) }).then((response) => response.json()) as any;
     assert.equal(after.totalHits, 0);
-    console.log("TV integration passed: raw-page cursor rollback, null/zero ratings, orphan specials, atomic hierarchy retention, concurrent refresh/dirty preservation, real Meili publication, swap crash recovery and deletion");
+    console.log("TV integration passed: lossless microsecond hierarchy/404 ACK and concurrent wake retention, raw-page cursor rollback, null/zero ratings, orphan specials, atomic hierarchy retention, concurrent refresh/dirty preservation, real Meili publication, swap crash recovery and deletion");
   } finally { await client.end({ timeout: 3 }); }
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

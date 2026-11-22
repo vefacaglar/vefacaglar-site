@@ -21,13 +21,13 @@ export class DrizzleTvCastRepository implements ITvCastRepository {
   }
   async candidates(limit:number,now:Date):Promise<TvCastItem[]> {
     const db=this.dbProvider.client;
-    const hot=await db.execute(sql`select q.series_id,q.requested_at,t.source_url from ${tvCastQueue} q join ${tvSeries} t on t.id=q.series_id
+    const hot=await db.execute(sql`select q.series_id,q.requested_at::text as requested_at,t.source_url from ${tvCastQueue} q join ${tvSeries} t on t.id=q.series_id
       where q.due_at<=${now.toISOString()}::timestamptz and not t.is_deleted order by t.popularity_score desc nulls last,q.requested_at,q.series_id limit ${Math.ceil(limit/2)}`);
     const hotIds=hot.map(row=>Number(row.series_id));
-    const older=await db.execute(sql`select q.series_id,q.requested_at,t.source_url from ${tvCastQueue} q join ${tvSeries} t on t.id=q.series_id
+    const older=await db.execute(sql`select q.series_id,q.requested_at::text as requested_at,t.source_url from ${tvCastQueue} q join ${tvSeries} t on t.id=q.series_id
       where q.due_at<=${now.toISOString()}::timestamptz and not t.is_deleted ${hotIds.length?sql`and q.series_id<>all(${`{${hotIds.join(",")}}`}::int[])`:sql``}
       order by q.requested_at,q.series_id limit ${limit-hot.length}`);
-    return [...hot,...older].map(row=>({seriesId:Number(row.series_id),sourceUrl:String(row.source_url),requestedAt:row.requested_at instanceof Date?row.requested_at:new Date(String(row.requested_at))}));
+    return [...hot,...older].map(row=>({seriesId:Number(row.series_id),sourceUrl:String(row.source_url),requestedAt:String(row.requested_at)}));
   }
   async identityCandidates(ids:number[],before:Date) {
     if(!ids.length)return[];
@@ -57,7 +57,7 @@ export class DrizzleTvCastRepository implements ITvCastRepository {
       await db.delete(tvCast).where(eq(tvCast.seriesId,item.seriesId));
       for(let offset=0;offset<rows.length;offset+=250)await db.insert(tvCast).values(rows.slice(offset,offset+250).map(row=>({seriesId:item.seriesId,personId:people.get(row.person.externalId)!,characterId:row.characterId,characterName:row.characterName,characterSourceUrl:row.characterSourceUrl,castOrder:row.castOrder,self:row.self,voice:row.voice,sourceUrl:item.sourceUrl,fetchedAt:at})));
       await db.update(tvSeries).set({castComplete:true,castUpdatedAt:at}).where(eq(tvSeries.id,item.seriesId));
-      await db.delete(tvCastQueue).where(and(eq(tvCastQueue.seriesId,item.seriesId),lte(tvCastQueue.requestedAt,item.requestedAt)));
+      await db.delete(tvCastQueue).where(and(eq(tvCastQueue.seriesId,item.seriesId),sql`${tvCastQueue.requestedAt}<=${item.requestedAt instanceof Date?item.requestedAt.toISOString():item.requestedAt}::timestamptz`));
       return {people:people.size,matched,merged};
     });
   }

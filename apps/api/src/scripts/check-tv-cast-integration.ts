@@ -26,6 +26,26 @@ async function main() {
     const [unknown]=await db.execute(sql`select p.id,p.wikidata_id from movie_people p join movie_person_sources s on s.person_id=p.id where s.external_id='2147481110'`);
     assert.equal(unknown.wikidata_id,null);
     assert.equal((await db.execute(sql`select count(*)::int n from tv_cast where series_id=${id}`))[0].n,2);
+    // PostgreSQL keeps microseconds; Date truncation previously reselected the
+    // same ten successful titles forever. Capture and acknowledge raw text.
+    const stamp="2026-11-22 21:00:00.123456+00";
+    await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values(${id},${stamp}::timestamptz,now()-interval '1 second') on conflict(series_id)do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
+    const micro=(await repository.candidates(10000,new Date())).find(row=>row.seriesId===id)!;
+    assert.equal(typeof micro.requestedAt,"string");
+    assert.ok(String(micro.requestedAt).includes(".123456"));
+    const [legacy]=await db.execute(sql`select requested_at<=${new Date(micro.requestedAt).toISOString()}::timestamptz as would_ack from tv_cast_queue where series_id=${id}`);
+    assert.equal(legacy.would_ack,false,"regression must reproduce the former millisecond ACK failure");
+    await repository.publish(micro,rows,new Map(),at,new Date());
+    assert.ok(!(await repository.candidates(10000,new Date())).some(row=>row.seriesId===id),"successful cast must leave the candidate pool");
+    await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values(${id},${stamp}::timestamptz,now()-interval '1 second')`);
+    const oldMicro=(await repository.candidates(10000,new Date())).find(row=>row.seriesId===id)!;
+    await db.execute(sql`update tv_cast_queue set requested_at=requested_at+interval '1 microsecond' where series_id=${id}`);
+    await repository.publish(oldMicro,rows,new Map(),at,new Date());
+    assert.equal((await db.execute(sql`select count(*)::int n from tv_cast_queue where series_id=${id}`))[0].n,1,"a one-microsecond newer wake must survive");
+    const newMicro=(await repository.candidates(10000,new Date())).find(row=>row.seriesId===id)!;
+    assert.ok(String(newMicro.requestedAt).includes(".123457"));
+    await repository.publish(newMicro,rows,new Map(),at,new Date());
+    assert.equal((await db.execute(sql`select count(*)::int n from tv_cast_queue where series_id=${id}`))[0].n,0);
     // Film ingestion remains QID-based and never claims people by their names.
     const qid="Q2147481110",movieQid="Q2147481111";
     await db.execute(sql`insert into movie_people(wikidata_id,name)values(${qid},'Cast Integration Actor')`);
@@ -62,7 +82,7 @@ async function main() {
     assert.ok(Math.abs(slots[0].waitMs-slots[1].waitMs)>=450);
     await gateA.cooldown(new Date(Date.now()+60000));assert.ok((await gateB.reserve()).cooldownMs>50000);
     await db.execute(sql`update tv_source_state set next_request_at=null,cooldown_until=null where id='tvmaze'`);
-    console.log("TV cast integration passed: nullable identities, multiple roles, real film importer reuse, atomic verified merge and UUID alias, conflict rollback, pending request retention, film-only filtering and shared provider pacing");
+    console.log("TV cast integration passed: lossless microsecond ACK and one-microsecond newer wake retention, nullable identities, multiple roles, real film importer reuse, atomic verified merge and UUID alias, conflict rollback, pending request retention, film-only filtering and shared provider pacing");
   } finally {await client.end({timeout:3});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

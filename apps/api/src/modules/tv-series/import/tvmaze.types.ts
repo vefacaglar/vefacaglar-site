@@ -15,7 +15,8 @@ export type TvEpisodeSource = {
   airstamp: Date | null; runtime: number | null; rating: number | null; sourceUrl: string;
 };
 export type TvHierarchy = { show: TvShowSource; seasons: TvSeasonSource[]; episodes: TvEpisodeSource[] };
-export type TvRefreshItem = { seriesId: number; requestedAt: Date };
+/** Retain raw timestamp text for database candidates; Date loses PG microseconds. */
+export type TvRefreshItem = { seriesId: number; requestedAt: Date | string };
 export type TvSourceProgress = { nextPage: number; indexComplete: boolean; indexStartedAt: Date; catalogCompletedAt: Date | null;
   updatesCheckedAt: Date | null; cooldownUntil: Date | null };
 export interface ITvSourceRepository {

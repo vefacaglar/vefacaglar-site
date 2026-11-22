@@ -54,14 +54,14 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
   }
   async candidates(limit: number, now: Date): Promise<TvRefreshItem[]> {
     const db = this.dbProvider.client;
-    const popular = await db.execute(sql`select q.series_id,q.requested_at from ${tvRefreshQueue} q
+    const popular = await db.execute(sql`select q.series_id,q.requested_at::text as requested_at from ${tvRefreshQueue} q
       left join ${tvPopularityScores} p on p.series_id=q.series_id where q.due_at<=${now.toISOString()}::timestamptz
       order by q.priority desc, p.score desc nulls last,q.requested_at,q.series_id limit ${Math.ceil(limit / 2)}`);
     const popularIds = popular.map((row) => Number(row.series_id));
-    const older = await db.select({ seriesId: tvRefreshQueue.seriesId, requestedAt: tvRefreshQueue.requestedAt }).from(tvRefreshQueue)
+    const older = await db.select({ seriesId: tvRefreshQueue.seriesId, requestedAt: sql<string>`${tvRefreshQueue.requestedAt}::text` }).from(tvRefreshQueue)
       .where(and(lte(tvRefreshQueue.dueAt, now), popularIds.length ? notInArray(tvRefreshQueue.seriesId, popularIds) : undefined))
       .orderBy(tvRefreshQueue.requestedAt, tvRefreshQueue.seriesId).limit(limit - popular.length);
-    return [...popular.map((row) => ({ seriesId: Number(row.series_id), requestedAt: row.requested_at instanceof Date ? row.requested_at : new Date(String(row.requested_at)) })), ...older];
+    return [...popular.map((row) => ({ seriesId: Number(row.series_id), requestedAt: String(row.requested_at) })), ...older];
   }
   async hierarchy(item: TvRefreshItem, snapshot: TvHierarchy, at: Date) {
     if (snapshot.show.id !== item.seriesId || snapshot.seasons.some((row) => row.seriesId !== item.seriesId) ||
@@ -97,7 +97,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
         episodeCount: snapshot.episodes.filter((episode) => !episode.isSpecial).length, specialCount: snapshot.episodes.filter((episode) => episode.isSpecial).length,
         firstAired: aired[0] ?? null, lastAired: aired[aired.length - 1] ?? null,
       }).where(eq(tvSeries.id, item.seriesId));
-      await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), lte(tvRefreshQueue.requestedAt, item.requestedAt)));
+      await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), sql`${tvRefreshQueue.requestedAt}<=${item.requestedAt instanceof Date?item.requestedAt.toISOString():item.requestedAt}::timestamptz`));
       await db.execute(sql`insert into tv_cast_queue(series_id,requested_at,due_at) values(${item.seriesId},${at.toISOString()}::timestamptz,${at.toISOString()}::timestamptz)
         on conflict(series_id) do update set requested_at=excluded.requested_at,due_at=excluded.due_at`);
       await db.execute(sql`update recurring_jobs set next_run_at=least(coalesce(next_run_at,now()),now()) where id='catalog.tv-series.cast.refresh' and enabled and cron is not null`);
@@ -109,7 +109,7 @@ export class DrizzleTvSourceRepository implements ITvSourceRepository {
     await this.dbProvider.transaction(async () => {
       const db = this.dbProvider.client;
       const rows = await db.update(tvSeries).set({ isDeleted: true }).where(eq(tvSeries.id, item.seriesId)).returning({ id: tvSeries.id });
-      await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), lte(tvRefreshQueue.requestedAt, item.requestedAt)));
+      await db.delete(tvRefreshQueue).where(and(eq(tvRefreshQueue.seriesId, item.seriesId), sql`${tvRefreshQueue.requestedAt}<=${item.requestedAt instanceof Date?item.requestedAt.toISOString():item.requestedAt}::timestamptz`));
       if (rows.length) await dirtyTvSearch(db, [item.seriesId]);
     });
   }
