@@ -8,11 +8,13 @@ import type { IEventBus } from "../../../shared/events/event-bus";
 import { gamesImported } from "../catalog.events";
 import {
   computePopularityScores,
+  POPULARITY_RANKING_VERSION,
   isCurrentPopularityObservation,
   POPULARITY_TYPE,
   REFRESHED_POPULARITY_TYPES,
   type PopularityInput,
 } from "./popularity-score";
+import { GameAudienceService } from "./game-audience.service";
 import { PopularityDiscoveryService } from "./popularity-discovery.service";
 import { OwnerRankingService } from "./owner-ranking.service";
 import { ownerRankingBreakdown } from "./owner-ranking";
@@ -34,7 +36,8 @@ export class RefreshPopularityHandler {
     @inject(IGDB_CLIENT) private readonly igdb: IIgdbClient,
     @inject(EVENT_BUS) private readonly eventBus: IEventBus,
     private readonly ownerRanking: OwnerRankingService,
-    private readonly discovery: PopularityDiscoveryService
+    private readonly discovery: PopularityDiscoveryService,
+    private readonly audienceService: GameAudienceService
   ) {}
 
   async handle(options: { requireSearchSync?: boolean } = {}): Promise<RefreshPopularityResponse> {
@@ -57,8 +60,9 @@ export class RefreshPopularityHandler {
     // Discovery and mode hydration must participate in this run's score calculation.
     sources = await this.gamesRepo.listPopularitySources();
     if (sources.length === 0) {
-      return { gameCount: 0, discoveredCount, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
+      return { rankingVersion: POPULARITY_RANKING_VERSION, audienceCount: 0, audienceRequests: 0, audienceStatus: "complete", gameCount: 0, discoveredCount, signalCount: 0, scoredCount: 0, reindexedCount: 0, recommendationScoredCount: 0, gameModesCheckedCount: modes.checkedCount, gameModesStatus: modes.status, durationMs: Date.now() - startedAt };
     }
+    const audience = await this.audienceService.prepare(currentPrimitives, sources);
     const gameIdByIgdbId = new Map(sources.map((source) => [source.igdbId, source.id]));
     const signalsByKey = new Map<string, PopularitySignal>();
     for (const primitive of currentPrimitives) {
@@ -76,12 +80,13 @@ export class RefreshPopularityHandler {
     // Normalize against the complete provider population, independent of catalog coverage.
     const inputsByIgdbId = new Map<number, PopularityInput>();
     const singlePlayerIds = new Set(sources.filter((source) => source.gameModeIds?.includes(OWNER_RANKING_CONFIG.singlePlayerMode)).map((source) => source.igdbId));
-    const signalKeys = new Map<number, "visits" | "playing" | "steam24hPeak">([
-      [POPULARITY_TYPE.VISITS, "visits"], [POPULARITY_TYPE.PLAYING, "playing"], [POPULARITY_TYPE.STEAM_24H_PEAK_PLAYERS, "steam24hPeak"],
+    const signalKeys = new Map<number, "visits" | "playing" | "played" | "steam24hPeak">([
+      [POPULARITY_TYPE.VISITS, "visits"], [POPULARITY_TYPE.PLAYING, "playing"], [POPULARITY_TYPE.PLAYED, "played"], [POPULARITY_TYPE.STEAM_24H_PEAK_PLAYERS, "steam24hPeak"],
     ]);
     for (const primitive of currentPrimitives) {
       const input = inputsByIgdbId.get(primitive.igdbId) ?? {
-        id: String(primitive.igdbId), singlePlayer: singlePlayerIds.has(primitive.igdbId), signals: {},
+        id: String(primitive.igdbId), singlePlayer: audience.metadata.get(primitive.igdbId)?.gameModeIds?.includes(1) ?? singlePlayerIds.has(primitive.igdbId), signals: {},
+        format: audience.metadata.get(primitive.igdbId), audience: audience.audience.get(primitive.igdbId),
       };
       input.signals[signalKeys.get(primitive.popularityType)!] = primitive.value;
       inputsByIgdbId.set(primitive.igdbId, input);
@@ -101,7 +106,15 @@ export class RefreshPopularityHandler {
       const previous = sourceDateById.get(signal.gameId);
       if (!previous || timestamp < previous) sourceDateById.set(signal.gameId, timestamp);
     }
+    for (const source of sources) {
+      const observation = audience.audience.get(source.igdbId);
+      if (!observation) continue;
+      const timestamp = new Date(`${observation.sourceDate}T00:00:00Z`);
+      const previous = sourceDateById.get(source.id);
+      if (previous && timestamp < previous) sourceDateById.set(source.id, timestamp);
+    }
     await this.gamesRepo.writePopularity({
+      rankingVersion: POPULARITY_RANKING_VERSION,
       popularityTypes: REFRESHED_POPULARITY_TYPES,
       signals,
       scores,
@@ -128,6 +141,8 @@ export class RefreshPopularityHandler {
     );
 
     return {
+      rankingVersion: POPULARITY_RANKING_VERSION,
+      audienceCount: audience.audience.size, audienceRequests: audience.requests, audienceStatus: audience.status,
       gameCount: sources.length,
       discoveredCount,
       signalCount: signals.length,

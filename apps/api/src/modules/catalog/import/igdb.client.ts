@@ -4,9 +4,11 @@ import {
   type IIgdbClient,
   type ImportedGame,
   type ImportedGamePage,
+  type GameRankingMetadata,
   type ImportedLookup,
   type PopularityPrimitive,
 } from "./import.types";
+import { parseRankingMetadata } from "./igdb-ranking-metadata";
 import { readPopularityPages } from "./igdb-popularity";
 import { parseGameModeRows, parseGameModeIds } from "./igdb-game-modes";
 
@@ -78,6 +80,15 @@ export class IgdbClient implements IIgdbClient {
         .filter((g) => !g.game_type || ALLOWED_GAME_TYPES.has(normalizeTitle(g.game_type.type)))
         .map((g) => this.toImportedGame(g)),
     };
+  }
+
+  async listRankingMetadata(igdbIds: number[], signal?: AbortSignal): Promise<GameRankingMetadata[]> {
+    if (igdbIds.length === 0) return [];
+    if (igdbIds.length > PAGE_SIZE || igdbIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) throw new Error("Invalid IGDB ranking batch");
+    const ids = [...new Set(igdbIds)];
+    const rows = await this.query<unknown>(GAMES_URL,
+      `fields id,game_modes,keywords.name,storyline,websites.url; where id=(${ids.join(",")}); limit ${PAGE_SIZE};`, signal);
+    return parseRankingMetadata(rows, ids);
   }
 
   async listGamesByIds(igdbIds: number[], signal?: AbortSignal): Promise<ImportedGame[]> {

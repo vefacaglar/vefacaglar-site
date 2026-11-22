@@ -5,6 +5,7 @@ import type { Publisher } from "./publishers.repository.interface";
 import type { Genre } from "./genres.repository.interface";
 import type { Theme } from "./themes.repository.interface";
 import type { Platform } from "./platforms.repository.interface";
+import type { WikipediaAudience } from "./popularity/popularity-score";
 import type { GameModeCandidate, GameModeCursor, OwnerRankingSource } from "./popularity/owner-ranking.types";
 
 export type Game = InferSelectModel<typeof games>;
@@ -68,10 +69,13 @@ export type PopularitySignal = {
   calculatedAt: Date | null;
 };
 
+export type GameWikipediaObservation = WikipediaAudience & { gameId: string; article: string; fetchedAt: Date };
+
 /** One full popularity refresh, written in a single transaction. */
 export type PopularityWrite = {
   /** The signals of these types are replaced wholesale by `signals`. */
   popularityTypes: number[];
+  rankingVersion: string;
   signals: PopularitySignal[];
   scores: { id: string; score: number | null }[];
   /** Oldest accepted source observation contributing to each game score. */
@@ -163,6 +167,10 @@ export interface IGamesRepository {
   listGameModeCandidates(cursor: GameModeCursor | null, limit: number, staleBefore: Date): Promise<GameModeCandidate[]>;
   /** null modes record an omitted-id attempt without erasing previously known modes. */
   writeGameModes(updates: { id: string; gameModeIds: number[] | null }[], checkedAt: Date): Promise<void>;
+  findWikipediaInterest(gameIds: string[]): Promise<GameWikipediaObservation[]>;
+  writeWikipediaInterest(observations: GameWikipediaObservation[]): Promise<void>;
+  getWikipediaInterestCooldown(): Promise<Date | null>;
+  setWikipediaInterestCooldown(until: Date): Promise<void>;
   /** Replaces the popularity signals and writes every score in one transaction. Publishes no events. */
   writePopularity(write: PopularityWrite): Promise<void>;
 

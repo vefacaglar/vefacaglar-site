@@ -1,3 +1,5 @@
+import type { GameFormatEvidence } from "../popularity/popularity-score";
+
 export type ImportedLookup = { name: string; slug: string };
 
 /** A game record normalized from an external catalog source (IGDB). */
@@ -36,10 +38,14 @@ export type PopularityPrimitive = {
   calculatedAt: Date | null;
 };
 
+export type GameRankingMetadata = GameFormatEvidence & { igdbId: number; wikipediaArticle: string | null };
+
 export interface IIgdbClient {
   findGame(query: string): Promise<ImportedGame | null>;
   /** Walks the whole IGDB catalog in id order, one page per call. */
   listGames(afterId: number, options?: { minRatings?: number }): Promise<ImportedGamePage>;
+  /** At most 500 explicit ids; omitted provider records stay unknown. */
+  listRankingMetadata(igdbIds: number[], signal?: AbortSignal): Promise<GameRankingMetadata[]>;
   /** At most 500 explicit canonical game ids, using the bulk importer's eligibility rules. */
   listGamesByIds(igdbIds: number[], signal?: AbortSignal): Promise<ImportedGame[]>;
   /**

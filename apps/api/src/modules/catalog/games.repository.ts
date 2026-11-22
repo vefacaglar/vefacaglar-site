@@ -11,6 +11,8 @@ import {
   gamePlatforms,
   gameThemes,
   gamePopularitySignals,
+  gameWikipediaInterest,
+  gameWikipediaProviderState,
   catalogImportState,
 } from "@vefacaglar/db";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, gt, or, sql, type SQL } from "drizzle-orm";
@@ -29,6 +31,7 @@ import type {
   PublicGameSuggestion,
   IGamesRepository,
   Game,
+  GameWikipediaObservation,
   NewGame,
   GameWithRelations,
   PopularitySource,
@@ -594,6 +597,35 @@ export class DrizzleGamesRepository implements IGamesRepository {
     });
   }
 
+  async findWikipediaInterest(gameIds: string[]): Promise<GameWikipediaObservation[]> {
+    if (gameIds.length === 0) return [];
+    if (gameIds.length > 450) throw new Error("Game audience lookup exceeds its bounded cohort");
+    return this.dbProvider.client.select().from(gameWikipediaInterest).where(inArray(gameWikipediaInterest.gameId, gameIds));
+  }
+
+  async writeWikipediaInterest(observations: GameWikipediaObservation[]): Promise<void> {
+    if (observations.length === 0) return;
+    await this.dbProvider.transaction(async () => {
+      await this.dbProvider.client.insert(gameWikipediaInterest).values(observations).onConflictDoUpdate({
+        target: gameWikipediaInterest.gameId,
+        set: { article: sql`excluded.article`, sourceDate: sql`excluded.source_date`, currentViews: sql`excluded.current_views`,
+          baselineViews: sql`excluded.baseline_views`, fetchedAt: sql`excluded.fetched_at` },
+        setWhere: sql`excluded.source_date >= ${gameWikipediaInterest.sourceDate}`,
+      });
+    });
+  }
+
+  async getWikipediaInterestCooldown(): Promise<Date | null> {
+    const [row] = await this.dbProvider.client.select().from(gameWikipediaProviderState).where(eq(gameWikipediaProviderState.id, "wikipedia"));
+    return row?.cooldownUntil ?? null;
+  }
+
+  async setWikipediaInterestCooldown(until: Date): Promise<void> {
+    await this.dbProvider.client.insert(gameWikipediaProviderState).values({ id: "wikipedia", cooldownUntil: until }).onConflictDoUpdate({
+      target: gameWikipediaProviderState.id, set: { cooldownUntil: sql`greatest(${gameWikipediaProviderState.cooldownUntil}, excluded.cooldown_until)` },
+    });
+  }
+
   async writePopularity(write: PopularityWrite): Promise<void> {
     await this.dbProvider.transaction(async () => {
       const db = this.dbProvider.client;
@@ -615,7 +647,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
         );
         await db.execute(sql`
           update ${games}
-          set popularity_score = v.score, popularity_updated_at = v.source_date,
+          set popularity_score = v.score, popularity_updated_at = v.source_date, popularity_version = ${write.rankingVersion},
               recommendation_score = v.recommendation_score, recommendation_version = ${write.recommendationVersion},
               recommendation_updated_at = ${write.updatedAt.toISOString()}::timestamptz
           from (values ${values}) as v(id, score, recommendation_score, source_date)
