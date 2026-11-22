@@ -96,6 +96,12 @@ import { TV_SERIES_SEARCH_READER, MeilisearchTvSeriesSearchReader } from "./modu
 import { TV_PREFERENCES_REPOSITORY } from "./modules/tv-series/preferences/preferences.repository.interface";
 import { DrizzleTvPreferencesRepository } from "./modules/tv-series/preferences/preferences.repository";
 
+import { PEOPLE_REPOSITORY } from "./modules/people/people.repository.interface";
+import { DrizzlePeopleRepository } from "./modules/people/people.repository";
+
+import { TV_CAST_REPOSITORY } from "./modules/tv-series/cast/tv-cast.types";
+import { DrizzleTvCastRepository } from "./modules/tv-series/cast/tv-cast.repository";
+
 container.registerInstance(DB_CONNECTION, db);
 container.registerSingleton(DbProvider);
 container.registerSingleton(MOVIES_REPOSITORY, DrizzleMoviesRepository);
@@ -104,6 +110,8 @@ container.registerSingleton(TV_POPULARITY_REPOSITORY, DrizzleTvPopularityReposit
 container.registerSingleton(TV_INDEX_REPOSITORY, DrizzleTvIndexRepository);
 container.registerSingleton(TV_SERIES_REPOSITORY, DrizzleTvSeriesRepository);
 container.registerSingleton(TV_PREFERENCES_REPOSITORY, DrizzleTvPreferencesRepository);
+container.registerSingleton(PEOPLE_REPOSITORY, DrizzlePeopleRepository);
+container.registerSingleton(TV_CAST_REPOSITORY, DrizzleTvCastRepository);
 container.registerSingleton(TV_DASHBOARD_REPOSITORY, DrizzleTvDashboardRepository);
 container.registerSingleton(TV_SERIES_CATALOG_SERVICE, TvSeriesCatalogService);
 container.registerSingleton(TV_SERIES_SEARCH_READER, MeilisearchTvSeriesSearchReader);

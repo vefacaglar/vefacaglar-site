@@ -25,6 +25,7 @@ import { packagesRoutes } from "./modules/packages/packages.routes";
 import { jobsRoutes } from "./modules/jobs/jobs.routes";
 import { moviesRoutes } from "./modules/movies/movies.routes";
 import { tvSeriesRoutes } from "./modules/tv-series/tv-series.routes";
+import { peopleRoutes } from "./modules/people/people.routes";
 import { tvDashboardRoutes } from "./modules/tv-series/dashboard/tv-dashboard.routes";
 import { registerAuthDecorators } from "./modules/auth/auth.plugin";
 import { registerLocalization } from "./shared/localization.plugin";
@@ -177,6 +178,7 @@ app.register(publicGamesRoutes, { prefix: "/api/games" });
 app.register(jobsRoutes, { prefix: "/api/jobs" });
 app.register(moviesRoutes, { prefix: "/api/movies" });
 app.register(tvSeriesRoutes, { prefix: "/api/tv-series" });
+app.register(peopleRoutes, { prefix: "/api/people" });
 app.register(tvDashboardRoutes, { prefix: "/api/tv-series" });
 
 export default async function handler(req: any, res: any) {

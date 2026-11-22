@@ -1,11 +1,11 @@
 import { injectable } from "tsyringe";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { tvSeries, tvSeriesGenres, tvSeasons, tvEpisodes, tvPopularityState, tvSearchState } from "@vefacaglar/db";
+import { tvSeries, tvSeriesGenres, tvSeasons, tvEpisodes, tvPopularityState, tvSearchState, tvCast, moviePeople, moviePersonSources } from "@vefacaglar/db";
 import { DbProvider } from "../../db.provider";
 import { tvRankingMetadata } from "./popularity/tv-ranking";
 import type { ITvSeriesRepository, TvSearchPublication, TvSeriesFilter } from "./tv-series.repository.interface";
 import type { TvSeriesCard } from "./list/list.schema";
-import type { TvSeriesDetail, TvSeasonSummary } from "./detail/detail.schema";
+import type { TvSeriesDetail, TvSeasonSummary, TvCastPerson } from "./detail/detail.schema";
 import type { TvSeasonDetail } from "./season/season.schema";
 import type { TvEpisode } from "./tv-episode.schema";
 type SeriesRow = typeof tvSeries.$inferSelect;
@@ -74,15 +74,35 @@ export class DrizzleTvSeriesRepository implements ITvSeriesRepository {
     const [row] = await this.dbProvider.client.select().from(tvSeries).where(and(eq(tvSeries.id, id), eq(tvSeries.isDeleted, false)));
     if (!row) return null;
     const [card] = await this.cards([row]);
-    const [seasons, orphans] = await Promise.all([
+    const [seasons, orphans, cast] = await Promise.all([
       this.seasons(id, row.hierarchyComplete),
       this.dbProvider.client.select().from(tvEpisodes).where(and(eq(tvEpisodes.seriesId, id), eq(tvEpisodes.isSpecial, true), isNull(tvEpisodes.seasonId)))
         .orderBy(asc(tvEpisodes.airdate), asc(tvEpisodes.id)),
+      this.cast(id),
     ]);
     return { ...card, language: row.language, type: row.type, runtimeMinutes: row.runtime ?? row.averageRuntime,
       officialSite: safeSite(row.officialSite), network: row.webChannel ?? row.network, firstAired: row.firstAired, lastAired: row.lastAired,
       updatedAt: timestamp(row.fetchedAt)!, hierarchyUpdatedAt: timestamp(row.hierarchyUpdatedAt),
-      hierarchyStatus: row.hierarchyComplete ? "complete" : "pending", seasons, orphanSpecials: orphans.map(episode) };
+      hierarchyStatus: row.hierarchyComplete ? "complete" : "pending", seasons, orphanSpecials: orphans.map(episode),
+      castStatus: row.castComplete ? "complete" : "pending", castUpdatedAt: timestamp(row.castUpdatedAt), cast };
+  }
+  private async cast(seriesId: number): Promise<TvCastPerson[]> {
+    const rows = await this.dbProvider.client.select({ credit: tvCast, name: moviePeople.name, sourceName: moviePersonSources.sourceName })
+      .from(tvCast).innerJoin(moviePeople, eq(moviePeople.id, tvCast.personId))
+      .leftJoin(moviePersonSources, and(eq(moviePersonSources.personId, moviePeople.id), eq(moviePersonSources.provider, "tvmaze")))
+      .where(eq(tvCast.seriesId, seriesId)).orderBy(asc(tvCast.castOrder), asc(tvCast.characterId), asc(tvCast.personId));
+    const people = new Map<string, TvCastPerson>();
+    for (const row of rows) {
+      let person = people.get(row.credit.personId);
+      if (!person) {
+        person = { personId: row.credit.personId, name: row.name?.trim() || row.sourceName?.trim() || null,
+          sourceUrl: `https://www.tvmaze.com/shows/${seriesId}/cast`, roles: [] };
+        people.set(row.credit.personId, person);
+      }
+      person.roles.push({ characterId: row.credit.characterId, name: row.credit.characterName,
+        self: row.credit.self, voice: row.credit.voice, order: row.credit.castOrder });
+    }
+    return [...people.values()];
   }
   private async seasons(seriesId: number, complete: boolean): Promise<TvSeasonSummary[]> {
     const [seasons, counts] = await Promise.all([
