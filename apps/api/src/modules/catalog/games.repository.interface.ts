@@ -73,6 +73,8 @@ export type PopularityWrite = {
   popularityTypes: number[];
   signals: PopularitySignal[];
   scores: { id: string; score: number | null }[];
+  /** Oldest accepted source observation contributing to each game score. */
+  sourceDates: { id: string; calculatedAt: Date | null }[];
   recommendationScores: { id: string; score: number }[];
   recommendationVersion: string;
   updatedAt: Date;

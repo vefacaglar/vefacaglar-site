@@ -8,6 +8,7 @@ import type { IEventBus } from "../../../shared/events/event-bus";
 import { gamesImported } from "../catalog.events";
 import {
   computePopularityScores,
+  isCurrentPopularityObservation,
   POPULARITY_TYPE,
   REFRESHED_POPULARITY_TYPES,
   type PopularityInput,
@@ -43,7 +44,8 @@ export class RefreshPopularityHandler {
     // Deduplicate before discovery and normalization so old calculations cannot inflate leaders.
     const latest = new Map<string, (typeof primitives)[number]>();
     for (const primitive of primitives) {
-      if (!REFRESHED_POPULARITY_TYPES.includes(primitive.popularityType) || !Number.isFinite(primitive.value) || primitive.value < 0) continue;
+      if (!REFRESHED_POPULARITY_TYPES.includes(primitive.popularityType) || !Number.isFinite(primitive.value) || primitive.value < 0
+        || !isCurrentPopularityObservation(primitive.calculatedAt, startedAt)) continue;
       const key = `${primitive.igdbId}:${primitive.popularityType}`;
       const previous = latest.get(key);
       if (!previous || (previous.calculatedAt?.getTime() ?? 0) <= (primitive.calculatedAt?.getTime() ?? 0)) latest.set(key, primitive);
@@ -93,10 +95,17 @@ export class RefreshPopularityHandler {
       score: ownerRankingBreakdown({ ...source, popularityScore: scoreById.get(source.id) ?? null }).score,
     }));
 
+    const sourceDateById = new Map<string, Date>();
+    for (const signal of signals) {
+      const timestamp = signal.calculatedAt!;
+      const previous = sourceDateById.get(signal.gameId);
+      if (!previous || timestamp < previous) sourceDateById.set(signal.gameId, timestamp);
+    }
     await this.gamesRepo.writePopularity({
       popularityTypes: REFRESHED_POPULARITY_TYPES,
       signals,
       scores,
+      sourceDates: sources.map((source) => ({ id: source.id, calculatedAt: sourceDateById.get(source.id) ?? null })),
       recommendationScores,
       recommendationVersion: OWNER_RANKING_CONFIG.version,
       updatedAt: new Date(),

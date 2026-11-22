@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { PopularityDiscoveryService } from "./popularity-discovery.service";
 import type { ImportGameHandler } from "../import/import.handler";
 import type { OwnerRankingService } from "./owner-ranking.service";
@@ -97,6 +97,8 @@ describe("RefreshPopularityHandler", () => {
   let ownerRanking: { backfillGameModes: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-02T00:00:00Z"));
     gamesRepo = {
       listPopularitySources: vi.fn().mockResolvedValue([
         { id: "g-a", igdbId: 1, igdbRatingCount: 100, popularityScore: null },
@@ -108,11 +110,11 @@ describe("RefreshPopularityHandler", () => {
     igdb = {
       findGame: vi.fn(), listGames: vi.fn(),
       listPopularity: vi.fn().mockResolvedValue([
-        { igdbId: 999, popularityType: 1, value: 1000, calculatedAt: null },
+        { igdbId: 999, popularityType: 1, value: 1000, calculatedAt: at("2026-11-01T00:00:00Z") },
         { igdbId: 1, popularityType: 1, value: 1000, calculatedAt: at("2026-11-01T00:00:00Z") },
         { igdbId: 2, popularityType: 1, value: 10, calculatedAt: at("2026-11-01T00:00:00Z") },
         { igdbId: 2, popularityType: 1, value: 99_999, calculatedAt: at("2026-10-01T00:00:00Z") },
-        { igdbId: 3, popularityType: 4, value: 1e9, calculatedAt: null },
+        { igdbId: 3, popularityType: 4, value: 1e9, calculatedAt: at("2026-11-01T00:00:00Z") },
       ]),
     };
     eventBus = { publish: vi.fn().mockResolvedValue(undefined), subscribe: vi.fn() };
@@ -122,6 +124,8 @@ describe("RefreshPopularityHandler", () => {
       eventBus as unknown as IEventBus, ownerRanking as unknown as OwnerRankingService, discovery as unknown as PopularityDiscoveryService);
   });
 
+
+  afterEach(() => { vi.useRealTimers(); });
 
   it("writes versioned taste scores from refreshed interest and verified metadata", async () => {
     const sources = await gamesRepo.listPopularitySources();
@@ -182,15 +186,57 @@ describe("RefreshPopularityHandler", () => {
 
   it.each([
     [],
-    [{ igdbId: 999, popularityType: 1, value: 100, calculatedAt: null }],
-    [{ igdbId: 1, popularityType: 1, value: Number.NaN, calculatedAt: null }],
-    [{ igdbId: 1, popularityType: 1, value: -1, calculatedAt: null }],
-    [{ igdbId: 1, popularityType: 4, value: 100, calculatedAt: null }],
+    [{ igdbId: 999, popularityType: 1, value: 100, calculatedAt: at("2026-11-01T00:00:00Z") }],
+    [{ igdbId: 1, popularityType: 1, value: Number.NaN, calculatedAt: at("2026-11-01T00:00:00Z") }],
+    [{ igdbId: 1, popularityType: 1, value: -1, calculatedAt: at("2026-11-01T00:00:00Z") }],
+    [{ igdbId: 1, popularityType: 4, value: 100, calculatedAt: at("2026-11-01T00:00:00Z") }],
   ].map((primitives) => ({ primitives })))("keeps existing scores when no applicable current provider data exists ($primitives)", async ({ primitives }) => {
     igdb.listPopularity.mockResolvedValue(primitives);
     await expect(handler.handle()).rejects.toThrow("existing scores were kept");
     expect(gamesRepo.writePopularity).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
+  });
+
+  it("excludes stale, undated, and future observations from discovery and scores", async () => {
+    igdb.listPopularity.mockResolvedValue([
+      { igdbId: 1, popularityType: 1, value: 100, calculatedAt: at("2026-11-01T00:00:00Z") },
+      { igdbId: 2, popularityType: 5, value: 1e9, calculatedAt: at("2026-10-28T00:00:00Z") },
+      { igdbId: 3, popularityType: 1, value: 1e9, calculatedAt: null },
+      { igdbId: 3, popularityType: 3, value: 1e9, calculatedAt: at("2026-11-03T00:00:00Z") },
+    ]);
+    await handler.handle();
+    expect(discovery.discover.mock.calls[0][0]).toHaveLength(1);
+    expect(gamesRepo.writePopularity.mock.calls[0][0].sourceDates).toEqual([
+      { id: "g-a", calculatedAt: at("2026-11-01T00:00:00Z") },
+      { id: "g-b", calculatedAt: null }, { id: "g-c", calculatedAt: null },
+    ]);
+    expect(gamesRepo.writePopularity.mock.calls[0][0].scores).toEqual([
+      { id: "g-a", score: 0.7 / 1.05 }, { id: "g-b", score: null }, { id: "g-c", score: null },
+    ]);
+  });
+
+  it("dates each score from its own oldest contributing observation", async () => {
+    igdb.listPopularity.mockResolvedValue([
+      { igdbId: 1, popularityType: 1, value: 100, calculatedAt: at("2026-11-01T23:00:00Z") },
+      { igdbId: 1, popularityType: 3, value: 10, calculatedAt: at("2026-10-31T00:00:00Z") },
+      { igdbId: 2, popularityType: 1, value: 50, calculatedAt: at("2026-11-01T23:00:00Z") },
+    ]);
+    await handler.handle();
+    expect(gamesRepo.writePopularity.mock.calls[0][0].sourceDates).toEqual([
+      { id: "g-a", calculatedAt: at("2026-10-31T00:00:00Z") },
+      { id: "g-b", calculatedAt: at("2026-11-01T23:00:00Z") },
+      { id: "g-c", calculatedAt: null },
+    ]);
+  });
+
+  it("fails without replacing the last good chart when every observation is stale or undated", async () => {
+    igdb.listPopularity.mockResolvedValue([
+      { igdbId: 1, popularityType: 1, value: 100, calculatedAt: at("2026-10-01T00:00:00Z") },
+      { igdbId: 2, popularityType: 5, value: 100, calculatedAt: null },
+    ]);
+    await expect(handler.handle()).rejects.toThrow("existing scores were kept");
+    expect(discovery.discover).not.toHaveBeenCalled();
+    expect(gamesRepo.writePopularity).not.toHaveBeenCalled();
   });
 
   it("keeps stored scores if the provider fails before completing pagination", async () => {
@@ -201,7 +247,7 @@ describe("RefreshPopularityHandler", () => {
   });
 
   it("preserves real zero measurements while leaving missing current data unknown", async () => {
-    igdb.listPopularity.mockResolvedValue([{ igdbId: 1, popularityType: 1, value: 0, calculatedAt: null }]);
+    igdb.listPopularity.mockResolvedValue([{ igdbId: 1, popularityType: 1, value: 0, calculatedAt: at("2026-11-01T00:00:00Z") }]);
     await handler.handle();
     expect(gamesRepo.writePopularity.mock.calls[0][0].scores).toEqual([
       { id: "g-a", score: 0 }, { id: "g-b", score: null }, { id: "g-c", score: null },
@@ -227,7 +273,7 @@ describe("RefreshPopularityHandler", () => {
   });
 
   it("bounds discovery to current leaders and never reimports known identities", async () => {
-    const primitives = Array.from({ length: 400 }, (_, i) => ({ igdbId: i + 1, popularityType: 1, value: 500 - i, calculatedAt: null }));
+    const primitives = Array.from({ length: 400 }, (_, i) => ({ igdbId: i + 1, popularityType: 1, value: 500 - i, calculatedAt: at("2026-11-01T00:00:00Z") }));
     igdb.listPopularity.mockResolvedValue(primitives);
     igdb.listGamesByIds = vi.fn().mockResolvedValue([]);
     const importer = { importPage: vi.fn() };
@@ -253,8 +299,8 @@ describe("RefreshPopularityHandler", () => {
 
   it("normalizes against leaders outside the local catalog", async () => {
     igdb.listPopularity.mockResolvedValue([
-      { igdbId: 999, popularityType: 1, value: 100_000, calculatedAt: null },
-      { igdbId: 1, popularityType: 1, value: 10, calculatedAt: null },
+      { igdbId: 999, popularityType: 1, value: 100_000, calculatedAt: at("2026-11-01T00:00:00Z") },
+      { igdbId: 1, popularityType: 1, value: 10, calculatedAt: at("2026-11-01T00:00:00Z") },
     ]);
     await handler.handle();
     expect(gamesRepo.writePopularity.mock.calls[0][0].scores[0].score).toBeCloseTo(0.7 * 0.01 / 1.05);

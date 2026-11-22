@@ -33,6 +33,7 @@ import type {
   PopularitySource,
   PopularityWrite,
 } from "./games.repository.interface";
+import { POPULARITY_MAX_AGE_MS } from "./popularity/popularity-score";
 import type { GameModeCandidate, GameModeCursor, OwnerRankingSource } from "./popularity/owner-ranking.types";
 
 const LOOKUP_KINDS: CatalogLookupKind[] = ["developer", "publisher", "genre", "platform", "theme"];
@@ -76,6 +77,11 @@ const OWNER_METADATA = {
   )`,
 };
 
+// Expire each score from its actual source observations, including when jobs stop running.
+const CURRENT_POPULARITY_SCORE = sql<number | null>`case
+  when ${games.popularityUpdatedAt} >= now() - ${POPULARITY_MAX_AGE_MS} * interval '1 millisecond'
+  then ${games.popularityScore} else null end`;
+
 const PUBLIC_CARD_FIELDS = {
   id: games.id,
   slug: games.slug,
@@ -86,7 +92,7 @@ const PUBLIC_CARD_FIELDS = {
   openCriticScore: games.openCriticScore,
   criticScore: games.criticScore,
   criticScoreCount: games.criticScoreCount,
-  popularityScore: games.popularityScore,
+  popularityScore: CURRENT_POPULARITY_SCORE,
   hltbMainHours: games.hltbMainHours,
   hltbMainExtraHours: games.hltbMainExtraHours,
   hltbCompletionistHours: games.hltbCompletionistHours,
@@ -386,7 +392,7 @@ export class DrizzleGamesRepository implements IGamesRepository {
     const whereExpr = and(pattern ? ilike(games.title, `%${pattern}%`) : undefined, companyMatch);
     // Current interest includes the bounded single-player preference in its stored score.
     const popularOrder = [
-      sql`${games.popularityScore} desc nulls last`,
+      sql`${CURRENT_POPULARITY_SCORE} desc nulls last`,
       asc(games.title),
       asc(games.id),
     ];
@@ -600,17 +606,18 @@ export class DrizzleGamesRepository implements IGamesRepository {
 
       // Interest and recommendation scores commit together, with bounded bulk statements.
       const recommendationById = new Map(write.recommendationScores.map((score) => [score.id, score.score]));
+      const sourceDateById = new Map(write.sourceDates.map((source) => [source.id, source.calculatedAt?.toISOString() ?? null]));
       for (const chunk of chunks(write.scores)) {
         const values = sql.join(
-          chunk.map((s) => sql`(${s.id}::uuid, ${s.score}::double precision, ${recommendationById.get(s.id) ?? null}::double precision)`),
+          chunk.map((s) => sql`(${s.id}::uuid, ${s.score}::double precision, ${recommendationById.get(s.id) ?? null}::double precision, ${sourceDateById.get(s.id) ?? null}::timestamptz)`),
           sql`, `
         );
         await db.execute(sql`
           update ${games}
-          set popularity_score = v.score, popularity_updated_at = ${write.updatedAt.toISOString()}::timestamptz,
+          set popularity_score = v.score, popularity_updated_at = v.source_date,
               recommendation_score = v.recommendation_score, recommendation_version = ${write.recommendationVersion},
               recommendation_updated_at = ${write.updatedAt.toISOString()}::timestamptz
-          from (values ${values}) as v(id, score, recommendation_score)
+          from (values ${values}) as v(id, score, recommendation_score, source_date)
           where ${games.id} = v.id
         `);
       }

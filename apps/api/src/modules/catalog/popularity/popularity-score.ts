@@ -33,6 +33,16 @@ export type PopularityInput = {
   signals: Partial<Record<PopularitySignalKey, number | null>>;
 };
 
+/** IGDB publishes these signals daily. Allow two delayed daily runs. */
+export const POPULARITY_MAX_AGE_MS = 72 * 60 * 60 * 1000;
+const CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
+
+export function isCurrentPopularityObservation(calculatedAt: Date | null, now: number): boolean {
+  const timestamp = calculatedAt?.getTime();
+  return timestamp != null && Number.isFinite(timestamp)
+    && timestamp >= now - POPULARITY_MAX_AGE_MS && timestamp <= now + CLOCK_TOLERANCE_MS;
+}
+
 /** A small relative preference only changes games with similar current interest. */
 export const SINGLE_PLAYER_BONUS = 0.05;
 

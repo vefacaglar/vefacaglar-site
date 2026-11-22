@@ -21,7 +21,7 @@ export class ListGamesHandler {
     const limit = request.query.limit ?? DEFAULT_LIMIT;
     const q = request.query.q?.trim() || undefined;
 
-    // Default browse reads authoritative indexed owner scores. Typed searches
+    // Default browse reads authoritative current-interest scores. Typed searches
     // retain their existing title relevance, without requiring a search schema rebuild.
     const result = q
       ? await this.searchReader.searchPublicGames({ page, limit, q })
