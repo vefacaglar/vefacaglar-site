@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getActiveLanguage } from "../../../../lib/lang";
 import { localizedAlternates } from "../../../../lib/seo";
 import { getPackageItem } from "../../../../lib/data";
+import { resolvePackageDescription, stripLeadingDuplicateHeading } from "../../../../lib/packageSeo";
 import MarkdownPreview from "../../../components/MarkdownPreview";
 import styles from "../packagePage.module.css";
 import { safeExternalUrl } from "../../../../lib/safeExternalUrl";
@@ -14,9 +15,17 @@ export async function generateMetadata(props: { params: Promise<{ slug: string; 
   const pkg = await getPackageItem(params.slug, params.packageSlug);
   if (!pkg) return { title: "Package Not Found" };
 
+  const title = `${pkg.name} | ${pkg.groupName}`;
+  const description = resolvePackageDescription(
+    pkg.description,
+    pkg.content,
+    `Package details for ${pkg.name}`
+  );
+
   return {
-    title: `${pkg.name} | ${pkg.groupName}`,
-    description: pkg.description || `Package details for ${pkg.name}`,
+    title,
+    description,
+    openGraph: { title, description },
     alternates: localizedAlternates(`/packages/${params.slug}/${params.packageSlug}`, await getActiveLanguage(), {
       bilingual: false,
     }),
@@ -37,9 +46,9 @@ export default async function PackageItemPage(props: { params: Promise<{ slug: s
       </div>
 
       <h1 className={styles.title}>{pkg.name}</h1>
-      <p className={styles.description}>
-        {pkg.description || `Package details for ${pkg.name}.`}
-      </p>
+      {pkg.description && (
+        <p className={styles.description}>{pkg.description}</p>
+      )}
 
       <section className={styles.packageList}>
         <h2 className={styles.sectionTitle}>Details</h2>
@@ -85,7 +94,7 @@ export default async function PackageItemPage(props: { params: Promise<{ slug: s
 
       {pkg.content ? (
         <div className={styles.contentWrapper}>
-          <MarkdownPreview content={pkg.content} />
+          <MarkdownPreview content={stripLeadingDuplicateHeading(pkg.content, pkg.name)} demoteHeadings />
         </div>
       ) : (
         <p className={styles.emptyText}>No package details available.</p>

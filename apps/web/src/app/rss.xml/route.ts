@@ -67,6 +67,10 @@ ${items}
 `;
 
   return new Response(xml, {
-    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
+    headers: {
+      "Content-Type": "application/rss+xml; charset=utf-8",
+      // RSS feeds are crawled for discovery, not meant to appear as indexed web pages.
+      "X-Robots-Tag": "noindex, follow",
+    },
   });
 }

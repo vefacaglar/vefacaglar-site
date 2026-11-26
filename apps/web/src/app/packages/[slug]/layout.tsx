@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import styles from "./packageLayout.module.css";
 import { getPackage } from "../../../lib/data";
+import { resolvePackageDocsHref } from "../../../lib/packageSeo";
 import { safeExternalUrl } from "../../../lib/safeExternalUrl";
 
 
@@ -23,6 +24,7 @@ export default async function PackageLayout(
 
   const sortedCategories = [...pkg.categories].sort((a, b) => a.displayOrder - b.displayOrder);
   const sortedDocs = [...pkg.docsList].sort((a, b) => a.displayOrder - b.displayOrder);
+  const docsTarget = resolvePackageDocsHref(pkg);
 
   const uncategorizedDocs = sortedDocs.filter((doc: { categoryId: string | null }) => !doc.categoryId);
   const docsByCategory = sortedCategories.reduce((acc, cat) => {
@@ -62,51 +64,59 @@ export default async function PackageLayout(
               </a>
             </li>
           )}
-          {(pkg.docs || pkg.docsList.length > 0) && (
+          {docsTarget && (
             <li className={styles.metaItem}>
-              <Link href={`/packages/${pkg.slug}/docs`} className={styles.metaLink}>
-                Documentation
-              </Link>
+              {docsTarget.external ? (
+                <a href={docsTarget.href} target="_blank" rel="noopener noreferrer" className={styles.metaLink}>
+                  Documentation
+                </a>
+              ) : (
+                <Link href={docsTarget.href} className={styles.metaLink}>
+                  Documentation
+                </Link>
+              )}
             </li>
           )}
         </ul>
 
-        <div className={styles.tocSection}>
-          <div className={styles.tocTitle}>Documentation</div>
+        {sortedDocs.length > 0 && (
+          <div className={styles.tocSection}>
+            <div className={styles.tocTitle}>Documentation</div>
 
-          {uncategorizedDocs.length > 0 && (
-            <ul className={`${styles.tocList} ${styles.tocGroup}`}>
-              {uncategorizedDocs.map((doc) => (
-                <li key={doc.id} className={styles.tocItem}>
-                  <Link href={`/packages/${pkg!.slug}/docs/${doc.slug}`} className={styles.tocItemLink}>
-                    {doc.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+            {uncategorizedDocs.length > 0 && (
+              <ul className={`${styles.tocList} ${styles.tocGroup}`}>
+                {uncategorizedDocs.map((doc) => (
+                  <li key={doc.id} className={styles.tocItem}>
+                    <Link href={`/packages/${pkg!.slug}/docs/${doc.slug}`} className={styles.tocItemLink}>
+                      {doc.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          {sortedCategories.map((cat) => {
-            const catDocs = docsByCategory[cat.id] || [];
-            if (catDocs.length === 0) return null;
-            return (
-              <div key={cat.id} className={styles.tocGroup}>
-                <div className={styles.tocCategoryTitle}>
-                  {cat.title}
+            {sortedCategories.map((cat) => {
+              const catDocs = docsByCategory[cat.id] || [];
+              if (catDocs.length === 0) return null;
+              return (
+                <div key={cat.id} className={styles.tocGroup}>
+                  <div className={styles.tocCategoryTitle}>
+                    {cat.title}
+                  </div>
+                  <ul className={styles.tocList}>
+                    {catDocs.map((doc: { id: string; slug: string; title: string }) => (
+                      <li key={doc.id} className={styles.tocItem}>
+                        <Link href={`/packages/${pkg!.slug}/docs/${doc.slug}`} className={styles.tocItemLink}>
+                          {doc.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className={styles.tocList}>
-                  {catDocs.map((doc: { id: string; slug: string; title: string }) => (
-                    <li key={doc.id} className={styles.tocItem}>
-                      <Link href={`/packages/${pkg!.slug}/docs/${doc.slug}`} className={styles.tocItemLink}>
-                        {doc.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </aside>
 
       <main className={styles.content}>

@@ -26,9 +26,10 @@ function getYouTubeId(url: string): string | null {
 
 interface MarkdownPreviewProps {
   content: string;
+  demoteHeadings?: boolean;
 }
 
-export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
+export default function MarkdownPreview({ content, demoteHeadings = false }: MarkdownPreviewProps) {
   const locale = useLocale();
   const dict = getDictionary(locale);
   const [activeImage, setActiveImage] = React.useState<{ src: string; alt: string } | null>(null);
@@ -187,30 +188,33 @@ export default function MarkdownPreview({ content }: MarkdownPreviewProps) {
 
     if (trimmed.startsWith("# ")) {
       flushList();
+      const Heading = demoteHeadings ? "h2" : "h1";
       elements.push(
-        <h1 key={key++} className={styles.h1}>
+        <Heading key={key++} className={styles.h1}>
           {renderInline(trimmed.slice(2))}
-        </h1>
+        </Heading>
       );
       continue;
     }
 
     if (trimmed.startsWith("## ")) {
       flushList();
+      const Heading = demoteHeadings ? "h3" : "h2";
       elements.push(
-        <h2 key={key++} className={styles.h2}>
+        <Heading key={key++} className={styles.h2}>
           {renderInline(trimmed.slice(3))}
-        </h2>
+        </Heading>
       );
       continue;
     }
 
     if (trimmed.startsWith("### ")) {
       flushList();
+      const Heading = demoteHeadings ? "h4" : "h3";
       elements.push(
-        <h3 key={key++} className={styles.h3}>
+        <Heading key={key++} className={styles.h3}>
           {renderInline(trimmed.slice(4))}
-        </h3>
+        </Heading>
       );
       continue;
     }

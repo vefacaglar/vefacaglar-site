@@ -4,7 +4,8 @@ import styles from "./packages.module.css";
 import { getActiveLanguage } from "../../lib/lang";
 import { localizedAlternates } from "../../lib/seo";
 import Pagination from "../components/Pagination";
-import { getPublicPackages } from "../../lib/data";
+import { getPackage, getPublicPackages } from "../../lib/data";
+import { resolvePackageDocsHref } from "../../lib/packageSeo";
 import { safeExternalUrl } from "../../lib/safeExternalUrl";
 
 
@@ -39,6 +40,15 @@ export default async function PackagesPage(props: PackagesProps) {
     packageCount: number;
   }[];
   const totalPages = data?.totalPages ?? 0;
+  const groupDetails = await Promise.all(
+    packageGroups.map((group) => getPackage(group.slug).catch(() => null))
+  );
+  const docsTargets = new Map(
+    packageGroups.map((group, index) => [
+      group.slug,
+      resolvePackageDocsHref(groupDetails[index] ?? { slug: group.slug, docs: group.docs, docsList: [] }),
+    ])
+  );
 
   return (
     <div>
@@ -50,30 +60,41 @@ export default async function PackagesPage(props: PackagesProps) {
       ) : (
         <>
           <ul className={styles.list}>
-            {packageGroups.map((group) => (
-              <li key={group.id} className={styles.listItem}>
-                <span className={styles.dash}>—</span>
-                <div className={styles.itemMeta}>
-                  <div>
-                    <Link href={`/packages/${group.slug}`} className={styles.packageName}>
-                      {group.name}
-                    </Link>
-                    <span className={styles.versionBadge}>{group.packageCount} packages</span>
+            {packageGroups.map((group) => {
+              const docsTarget = docsTargets.get(group.slug);
+              return (
+                <li key={group.id} className={styles.listItem}>
+                  <span className={styles.dash}>—</span>
+                  <div className={styles.itemMeta}>
+                    <div>
+                      <Link href={`/packages/${group.slug}`} className={styles.packageName}>
+                        {group.name}
+                      </Link>
+                      <span className={styles.versionBadge}>{group.packageCount} packages</span>
+                    </div>
+                    {group.description && <p className={styles.description}>{group.description}</p>}
+                    <div className={styles.links}>
+                      {docsTarget && (
+                        docsTarget.external ? (
+                          <a href={docsTarget.href} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                            documentation
+                          </a>
+                        ) : (
+                          <Link href={docsTarget.href} className={styles.link}>
+                            documentation
+                          </Link>
+                        )
+                      )}
+                      {safeExternalUrl(group.githubUrl) && (
+                        <a href={safeExternalUrl(group.githubUrl)} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                          github
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  {group.description && <p className={styles.description}>{group.description}</p>}
-                  <div className={styles.links}>
-                    <Link href={`/packages/${group.slug}/docs`} className={styles.link}>
-                      documentation
-                    </Link>
-                    {safeExternalUrl(group.githubUrl) && (
-                      <a href={safeExternalUrl(group.githubUrl)} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                        github
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           <Pagination currentPage={page} totalPages={totalPages} />
         </>

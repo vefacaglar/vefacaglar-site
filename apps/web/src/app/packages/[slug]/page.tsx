@@ -6,6 +6,7 @@ import { getActiveLanguage } from "../../../lib/lang";
 import { localizedAlternates } from "../../../lib/seo";
 import styles from "./packagePage.module.css";
 import { getPackage } from "../../../lib/data";
+import { resolvePackageDescription, stripLeadingDuplicateHeading } from "../../../lib/packageSeo";
 import { safeExternalUrl } from "../../../lib/safeExternalUrl";
 
 
@@ -14,9 +15,17 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const pkg = await getPackage(params.slug);
   if (!pkg) return { title: "Package Not Found" };
 
+  const title = `${pkg.name} | Package`;
+  const description = resolvePackageDescription(
+    pkg.description,
+    pkg.content,
+    `Documentation and details for ${pkg.name}`
+  );
+
   return {
-    title: `${pkg.name} | Package`,
-    description: pkg.description || `Documentation and details for ${pkg.name}`,
+    title,
+    description,
+    openGraph: { title, description },
     alternates: localizedAlternates(`/packages/${params.slug}`, await getActiveLanguage(), {
       bilingual: false,
     }),
@@ -77,7 +86,7 @@ export default async function PackagePage(props: { params: Promise<{ slug: strin
 
       {pkg.content ? (
         <div className={styles.contentWrapper}>
-          <MarkdownPreview content={pkg.content} />
+          <MarkdownPreview content={stripLeadingDuplicateHeading(pkg.content, pkg.name)} demoteHeadings />
         </div>
       ) : (
         <p className={styles.emptyText}>No overview available for this package.</p>

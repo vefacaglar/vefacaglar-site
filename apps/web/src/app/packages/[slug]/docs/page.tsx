@@ -1,6 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getPackage } from "../../../../lib/data";
-
+import { resolvePackageDocsHref } from "../../../../lib/packageSeo";
 
 export default async function PackageDocsPage(
   props: {
@@ -11,18 +11,10 @@ export default async function PackageDocsPage(
   const pkg = await getPackage(params.slug);
   if (!pkg) notFound();
 
-  if (pkg.docs && !pkg.docs.startsWith("http") && !pkg.docs.includes("/")) {
-    const hasDoc = pkg.docsList.some((doc: { slug: string }) => doc.slug === pkg.docs);
-    if (hasDoc) {
-      redirect(`/packages/${pkg.slug}/docs/${pkg.docs}`);
-    }
+  const docsTarget = resolvePackageDocsHref(pkg);
+  if (docsTarget) {
+    permanentRedirect(docsTarget.href);
   }
 
-  if (pkg.docsList.length > 0) {
-    const sortedDocs = [...pkg.docsList].sort((a, b) => a.displayOrder - b.displayOrder);
-    const firstDoc = sortedDocs[0];
-    redirect(`/packages/${pkg.slug}/docs/${firstDoc.slug}`);
-  }
-
-  redirect(`/packages/${pkg.slug}`);
+  permanentRedirect(`/packages/${pkg.slug}`);
 }
